@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>기사 작성 - TODAY NEWS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        /* 헤더 */
+        header {
+            background-color: #fff;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 15px 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .header-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            color: #d32f2f;
+            text-decoration: none;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-publish {
+            padding: 10px 25px;
+            background-color: #d32f2f;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+
+        .btn-publish:hover {
+            background-color: #b71c1c;
+        }
+
+        .btn-publish:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-back {
+            padding: 10px 20px;
+            background-color: #f5f5f5;
+            color: #333;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-back:hover {
+            background-color: #e0e0e0;
+        }
+
+        /* 메인 */
+        .container {
+            max-width: 1000px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        /* 에디터 컨테이너 */
+        .editor-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            padding: 30px;
+        }
+
+        /* 제목 입력 */
+        .title-input {
+            font-size: 28px;
+            font-weight: 700;
+            border: none;
+            outline: none;
+            width: 100%;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        /* 도구 모음 */
+        .toolbar {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-btn {
+            padding: 8px 12px;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .toolbar-btn:hover {
+            background-color: #f0f0f0;
+            border-color: #999;
+        }
+
+        .toolbar-btn.active {
+            background-color: #d32f2f;
+            color: white;
+            border-color: #d32f2f;
+        }
+
+        /* 콘텐츠 에디터 */
+        .content-editor {
+            min-height: 400px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            line-height: 1.6;
+            outline: none;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .content-editor:focus {
+            border-color: #d32f2f;
+            box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.1);
+        }
+
+        /* 이미지 업로드 */
+        .image-upload-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .image-upload-section h3 {
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 4px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background-color: #fafafa;
+        }
+
+        .upload-area:hover {
+            border-color: #d32f2f;
+            background-color: #fff5f5;
+        }
+
+        .upload-area.drag-over {
+            border-color: #d32f2f;
+            background-color: #fff5f5;
+        }
+
+        .upload-area input {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* 미리보기 */
+        .image-preview {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .preview-item {
+            position: relative;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .preview-item img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+
+        .preview-item .remove-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: #d32f2f;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        .preview-item .remove-btn:hover {
+            background-color: #b71c1c;
+        }
+
+        /* 추가 도구 */
+        .additional-tools {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .tool-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .tool-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .tool-group input:focus {
+            outline: none;
+            border-color: #d32f2f;
+            box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.1);
+        }
+
+        /* 성공 메시지 */
+        .success-message {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .additional-tools {
+                grid-template-columns: 1fr;
+            }
+
+            .editor-container {
+                padding: 20px;
+            }
+
+            .title-input {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 헤더 -->
+    <header>
+        <div class="header-container">
+            <a href="index.html" class="logo">TODAY NEWS</a>
+            <div class="header-actions">
+                <a href="index.html" class="btn-back">← 돌아가기</a>
+                <button class="btn-publish" id="publishBtn" onclick="publishArticle()">발행</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 컨텐츠 -->
+    <div class="container">
+        <!-- 성공 메시지 -->
+        <div class="success-message" id="successMessage">
+            기사가 성공적으로 발행되었습니다! <a href="index.html">메인페이지로 이동</a>
+        </div>
+
+        <!-- 에디터 -->
+        <div class="editor-container" id="editorContainer">
+            <input type="text" class="title-input" id="titleInput" placeholder="제목을 입력하세요">
+
+            <div class="toolbar">
+                <button class="toolbar-btn" onclick="formatText('bold')"><strong>B</strong> 굵게</button>
+                <button class="toolbar-btn" onclick="formatText('italic')"><em>I</em> 기울임</button>
+                <button class="toolbar-btn" onclick="formatText('underline')"><u>U</u> 밑줄</button>
+                <button class="toolbar-btn" onclick="formatText('createUnorderedList')">• 목록</button>
+                <button class="toolbar-btn" onclick="formatText('createOrderedList')">1. 번호</button>
+                <button class="toolbar-btn" onclick="formatText('formatBlock','h2')">제목2</button>
+                <button class="toolbar-btn" onclick="formatText('formatBlock','h3')">제목3</button>
+                <button class="toolbar-btn" onclick="formatText('insertHorizontalRule')">─ 구분선</button>
+            </div>
+
+            <textarea class="content-editor" id="contentEditor" placeholder="내용을 입력하세요..."></textarea>
+
+            <!-- 이미지 업로드 -->
+            <div class="image-upload-section">
+                <h3>대표 이미지</h3>
+                <div class="upload-area" id="uploadArea" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                    <div class="upload-icon">📷</div>
+                    <div class="upload-text">이미지를 드래그하거나 클릭하여 업로드하세요</div>
+                    <input type="file" id="imageInput" accept="image/*" onchange="handleImageUpload(event)">
+                </div>
+                <div class="image-preview" id="imagePreview"></div>
+            </div>
+
+            <!-- 추가 정보 -->
+            <div class="additional-tools">
+                <div class="tool-group">
+                    <label for="categoryInput">카테고리</label>
+                    <input type="text" id="categoryInput" placeholder="예: 정치, 경제, 사회 등">
+                </div>
+                <div class="tool-group">
+                    <label for="tagsInput">태그</label>
+                    <input type="text" id="tagsInput" placeholder="예: #뉴스 #속보 (쉼표로 구분)">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let uploadedImage = null;
+        let isEditMode = false;
+        let editArticleId = null;
+
+        // 초기화
+        window.addEventListener('load', () => {
+            initUser();
+        });
+
+        // 사용자 초기화
+        function initUser() {
+            const saved = localStorage.getItem('userNickname');
+            if (saved) {
+                currentUser = { nickname: saved };
+            } else {
+                alert('닉네임을 먼저 설정해주세요');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // 수정 모드 확인
+            const params = new URLSearchParams(window.location.search);
+            editArticleId = params.get('edit');
+
+            if (editArticleId) {
+                loadEditMode();
+            }
+        }
+
+        // 수정 모드 로드
+        function loadEditMode() {
+            const articles = JSON.parse(localStorage.getItem('articles') || '[]');
+            const article = articles.find(a => a.id === editArticleId);
+
+            if (article && article.author === currentUser.nickname) {
+                isEditMode = true;
+                document.getElementById('titleInput').value = article.title;
+                document.getElementById('contentEditor').value = article.content;
+                document.getElementById('categoryInput').value = article.category;
+                document.getElementById('tagsInput').value = article.tags;
+                uploadedImage = article.image;
+                displayImagePreview();
+                document.querySelector('.btn-publish').textContent = '수정하기';
+            } else {
+                alert('수정 권한이 없습니다');
+                window.location.href = 'index.html';
+            }
+        }
+
+        // 텍스트 포맷팅
+        function formatText(command, value = null) {
+            if (document.activeElement !== document.getElementById('contentEditor')) {
+                document.getElementById('contentEditor').focus();
+            }
+            document.execCommand(command, false, value);
+        }
+
+        // 이미지 업로드 처리
+        async function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                await processImage(file);
+            }
+        }
+
+        // 이미지 드래그 오버
+        function handleDragOver(event) {
+            event.preventDefault();
+            document.getElementById('uploadArea').classList.add('drag-over');
+        }
+
+        // 이미지 드래그 리브
+        function handleDragLeave(event) {
+            document.getElementById('uploadArea').classList.remove('drag-over');
+        }
+
+        // 이미지 드롭
+        function handleDrop(event) {
+            event.preventDefault();
+            document.getElementById('uploadArea').classList.remove('drag-over');
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                processImage(files[0]);
+            }
+        }
+
+        // 이미지 처리
+        function processImage(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('이미지 파일을 선택해주세요');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                uploadedImage = e.target.result;
+                displayImagePreview();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 이미지 미리보기 표시
+        function displayImagePreview() {
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = `
+                <div class="preview-item">
+                    <img src="${uploadedImage}" alt="Preview">
+                    <button class="remove-btn" onclick="removeImage()">×</button>
+                </div>
+            `;
+        }
+
+        // 이미지 제거
+        function removeImage() {
+            uploadedImage = null;
+            document.getElementById('imagePreview').innerHTML = '';
+            document.getElementById('imageInput').value = '';
+        }
+
+        // 업로드 영역 클릭
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('uploadArea').onclick = () => {
+                document.getElementById('imageInput').click();
+            };
+        });
+
+        // 기사 발행
+        async function publishArticle() {
+            if (!currentUser) {
+                alert('닉네임을 설정해주세요');
+                return;
+            }
+
+            const title = document.getElementById('titleInput').value.trim();
+            const content = document.getElementById('contentEditor').value.trim();
+            const category = document.getElementById('categoryInput').value.trim();
+            const tags = document.getElementById('tagsInput').value.trim();
+
+            if (!title) {
+                alert('제목을 입력해주세요');
+                return;
+            }
+
+            if (!content) {
+                alert('내용을 입력해주세요');
+                return;
+            }
+
+            const article = {
+                id: isEditMode ? editArticleId : Date.now().toString(),
+                title,
+                content,
+                image: uploadedImage,
+                category,
+                tags,
+                author: currentUser.nickname,
+                createdAt: isEditMode ? getArticleCreatedAt() : new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+
+            // localStorage에 저장
+            let articles = JSON.parse(localStorage.getItem('articles') || '[]');
+            
+            if (isEditMode) {
+                articles = articles.map(a => a.id === editArticleId ? article : a);
+            } else {
+                articles.push(article);
+            }
+
+            localStorage.setItem('articles', JSON.stringify(articles));
+
+            // 성공 메시지
+            document.getElementById('successMessage').style.display = 'block';
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 2000);
+        }
+
+        // 원본 생성시간 가져오기
+        function getArticleCreatedAt() {
+            const articles = JSON.parse(localStorage.getItem('articles') || '[]');
+            const article = articles.find(a => a.id === editArticleId);
+            return article ? article.createdAt : new Date().toISOString();
+        }
+    </script>
+</body>
+</html>
