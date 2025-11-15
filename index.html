@@ -27,7 +27,11 @@
         }
 
         body.pc-mode .bottom-nav {
-            display: none !important;
+            display: flex !important;
+            position: relative;
+            max-width: 100%;
+            border-top: 1px solid #ddd;
+            margin-top: 40px;
         }
 
         body.pc-mode .container {
@@ -351,6 +355,10 @@
             font-size: 13px;
             color: #666;
             line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
         /* 기사 그리드 */
@@ -483,7 +491,7 @@
 
         .user-stats {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr;
             gap: 15px;
             margin-top: 15px;
         }
@@ -863,6 +871,65 @@
             color: #4caf50;
             font-weight: bold;
         }
+
+        .profile-card {
+            background: linear-gradient(135deg, #d32f2f 0%, #f44336 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 12px rgba(211, 47, 47, 0.3);
+        }
+
+        .profile-nickname {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .profile-stat {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        /* 기사 상세 애니메이션 */
+        .article-detail-image {
+            animation: slideInDown 0.6s ease;
+        }
+
+        .detail-header {
+            animation: slideInUp 0.6s ease 0.1s both;
+        }
+
+        .detail-content {
+            animation: slideInUp 0.6s ease 0.2s both;
+        }
+
+        .detail-buttons {
+            animation: slideInUp 0.6s ease 0.3s both;
+        }
+
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
 <body>
@@ -889,7 +956,7 @@
     <div id="adminPasswordModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>👑 관리자 모드</h2>
+                <h2>🔐 관리자 모드</h2>
                 <button class="close-btn" onclick="closeAdminModal()">✕</button>
             </div>
             <p style="color: #666; margin-bottom: 20px; font-size: 14px;">관리자 비밀번호를 입력하세요.</p>
@@ -1023,6 +1090,13 @@
 
         <!-- 설정 페이지 -->
         <div class="settings-section">
+            <!-- 프로필 카드 (최상단) -->
+            <div class="profile-card">
+                <div class="profile-nickname" id="profileNickname">-</div>
+                <div class="profile-stat">📝 내 기사: <span id="profileArticleCount">0</span>개</div>
+            </div>
+
+            <!-- 알림 설정 -->
             <div class="settings-card">
                 <h3>알림 설정</h3>
                 <div class="checkbox-group">
@@ -1031,17 +1105,29 @@
                 </div>
             </div>
 
-            <button class="mode-button" onclick="togglePCMode()">🖥️ PC모드</button>
-            <button class="btn-admin" onclick="openAdminModal()">👑 관리자 모드</button>
+            <!-- 모드 설정 -->
+            <div class="settings-card">
+                <h3>디스플레이</h3>
+                <button class="mode-button" onclick="togglePCMode()">🖥️ PC모드</button>
+            </div>
+
+            <!-- 관리자 버튼 -->
+            <button class="btn-admin" onclick="openAdminModal()">🔐 관리자 모드</button>
+
+            <!-- 내 기사 -->
+            <div class="settings-card">
+                <h3>내 기사</h3>
+                <div id="myArticlesList"></div>
+            </div>
 
             <!-- 관리자 섹션 -->
             <div id="adminSection" style="display: none;">
                 <div class="admin-section">
-                    <h4>👑 관리자 패널</h4>
+                    <h4>🔐 관리자 패널</h4>
                     <button class="btn-submit" onclick="openCreateAdModal()" style="width: 100%; margin-bottom: 15px;">📢 광고 생성</button>
                     <h5 style="margin-top: 15px; margin-bottom: 10px; font-size: 13px; color: #ff6f00;">사용자 관리</h5>
                     <div id="userManagementList"></div>
-                    <button class="btn-logout-admin" onclick="logoutAdmin()" style="width: 100%; margin-top: 15px;">👑 관리자 모드 해제</button>
+                    <button class="btn-logout-admin" onclick="logoutAdmin()" style="width: 100%; margin-top: 15px;">🔐 관리자 모드 해제</button>
                 </div>
             </div>
         </div>
@@ -1071,584 +1157,6 @@
         </div>
     </div>
 
-    <script>
-        const STORAGE_KEY = 'news_articles';
-        const NICKNAME_KEY = 'user_nickname';
-        const ADMIN_PASSWORD = 'admin123';
-        const ADMIN_KEY = 'is_admin';
-        const AD_KEY = 'current_ad';
-        const AD_SHOWN_KEY = 'ad_shown';
-        const NOTIFICATION_KEY = 'notification_enabled';
-        const ARTICLES_PER_PAGE = 5;
-        let displayedArticlesCount = ARTICLES_PER_PAGE;
-        let searchQuery = '';
-        let previousPage = 'articles';
-        let currentImageData = null;
-        let currentAdImage = null;
-
-        function setCookie(name, value, days = 365) {
-            const date = new Date();
-            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-            const expires = "expires=" + date.toUTCString();
-            document.cookie = name + "=" + encodeURIComponent(value) + ";" + expires + ";path=/";
-        }
-
-        function getCookie(name) {
-            const nameEQ = name + "=";
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                let cookie = cookies[i].trim();
-                if (cookie.indexOf(nameEQ) === 0) {
-                    return decodeURIComponent(cookie.substring(nameEQ.length));
-                }
-            }
-            return null;
-        }
-
-        function togglePCMode() {
-            document.body.classList.toggle('pc-mode');
-            const isPCMode = document.body.classList.contains('pc-mode');
-            localStorage.setItem('pc_mode', isPCMode);
-            alert(isPCMode ? 'PC모드가 활성화되었습니다!' : 'PC모드가 비활성화되었습니다!');
-        }
-
-        function initializePCMode() {
-            const isPCMode = localStorage.getItem('pc_mode') === 'true';
-            if (isPCMode) {
-                document.body.classList.add('pc-mode');
-            }
-        }
-
-        function initializeNickname() {
-            const savedNickname = getCookie(NICKNAME_KEY);
-            if (!savedNickname) {
-                document.getElementById('nicknameModal').classList.add('active');
-            } else {
-                document.getElementById('nicknameModal').classList.remove('active');
-            }
-        }
-
-        document.getElementById('nicknameForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const nickname = document.getElementById('nicknameInput').value;
-            if (nickname.trim()) {
-                setCookie(NICKNAME_KEY, nickname);
-                document.getElementById('nicknameModal').classList.remove('active');
-                localStorage.setItem(AD_SHOWN_KEY, 'false');
-                renderArticles();
-                checkAndShowAd();
-            }
-        });
-
-        function getArticles() {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            return stored ? JSON.parse(stored) : [];
-        }
-
-        function saveArticles(articles) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(articles));
-        }
-
-        function getAd() {
-            const stored = localStorage.getItem(AD_KEY);
-            return stored ? JSON.parse(stored) : null;
-        }
-
-        function saveAd(ad) {
-            localStorage.setItem(AD_KEY, JSON.stringify(ad));
-            localStorage.setItem(AD_SHOWN_KEY, 'false');
-        }
-
-        function getUserNickname() {
-            return getCookie(NICKNAME_KEY) || '익명';
-        }
-
-        function isAdmin() {
-            return getCookie(ADMIN_KEY) === 'true';
-        }
-
-        function isNotificationEnabled() {
-            return localStorage.getItem(NOTIFICATION_KEY) !== 'false';
-        }
-
-        function showNotification(message) {
-            const toast = document.createElement('div');
-            toast.className = 'notification-toast success';
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => {
-                toast.style.animation = 'slideInRight 0.3s ease reverse';
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-
-        function openAdminModal() {
-            document.getElementById('adminPasswordModal').classList.add('active');
-        }
-
-        function closeAdminModal() {
-            document.getElementById('adminPasswordModal').classList.remove('active');
-            document.getElementById('adminPassword').value = '';
-        }
-
-        function logoutAdmin() {
-            if (confirm('관리자 모드를 해제하시겠습니까?')) {
-                document.cookie = ADMIN_KEY + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-                updateSettings();
-                alert('관리자 모드가 해제되었습니다!');
-            }
-        }
-
-        function openCreateAdModal() {
-            document.getElementById('createAdModal').classList.add('active');
-        }
-
-        function closeCreateAdModal() {
-            document.getElementById('createAdModal').classList.remove('active');
-            document.getElementById('adForm').reset();
-            document.getElementById('adImagePreview').innerHTML = '';
-            currentAdImage = null;
-        }
-
-        function closeAdPopup() {
-            document.getElementById('adModal').classList.remove('active');
-            localStorage.setItem(AD_SHOWN_KEY, 'true');
-        }
-
-        function checkAndShowAd() {
-            const ad = getAd();
-            const notificationEnabled = isNotificationEnabled();
-            const adShown = localStorage.getItem(AD_SHOWN_KEY);
-            
-            if (ad && adShown !== 'true' && notificationEnabled) {
-                setTimeout(() => {
-                    document.getElementById('adImage').style.backgroundImage = `url('${ad.image}')`;
-                    document.getElementById('adTitle').textContent = ad.title;
-                    document.getElementById('adDescription').textContent = ad.description;
-                    document.getElementById('adModal').classList.add('active');
-                }, 800);
-            }
-        }
-
-        document.getElementById('adminPasswordForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const password = document.getElementById('adminPassword').value;
-            if (password === ADMIN_PASSWORD) {
-                setCookie(ADMIN_KEY, 'true');
-                closeAdminModal();
-                updateSettings();
-                showNotification('관리자 모드 활성화!');
-            } else {
-                alert('비밀번호가 틀렸습니다!');
-            }
-        });
-
-        document.getElementById('adImageInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    currentAdImage = event.target.result;
-                    document.getElementById('adImagePreview').innerHTML = `<img src="${currentAdImage}" alt="미리보기">`;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-
-        document.getElementById('adForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            if (!currentAdImage) {
-                alert('이미지를 선택해주세요!');
-                return;
-            }
-
-            const ad = {
-                title: document.getElementById('adTitleInput').value,
-                description: document.getElementById('adDescriptionInput').value,
-                image: currentAdImage,
-                createdAt: new Date().toISOString()
-            };
-
-            saveAd(ad);
-            closeCreateAdModal();
-            showNotification('광고가 생성되었습니다!');
-        });
-
-        document.getElementById('notificationCheck').addEventListener('change', function() {
-            localStorage.setItem(NOTIFICATION_KEY, this.checked ? 'true' : 'false');
-        });
-
-        function updateNavigation(page) {
-            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-            const navItems = {
-                'articles': 0,
-                'write': 1,
-                'settings': 2
-            };
-            if (navItems[page] !== undefined) {
-                document.querySelectorAll('.nav-item')[navItems[page]].classList.add('active');
-            }
-        }
-
-        function showSection(section) {
-            document.querySelectorAll('.articles-section, .write-section, .article-detail-section, .settings-section').forEach(el => {
-                el.classList.remove('active');
-            });
-            document.querySelector(section).classList.add('active');
-            window.scrollTo(0, 0);
-        }
-
-        function showArticles() {
-            previousPage = 'articles';
-            searchQuery = '';
-            document.getElementById('searchInput').value = '';
-            displayedArticlesCount = ARTICLES_PER_PAGE;
-            showSection('.articles-section');
-            updateNavigation('articles');
-            renderArticles();
-        }
-
-        function showWritePage() {
-            previousPage = 'write';
-            showSection('.write-section');
-            updateNavigation('write');
-            document.getElementById('articleForm').reset();
-            document.getElementById('imagePreview').innerHTML = '';
-            currentImageData = null;
-        }
-
-        function showSettings() {
-            previousPage = 'settings';
-            showSection('.settings-section');
-            updateNavigation('settings');
-            updateSettings();
-        }
-
-        function goBack() {
-            if (previousPage === 'articles') showArticles();
-            else if (previousPage === 'write') showWritePage();
-            else if (previousPage === 'settings') showSettings();
-        }
-
-        function formatDate(isoDate) {
-            const date = new Date(isoDate);
-            const now = new Date();
-            const diff = now - date;
-            const seconds = Math.floor(diff / 1000);
-            const minutes = Math.floor(seconds / 60);
-            const hours = Math.floor(minutes / 60);
-            const days = Math.floor(hours / 24);
-
-            if (seconds < 60) return '방금 전';
-            if (minutes < 60) return `${minutes}분 전`;
-            if (hours < 24) return `${hours}시간 전`;
-            if (days < 7) return `${days}일 전`;
-            
-            return date.toLocaleDateString('ko-KR');
-        }
-
-        function renderArticles() {
-            let articles = getArticles();
-            
-            if (searchQuery) {
-                articles = articles.filter(article => 
-                    article.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                    article.summary.toLowerCase().includes(searchQuery.toLowerCase())
-                );
-            }
-
-            const articlesGrid = document.getElementById('articlesGrid');
-            const emptyState = document.getElementById('emptyState');
-            const noResults = document.getElementById('noResults');
-            const featuredArticle = document.getElementById('featuredArticle');
-            const loadMoreContainer = document.getElementById('loadMoreContainer');
-
-            if (articles.length === 0) {
-                articlesGrid.innerHTML = '';
-                featuredArticle.innerHTML = '';
-                loadMoreContainer.style.display = 'none';
-                if (searchQuery) {
-                    noResults.style.display = 'block';
-                    emptyState.style.display = 'none';
-                } else {
-                    emptyState.style.display = 'block';
-                    noResults.style.display = 'none';
-                }
-                return;
-            }
-
-            emptyState.style.display = 'none';
-            noResults.style.display = 'none';
-
-            const latest = articles[0];
-            const latestIndex = getArticles().indexOf(latest);
-            featuredArticle.innerHTML = `
-                <div class="featured-article" onclick="showArticleDetail(${latestIndex})">
-                    <div class="featured-image" style="background-image: url('${latest.imageUrl || ''}');">
-                        ${!latest.imageUrl ? '📰' : ''}
-                    </div>
-                    <div class="featured-content">
-                        <div class="article-category">${latest.category}</div>
-                        <h1>${latest.title}</h1>
-                        <div class="meta">
-                            <span class="author-badge">👤 ${latest.author}</span>
-                            <span>${formatDate(latest.date)}</span>
-                        </div>
-                        <div class="summary">${latest.summary}</div>
-                    </div>
-                </div>
-            `;
-
-            const displayArticles = articles.slice(1, displayedArticlesCount);
-            articlesGrid.innerHTML = displayArticles.map((article) => {
-                const originalIndex = getArticles().indexOf(article);
-                return `
-                    <div class="article-card" onclick="showArticleDetail(${originalIndex})">
-                        <div class="article-image" style="background-image: url('${article.imageUrl || ''}');">
-                            ${!article.imageUrl ? '📰' : ''}
-                        </div>
-                        <div class="article-content">
-                            <div>
-                                <div class="article-category">${article.category}</div>
-                                <div class="article-title">${article.title}</div>
-                            </div>
-                            <div class="article-meta">
-                                <strong>${article.author}</strong> • ${formatDate(article.date)}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            if (articles.length > displayedArticlesCount) {
-                loadMoreContainer.style.display = 'block';
-            } else {
-                loadMoreContainer.style.display = 'none';
-            }
-        }
-
-        function loadMoreArticles() {
-            displayedArticlesCount += ARTICLES_PER_PAGE;
-            renderArticles();
-        }
-
-        function handleSearch(event) {
-            if (event.key === 'Enter') {
-                performSearch();
-            }
-        }
-
-        function performSearch() {
-            searchQuery = document.getElementById('searchInput').value;
-            displayedArticlesCount = ARTICLES_PER_PAGE;
-            renderArticles();
-        }
-
-        function showArticleDetail(index) {
-            previousPage = previousPage || 'articles';
-            showSection('.article-detail-section');
-            const articles = getArticles();
-            const article = articles[index];
-            
-            if (!article) {
-                alert('기사를 찾을 수 없습니다.');
-                goBack();
-                return;
-            }
-
-            const detail = document.getElementById('articleDetail');
-            detail.innerHTML = `
-                <div class="article-detail-image" style="background-image: url('${article.imageUrl || ''}');">
-                    ${!article.imageUrl ? '📰' : ''}
-                </div>
-                <div class="detail-header">
-                    <h1>${article.title}</h1>
-                    <div class="detail-meta">
-                        <span class="author-badge">👤 ${article.author}</span>
-                        <span>${formatDate(article.date)}</span>
-                        <span style="background: #f44336; color: white; padding: 3px 10px; border-radius: 12px; font-size: 11px;">${article.category}</span>
-                    </div>
-                </div>
-                <div class="detail-content">${article.content}</div>
-                <div class="detail-buttons">
-                    ${(article.author === getUserNickname() || isAdmin()) ? `<button class="btn-delete" onclick="deleteArticle(${index})">🗑️ 삭제</button>` : ''}
-                    <button class="btn-back" onclick="goBack()">← 돌아가기</button>
-                </div>
-            `;
-        }
-
-        function deleteArticle(index) {
-            if (confirm('이 기사를 삭제하시겠습니까?')) {
-                const articles = getArticles();
-                articles.splice(index, 1);
-                saveArticles(articles);
-                goBack();
-            }
-        }
-
-        function updateSettings() {
-            const nickname = getUserNickname();
-            if (document.getElementById('settingsNickname')) {
-                document.getElementById('settingsNickname').textContent = nickname;
-            }
-
-            const articles = getArticles();
-            const myArticles = articles.filter(a => a.author === nickname);
-            
-            if (document.getElementById('totalArticles')) {
-                document.getElementById('totalArticles').textContent = myArticles.length;
-            }
-            if (document.getElementById('notificationCheck')) {
-                document.getElementById('notificationCheck').checked = isNotificationEnabled();
-            }
-
-            const myArticlesList = document.getElementById('myArticlesList');
-            if (myArticles.length === 0) {
-                myArticlesList.innerHTML = '<p style="color: #999; font-size: 12px;">올린 기사가 없습니다.</p>';
-            } else {
-                myArticlesList.innerHTML = myArticles.map((article) => {
-                    const originalIndex = articles.indexOf(article);
-                    return `
-                        <div class="my-article-item" onclick="showArticleDetail(${originalIndex})">
-                            <div class="my-article-title">${article.title}</div>
-                            <div class="my-article-meta">
-                                ${article.category} • ${formatDate(article.date)}
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
-
-            const adminSection = document.getElementById('adminSection');
-            if (isAdmin()) {
-                adminSection.style.display = 'block';
-                updateUserManagement();
-            } else {
-                adminSection.style.display = 'none';
-            }
-        }
-
-        function updateUserManagement() {
-            const articles = getArticles();
-            const users = {};
-
-            articles.forEach(article => {
-                if (!users[article.author]) {
-                    users[article.author] = {
-                        name: article.author,
-                        articleCount: 0,
-                        articles: []
-                    };
-                }
-                users[article.author].articleCount++;
-                users[article.author].articles.push(article);
-            });
-
-            const userList = document.getElementById('userManagementList');
-            userList.innerHTML = Object.values(users).map(user => `
-                <div class="user-management-item">
-                    <div class="user-name">${user.name}</div>
-                    <div class="user-info">기사 수: ${user.articleCount}개</div>
-                    <div class="user-actions">
-                        <button class="btn-delete-user" onclick="deleteAllUserArticles('${user.name}')">📄 기사 삭제</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function deleteAllUserArticles(userName) {
-            if (confirm(`${userName}의 모든 기사를 삭제하시겠습니까?`)) {
-                const articles = getArticles();
-                const filtered = articles.filter(a => a.author !== userName);
-                saveArticles(filtered);
-                updateUserManagement();
-                showNotification('삭제되었습니다!');
-            }
-        }
-
-        document.getElementById('imageFile').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    currentImageData = event.target.result;
-                    document.getElementById('imagePreview').innerHTML = `<img src="${currentImageData}" alt="미리보기">`;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-
-        document.getElementById('articleForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const newArticle = {
-                id: Date.now(),
-                category: document.getElementById('category').value,
-                title: document.getElementById('title').value,
-                author: getUserNickname(),
-                summary: document.getElementById('summary').value,
-                content: document.getElementById('content').value,
-                imageUrl: currentImageData || '',
-                date: new Date().toISOString()
-            };
-
-            const articles = getArticles();
-            articles.unshift(newArticle);
-            saveArticles(articles);
-
-            if (isNotificationEnabled()) {
-                showNotification(`새 기사: ${newArticle.title}`);
-            }
-
-            showNotification('기사가 발행되었습니다!');
-            showArticles();
-        });
-
-        initializePCMode();
-        initializeNickname();
-        renderArticles();
-        checkAndShowAd();
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
-                <h3>프로필</h3>
-                <div class="settings-value" id="settingsNickname">-</div>
-            </div>
-
-            <div class="settings-card">
-                <h3>통계</h3>
-                <div class="user-stats">
-                    <div class="stat-box">
-                        <div class="stat-number" id="totalArticles">0</div>
-                        <div class="stat-label">올린 기사</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="settings-card">
-                <h3>내 기사</h3>
-                <div id="myArticlesList"></div>
-            </div>
-
-            <div class="settings-card">
-                <h3>알림 설정</h3>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="notificationCheck" checked>
-                    <label for="notificationCheck">새 기사 알림 받기</label>
-                </div>
-            </div>
-
-            <button class="mode-button" onclick="togglePCMode()">🖥️ PC모드</button>
-            <button class="btn-admin" onclick="openAdminModal()">👑 관리자 모드</button>
-
-            <!-- 관리자 섹션 -->
-            <div id="adminSection" style="display: none;">
-                <div class="admin-section">
-                    <h4>👑 관리자 패널</h4>
-                    <button class="btn-submit" onclick="openCreateAdModal()" style="width: 100%; margin-bottom: 15px;">📢 광고 생성</button>
-                    <h5 style="margin-top: 15px; margin-bottom: 10px; font-size: 13px; color: #ff6f00;">사용자 관리</h5>
-                    <div id="userManagementList"></div>
-                    <button class="btn-logout-admin" onclick="logoutAdmin()" style="width: 100%; margin-top: 15px;">👑 관리자 모드 해제</button>
-                </div>
-            </div>
-        </div>
