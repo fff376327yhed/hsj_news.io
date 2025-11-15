@@ -399,8 +399,9 @@ function shareArticle(index) {
         saveArticles(articles);
     }
     
-    // URL 쿼리 파라미터에 기사 ID만 포함
-    const shareUrl = `${window.location.origin}${window.location.pathname}?id=${article.id}`;
+    // 기사 데이터를 Base64로 인코딩
+    const articleData = btoa(JSON.stringify(article));
+    const shareUrl = `${window.location.origin}${window.location.pathname}?article=${articleData}`;
     
     if (navigator.share) {
         navigator.share({
@@ -420,21 +421,37 @@ function shareArticle(index) {
 
 function loadSharedArticle() {
     const params = new URLSearchParams(window.location.search);
-    const articleId = params.get('id');
+    const articleData = params.get('article');
     
-    if (articleId) {
+    if (articleData) {
         setTimeout(() => {
-            const articles = getArticles();
-            const article = articles.find(a => a.id === parseInt(articleId));
-            
-            if (article) {
-                // 기사를 찾았으면 상세 페이지로 표시
-                const index = articles.indexOf(article);
-                previousPage = 'articles';
-                showArticleDetail(index);
+            try {
+                // Base64 디코딩
+                const decodedArticle = JSON.parse(atob(articleData));
+                let articles = getArticles();
+                
+                // 같은 ID의 기사가 이미 있는지 확인
+                const exists = articles.find(a => a.id === decodedArticle.id);
+                
+                if (!exists) {
+                    // 기사가 없으면 목록에 추가
+                    articles.unshift(decodedArticle);
+                    saveArticles(articles);
+                }
+                
+                // 기사를 찾아서 상세 페이지로 표시
+                const updatedArticles = getArticles();
+                const index = updatedArticles.findIndex(a => a.id === decodedArticle.id);
+                
+                if (index >= 0) {
+                    previousPage = 'articles';
+                    showArticleDetail(index);
+                }
+                
+                // URL에서 파라미터 제거
                 window.history.replaceState({}, document.title, window.location.pathname);
-            } else {
-                console.log('공유된 기사를 찾을 수 없습니다.');
+            } catch (e) {
+                console.error('공유된 기사 로드 실패:', e);
             }
         }, 100);
     }
