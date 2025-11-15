@@ -1042,8 +1042,8 @@
         let currentImageData = null;
         let db = null;
 
-        // Firebase 초기화
-     const firebaseConfig = {
+       // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
   apiKey: "AIzaSyDgooYtVr8-jm15-fx_WvGLCDxonLpNPuU",
   authDomain: "hsj-news.firebaseapp.com",
   projectId: "hsj-news",
@@ -1116,14 +1116,103 @@
             return stored ? JSON.parse(stored) : [];
         }
 
-        function saveArticles(articles) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(articles));
+        function renderArticles() {
+            // Firebase에서 모든 기사 로드
             if (db) {
-                articles.forEach(article => {
-                    if (article.id) {
-                        db.ref('articles/' + article.id).set(article).catch(e => console.log('Firebase 저장 실패:', e));
-                    }
+                db.ref('articles').on('value', (snapshot) => {
+                    const firebaseArticles = snapshot.val() || {};
+                    const articles = Object.values(firebaseArticles).sort((a, b) => new Date(b.date) - new Date(a.date));
+                    
+                    // 로컬스토리지도 업데이트
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(articles));
+                    
+                    renderArticlesContent(articles);
                 });
+            } else {
+                const articles = getArticles();
+                renderArticlesContent(articles);
+            }
+        }
+
+        function renderArticlesContent(articles) {
+            let displayArticles = articles;
+            
+            if (searchQuery) {
+                displayArticles = articles.filter(article => 
+                    article.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                    article.summary.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+            }
+
+            const articlesGrid = document.getElementById('articlesGrid');
+            const emptyState = document.getElementById('emptyState');
+            const noResults = document.getElementById('noResults');
+            const featuredArticle = document.getElementById('featuredArticle');
+            const loadMoreContainer = document.getElementById('loadMoreContainer');
+
+            if (displayArticles.length === 0) {
+                articlesGrid.innerHTML = '';
+                featuredArticle.innerHTML = '';
+                loadMoreContainer.style.display = 'none';
+                if (searchQuery) {
+                    noResults.style.display = 'block';
+                    emptyState.style.display = 'none';
+                } else {
+                    emptyState.style.display = 'block';
+                    noResults.style.display = 'none';
+                }
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            noResults.style.display = 'none';
+
+            const latest = displayArticles[0];
+            const allArticles = getArticles();
+            const latestIndex = allArticles.findIndex(a => a.id === latest.id);
+            
+            featuredArticle.innerHTML = `
+                <div class="featured-article" onclick="showArticleDetail(${latestIndex})">
+                    <div class="featured-image" style="background-image: url('${latest.imageUrl || ''}');">
+                        ${!latest.imageUrl ? '📰' : ''}
+                    </div>
+                    <div class="featured-content">
+                        <div class="article-category">${latest.category}</div>
+                        <h1>${latest.title}</h1>
+                        <div class="meta">
+                            <span class="author-badge">👤 ${latest.author}</span>
+                            <span>${formatDate(latest.date)}</span>
+                        </div>
+                        <div class="summary">${latest.summary.substring(0, 100)}...</div>
+                    </div>
+                </div>
+            `;
+
+            const displayArticlesSlice = displayArticles.slice(1, displayedArticlesCount);
+            articlesGrid.innerHTML = displayArticlesSlice.map((article) => {
+                const originalIndex = allArticles.findIndex(a => a.id === article.id);
+                return `
+                    <div class="article-card" onclick="showArticleDetail(${originalIndex})">
+                        <div class="article-image" style="background-image: url('${article.imageUrl || ''}');">
+                            ${!article.imageUrl ? '📰' : ''}
+                        </div>
+                        <div class="article-content">
+                            <div>
+                                <div class="article-category">${article.category}</div>
+                                <div class="article-title">${article.title}</div>
+                            </div>
+                            <div class="article-meta">
+                                <strong>${article.author}</strong> • ${formatDate(article.date)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            if (displayArticles.length > displayedArticlesCount) {
+                loadMoreContainer.style.display = 'block';
+            } else {
+                loadMoreContainer.style.display = 'none';
             }
         }
 
@@ -1319,58 +1408,20 @@
             }
         }
 
-        function loadMoreArticles() {
-            displayedArticlesCount += ARTICLES_PER_PAGE;
-            renderArticles();
-        }
-
-        function handleSearch(event) {
-            if (event.key === 'Enter') {
-                performSearch();
+        function saveArticles(articles) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(articles));
+            if (db) {
+                articles.forEach(article => {
+                    if (article.id) {
+                        db.ref('articles/' + article.id).set(article).catch(e => console.log('Firebase 저장 실패:', e));
+                    }
+                });
             }
         }
 
-        function performSearch() {
-            searchQuery = document.getElementById('searchInput').value;
-            renderArticles();
-        }
-
-        function showArticleDetail(index) {
-            const articles = getArticles();
-            const article = articles[index];
-            
-            if (!article || index < 0) {
-                alert('기사를 찾을 수 없습니다.');
-                showArticles();
-                return;
-            }
-            
-            previousPage = previousPage || 'articles';
-            showSection('.article-detail-section');
-            
-            const detail = document.getElementById('articleDetail');
-            detail.innerHTML = `
-                <div class="article-detail-image" style="background-image: url('${article.imageUrl || ''}');">
-                    ${!article.imageUrl ? '📰' : ''}
-                </div>
-                <div class="detail-header">
-                    <h1>${article.title}</h1>
-                    <div class="detail-meta">
-                        <span class="author-badge">👤 ${article.author}</span>
-                        <span>${formatDate(article.date)}</span>
-                        <span style="background: #f44336; color: white; padding: 3px 10px; border-radius: 12px; font-size: 11px;">${article.category}</span>
-                    </div>
-                </div>
-                <div class="detail-content">${article.content}</div>
-                <div id="commentsSection"></div>
-                <div class="detail-buttons">
-                    <button class="btn-submit" onclick="shareArticle(${index})" style="background-color: #4caf50;">📤 공유</button>
-                    ${(article.author === getUserNickname() || isAdmin()) ? `<button class="btn-delete" onclick="deleteArticle(${index})">🗑️ 삭제</button>` : ''}
-                    <button class="btn-back" onclick="goBack()">← 돌아가기</button>
-                </div>
-            `;
-            
-            loadComments(article.id);
+        function getArticles() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            return stored ? JSON.parse(stored) : [];
         }
 
         function deleteArticle(index) {
