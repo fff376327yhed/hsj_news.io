@@ -3,6 +3,7 @@ const NICKNAME_KEY = 'user_nickname';
 const ADMIN_PASSWORD = 'admin123';
 const ADMIN_KEY = 'is_admin';
 const ARTICLES_PER_PAGE = 5;
+const ACTIVITY_LOG_KEY = 'user_activity_log';
 
 let displayedArticlesCount = ARTICLES_PER_PAGE;
 let searchQuery = '';
@@ -10,6 +11,7 @@ let previousPage = 'articles';
 let currentImageData = null;
 let db = null;
 
+// Firebase 초기화
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyDgooYtVr8-jm15-fx_WvGLCDxonLpNPuU",
@@ -74,6 +76,19 @@ function showNotification(message) {
     toast.textContent = message;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 3000);
+}
+
+// 활동 로그
+function saveActivityLog(action, user, details) {
+    if (db) {
+        const logId = Date.now().toString();
+        db.ref('activity_logs/' + logId).set({
+            action: action,
+            user: user,
+            details: details,
+            timestamp: Date.now()
+        }).catch(e => console.log('로그 저장 실패:', e));
+    }
 }
 
 // 스토리지 함수
@@ -322,13 +337,16 @@ function loadComments(articleId) {
                 return;
             }
 
-            commentsList.innerHTML = Object.values(comments)
-                .sort((a, b) => b.timestamp - a.timestamp)
-                .map(comment => `
+            commentsList.innerHTML = Object.entries(comments)
+                .sort((a, b) => b[1].timestamp - a[1].timestamp)
+                .map(([commentId, comment]) => `
                     <div class="comment-item">
                         <div class="comment-author">👤 ${comment.author}</div>
                         <div class="comment-text">${comment.text}</div>
                         <div class="comment-time">${formatDate(new Date(comment.timestamp).toISOString())}</div>
+                        ${(isAdmin() || comment.author === getUserNickname()) ? `
+                            <button onclick="deleteComment('${articleId}', '${commentId}')" style="background-color: #d32f2f; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; margin-top: 8px; cursor: pointer; border: none;">삭제</button>
+                        ` : ''}
                     </div>
                 `).join('');
         });
@@ -342,6 +360,30 @@ function loadComments(articleId) {
             });
         }
     }, 100);
+}
+
+function deleteComment(articleId, commentId) {
+    const isAdminDelete = isAdmin();
+    if (confirm(isAdminDelete ? '이 댓글을 삭제하시겠습니까?' : '내 댓글을 삭제하시겠습니까?')) {
+        if (db) {
+            db.ref('comments/' + articleId + '/' + commentId).remove().then(() => {
+                if (isAdminDelete) {
+                    saveActivityLog('comment_deleted_by_admin', getUserNickname(), {
+                        articleId: articleId,
+                        commentId: commentId
+                    });
+                    showNotification('댓글이 삭제되었습니다.');
+                } else {
+                    saveActivityLog('comment_deleted_by_author', getUserNickname(), {
+                        articleId: articleId,
+                        commentId: commentId
+                    });
+                    showNotification('댓글 삭제 완료!');
+                }
+                loadComments(articleId);
+            }).catch(e => console.log('삭제 실패:', e));
+        }
+    }
 }
 
 function submitComment(articleId) {
@@ -365,6 +407,14 @@ function submitComment(articleId) {
         db.ref('comments/' + articleId + '/' + commentId).set(comment)
             .then(() => {
                 commentInput.value = '';
+                
+                // 활동 로그 저장
+                saveActivityLog('comment_created', getUserNickname(), {
+                    articleId: articleId,
+                    commentId: commentId,
+                    commentText: text
+                });
+                
                 showNotification('댓글 등록 완료!');
             })
             .catch(err => {
@@ -458,6 +508,14 @@ function updateSettings() {
             `;
         }).join('');
     }
+    
+    // 관리자 섹션 표시
+    const adminSection = document.getElementById('adminSection');
+    if (isAdmin()) {
+        adminSection.style.display = 'block';
+    } else {
+        adminSection.style.display = 'none';
+    }
 }
 
 // 모달
@@ -469,14 +527,19 @@ function closeAdminModal() {
     document.getElementById('adminPasswordModal').classList.remove('active');
     document.getElementById('adminPassword').value = '';
 }
-
-// 이벤트 리스너
 document.getElementById('nicknameForm').addEventListener('submit', function(e) {
     e.preventDefault();
     const nickname = document.getElementById('nicknameInput').value;
     if (nickname.trim()) {
         setCookie(NICKNAME_KEY, nickname);
         document.getElementById('nicknameModal').classList.remove('active');
+        
+        // 활동 로그 저장
+        saveActivityLog('user_registered', nickname, {
+            nickname: nickname,
+            joinedAt: new Date().toISOString()
+        });
+        
         renderArticles();
     }
 });
@@ -523,6 +586,13 @@ document.getElementById('articleForm').addEventListener('submit', function(e) {
     const articles = getArticles();
     articles.unshift(newArticle);
     saveArticles(articles);
+    
+    // 활동 로그 저장
+    saveActivityLog('article_created', getUserNickname(), {
+        articleId: newArticle.id,
+        title: newArticle.title,
+        category: newArticle.category
+    });
 
     showNotification('기사 발행 완료!');
     showArticles();
