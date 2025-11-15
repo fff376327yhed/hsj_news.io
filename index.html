@@ -192,6 +192,23 @@
                 <h3>내 기사</h3>
                 <div id="myArticlesList"></div>
             </div>
+            <div id="adminSection" style="display: none;">
+                <div style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border: 2px solid #ff6f00; border-radius: 12px; padding: 15px; margin-top: 20px;">
+                    <h4 style="color: #ff6f00; margin-bottom: 15px; font-size: 16px;">🔐 관리자 패널</h4>
+                    <button class="btn-submit" onclick="showUserManagement()" style="width: 100%; margin-bottom: 10px; background-color: #ff6f00;">👥 사용자 관리</button>
+                    <button class="btn-logout-admin" onclick="logoutAdmin()" style="width: 100%; background-color: #c41c00; color: white;">🔐 관리자 모드 해제</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="article-detail-section" style="display: none;" id="userManagementSection">
+            <button class="btn-back" style="padding: 10px; margin-bottom: 10px;" onclick="goBack()">← 돌아가기</button>
+            <div class="detail-container">
+                <div style="padding: 15px;">
+                    <h2>👥 사용자 관리</h2>
+                    <div id="usersList" style="margin-top: 20px;"></div>
+                </div>
+            </div>
         </div>
 
         <div class="article-detail-section">
