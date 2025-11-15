@@ -1,0 +1,1654 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>뉴스 플랫폼</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            max-width: 500px;
+            margin: 0 auto;
+            min-height: 100vh;
+            padding-bottom: 70px;
+        }
+
+        body.pc-mode {
+            max-width: 100%;
+            padding-bottom: 0;
+        }
+
+        body.pc-mode .bottom-nav {
+            display: none !important;
+        }
+
+        body.pc-mode .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        body.pc-mode .articles-grid {
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        }
+
+        body.pc-mode .article-card {
+            flex-direction: column;
+        }
+
+        body.pc-mode .article-image {
+            width: 100%;
+            height: 180px;
+        }
+
+        body.pc-mode .article-content {
+            padding: 15px;
+        }
+
+        body.pc-mode header {
+            position: relative;
+        }
+
+        body.pc-mode .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* 하단 네비게이션 */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            border-top: 1px solid #ddd;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            z-index: 99;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            padding: 10px;
+            cursor: pointer;
+            flex: 1;
+            font-size: 12px;
+            color: #999;
+            transition: color 0.3s ease;
+        }
+
+        .nav-item.active {
+            color: #d32f2f;
+        }
+
+        .nav-icon {
+            font-size: 24px;
+        }
+
+        /* 헤더 */
+        header {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-container {
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo {
+            font-size: 22px;
+            font-weight: bold;
+            color: #d32f2f;
+            cursor: pointer;
+        }
+
+        .search-box {
+            flex: 1;
+            display: flex;
+            gap: 5px;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #d32f2f;
+        }
+
+        .search-box button {
+            padding: 8px 12px;
+            background-color: #d32f2f;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        /* 모달 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            border-radius: 20px;
+            padding: 25px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            font-size: 20px;
+            color: #333;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #d32f2f;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .image-preview {
+            margin-top: 10px;
+            max-width: 100%;
+            max-height: 200px;
+            overflow: hidden;
+        }
+
+        .image-preview img {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 8px;
+            object-fit: contain;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-submit {
+            background-color: #d32f2f;
+            color: white;
+            flex: 1;
+        }
+
+        .btn-submit:hover {
+            background-color: #b71c1c;
+        }
+
+        .btn-cancel {
+            background-color: #ddd;
+            color: #333;
+            flex: 1;
+        }
+
+        .btn-cancel:hover {
+            background-color: #ccc;
+        }
+
+        /* 메인 컨테이너 */
+        .container {
+            padding: 15px;
+        }
+
+        /* 기사 리스트 페이지 */
+        .articles-section {
+            display: none;
+        }
+
+        .articles-section.active {
+            display: block;
+        }
+
+        .featured-article {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .featured-image {
+            width: 100%;
+            height: 220px;
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 40px;
+            background-color: #ddd;
+        }
+
+        .featured-content {
+            padding: 15px;
+        }
+
+        .featured-content h1 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            line-height: 1.3;
+            font-weight: bold;
+        }
+
+        .featured-content .meta {
+            color: #666;
+            margin-bottom: 10px;
+            font-size: 12px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .featured-content .meta .author-badge {
+            background-color: #f44336;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+        }
+
+        .featured-content .summary {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        /* 기사 그리드 */
+        .articles-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+
+        .article-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: flex;
+            gap: 12px;
+        }
+
+        .article-card:active {
+            transform: scale(0.98);
+        }
+
+        .article-image {
+            width: 100px;
+            height: 100px;
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 30px;
+            flex-shrink: 0;
+            background-color: #ddd;
+        }
+
+        .article-content {
+            padding: 12px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .article-category {
+            display: inline-block;
+            background-color: #f44336;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            margin-bottom: 5px;
+            width: fit-content;
+        }
+
+        .article-title {
+            font-size: 14px;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+            height: 40px;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .article-meta {
+            font-size: 11px;
+            color: #999;
+        }
+
+        /* 더보기 버튼 */
+        .load-more-container {
+            text-align: center;
+            margin-top: 20px;
+            margin-bottom: 30px;
+        }
+
+        .btn-load-more {
+            background-color: #f44336;
+            color: white;
+            padding: 12px 30px;
+            font-size: 14px;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        /* 기사 작성 페이지 */
+        .write-section {
+            display: none;
+        }
+
+        .write-section.active {
+            display: block;
+        }
+
+        /* 설정 페이지 */
+        .settings-section {
+            display: none;
+        }
+
+        .settings-section.active {
+            display: block;
+        }
+
+        .settings-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .settings-card h3 {
+            font-size: 14px;
+            color: #999;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .settings-value {
+            font-size: 16px;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .user-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-box {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #d32f2f;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .my-article-item {
+            background: #f9f9f9;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #d32f2f;
+            cursor: pointer;
+        }
+
+        .my-article-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .my-article-meta {
+            font-size: 11px;
+            color: #999;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .mode-button {
+            background-color: #1976d2;
+            color: white;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .mode-button:hover {
+            background-color: #1565c0;
+        }
+
+        .btn-admin {
+            background-color: #ff6f00;
+            color: white;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn-logout-admin {
+            background-color: #c41c00;
+            color: white;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .article-detail-section {
+            display: none;
+        }
+
+        .article-detail-section.active {
+            display: block;
+        }
+
+        .detail-container {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .article-detail-image {
+            width: 100%;
+            height: 250px;
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 60px;
+            background-color: #ddd;
+        }
+
+        .detail-header {
+            padding: 15px;
+        }
+
+        .detail-header h1 {
+            font-size: 20px;
+            margin-bottom: 10px;
+            line-height: 1.3;
+        }
+
+        .detail-meta {
+            display: flex;
+            gap: 10px;
+            font-size: 12px;
+            color: #666;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .detail-meta .author-badge {
+            background-color: #f44336;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+        }
+
+        .detail-content {
+            padding: 15px;
+            font-size: 15px;
+            line-height: 1.7;
+            color: #444;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .detail-buttons {
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            background: #f9f9f9;
+        }
+
+        .detail-buttons button {
+            flex: 1;
+            padding: 12px;
+            font-size: 14px;
+        }
+
+        .btn-delete {
+            background-color: #d32f2f;
+            color: white;
+        }
+
+        .btn-back {
+            background-color: #999;
+            color: white;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state h3 {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        /* 광고 팝업 */
+        .ad-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(211, 47, 47, 0.9) 0%, rgba(244, 67, 54, 0.9) 100%);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .ad-modal.active {
+            display: flex;
+        }
+
+        .ad-content {
+            background: white;
+            width: 90%;
+            max-width: 480px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .ad-image {
+            width: 100%;
+            height: 280px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-color: #f5f5f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 50px;
+            position: relative;
+        }
+
+        .ad-close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: white;
+            color: #d32f2f;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+
+        .ad-close-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .ad-text {
+            padding: 25px;
+            background: linear-gradient(135deg, #ffffff 0%, #f9f9f9 100%);
+        }
+
+        .ad-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            color: #d32f2f;
+        }
+
+        .ad-description {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .admin-section {
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+            border: 2px solid #ff6f00;
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .admin-section h4 {
+            color: #ff6f00;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .user-management-item {
+            background: white;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #ff6f00;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .user-info {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .user-actions button {
+            flex: 1;
+            padding: 6px;
+            font-size: 11px;
+        }
+
+        .btn-delete-user {
+            background-color: #d32f2f;
+            color: white;
+        }
+
+        .notification-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 16px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideInRight 0.3s ease;
+            z-index: 3000;
+            max-width: 300px;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notification-toast.success {
+            border-left: 4px solid #4caf50;
+        }
+
+        .notification-toast.success::before {
+            content: "✓ ";
+            color: #4caf50;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <!-- 닉네임 설정 모달 -->
+    <div id="nicknameModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>👋 환영합니다!</h2>
+            </div>
+            <p style="color: #666; margin-bottom: 20px; font-size: 14px;">뉴스 플랫폼을 이용하기 위해 닉네임을 설정해주세요.</p>
+            <form id="nicknameForm">
+                <div class="form-group">
+                    <label for="nicknameInput">닉네임</label>
+                    <input type="text" id="nicknameInput" placeholder="닉네임을 입력하세요" required>
+                </div>
+                <div class="modal-buttons">
+                    <button type="submit" class="btn-submit">시작하기</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 관리자 비밀번호 모달 -->
+    <div id="adminPasswordModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>👑 관리자 모드</h2>
+                <button class="close-btn" onclick="closeAdminModal()">✕</button>
+            </div>
+            <p style="color: #666; margin-bottom: 20px; font-size: 14px;">관리자 비밀번호를 입력하세요.</p>
+            <form id="adminPasswordForm">
+                <div class="form-group">
+                    <label for="adminPassword">비밀번호</label>
+                    <input type="password" id="adminPassword" placeholder="비밀번호" required>
+                </div>
+                <div class="modal-buttons">
+                    <button type="submit" class="btn-submit">확인</button>
+                    <button type="button" class="btn-cancel" onclick="closeAdminModal()">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 광고 생성 모달 -->
+    <div id="createAdModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📢 광고 생성</h2>
+                <button class="close-btn" onclick="closeCreateAdModal()">✕</button>
+            </div>
+            <form id="adForm">
+                <div class="form-group">
+                    <label for="adTitleInput">광고 제목</label>
+                    <input type="text" id="adTitleInput" placeholder="광고 제목" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="adImageInput">광고 이미지</label>
+                    <input type="file" id="adImageInput" accept="image/*" required>
+                    <div class="image-preview" id="adImagePreview"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="adDescriptionInput">광고 설명</label>
+                    <textarea id="adDescriptionInput" placeholder="광고 설명" required></textarea>
+                </div>
+
+                <div class="modal-buttons">
+                    <button type="submit" class="btn-submit">생성</button>
+                    <button type="button" class="btn-cancel" onclick="closeCreateAdModal()">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 광고 팝업 모달 -->
+    <div id="adModal" class="ad-modal">
+        <div class="ad-content">
+            <div class="ad-image" id="adImage">
+                <button class="ad-close-btn" onclick="closeAdPopup()">✕</button>
+            </div>
+            <div class="ad-text">
+                <div class="ad-title" id="adTitle"></div>
+                <div class="ad-description" id="adDescription"></div>
+            </div>
+        </div>
+    </div>
+
+    <header>
+        <div class="header-container">
+            <div class="logo" onclick="showArticles()">📰</div>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="검색..." onkeyup="handleSearch(event)">
+                <button onclick="performSearch()">🔍</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- 기사 리스트 페이지 -->
+        <div class="articles-section active">
+            <div id="featuredArticle"></div>
+            <div class="articles-grid" id="articlesGrid"></div>
+            <div id="noResults" class="no-results" style="display: none;">
+                <h3>검색 결과가 없습니다</h3>
+            </div>
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <h3>아직 기사가 없습니다</h3>
+            </div>
+            <div id="loadMoreContainer" style="display: none;">
+                <button class="btn-load-more" onclick="loadMoreArticles()">📄 더 보기...</button>
+            </div>
+        </div>
+
+        <!-- 기사 작성 페이지 -->
+        <div class="write-section">
+            <form id="articleForm">
+                <div class="form-group">
+                    <label for="category">카테고리</label>
+                    <select id="category" required>
+                        <option value="">카테고리 선택</option>
+                        <option value="정치">정치</option>
+                        <option value="경제">경제</option>
+                        <option value="사회">사회</option>
+                        <option value="기술">기술</option>
+                        <option value="스포츠">스포츠</option>
+                        <option value="문화">문화</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="title">제목</label>
+                    <input type="text" id="title" placeholder="기사 제목" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="imageFile">이미지</label>
+                    <input type="file" id="imageFile" accept="image/*">
+                    <div class="image-preview" id="imagePreview"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="summary">요약</label>
+                    <textarea id="summary" placeholder="기사 요약" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="content">본문</label>
+                    <textarea id="content" placeholder="기사 본문" required></textarea>
+                </div>
+
+                <div class="modal-buttons">
+                    <button type="submit" class="btn-submit">📤 발행</button>
+                    <button type="button" class="btn-cancel" onclick="showArticles()">취소</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 설정 페이지 -->
+        <div class="settings-section">
+            <div class="settings-card">
+                <h3>알림 설정</h3>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="notificationCheck" checked>
+                    <label for="notificationCheck">새 기사 알림 받기</label>
+                </div>
+            </div>
+
+            <button class="mode-button" onclick="togglePCMode()">🖥️ PC모드</button>
+            <button class="btn-admin" onclick="openAdminModal()">👑 관리자 모드</button>
+
+            <!-- 관리자 섹션 -->
+            <div id="adminSection" style="display: none;">
+                <div class="admin-section">
+                    <h4>👑 관리자 패널</h4>
+                    <button class="btn-submit" onclick="openCreateAdModal()" style="width: 100%; margin-bottom: 15px;">📢 광고 생성</button>
+                    <h5 style="margin-top: 15px; margin-bottom: 10px; font-size: 13px; color: #ff6f00;">사용자 관리</h5>
+                    <div id="userManagementList"></div>
+                    <button class="btn-logout-admin" onclick="logoutAdmin()" style="width: 100%; margin-top: 15px;">👑 관리자 모드 해제</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 기사 상세 페이지 -->
+        <div class="article-detail-section">
+            <button class="btn-back" style="padding: 10px; margin-bottom: 10px;" onclick="goBack()">← 돌아가기</button>
+            <div class="detail-container">
+                <div id="articleDetail"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 하단 네비게이션 -->
+    <div class="bottom-nav">
+        <div class="nav-item active" onclick="showArticles()">
+            <div class="nav-icon">📰</div>
+            <div>홈</div>
+        </div>
+        <div class="nav-item" onclick="showWritePage()">
+            <div class="nav-icon">✏️</div>
+            <div>작성</div>
+        </div>
+        <div class="nav-item" onclick="showSettings()">
+            <div class="nav-icon">⚙️</div>
+            <div>설정</div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'news_articles';
+        const NICKNAME_KEY = 'user_nickname';
+        const ADMIN_PASSWORD = 'admin123';
+        const ADMIN_KEY = 'is_admin';
+        const AD_KEY = 'current_ad';
+        const AD_SHOWN_KEY = 'ad_shown';
+        const NOTIFICATION_KEY = 'notification_enabled';
+        const ARTICLES_PER_PAGE = 5;
+        let displayedArticlesCount = ARTICLES_PER_PAGE;
+        let searchQuery = '';
+        let previousPage = 'articles';
+        let currentImageData = null;
+        let currentAdImage = null;
+
+        function setCookie(name, value, days = 365) {
+            const date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            const expires = "expires=" + date.toUTCString();
+            document.cookie = name + "=" + encodeURIComponent(value) + ";" + expires + ";path=/";
+        }
+
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                let cookie = cookies[i].trim();
+                if (cookie.indexOf(nameEQ) === 0) {
+                    return decodeURIComponent(cookie.substring(nameEQ.length));
+                }
+            }
+            return null;
+        }
+
+        function togglePCMode() {
+            document.body.classList.toggle('pc-mode');
+            const isPCMode = document.body.classList.contains('pc-mode');
+            localStorage.setItem('pc_mode', isPCMode);
+            alert(isPCMode ? 'PC모드가 활성화되었습니다!' : 'PC모드가 비활성화되었습니다!');
+        }
+
+        function initializePCMode() {
+            const isPCMode = localStorage.getItem('pc_mode') === 'true';
+            if (isPCMode) {
+                document.body.classList.add('pc-mode');
+            }
+        }
+
+        function initializeNickname() {
+            const savedNickname = getCookie(NICKNAME_KEY);
+            if (!savedNickname) {
+                document.getElementById('nicknameModal').classList.add('active');
+            } else {
+                document.getElementById('nicknameModal').classList.remove('active');
+            }
+        }
+
+        document.getElementById('nicknameForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const nickname = document.getElementById('nicknameInput').value;
+            if (nickname.trim()) {
+                setCookie(NICKNAME_KEY, nickname);
+                document.getElementById('nicknameModal').classList.remove('active');
+                localStorage.setItem(AD_SHOWN_KEY, 'false');
+                renderArticles();
+                checkAndShowAd();
+            }
+        });
+
+        function getArticles() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            return stored ? JSON.parse(stored) : [];
+        }
+
+        function saveArticles(articles) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(articles));
+        }
+
+        function getAd() {
+            const stored = localStorage.getItem(AD_KEY);
+            return stored ? JSON.parse(stored) : null;
+        }
+
+        function saveAd(ad) {
+            localStorage.setItem(AD_KEY, JSON.stringify(ad));
+            localStorage.setItem(AD_SHOWN_KEY, 'false');
+        }
+
+        function getUserNickname() {
+            return getCookie(NICKNAME_KEY) || '익명';
+        }
+
+        function isAdmin() {
+            return getCookie(ADMIN_KEY) === 'true';
+        }
+
+        function isNotificationEnabled() {
+            return localStorage.getItem(NOTIFICATION_KEY) !== 'false';
+        }
+
+        function showNotification(message) {
+            const toast = document.createElement('div');
+            toast.className = 'notification-toast success';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.animation = 'slideInRight 0.3s ease reverse';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function openAdminModal() {
+            document.getElementById('adminPasswordModal').classList.add('active');
+        }
+
+        function closeAdminModal() {
+            document.getElementById('adminPasswordModal').classList.remove('active');
+            document.getElementById('adminPassword').value = '';
+        }
+
+        function logoutAdmin() {
+            if (confirm('관리자 모드를 해제하시겠습니까?')) {
+                document.cookie = ADMIN_KEY + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                updateSettings();
+                alert('관리자 모드가 해제되었습니다!');
+            }
+        }
+
+        function openCreateAdModal() {
+            document.getElementById('createAdModal').classList.add('active');
+        }
+
+        function closeCreateAdModal() {
+            document.getElementById('createAdModal').classList.remove('active');
+            document.getElementById('adForm').reset();
+            document.getElementById('adImagePreview').innerHTML = '';
+            currentAdImage = null;
+        }
+
+        function closeAdPopup() {
+            document.getElementById('adModal').classList.remove('active');
+            localStorage.setItem(AD_SHOWN_KEY, 'true');
+        }
+
+        function checkAndShowAd() {
+            const ad = getAd();
+            const notificationEnabled = isNotificationEnabled();
+            const adShown = localStorage.getItem(AD_SHOWN_KEY);
+            
+            if (ad && adShown !== 'true' && notificationEnabled) {
+                setTimeout(() => {
+                    document.getElementById('adImage').style.backgroundImage = `url('${ad.image}')`;
+                    document.getElementById('adTitle').textContent = ad.title;
+                    document.getElementById('adDescription').textContent = ad.description;
+                    document.getElementById('adModal').classList.add('active');
+                }, 800);
+            }
+        }
+
+        document.getElementById('adminPasswordForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const password = document.getElementById('adminPassword').value;
+            if (password === ADMIN_PASSWORD) {
+                setCookie(ADMIN_KEY, 'true');
+                closeAdminModal();
+                updateSettings();
+                showNotification('관리자 모드 활성화!');
+            } else {
+                alert('비밀번호가 틀렸습니다!');
+            }
+        });
+
+        document.getElementById('adImageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    currentAdImage = event.target.result;
+                    document.getElementById('adImagePreview').innerHTML = `<img src="${currentAdImage}" alt="미리보기">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('adForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!currentAdImage) {
+                alert('이미지를 선택해주세요!');
+                return;
+            }
+
+            const ad = {
+                title: document.getElementById('adTitleInput').value,
+                description: document.getElementById('adDescriptionInput').value,
+                image: currentAdImage,
+                createdAt: new Date().toISOString()
+            };
+
+            saveAd(ad);
+            closeCreateAdModal();
+            showNotification('광고가 생성되었습니다!');
+        });
+
+        document.getElementById('notificationCheck').addEventListener('change', function() {
+            localStorage.setItem(NOTIFICATION_KEY, this.checked ? 'true' : 'false');
+        });
+
+        function updateNavigation(page) {
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            const navItems = {
+                'articles': 0,
+                'write': 1,
+                'settings': 2
+            };
+            if (navItems[page] !== undefined) {
+                document.querySelectorAll('.nav-item')[navItems[page]].classList.add('active');
+            }
+        }
+
+        function showSection(section) {
+            document.querySelectorAll('.articles-section, .write-section, .article-detail-section, .settings-section').forEach(el => {
+                el.classList.remove('active');
+            });
+            document.querySelector(section).classList.add('active');
+            window.scrollTo(0, 0);
+        }
+
+        function showArticles() {
+            previousPage = 'articles';
+            searchQuery = '';
+            document.getElementById('searchInput').value = '';
+            displayedArticlesCount = ARTICLES_PER_PAGE;
+            showSection('.articles-section');
+            updateNavigation('articles');
+            renderArticles();
+        }
+
+        function showWritePage() {
+            previousPage = 'write';
+            showSection('.write-section');
+            updateNavigation('write');
+            document.getElementById('articleForm').reset();
+            document.getElementById('imagePreview').innerHTML = '';
+            currentImageData = null;
+        }
+
+        function showSettings() {
+            previousPage = 'settings';
+            showSection('.settings-section');
+            updateNavigation('settings');
+            updateSettings();
+        }
+
+        function goBack() {
+            if (previousPage === 'articles') showArticles();
+            else if (previousPage === 'write') showWritePage();
+            else if (previousPage === 'settings') showSettings();
+        }
+
+        function formatDate(isoDate) {
+            const date = new Date(isoDate);
+            const now = new Date();
+            const diff = now - date;
+            const seconds = Math.floor(diff / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+
+            if (seconds < 60) return '방금 전';
+            if (minutes < 60) return `${minutes}분 전`;
+            if (hours < 24) return `${hours}시간 전`;
+            if (days < 7) return `${days}일 전`;
+            
+            return date.toLocaleDateString('ko-KR');
+        }
+
+        function renderArticles() {
+            let articles = getArticles();
+            
+            if (searchQuery) {
+                articles = articles.filter(article => 
+                    article.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                    article.summary.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+            }
+
+            const articlesGrid = document.getElementById('articlesGrid');
+            const emptyState = document.getElementById('emptyState');
+            const noResults = document.getElementById('noResults');
+            const featuredArticle = document.getElementById('featuredArticle');
+            const loadMoreContainer = document.getElementById('loadMoreContainer');
+
+            if (articles.length === 0) {
+                articlesGrid.innerHTML = '';
+                featuredArticle.innerHTML = '';
+                loadMoreContainer.style.display = 'none';
+                if (searchQuery) {
+                    noResults.style.display = 'block';
+                    emptyState.style.display = 'none';
+                } else {
+                    emptyState.style.display = 'block';
+                    noResults.style.display = 'none';
+                }
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            noResults.style.display = 'none';
+
+            const latest = articles[0];
+            const latestIndex = getArticles().indexOf(latest);
+            featuredArticle.innerHTML = `
+                <div class="featured-article" onclick="showArticleDetail(${latestIndex})">
+                    <div class="featured-image" style="background-image: url('${latest.imageUrl || ''}');">
+                        ${!latest.imageUrl ? '📰' : ''}
+                    </div>
+                    <div class="featured-content">
+                        <div class="article-category">${latest.category}</div>
+                        <h1>${latest.title}</h1>
+                        <div class="meta">
+                            <span class="author-badge">👤 ${latest.author}</span>
+                            <span>${formatDate(latest.date)}</span>
+                        </div>
+                        <div class="summary">${latest.summary}</div>
+                    </div>
+                </div>
+            `;
+
+            const displayArticles = articles.slice(1, displayedArticlesCount);
+            articlesGrid.innerHTML = displayArticles.map((article) => {
+                const originalIndex = getArticles().indexOf(article);
+                return `
+                    <div class="article-card" onclick="showArticleDetail(${originalIndex})">
+                        <div class="article-image" style="background-image: url('${article.imageUrl || ''}');">
+                            ${!article.imageUrl ? '📰' : ''}
+                        </div>
+                        <div class="article-content">
+                            <div>
+                                <div class="article-category">${article.category}</div>
+                                <div class="article-title">${article.title}</div>
+                            </div>
+                            <div class="article-meta">
+                                <strong>${article.author}</strong> • ${formatDate(article.date)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            if (articles.length > displayedArticlesCount) {
+                loadMoreContainer.style.display = 'block';
+            } else {
+                loadMoreContainer.style.display = 'none';
+            }
+        }
+
+        function loadMoreArticles() {
+            displayedArticlesCount += ARTICLES_PER_PAGE;
+            renderArticles();
+        }
+
+        function handleSearch(event) {
+            if (event.key === 'Enter') {
+                performSearch();
+            }
+        }
+
+        function performSearch() {
+            searchQuery = document.getElementById('searchInput').value;
+            displayedArticlesCount = ARTICLES_PER_PAGE;
+            renderArticles();
+        }
+
+        function showArticleDetail(index) {
+            previousPage = previousPage || 'articles';
+            showSection('.article-detail-section');
+            const articles = getArticles();
+            const article = articles[index];
+            
+            if (!article) {
+                alert('기사를 찾을 수 없습니다.');
+                goBack();
+                return;
+            }
+
+            const detail = document.getElementById('articleDetail');
+            detail.innerHTML = `
+                <div class="article-detail-image" style="background-image: url('${article.imageUrl || ''}');">
+                    ${!article.imageUrl ? '📰' : ''}
+                </div>
+                <div class="detail-header">
+                    <h1>${article.title}</h1>
+                    <div class="detail-meta">
+                        <span class="author-badge">👤 ${article.author}</span>
+                        <span>${formatDate(article.date)}</span>
+                        <span style="background: #f44336; color: white; padding: 3px 10px; border-radius: 12px; font-size: 11px;">${article.category}</span>
+                    </div>
+                </div>
+                <div class="detail-content">${article.content}</div>
+                <div class="detail-buttons">
+                    ${(article.author === getUserNickname() || isAdmin()) ? `<button class="btn-delete" onclick="deleteArticle(${index})">🗑️ 삭제</button>` : ''}
+                    <button class="btn-back" onclick="goBack()">← 돌아가기</button>
+                </div>
+            `;
+        }
+
+        function deleteArticle(index) {
+            if (confirm('이 기사를 삭제하시겠습니까?')) {
+                const articles = getArticles();
+                articles.splice(index, 1);
+                saveArticles(articles);
+                goBack();
+            }
+        }
+
+        function updateSettings() {
+            const nickname = getUserNickname();
+            if (document.getElementById('settingsNickname')) {
+                document.getElementById('settingsNickname').textContent = nickname;
+            }
+
+            const articles = getArticles();
+            const myArticles = articles.filter(a => a.author === nickname);
+            
+            if (document.getElementById('totalArticles')) {
+                document.getElementById('totalArticles').textContent = myArticles.length;
+            }
+            if (document.getElementById('notificationCheck')) {
+                document.getElementById('notificationCheck').checked = isNotificationEnabled();
+            }
+
+            const myArticlesList = document.getElementById('myArticlesList');
+            if (myArticles.length === 0) {
+                myArticlesList.innerHTML = '<p style="color: #999; font-size: 12px;">올린 기사가 없습니다.</p>';
+            } else {
+                myArticlesList.innerHTML = myArticles.map((article) => {
+                    const originalIndex = articles.indexOf(article);
+                    return `
+                        <div class="my-article-item" onclick="showArticleDetail(${originalIndex})">
+                            <div class="my-article-title">${article.title}</div>
+                            <div class="my-article-meta">
+                                ${article.category} • ${formatDate(article.date)}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            const adminSection = document.getElementById('adminSection');
+            if (isAdmin()) {
+                adminSection.style.display = 'block';
+                updateUserManagement();
+            } else {
+                adminSection.style.display = 'none';
+            }
+        }
+
+        function updateUserManagement() {
+            const articles = getArticles();
+            const users = {};
+
+            articles.forEach(article => {
+                if (!users[article.author]) {
+                    users[article.author] = {
+                        name: article.author,
+                        articleCount: 0,
+                        articles: []
+                    };
+                }
+                users[article.author].articleCount++;
+                users[article.author].articles.push(article);
+            });
+
+            const userList = document.getElementById('userManagementList');
+            userList.innerHTML = Object.values(users).map(user => `
+                <div class="user-management-item">
+                    <div class="user-name">${user.name}</div>
+                    <div class="user-info">기사 수: ${user.articleCount}개</div>
+                    <div class="user-actions">
+                        <button class="btn-delete-user" onclick="deleteAllUserArticles('${user.name}')">📄 기사 삭제</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function deleteAllUserArticles(userName) {
+            if (confirm(`${userName}의 모든 기사를 삭제하시겠습니까?`)) {
+                const articles = getArticles();
+                const filtered = articles.filter(a => a.author !== userName);
+                saveArticles(filtered);
+                updateUserManagement();
+                showNotification('삭제되었습니다!');
+            }
+        }
+
+        document.getElementById('imageFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    currentImageData = event.target.result;
+                    document.getElementById('imagePreview').innerHTML = `<img src="${currentImageData}" alt="미리보기">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('articleForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const newArticle = {
+                id: Date.now(),
+                category: document.getElementById('category').value,
+                title: document.getElementById('title').value,
+                author: getUserNickname(),
+                summary: document.getElementById('summary').value,
+                content: document.getElementById('content').value,
+                imageUrl: currentImageData || '',
+                date: new Date().toISOString()
+            };
+
+            const articles = getArticles();
+            articles.unshift(newArticle);
+            saveArticles(articles);
+
+            if (isNotificationEnabled()) {
+                showNotification(`새 기사: ${newArticle.title}`);
+            }
+
+            showNotification('기사가 발행되었습니다!');
+            showArticles();
+        });
+
+        initializePCMode();
+        initializeNickname();
+        renderArticles();
+        checkAndShowAd();
+    </script>
+</body>
+</html>
+                <h3>프로필</h3>
+                <div class="settings-value" id="settingsNickname">-</div>
+            </div>
+
+            <div class="settings-card">
+                <h3>통계</h3>
+                <div class="user-stats">
+                    <div class="stat-box">
+                        <div class="stat-number" id="totalArticles">0</div>
+                        <div class="stat-label">올린 기사</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <h3>내 기사</h3>
+                <div id="myArticlesList"></div>
+            </div>
+
+            <div class="settings-card">
+                <h3>알림 설정</h3>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="notificationCheck" checked>
+                    <label for="notificationCheck">새 기사 알림 받기</label>
+                </div>
+            </div>
+
+            <button class="mode-button" onclick="togglePCMode()">🖥️ PC모드</button>
+            <button class="btn-admin" onclick="openAdminModal()">👑 관리자 모드</button>
+
+            <!-- 관리자 섹션 -->
+            <div id="adminSection" style="display: none;">
+                <div class="admin-section">
+                    <h4>👑 관리자 패널</h4>
+                    <button class="btn-submit" onclick="openCreateAdModal()" style="width: 100%; margin-bottom: 15px;">📢 광고 생성</button>
+                    <h5 style="margin-top: 15px; margin-bottom: 10px; font-size: 13px; color: #ff6f00;">사용자 관리</h5>
+                    <div id="userManagementList"></div>
+                    <button class="btn-logout-admin" onclick="logoutAdmin()" style="width: 100%; margin-top: 15px;">👑 관리자 모드 해제</button>
+                </div>
+            </div>
+        </div>
