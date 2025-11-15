@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>뉴스 플랫폼</title>
+    <!-- Firebase SDK (compat version) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
         * {
             margin: 0;
@@ -1039,6 +1042,25 @@
         let currentImageData = null;
         let db = null;
 
+        // Firebase 초기화
+     const firebaseConfig = {
+  apiKey: "AIzaSyDgooYtVr8-jm15-fx_WvGLCDxonLpNPuU",
+  authDomain: "hsj-news.firebaseapp.com",
+  projectId: "hsj-news",
+  storageBucket: "hsj-news.firebasestorage.app",
+  messagingSenderId: "437842430700",
+  appId: "1:437842430700:web:e3822bde4cfecdc04633c9",
+  measurementId: "G-J34J5XHNSJ"
+};
+
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+            console.log('Firebase 연결 성공!');
+        } catch(e) {
+            console.log('Firebase 초기화 실패:', e.message);
+        }
+
         function setCookie(name, value, days = 365) {
             const date = new Date();
             date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
@@ -1096,6 +1118,13 @@
 
         function saveArticles(articles) {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(articles));
+            if (db) {
+                articles.forEach(article => {
+                    if (article.id) {
+                        db.ref('articles/' + article.id).set(article).catch(e => console.log('Firebase 저장 실패:', e));
+                    }
+                });
+            }
         }
 
         function getUserNickname() {
@@ -1351,9 +1380,10 @@
                 articles.splice(index, 1);
                 saveArticles(articles);
                 
-                // 해당 기사의 댓글도 삭제
-                const commentsKey = 'comments_' + articleId;
-                localStorage.removeItem(commentsKey);
+                if (db && articleId) {
+                    db.ref('articles/' + articleId).remove().catch(e => console.log('Firebase 삭제 실패:', e));
+                    db.ref('comments/' + articleId).remove().catch(e => console.log('댓글 삭제 실패:', e));
+                }
                 
                 goBack();
             }
@@ -1383,7 +1413,31 @@
             document.getElementById('commentsSection').innerHTML = '';
             document.getElementById('commentsSection').appendChild(commentsContainer);
 
-            renderComments(articleId);
+            if (db) {
+                db.ref('comments/' + articleId).on('value', (snapshot) => {
+                    const comments = snapshot.val() || {};
+                    const commentsList = document.getElementById('commentsList');
+                    
+                    if (!commentsList) return;
+                    
+                    if (Object.keys(comments).length === 0) {
+                        commentsList.innerHTML = '<p class="no-comments">댓글이 없습니다</p>';
+                        return;
+                    }
+
+                    commentsList.innerHTML = Object.values(comments)
+                        .sort((a, b) => b.timestamp - a.timestamp)
+                        .map(comment => `
+                            <div class="comment-item">
+                                <div class="comment-author">👤 ${comment.author}</div>
+                                <div class="comment-text">${comment.text}</div>
+                                <div class="comment-time">${formatDate(new Date(comment.timestamp).toISOString())}</div>
+                            </div>
+                        `).join('');
+                });
+            } else {
+                commentsList.innerHTML = '<p class="no-comments">Firebase 연결 중...</p>';
+            }
 
             setTimeout(() => {
                 const commentInput = document.getElementById('commentInput');
@@ -1435,16 +1489,20 @@
                 timestamp: Date.now()
             };
 
-            const commentsKey = 'comments_' + articleId;
-            const stored = localStorage.getItem(commentsKey);
-            const comments = stored ? JSON.parse(stored) : {};
-            const commentId = Date.now().toString();
-            comments[commentId] = comment;
-            localStorage.setItem(commentsKey, JSON.stringify(comments));
-            
-            commentInput.value = '';
-            renderComments(articleId);
-            showNotification('댓글이 등록되었습니다!');
+            if (db) {
+                const commentId = Date.now().toString();
+                db.ref('comments/' + articleId + '/' + commentId).set(comment)
+                    .then(() => {
+                        commentInput.value = '';
+                        showNotification('댓글이 등록되었습니다!');
+                    })
+                    .catch(err => {
+                        console.error('댓글 등록 실패:', err);
+                        alert('댓글 등록에 실패했습니다');
+                    });
+            } else {
+                alert('Firebase 연결 필요');
+            }
         }
 
         function shareArticle(index) {
