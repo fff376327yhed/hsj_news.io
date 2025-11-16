@@ -1,4 +1,4 @@
-// ===== Part 1: 기본 설정 및 핵심 기능 =====
+// ===== Part 1: 기본 설정 및 핵심 기능 (Firebase 동기화) =====
 
 const firebaseConfig = {
   apiKey: "AIzaSyDgooYtVr8-jm15-fx_WvGLCDxonLpNPuU",
@@ -13,7 +13,6 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const auth = firebase.auth();
 
-const STORAGE_KEY = 'news_articles_v2';
 const VIEWS_KEY = 'news_views_v1';
 const VOTES_KEY = 'news_votes_v1';
 
@@ -24,6 +23,7 @@ const COMMENTS_PER_PAGE = 10;
 let currentArticleId = null;
 let currentSortMethod = 'latest';
 let filteredArticles = [];
+let allArticles = [];
 
 function setCookie(n, v) { document.cookie = `${n}=${v};path=/`; }
 function getCookie(n) {
@@ -67,13 +67,26 @@ function previewThumbnail(event) {
     }
 }
 
-// 기사 관리
-function getArticles() {
-    const s = localStorage.getItem(STORAGE_KEY);
-    return s ? JSON.parse(s) : [];
+// 기사 관리 - Firebase 사용
+function loadArticles(callback) {
+    db.ref("articles").once("value").then(snapshot => {
+        const val = snapshot.val() || {};
+        allArticles = Object.values(val);
+        filteredArticles = allArticles;
+        if(callback) callback();
+    });
 }
-function saveArticles(arr) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+
+function saveArticle(article, callback) {
+    db.ref("articles/" + article.id).set(article).then(() => {
+        if(callback) callback();
+    });
+}
+
+function deleteArticleFromDB(articleId, callback) {
+    db.ref("articles/" + articleId).remove().then(() => {
+        if(callback) callback();
+    });
 }
 
 // 조회수 관리
@@ -160,8 +173,10 @@ function showArticles() {
     document.querySelector(".articles-section").classList.add("active");
     document.querySelectorAll(".nav-item")[0].classList.add("active");
     currentArticlePage = 1;
-    filteredArticles = getArticles();
-    renderArticles();
+    loadArticles(() => {
+        filteredArticles = allArticles;
+        renderArticles();
+    });
 }
 function showWritePage() {
     hideAll();
@@ -179,7 +194,7 @@ function showSettings() {
 function searchArticles() {
     const category = document.getElementById("searchCategory").value;
     const keyword = document.getElementById("searchKeyword").value.toLowerCase();
-    let articles = getArticles();
+    let articles = [...allArticles];
     if(category) {
         articles = articles.filter(a => a.category === category);
     }
@@ -312,43 +327,45 @@ function loadMoreArticles() {
 
 // 기사 상세보기
 function showArticleDetail(id) {
-    const A = getArticles().find(a=>a.id===id);
-    if(!A) return alert("없는 기사!");
-    incrementView(id);
-    currentArticleId = id;
-    currentCommentPage = 1;
-    hideAll();
-    document.querySelector(".article-detail-section").classList.add("active");
-    const currentUser = getNickname();
-    const canEdit = isLoggedIn() && ((A.author === currentUser) || isAdmin());
-    const views = getArticleViews(id);
-    const votes = getArticleVoteCounts(id);
-    const userVote = getUserVote(id);
-    const root = document.getElementById("articleDetail");
-    root.innerHTML = `<div style="background:#fff;padding:40px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-        <span class="category-badge">${A.category}</span>
-        <h1 style="font-size:32px;font-weight:700;margin:20px 0;line-height:1.4;">${A.title}</h1>
-        <div class="article-meta" style="padding-bottom:20px;border-bottom:1px solid #dee2e6;">
-            <span>${A.author}</span>
-            <span>${A.date}</span>
-            <span class="stat-item">👁️ ${views}</span>
-        </div>
-        ${A.thumbnail ? `<img src="${A.thumbnail}" style="width:100%;max-height:500px;object-fit:cover;border-radius:8px;margin:30px 0;" alt="기사 이미지">` : ''}
-        <div style="font-size:16px;line-height:1.8;color:#212529;margin:30px 0;white-space:pre-wrap;">${A.content}</div>
-        <div style="display:flex;gap:10px;padding-top:20px;border-top:1px solid #dee2e6;">
-            <button onclick="toggleVote('${A.id}', 'like')" class="vote-btn ${userVote === 'like' ? 'active' : ''}">
-                👍 추천 ${votes.likes}
-            </button>
-            <button onclick="toggleVote('${A.id}', 'dislike')" class="vote-btn dislike ${userVote === 'dislike' ? 'active' : ''}">
-                👎 비추천 ${votes.dislikes}
-            </button>
-        </div>
-        ${canEdit ? `<div style="margin-top:20px;display:flex;gap:10px;">
-            <button onclick="editArticle('${A.id}')" class="btn btn-blue">수정</button>
-            <button onclick="deleteArticle('${A.id}')" class="btn btn-gray">삭제</button>
-        </div>` : ''}
-    </div>`;
-    loadComments(id);
+    db.ref("articles/" + id).once("value").then(snapshot => {
+        const A = snapshot.val();
+        if(!A) return alert("없는 기사!");
+        incrementView(id);
+        currentArticleId = id;
+        currentCommentPage = 1;
+        hideAll();
+        document.querySelector(".article-detail-section").classList.add("active");
+        const currentUser = getNickname();
+        const canEdit = isLoggedIn() && ((A.author === currentUser) || isAdmin());
+        const views = getArticleViews(id);
+        const votes = getArticleVoteCounts(id);
+        const userVote = getUserVote(id);
+        const root = document.getElementById("articleDetail");
+        root.innerHTML = `<div style="background:#fff;padding:40px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+            <span class="category-badge">${A.category}</span>
+            <h1 style="font-size:32px;font-weight:700;margin:20px 0;line-height:1.4;">${A.title}</h1>
+            <div class="article-meta" style="padding-bottom:20px;border-bottom:1px solid #dee2e6;">
+                <span>${A.author}</span>
+                <span>${A.date}</span>
+                <span class="stat-item">👁️ ${views}</span>
+            </div>
+            ${A.thumbnail ? `<img src="${A.thumbnail}" style="width:100%;max-height:500px;object-fit:cover;border-radius:8px;margin:30px 0;" alt="기사 이미지">` : ''}
+            <div style="font-size:16px;line-height:1.8;color:#212529;margin:30px 0;white-space:pre-wrap;">${A.content}</div>
+            <div style="display:flex;gap:10px;padding-top:20px;border-top:1px solid #dee2e6;">
+                <button onclick="toggleVote('${A.id}', 'like')" class="vote-btn ${userVote === 'like' ? 'active' : ''}">
+                    👍 추천 ${votes.likes}
+                </button>
+                <button onclick="toggleVote('${A.id}', 'dislike')" class="vote-btn dislike ${userVote === 'dislike' ? 'active' : ''}">
+                    👎 비추천 ${votes.dislikes}
+                </button>
+            </div>
+            ${canEdit ? `<div style="margin-top:20px;display:flex;gap:10px;">
+                <button onclick="editArticle('${A.id}')" class="btn btn-blue">수정</button>
+                <button onclick="deleteArticle('${A.id}')" class="btn btn-gray">삭제</button>
+            </div>` : ''}
+        </div>`;
+        loadComments(id);
+    });
 }
 function goBack() { 
     currentArticleId = null;
@@ -357,84 +374,85 @@ function goBack() {
 
 // 기사 삭제
 function deleteArticle(id) {
-    const A = getArticles().find(a=>a.id===id);
-    if(!A) return alert("없는 기사!");
-    const currentUser = getNickname();
-    if(!isLoggedIn() || (A.author !== currentUser && !isAdmin())) {
-        return alert("삭제 권한이 없습니다!");
-    }
-    if(!confirm("정말 이 기사를 삭제하시겠습니까?")) return;
-    const arr=getArticles().filter(a=>a.id!==id);
-    saveArticles(arr);
-    db.ref("comments/"+id).remove();
-    alert("기사가 삭제되었습니다.");
-    showArticles();
+    db.ref("articles/" + id).once("value").then(snapshot => {
+        const A = snapshot.val();
+        if(!A) return alert("없는 기사!");
+        const currentUser = getNickname();
+        if(!isLoggedIn() || (A.author !== currentUser && !isAdmin())) {
+            return alert("삭제 권한이 없습니다!");
+        }
+        if(!confirm("정말 이 기사를 삭제하시겠습니까?")) return;
+        deleteArticleFromDB(id, () => {
+            db.ref("comments/" + id).remove();
+            alert("기사가 삭제되었습니다.");
+            showArticles();
+        });
+    });
 }
 
 // 기사 수정
 function editArticle(id) {
-    const A = getArticles().find(a=>a.id===id);
-    if(!A) return alert("없는 기사!");
-    const currentUser = getNickname();
-    if(!isLoggedIn() || (A.author !== currentUser && !isAdmin())) {
-        return alert("수정 권한이 없습니다!");
-    }
-    hideAll();
-    document.querySelector(".write-section").classList.add("active");
-    document.getElementById("category").value = A.category;
-    document.getElementById("title").value = A.title;
-    document.getElementById("summary").value = A.summary || '';
-    document.getElementById("content").value = A.content;
-    
-    if(A.thumbnail) {
-        const preview = document.getElementById('thumbnailPreview');
-        const uploadText = document.getElementById('uploadText');
-        preview.src = A.thumbnail;
-        preview.style.display = 'block';
-        uploadText.textContent = '✓ 기존 이미지 (클릭하여 변경)';
-    }
-    
-    const form = document.getElementById("articleForm");
-    const newForm = form.cloneNode(true);
-    form.parentNode.replaceChild(newForm, form);
-    
-    const newFileInput = newForm.querySelector('#thumbnailInput');
-    newFileInput.addEventListener('change', previewThumbnail);
-    
-    newForm.addEventListener("submit", function(e) {
-        e.preventDefault();
+    db.ref("articles/" + id).once("value").then(snapshot => {
+        const A = snapshot.val();
+        if(!A) return alert("없는 기사!");
+        const currentUser = getNickname();
+        if(!isLoggedIn() || (A.author !== currentUser && !isAdmin())) {
+            return alert("수정 권한이 없습니다!");
+        }
+        hideAll();
+        document.querySelector(".write-section").classList.add("active");
+        document.getElementById("category").value = A.category;
+        document.getElementById("title").value = A.title;
+        document.getElementById("summary").value = A.summary || '';
+        document.getElementById("content").value = A.content;
         
-        const fileInput = newForm.querySelector('#thumbnailInput');
-        if(fileInput.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                A.thumbnail = e.target.result;
-                saveArticle();
-            };
-            reader.readAsDataURL(fileInput.files[0]);
-        } else {
-            saveArticle();
+        if(A.thumbnail) {
+            const preview = document.getElementById('thumbnailPreview');
+            const uploadText = document.getElementById('uploadText');
+            preview.src = A.thumbnail;
+            preview.style.display = 'block';
+            uploadText.textContent = '✓ 기존 이미지 (클릭하여 변경)';
         }
         
-        function saveArticle() {
-            A.category = newForm.querySelector("#category").value;
-            A.title = newForm.querySelector("#title").value;
-            A.summary = newForm.querySelector("#summary").value;
-            A.content = newForm.querySelector("#content").value;
-            A.date = new Date().toLocaleString() + " (수정됨)";
-            const arr = getArticles();
-            const idx = arr.findIndex(a => a.id === id);
-            if(idx !== -1) {
-                arr[idx] = A;
-                saveArticles(arr);
+        const form = document.getElementById("articleForm");
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+        
+        const newFileInput = newForm.querySelector('#thumbnailInput');
+        newFileInput.addEventListener('change', previewThumbnail);
+        
+        newForm.addEventListener("submit", function(e) {
+            e.preventDefault();
+            
+            const fileInput = newForm.querySelector('#thumbnailInput');
+            if(fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    A.thumbnail = e.target.result;
+                    saveUpdatedArticle();
+                };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                saveUpdatedArticle();
             }
-            newForm.reset();
-            document.getElementById('thumbnailPreview').style.display = 'none';
-            document.getElementById('uploadText').textContent = '📷 클릭하여 이미지 업로드 (선택사항)';
-            restoreFormDefaultBehavior();
-            alert("기사가 수정되었습니다!");
-            showArticleDetail(id);
-        }
+            
+            function saveUpdatedArticle() {
+                A.category = newForm.querySelector("#category").value;
+                A.title = newForm.querySelector("#title").value;
+                A.summary = newForm.querySelector("#summary").value;
+                A.content = newForm.querySelector("#content").value;
+                A.date = new Date().toLocaleString() + " (수정됨)";
+                
+                saveArticle(A, () => {
+                    newForm.reset();
+                    document.getElementById('thumbnailPreview').style.display = 'none';
+                    document.getElementById('uploadText').textContent = '📷 클릭하여 이미지 업로드 (선택사항)';
+                    restoreFormDefaultBehavior();
+                    alert("기사가 수정되었습니다!");
+                    showArticleDetail(id);
+                });
+            }
+        });
     });
 }
 
@@ -479,14 +497,13 @@ function restoreFormDefaultBehavior() {
         }
         
         function saveNewArticle(article) {
-            const arr = getArticles(); 
-            arr.unshift(article);
-            saveArticles(arr);
-            newForm.reset();
-            document.getElementById('thumbnailPreview').style.display = 'none';
-            document.getElementById('uploadText').textContent = '📷 클릭하여 이미지 업로드 (선택사항)';
-            alert("기사가 발행되었습니다!");
-            showArticles();
+            saveArticle(article, () => {
+                newForm.reset();
+                document.getElementById('thumbnailPreview').style.display = 'none';
+                document.getElementById('uploadText').textContent = '📷 클릭하여 이미지 업로드 (선택사항)';
+                alert("기사가 발행되었습니다!");
+                showArticles();
+            });
         }
     });
 }// ===== Part 2: 댓글, 인증, 사용자 관리 =====
@@ -646,7 +663,12 @@ auth.onAuthStateChanged(async user=>{
         deleteCookie("is_admin");
     }
     updateSettings();
-    renderArticles();
+    if(document.querySelector(".articles-section.active")) {
+        loadArticles(() => {
+            filteredArticles = allArticles;
+            renderArticles();
+        });
+    }
 });
 
 // 사용자 관리
@@ -657,7 +679,10 @@ async function showUserManagement(){
     const root=document.getElementById("usersList");
     root.innerHTML = "<p style='text-align:center;color:#868e96;'>사용자 정보 로딩 중...</p>";
     try {
-        const articles = getArticles();
+        const articlesSnapshot = await db.ref("articles").once("value");
+        const articlesData = articlesSnapshot.val() || {};
+        const articles = Object.values(articlesData);
+        
         const commentsSnapshot = await db.ref("comments").once("value");
         const commentsData = commentsSnapshot.val() || {};
         const usersMap = new Map();
@@ -712,7 +737,10 @@ async function showUserManagement(){
 }
 
 async function showUserDetail(nickname) {
-    const articles = getArticles().filter(a => a.author === nickname);
+    const articlesSnapshot = await db.ref("articles").once("value");
+    const articlesData = articlesSnapshot.val() || {};
+    const articles = Object.values(articlesData).filter(a => a.author === nickname);
+    
     const commentsSnapshot = await db.ref("comments").once("value");
     const commentsData = commentsSnapshot.val() || {};
     const userComments = [];
@@ -781,12 +809,12 @@ function editArticleFromAdmin(id) {
 
 function deleteArticleFromAdmin(id, nickname) {
     if(!confirm("이 기사를 삭제하시겠습니까?")) return;
-    const arr = getArticles().filter(a => a.id !== id);
-    saveArticles(arr);
-    db.ref("comments/" + id).remove();
-    alert("기사가 삭제되었습니다.");
-    closeUserDetail();
-    showUserDetail(nickname);
+    deleteArticleFromDB(id, () => {
+        db.ref("comments/" + id).remove();
+        alert("기사가 삭제되었습니다.");
+        closeUserDetail();
+        showUserDetail(nickname);
+    });
 }
 
 function editCommentFromAdmin(articleId, commentId) {
@@ -817,8 +845,16 @@ function deleteCommentFromAdmin(articleId, commentId, nickname) {
 
 function deleteUserCompletely(nick){
     if(!confirm(`"${nick}" 사용자 및 관련 기사/댓글을 모두 삭제하시겠습니까?`)) return;
-    let arr=getArticles().filter(x=>x.author!==nick);
-    saveArticles(arr);
+    
+    db.ref("articles").once("value").then(snapshot => {
+        const articlesData = snapshot.val() || {};
+        Object.entries(articlesData).forEach(([id, article]) => {
+            if(article.author === nick) {
+                db.ref("articles/" + id).remove();
+            }
+        });
+    });
+    
     db.ref("comments").once("value").then(s=>{
         const val=s.val()||{};
         Object.entries(val).forEach(([aid,group])=>{
@@ -828,6 +864,7 @@ function deleteUserCompletely(nick){
             });
         });
     });
+    
     alert(`"${nick}" 사용자가 삭제되었습니다.`);
     showUserManagement();
 }
@@ -873,17 +910,18 @@ window.addEventListener("load", () => {
             }
             
             function saveNewArticle(article) {
-                const arr = getArticles(); 
-                arr.unshift(article);
-                saveArticles(arr);
-                form.reset();
-                document.getElementById('thumbnailPreview').style.display = 'none';
-                document.getElementById('uploadText').textContent = '📷 클릭하여 이미지 업로드 (선택사항)';
-                alert("기사가 발행되었습니다!");
-                showArticles();
+                saveArticle(article, () => {
+                    form.reset();
+                    document.getElementById('thumbnailPreview').style.display = 'none';
+                    document.getElementById('uploadText').textContent = '📷 클릭하여 이미지 업로드 (선택사항)';
+                    alert("기사가 발행되었습니다!");
+                    showArticles();
+                });
             }
         });
     }
-    filteredArticles = getArticles();
-    renderArticles();
+    loadArticles(() => {
+        filteredArticles = allArticles;
+        renderArticles();
+    });
 });
