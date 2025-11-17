@@ -514,8 +514,8 @@
 <header>
     <div class="header-top">
         <div>
-            <div class="logo">HSJ NEWS</div>
-            <div class="logo-sub">대한민국 대표 종합 뉴스</div>
+            <div class="logo">해정뉴스</div>
+            <div class="logo-sub">해정이의 개 쩌는 뉴스사이트</div>
         </div>
         <div id="headerAuthButton">
             <button class="btn btn-secondary" onclick="googleLogin()">🔓 로그인</button>
@@ -537,12 +537,13 @@
             <div class="search-row">
                 <select id="searchCategory" class="form-control">
                     <option value="">전체 카테고리</option>
-                    <option>정치</option>
-                    <option>경제</option>
-                    <option>사회</option>
-                    <option>생활</option>
-                    <option>IT</option>
-                    <option>스포츠</option>
+                    <option>자유게시판</option>
+                    <option>논란</option>
+                    <option>저격</option>
+                    <option>비난</option>
+                    <option>연애</option>
+                    <option>정아영</option>
+                    <option>게넥도</option>
                 </select>
                 <input id="searchKeyword" placeholder="키워드 검색..." class="form-control">
                 <button onclick="searchArticles()" class="btn btn-primary">🔍 검색</button>
@@ -568,12 +569,13 @@
                 <div class="form-group">
                     <label class="form-label">카테고리</label>
                     <select id="category" class="form-control">
-                        <option>정치</option>
-                        <option>경제</option>
-                        <option>사회</option>
-                        <option>생활</option>
-                        <option>IT</option>
-                        <option>스포츠</option>
+                        <option>자유게시판</option>
+                    <option>논란</option>
+                    <option>저격</option>
+                    <option>비난</option>
+                    <option>연애</option>
+                    <option>정아영</option>
+                    <option>게넥도</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -607,6 +609,7 @@
         <div style="background:#fff;padding:40px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
             <h2 style="margin-bottom:30px;">설정</h2>
             <div id="profileNickname" style="margin-bottom:30px;"></div>
+            <div id="notificationSettings" style="margin-bottom:30px;"></div>
             <button onclick="logoutAdmin()" class="btn btn-dark" style="width:100%;margin-bottom:30px;">로그아웃</button>
             <div id="adminModeIndicator"></div>
             <hr style="margin:30px 0;border:none;border-top:1px solid #dee2e6;">
@@ -615,9 +618,7 @@
             <button onclick="showUserManagement()" class="btn btn-primary" style="width:100%;">사용자 관리</button>
         </div>
     </div>
-</section>
-
-<section class="article-detail-section">
+</section><section class="article-detail-section">
     <div class="container">
         <div id="articleDetail"></div>
         <button onclick="goBack()" class="btn btn-gray" style="margin-top:20px;">← 뒤로가기</button>
