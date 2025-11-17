@@ -294,38 +294,38 @@ async function renderArticles() {
         `).join('');
     }
 
-    // 고정 기사 표시
-    let pinnedHTML = '';
-    if(pinnedArticles.length > 0) {
-        pinnedHTML = pinnedArticles.map(a => {
-            const canEdit = isLoggedIn() && ((a.author === currentUser) || isAdmin());
-            const views = getArticleViews(a.id);
-            const votes = getArticleVoteCounts(a.id);
-            return `<div class="article-card" style="border:3px solid #ffd700;background:#fffbf0;">
-                <div style="position:absolute;top:10px;right:10px;background:#ffd700;color:#000;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;z-index:10;">
-                    📌 고정
-                </div>
-                ${a.thumbnail ? `<img src="${a.thumbnail}" class="article-thumbnail" alt="썸네일">` : '<div class="article-thumbnail">📰</div>'}
-                <div class="article-content">
+// 고정 기사 표시
+let pinnedHTML = '';
+if(pinnedArticles.length > 0) {
+    pinnedHTML = pinnedArticles.map(a => {
+        const canEdit = isLoggedIn() && ((a.author === currentUser) || isAdmin());
+        const views = getArticleViews(a.id);
+        const votes = getArticleVoteCounts(a.id);
+        return `<div class="article-card" style="border:3px solid #ffd700;background:#fffbf0;">
+            ${a.thumbnail ? `<img src="${a.thumbnail}" class="article-thumbnail" alt="썸네일">` : '<div class="article-thumbnail">📰</div>'}
+            <div class="article-content">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
                     <span class="category-badge">${a.category}</span>
-                    <h3 class="article-title">${a.title}</h3>
-                    <p class="article-summary">${a.summary||''}</p>
-                    <div class="article-meta">
-                        <span>${a.author}</span>
-                        <div class="article-stats">
-                            <span class="stat-item">👁️ ${views}</span>
-                            <span class="stat-item">👍 ${votes.likes}</span>
-                            <span class="stat-item">👎 ${votes.dislikes}</span>
-                        </div>
-                    </div>
-                    <div class="article-actions">
-                        <button onclick="showArticleDetail('${a.id}')" class="btn btn-primary">읽기</button>
-                        ${canEdit ? `<button onclick="editArticle('${a.id}')" class="btn btn-blue">수정</button>` : ''}
+                    <span style="background:#ffd700;color:#000;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;">📌 고정</span>
+                </div>
+                <h3 style="font-size:18px;font-weight:700;color:#212529;margin-bottom:8px;line-height:0.2;">${a.title}</h3>
+                <p style="font-size:13px;color:#6c757d;line-height:1.5;margin-bottom:10px;">${a.summary||''}</p>
+                <div class="article-meta">
+                    <span>${a.author}</span>
+                    <div class="article-stats">
+                        <span class="stat-item">👁️ ${views}</span>
+                        <span class="stat-item">👍 ${votes.likes}</span>
+                        <span class="stat-item">👎 ${votes.dislikes}</span>
                     </div>
                 </div>
-            </div>`;
-        }).join('');
-    }
+                <div class="article-actions">
+                    <button onclick="showArticleDetail('${a.id}')" class="btn btn-primary">읽기</button>
+                    ${canEdit ? `<button onclick="editArticle('${a.id}')" class="btn btn-blue">수정</button>` : ''}
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
 
     // Featured Article (첫 번째 일반 기사)
     if(unpinnedArticles.length > 0) {
@@ -844,11 +844,7 @@ if(adminForm) {
 }
 
 auth.onAuthStateChanged(async user=>{
-    if(user){
-        setCookie("is_admin","true");
-    } else {
-        deleteCookie("is_admin");
-    }
+    // 로그인 상태만 확인, 관리자 쿠키는 건드리지 않음
     updateSettings();
     
     const adminEventTab = document.getElementById("adminEventTab");
@@ -1223,8 +1219,24 @@ function deleteUserCompletely(nick){
 
 // ===== 관리자 이벤트 기능 =====
 
-function showAdminEvent() {
+async function showAdminEvent() {
     if(!isAdmin()) return alert("관리자 권한 필요!");
+    
+    // VIP 여부 확인
+    const user = auth.currentUser;
+    if(!user) {
+        alert("로그인이 필요합니다!");
+        return;
+    }
+    
+    const vipSnapshot = await db.ref("users/" + user.uid + "/isVIP").once("value");
+    const isVIP = vipSnapshot.val() || false;
+    
+    if(!isVIP) {
+        alert("VIP 등급이 아닙니다.\n\nVIP 회원만 이벤트 기능을 이용할 수 있습니다.");
+        return;
+    }
+    
     hideAll();
     document.querySelector(".admin-event-section").classList.add("active");
     document.querySelectorAll(".nav-item").forEach((item, idx) => {
