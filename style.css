@@ -1106,3 +1106,79 @@ textarea.form-control {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--text-secondary);
 }
+
+/* 점검 모드 스타일 */
+.maintenance-overlay {
+    display: none; /* 기본 숨김 */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #202124; /* 어두운 배경 */
+    z-index: 99999; /* 최상위 */
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.maintenance-box {
+    background: white;
+    width: 100%;
+    max-width: 500px;
+    padding: 40px 30px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+    animation: popupPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.maintenance-icon {
+    width: 80px;
+    height: 80px;
+    background: #e8f0fe;
+    color: var(--primary-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    margin: 0 auto 20px;
+}
+
+.maintenance-title {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+}
+
+.maintenance-img-wrapper img {
+    max-width: 100%;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.maintenance-message {
+    font-size: 16px;
+    line-height: 1.6;
+    color: #5f6368;
+    margin-bottom: 20px;
+    white-space: pre-wrap; /* 줄바꿈 적용 */
+}
+
+.maintenance-footer {
+    border-top: 1px solid #eee;
+    padding-top: 20px;
+    color: #9aa0a6;
+    font-size: 13px;
+}
+
+/* 관리자 버튼 그리드 조정 */
+.admin-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+}
