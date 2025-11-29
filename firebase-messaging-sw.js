@@ -42,6 +42,7 @@ self.addEventListener('notificationclick', (event) => {
   
   // 웹사이트 열기
   event.waitUntil(
-    clients.openWindow('https://your-website-url.com') // 실제 URL로 변경
+    clients.openWindow('https://fff376327yhed.github.io/hsj_news.io/') // 실제 URL로 변경
   );
+
 });
