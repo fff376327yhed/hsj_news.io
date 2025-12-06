@@ -581,7 +581,7 @@ function showToastNotification(title, body, articleId = null) {
     }, 5000);
 }
 
-// ===== Part 4 수정: FCM 초기화 개선 =====
+// ===== FCM 초기화 개선 (GitHub Pages 호환) =====
 async function registerFCMToken(uid) {
     if(!messaging) {
         console.log("Messaging not available");
@@ -593,20 +593,28 @@ async function registerFCMToken(uid) {
         console.log("알림 권한 상태:", permission);
         
         if(permission === 'granted') {
+            // GitHub Pages 경로 자동 감지
+            const basePath = window.location.pathname.split('/').filter(Boolean)[0] || '';
+            const swPath = basePath ? `/${basePath}/firebase-messaging-sw.js` : '/firebase-messaging-sw.js';
+            
+            console.log("🔍 Service Worker 경로:", swPath);
+            
             // GitHub Pages에서 Service Worker 파일 존재 여부 확인
             try {
-                const swResponse = await fetch('/firebase-messaging-sw.js', { method: 'HEAD' });
+                const swResponse = await fetch(swPath, { method: 'HEAD' });
                 if (!swResponse.ok) {
                     console.warn("⚠️ Service Worker 파일이 없습니다. FCM 푸시 알림이 비활성화됩니다.");
                     console.log("💡 GitHub Pages에서 FCM을 사용하려면 루트에 firebase-messaging-sw.js 파일을 추가하세요.");
+                    console.log("📍 현재 확인한 경로:", window.location.origin + swPath);
                     return;
                 }
+                console.log("✅ Service Worker 파일 확인됨:", window.location.origin + swPath);
             } catch(e) {
                 console.warn("⚠️ Service Worker 파일 확인 실패. FCM 비활성화:", e.message);
                 return;
             }
 
-            const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+            const registration = await navigator.serviceWorker.register(swPath);
             console.log('Service Worker 등록 요청됨...');
 
             await navigator.serviceWorker.ready;
