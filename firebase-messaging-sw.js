@@ -1,1 +1,46 @@
-const _0x1f5c2f=_0x46f2;function _0x2a7c(){const _0x219990=['437842430700','3308816JjeCbK','[Service\x20Worker]\x20알림\x20클릭:','registration','8112540sleWoa','showNotification','/badge-72x72.png','9287910SjPlit','3878970umuLco','type','6314896RacjkU','18JfoDYf','close','📰\x20해정뉴스','841542ZKosDQ','hsj-news.firebaseapp.com','https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js','606805LnGmFp','https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js','log','/icon-192x192.png','hsj-news.firebasestorage.app','4WMbfnD','[Service\x20Worker]\x20백그라운드\x20메시지\x20수신:','openWindow','title','notification','initializeApp','messaging','data','49cZtVKP','https://hsj-news-default-rtdb.firebaseio.com','hsj-news','notificationclick','body','addEventListener'];_0x2a7c=function(){return _0x219990;};return _0x2a7c();}(function(_0x12ac91,_0x28d72d){const _0x7c3598=_0x46f2,_0x3d4b90=_0x12ac91();while(!![]){try{const _0x30a2ba=parseInt(_0x7c3598(0x1f1))/0x1+parseInt(_0x7c3598(0x205))/0x2+-parseInt(_0x7c3598(0x20c))/0x3*(parseInt(_0x7c3598(0x1f6))/0x4)+-parseInt(_0x7c3598(0x208))/0x5+parseInt(_0x7c3598(0x1ee))/0x6*(-parseInt(_0x7c3598(0x1fe))/0x7)+parseInt(_0x7c3598(0x20e))/0x8*(parseInt(_0x7c3598(0x20f))/0x9)+parseInt(_0x7c3598(0x20b))/0xa;if(_0x30a2ba===_0x28d72d)break;else _0x3d4b90['push'](_0x3d4b90['shift']());}catch(_0x4950b0){_0x3d4b90['push'](_0x3d4b90['shift']());}}}(_0x2a7c,0xd4c07),importScripts(_0x1f5c2f(0x1f2)),importScripts(_0x1f5c2f(0x1f0)),firebase[_0x1f5c2f(0x1fb)]({'apiKey':'AIzaSyDgooYtVr8-jm15-fx_WvGLCDxonLpNPuU','authDomain':_0x1f5c2f(0x1ef),'databaseURL':_0x1f5c2f(0x1ff),'projectId':_0x1f5c2f(0x200),'storageBucket':_0x1f5c2f(0x1f5),'messagingSenderId':_0x1f5c2f(0x204),'appId':'1:437842430700:web:e3822bde4cfecdc04633c9'}));const messaging=firebase[_0x1f5c2f(0x1fc)]();function _0x46f2(_0x5108ef,_0x1b7a98){_0x5108ef=_0x5108ef-0x1ed;const _0x2a7c7b=_0x2a7c();let _0x46f25=_0x2a7c7b[_0x5108ef];return _0x46f25;}messaging['onBackgroundMessage'](_0x580baf=>{const _0x3519e0=_0x1f5c2f;console[_0x3519e0(0x1f3)](_0x3519e0(0x1f7),_0x580baf);const _0xc08172=_0x580baf['notification']?.[_0x3519e0(0x1f9)]||_0x3519e0(0x1ed),_0xdbb93c={'body':_0x580baf['notification']?.[_0x3519e0(0x202)]||_0x580baf[_0x3519e0(0x1fd)]?.['content']||'','icon':_0x3519e0(0x1f4),'badge':_0x3519e0(0x20a),'tag':_0x580baf[_0x3519e0(0x1fd)]?.[_0x3519e0(0x20d)]||_0x3519e0(0x1fa),'data':_0x580baf['data'],'requireInteraction':![],'vibrate':[0xc8,0x64,0xc8]};self[_0x3519e0(0x207)][_0x3519e0(0x209)](_0xc08172,_0xdbb93c);}),self[_0x1f5c2f(0x203)](_0x1f5c2f(0x201),_0x4a6b64=>{const _0x19add6=_0x1f5c2f;console[_0x19add6(0x1f3)](_0x19add6(0x206),_0x4a6b64[_0x19add6(0x1fa)]),_0x4a6b64[_0x19add6(0x1fa)][_0x19add6(0x210)](),_0x4a6b64['waitUntil'](clients[_0x19add6(0x1f8)]('/'));});
+// Service Worker for Firebase Cloud Messaging (FCM)
+importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
+
+// Firebase 설정 (index.html과 동일하게)
+firebase.initializeApp({
+  apiKey: "AIzaSyDgooYtVr8-jm15-fx_WvGLCDxonLpNPuU",
+  authDomain: "hsj-news.firebaseapp.com",
+  databaseURL: "https://hsj-news-default-rtdb.firebaseio.com",
+  projectId: "hsj-news",
+  storageBucket: "hsj-news.firebasestorage.app",
+  messagingSenderId: "437842430700",
+  appId: "1:437842430700:web:e3822bde4cfecdc04633c9"
+});
+
+const messaging = firebase.messaging();
+
+// 백그라운드 메시지 수신 (탭이 닫혀있거나 백그라운드일 때)
+messaging.onBackgroundMessage((payload) => {
+  console.log('[Service Worker] 백그라운드 메시지 수신:', payload);
+  
+  const notificationTitle = payload.notification?.title || '📰 해정뉴스';
+  const notificationOptions = {
+    body: payload.notification?.body || payload.data?.content || '',
+    icon: '/icon-192x192.png', // 알림 아이콘 (없으면 제거 가능)
+    badge: '/badge-72x72.png', // 뱃지 아이콘 (없으면 제거 가능)
+    tag: payload.data?.type || 'notification',
+    data: payload.data,
+    requireInteraction: false, // 사용자가 클릭할 때까지 유지
+    vibrate: [200, 100, 200] // 진동 패턴
+  };
+
+  self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// 알림 클릭 이벤트 처리
+self.addEventListener('notificationclick', (event) => {
+  console.log('[Service Worker] 알림 클릭:', event.notification);
+  
+  event.notification.close();
+  
+  // 사이트 열기
+  event.waitUntil(
+    clients.openWindow('/') // 또는 특정 기사 페이지로 이동
+  );
+});
