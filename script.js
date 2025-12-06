@@ -672,146 +672,280 @@ async function requestNotificationPermission() {
     return false;
 }
 
+// ===== FCM 토큰 등록 개선 (script.js에 추가/교체) =====
+
+// FCM 토큰 등록 함수 (완전 개선)
 async function registerFCMToken(uid) {
     if(!messaging) {
-        console.log("Messaging not available");
+        console.log("⚠️ Messaging not available - 브라우저가 FCM을 지원하지 않습니다.");
         return;
     }
     
     try {
+        console.log("📱 FCM 토큰 등록 시작...");
+        
+        // 1. 알림 권한 요청
         const permission = await Notification.requestPermission();
-        console.log("알림 권한 상태:", permission);
+        console.log("🔔 알림 권한 상태:", permission);
         
-        if(permission === 'granted') {
-            // Service Worker 경로 수정 (상대 경로 사용)
-            const swPath = './firebase-messaging-sw.js';
+        if(permission !== 'granted') {
+            console.log("❌ 알림 권한 거부됨");
             
-            console.log("🔍 Service Worker 경로:", swPath);
+            // UI에 알림 권한 필요성 표시
+            showNotificationPermissionPrompt();
+            return;
+        }
+        
+        // 2. Service Worker 등록 (중요: 재등록 로직 개선)
+        console.log("🔧 Service Worker 등록 시작...");
+        
+        // 기존 등록 확인
+        let registration = await navigator.serviceWorker.getRegistration('/');
+        
+        if (registration) {
+            console.log("✅ 기존 Service Worker 발견");
             
-            // GitHub Pages에서 Service Worker 파일 존재 여부 확인
-            try {
-                const swResponse = await fetch(swPath, { method: 'HEAD' });
-                if (!swResponse.ok) {
-                    console.warn("⚠️ Service Worker 파일이 없습니다. FCM 푸시 알림이 비활성화됩니다.");
-                    console.log("💡 GitHub Pages에서 FCM을 사용하려면 루트에 firebase-messaging-sw.js 파일을 추가하세요.");
-                    console.log("📍 현재 확인한 경로:", window.location.origin + swPath);
-                    return;
-                }
-                console.log("✅ Service Worker 파일 확인됨:", window.location.origin + swPath);
-            } catch(e) {
-                console.warn("⚠️ Service Worker 파일 확인 실패. FCM 비활성화:", e.message);
-                return;
-            }
-
-            const registration = await navigator.serviceWorker.register(swPath);
-            console.log('Service Worker 등록 요청됨...');
-
-            await navigator.serviceWorker.ready;
-            console.log('✅ Service Worker가 활성화(Active) 되었습니다.');
-            
-            let token;
-            try {
-              token = await messaging.getToken({
-              serviceWorkerRegistration: registration,
-            vapidKey: "BFJBBAv_qOw_aklFbE89r_cuCArMJkMK56Ryj9M1l1a3qv8CuHCJ-fKALtOn4taF7Pjwo2bjfoOuewEKBqRBtCo"
-            });
-            } catch(tokenError) {
-                console.error("토큰 발급 상세 오류:", tokenError);
-                return;
-            }
-            
-            if(token) {
-                console.log("FCM 토큰 발급 성공:", token);
-                
-                const tokenKey = btoa(token).substring(0, 20).replace(/[^a-zA-Z0-9]/g, '');
-                await db.ref("users/" + uid + "/fcmTokens/" + tokenKey).set({
-                    token: token,
-                    updatedAt: Date.now(),
-                    browser: navigator.userAgent.substring(0, 100)
-                });
-                console.log("토큰 DB 저장 완료");
-                
-                // 포그라운드 메시지 수신
-                messaging.onMessage((payload) => {
-                    console.log("포그라운드 메시지 수신:", payload);
-                    const { title, body } = payload.notification || {};
-                    if(title && body) {
-                        showToastNotification(title, body);
-                    }
-                });
-            }
+            // 업데이트 확인
+            await registration.update();
+            console.log("🔄 Service Worker 업데이트 확인 완료");
         } else {
-            console.log("알림 권한이 거부됨");
+            console.log("🆕 새 Service Worker 등록...");
+            registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js', {
+                scope: '/',
+                updateViaCache: 'none'
+            });
         }
         
-    } catch(error) {
-        console.warn("FCM 초기화 건너뜀:", error.message);
-    }
-}
-// 알림 전송 시스템
-async function sendNotification(type, data) {
-    try {
-        console.log("알림 전송 시작:", type, data);
+        // 3. Service Worker 활성화 대기
+        console.log("⏳ Service Worker 활성화 대기 중...");
+        await navigator.serviceWorker.ready;
         
-        const usersSnapshot = await db.ref("users").once("value");
-        const usersData = usersSnapshot.val() || {};
+        // 4. 활성 상태 재확인
+        registration = await navigator.serviceWorker.getRegistration('/');
         
-        for(const [uid, userData] of Object.entries(usersData)) {
-            if(userData.notificationsEnabled === false) continue;
-            
-            let shouldNotify = false;
-            let notificationTitle = '';
-            let notificationBody = '';
-            
-            if(type === 'article' || type === 'comment') {
-                const following = userData.following || {};
-                const emailKey = btoa(data.authorEmail).replace(/=/g, '');
-                
-                if(following[emailKey]) {
-                    shouldNotify = true;
-                    
-                    if(type === 'article') {
-                        notificationTitle = '📰 새 기사 알림';
-                        let title = data.title || '제목 없음';
-                        if(title.length > 60) title = title.substring(0, 60) + '...';
-                        notificationBody = `${data.authorName}님이 새 기사를 작성했습니다:\n"${title}"`;
-                    } else {
-                        notificationTitle = '💬 새 댓글 알림';
-                        let content = data.content || '';
-                        if(content.length > 50) content = content.substring(0, 50) + '...';
-                        notificationBody = `${data.authorName}님이 댓글을 남겼습니다:\n"${content}"`;
-                    }
-                }
-            } else if(type === 'myArticleComment') {
-                if(userData.email === data.articleAuthorEmail && userData.email !== data.commenterEmail) {
-                    shouldNotify = true;
-                    notificationTitle = '💭 내 기사에 새 댓글';
-                    let content = data.content || '';
-                    if(content.length > 50) content = content.substring(0, 50) + '...';
-                    notificationBody = `${data.commenterName}님이 댓글을 남겼습니다:\n"${content}"`;
-                }
-            }
-            
-            if(shouldNotify) {
-                console.log("알림 전송 대상:", userData.email);
-                
-                const notificationId = Date.now().toString() + '_' + Math.random().toString(36).substr(2, 9);
-                await db.ref("notifications/" + uid + "/" + notificationId).set({
-                    title: notificationTitle,
-                    text: notificationBody,
-                    articleId: data.articleId,
-                    timestamp: Date.now(),
-                    read: false,
-                    type: type
+        if (!registration || !registration.active) {
+            throw new Error("Service Worker가 활성화되지 않았습니다");
+        }
+        
+        console.log("✅ Service Worker 활성 상태:", registration.active.state);
+        
+        // 5. FCM 토큰 발급 (재시도 로직 추가)
+        console.log("🔑 FCM 토큰 발급 시도...");
+        let token = null;
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (!token && retryCount < maxRetries) {
+            try {
+                token = await messaging.getToken({
+                    serviceWorkerRegistration: registration,
+                    vapidKey: "BFJBBAv_qOw_aklFbE89r_cuCArMJkMK56Ryj9M1l1a3qv8CuHCJ-fKALtOn4taF7Pjwo2bjfoOuewEKBqRBtCo"
                 });
                 
-                console.log("알림 저장 완료:", uid);
+                if (token) {
+                    console.log("✅ FCM 토큰 발급 성공!");
+                    break;
+                }
+            } catch (tokenError) {
+                retryCount++;
+                console.warn(`⚠️ 토큰 발급 실패 (시도 ${retryCount}/${maxRetries}):`, tokenError.message);
+                
+                if (retryCount < maxRetries) {
+                    // 1초 대기 후 재시도
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } else {
+                    throw tokenError;
+                }
             }
         }
+        
+        if(!token) {
+            throw new Error("토큰 발급 실패: 최대 재시도 횟수 초과");
+        }
+        
+        console.log("📝 토큰:", token.substring(0, 20) + "...");
+        
+        // 6. 토큰을 Firebase DB에 저장
+        const tokenKey = btoa(token).substring(0, 20).replace(/[^a-zA-Z0-9]/g, '');
+        await db.ref("users/" + uid + "/fcmTokens/" + tokenKey).set({
+            token: token,
+            updatedAt: Date.now(),
+            browser: navigator.userAgent.substring(0, 100),
+            platform: navigator.platform,
+            deviceType: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop',
+            lastUsed: Date.now()
+        });
+        console.log("✅ 토큰 DB 저장 완료");
+        
+        // 7. 포그라운드 메시지 리스너
+        messaging.onMessage((payload) => {
+            console.log("📨 포그라운드 메시지 수신:", payload);
+            
+            const title = payload.data?.title || payload.notification?.title || '📰 해정뉴스';
+            const body = payload.data?.body || payload.data?.text || payload.notification?.body || '';
+            const articleId = payload.data?.articleId || '';
+            
+            showToastNotification(title, body, articleId);
+        });
+        
+        // 8. Service Worker 메시지 리스너
+        navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
+        
+        // 9. 성공 알림
+        console.log("🎉 알림 설정 완료!");
+        showToastNotification(
+            "✅ 알림 설정 완료!", 
+            "이제 웹사이트를 닫아도 알림을 받을 수 있습니다.",
+            null
+        );
+        
+        // 10. 로컬 스토리지에 토큰 등록 완료 표시
+        localStorage.setItem('fcm_token_registered', 'true');
+        localStorage.setItem('fcm_token_time', Date.now().toString());
+        
     } catch(error) {
-        console.error("알림 전송 오류:", error);
+        console.error("❌ FCM 초기화 오류:", error);
+        console.error("상세:", error.code, error.message, error.stack);
+        
+        // 사용자에게 친절한 오류 메시지
+        let errorMsg = "알림 설정 중 오류가 발생했습니다.";
+        
+        if (error.code === 'messaging/permission-blocked') {
+            errorMsg = "🚫 알림 권한이 차단되었습니다.\n\n브라우저 설정에서 해정뉴스의 알림 권한을 허용해주세요.";
+        } else if (error.message.includes('Service Worker')) {
+            errorMsg = "⚠️ Service Worker 등록에 실패했습니다.\n\n페이지를 새로고침하거나 브라우저를 다시 시작해보세요.";
+        }
+        
+        alert(errorMsg);
     }
 }
+
+// Service Worker 메시지 핸들러
+function handleServiceWorkerMessage(event) {
+    console.log('📬 Service Worker 메시지:', event.data);
+    
+    if (event.data.type === 'NOTIFICATION_CLICK') {
+        const articleId = event.data.articleId;
+        const url = event.data.url;
+        
+        // 페이지가 이미 열려있으면 해당 기사로 이동
+        if (articleId) {
+            showArticleDetail(articleId);
+        } else if (url) {
+            // URL 파라미터 파싱하여 페이지 이동
+            const urlParams = new URL(url, window.location.origin);
+            const params = new URLSearchParams(urlParams.search);
+            const page = params.get('page');
+            const id = params.get('id');
+            
+            if (page === 'article' && id) {
+                showArticleDetail(id);
+            }
+        }
+    }
+}
+
+// 알림 권한 요청 프롬프트 표시
+function showNotificationPermissionPrompt() {
+    const promptHTML = `
+        <div id="notificationPrompt" style="
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            border: 2px solid #c62828;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            z-index: 10000;
+            max-width: 350px;
+            animation: slideIn 0.3s ease;
+        ">
+            <div style="display: flex; align-items: start; gap: 12px;">
+                <div style="font-size: 32px;">🔔</div>
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 8px 0; color: #c62828;">알림 권한 필요</h3>
+                    <p style="margin: 0 0 12px 0; color: #5f6368; font-size: 14px; line-height: 1.4;">
+                        새 기사와 댓글 알림을 받으려면 알림 권한을 허용해주세요.
+                    </p>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="retryNotificationPermission()" style="
+                            flex: 1;
+                            background: #c62828;
+                            color: white;
+                            border: none;
+                            padding: 8px 16px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            font-weight: bold;
+                        ">허용하기</button>
+                        <button onclick="closeNotificationPrompt()" style="
+                            background: #f1f3f4;
+                            color: #5f6368;
+                            border: none;
+                            padding: 8px 16px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                        ">나중에</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 이미 표시된 프롬프트 제거
+    const existing = document.getElementById('notificationPrompt');
+    if (existing) existing.remove();
+    
+    document.body.insertAdjacentHTML('beforeend', promptHTML);
+}
+
+// 알림 권한 재요청
+window.retryNotificationPermission = async function() {
+    closeNotificationPrompt();
+    
+    const user = auth.currentUser;
+    if (user) {
+        await registerFCMToken(user.uid);
+    }
+}
+
+// 프롬프트 닫기
+window.closeNotificationPrompt = function() {
+    const prompt = document.getElementById('notificationPrompt');
+    if (prompt) prompt.remove();
+}
+
+// 토큰 갱신 함수 (주기적으로 호출)
+async function refreshFCMToken() {
+    const user = auth.currentUser;
+    if (!user) return;
+    
+    const lastRegistered = localStorage.getItem('fcm_token_time');
+    const now = Date.now();
+    
+    // 7일마다 토큰 갱신
+    if (!lastRegistered || (now - parseInt(lastRegistered)) > 7 * 24 * 60 * 60 * 1000) {
+        console.log("🔄 FCM 토큰 갱신 시작...");
+        await registerFCMToken(user.uid);
+    }
+}
+
+// 페이지 로드 시 토큰 갱신 체크
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        refreshFCMToken();
+    }, 5000); // 5초 후 체크
+});
+
+// Visibility API를 사용하여 페이지가 다시 보일 때 토큰 체크
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        setTimeout(() => {
+            refreshFCMToken();
+        }, 2000);
+    }
+});
 
 // ===== Part 4 수정: 인증 상태 변경 (점검 모드 체크 추가) =====
 auth.onAuthStateChanged(async user => {
@@ -3571,3 +3705,4 @@ window.addEventListener('unhandledrejection', function(e) {
 });
 
 console.log("📄 script.js 로드 완료 - 모든 파트 준비됨");
+
