@@ -1,1 +1,3215 @@
-const _0x338bd4=_0x4802;(function(_0x191066,_0x5e2484){const _0x297141=_0x4802,_0x1cb4e3=_0x191066();while(!![]){try{const _0x43edbf=-parseInt(_0x297141(0x3c4))/0x1+parseInt(_0x297141(0x304))/0x2*(-parseInt(_0x297141(0x399))/0x3)+parseInt(_0x297141(0x1e3))/0x4*(parseInt(_0x297141(0x230))/0x5)+-parseInt(_0x297141(0x26c))/0x6+parseInt(_0x297141(0x38c))/0x7*(-parseInt(_0x297141(0x2de))/0x8)+parseInt(_0x297141(0x2ca))/0x9*(parseInt(_0x297141(0x33b))/0xa)+parseInt(_0x297141(0x3b4))/0xb;if(_0x43edbf===_0x5e2484)break;else _0x1cb4e3['push'](_0x1cb4e3['shift']());}catch(_0x22161b){_0x1cb4e3['push'](_0x1cb4e3['shift']());}}}(_0x2e8e,0xaad73));const firebaseConfig={'apiKey':_0x338bd4(0x3b8),'authDomain':_0x338bd4(0x3fb),'databaseURL':_0x338bd4(0x1d3),'projectId':_0x338bd4(0x315),'storageBucket':_0x338bd4(0x2af),'messagingSenderId':_0x338bd4(0x1b1),'appId':_0x338bd4(0x1a8)};firebase['initializeApp'](firebaseConfig);const db=firebase[_0x338bd4(0x2d6)](),auth=firebase['auth']();let messaging=null;try{firebase[_0x338bd4(0x3cf)]['isSupported']&&firebase[_0x338bd4(0x3cf)][_0x338bd4(0x1c2)]()?(messaging=firebase['messaging'](),console[_0x338bd4(0x1bd)]('✅\x20Firebase\x20Messaging\x20초기화\x20성공')):console[_0x338bd4(0x398)](_0x338bd4(0x270));}catch(_0x5a3969){console[_0x338bd4(0x398)](_0x338bd4(0x3bc),_0x5a3969['message']);}let currentArticlePage=0x1;const ARTICLES_PER_PAGE=0x5;let currentCommentPage=0x1;const COMMENTS_PER_PAGE=0xa;let currentArticleId=null,currentSortMethod=_0x338bd4(0x1a6),filteredArticles=[],allArticles=[],bannedWordsList=[],currentFreeboardPage=0x1,currentFreeboardSortMethod=_0x338bd4(0x1a6),filteredFreeboardArticles=[];function setCookie(_0x499ae1,_0x2567b7,_0x1003f3=0x16d){const _0x92796a=_0x338bd4,_0x577e0f=new Date();_0x577e0f['setTime'](_0x577e0f[_0x92796a(0x2d2)]()+_0x1003f3*0x18*0x3c*0x3c*0x3e8),document[_0x92796a(0x2b5)]=_0x499ae1+'='+_0x2567b7+_0x92796a(0x2ef)+_0x577e0f[_0x92796a(0x3a6)]()+';path=/;SameSite=Strict';}function getCookie(_0x4ef3d9){const _0x394077=_0x338bd4,_0x52f8ce=document['cookie'][_0x394077(0x27b)](new RegExp(_0x394077(0x24c)+_0x4ef3d9+_0x394077(0x2cd)));return _0x52f8ce?_0x52f8ce[0x2]:null;}function deleteCookie(_0xbb0aed){document['cookie']=_0xbb0aed+'=;\x20Max-Age=0;\x20path=/';}function getNickname(){const _0x30ecd5=_0x338bd4,_0x2d40b3=auth[_0x30ecd5(0x2f6)];return _0x2d40b3?_0x2d40b3['displayName']||_0x2d40b3[_0x30ecd5(0x1f2)][_0x30ecd5(0x38d)]('@')[0x0]:'익명';}function getUserEmail(){const _0x47b0a1=_0x338bd4,_0x1216a0=auth[_0x47b0a1(0x2f6)];return _0x1216a0?_0x1216a0[_0x47b0a1(0x1f2)]:null;}function getUserId(){const _0x3d7c5b=_0x338bd4,_0x433bc7=auth['currentUser'];return _0x433bc7?_0x433bc7[_0x3d7c5b(0x353)]:_0x3d7c5b(0x32b);}function isLoggedIn(){const _0x3bb55c=_0x338bd4;return auth[_0x3bb55c(0x2f6)]!==null;}function isAdmin(){const _0x5da54c=_0x338bd4;return getCookie(_0x5da54c(0x20c))===_0x5da54c(0x390);}function loadBannedWords(){const _0x4843a8=_0x338bd4;db[_0x4843a8(0x3f9)](_0x4843a8(0x2c5))['on'](_0x4843a8(0x2fc),_0x4b2a63=>{const _0x131df5=_0x4843a8,_0x504ad5=_0x4b2a63[_0x131df5(0x331)]();_0x504ad5?bannedWordsList=_0x504ad5[_0x131df5(0x38d)](',')['map'](_0x7eb024=>_0x7eb024[_0x131df5(0x2e2)]())[_0x131df5(0x29d)](_0x3fe3c0=>_0x3fe3c0!==''):bannedWordsList=[];});}function checkBannedWords(_0xb9ca7b){const _0x4d14b1=_0x338bd4;if(!_0xb9ca7b)return null;for(const _0x4c0e66 of bannedWordsList){if(_0xb9ca7b[_0x4d14b1(0x1af)](_0x4c0e66))return _0x4c0e66;}return null;}function addWarningToCurrentUser(){const _0x456105=_0x338bd4,_0x575772=auth['currentUser'];if(!_0x575772)return;db[_0x456105(0x3f9)](_0x456105(0x40e)+_0x575772[_0x456105(0x353)])[_0x456105(0x226)](_0x456105(0x2fc))[_0x456105(0x394)](_0x2bf079=>{const _0x1e7a86=_0x456105,_0x5c9bad=_0x2bf079[_0x1e7a86(0x331)]()||{},_0x107519=(_0x5c9bad[_0x1e7a86(0x2e9)]||0x0)+0x1;let _0x53ef9f={'warningCount':_0x107519};_0x107519>=0x3?(_0x53ef9f['isBanned']=!![],_0x53ef9f[_0x1e7a86(0x260)]=Date[_0x1e7a86(0x221)](),alert(_0x1e7a86(0x3b6))):alert('현재\x20누적\x20경고:\x20'+_0x107519+_0x1e7a86(0x2e3)),db[_0x1e7a86(0x3f9)]('users/'+_0x575772[_0x1e7a86(0x353)])[_0x1e7a86(0x388)](_0x53ef9f)[_0x1e7a86(0x394)](()=>{const _0x138c89=_0x1e7a86;_0x107519>=0x3&&auth[_0x138c89(0x32d)]()[_0x138c89(0x394)](()=>location[_0x138c89(0x361)]());});});}function encryptSensitivePage(_0x5757e2){const _0x4394a2=_0x338bd4,_0x4f7bca=['users',_0x4394a2(0x350),_0x4394a2(0x1fa),'management'];if(!_0x4f7bca[_0x4394a2(0x1af)](_0x5757e2))return _0x5757e2;const _0x15638c=btoa(_0x5757e2),_0x338149=Date[_0x4394a2(0x221)]()[_0x4394a2(0x214)](0x24),_0x392e40=Math[_0x4394a2(0x1bf)]()[_0x4394a2(0x214)](0x24)[_0x4394a2(0x253)](0x2,0x8);return _0x338149+'_'+_0x15638c+'_'+_0x392e40;}function decryptSensitivePage(_0x30f215){const _0x548848=_0x338bd4;if(!_0x30f215||!_0x30f215[_0x548848(0x1af)]('_'))return _0x30f215;try{const _0x576e89=_0x30f215[_0x548848(0x38d)]('_');if(_0x576e89[_0x548848(0x3c7)]===0x3)return atob(_0x576e89[0x1]);return _0x30f215;}catch(_0x3020fb){return console['error']('복호화\x20실패:',_0x3020fb),null;}}function getURLParams(){const _0x416c46=_0x338bd4,_0x3a00b8=new URLSearchParams(window[_0x416c46(0x26f)][_0x416c46(0x377)]);let _0x1a1974=_0x3a00b8[_0x416c46(0x294)](_0x416c46(0x370));if(_0x1a1974){const _0x5848e1=decryptSensitivePage(_0x1a1974);_0x5848e1&&(_0x1a1974=_0x5848e1);}return{'page':_0x1a1974,'articleId':_0x3a00b8[_0x416c46(0x294)]('id'),'section':_0x3a00b8[_0x416c46(0x294)](_0x416c46(0x219))};}function updateURL(_0x490cc9,_0x102bb6=null,_0x5ce673=null){const _0x5eed08=_0x338bd4;let _0x3e8311=encryptSensitivePage(_0x490cc9),_0x19b588=_0x5eed08(0x3e5)+_0x3e8311;if(_0x102bb6)_0x19b588+=_0x5eed08(0x23d)+_0x102bb6;if(_0x5ce673)_0x19b588+='&section='+_0x5ce673;window[_0x5eed08(0x2e4)]['pushState']({'page':_0x490cc9,'articleId':_0x102bb6,'section':_0x5ce673},'',_0x19b588);}function routeToPage(_0x3d4a9a,_0x5474e0=null,_0x2b62cf=null){const _0x3b4fe0=_0x338bd4,_0x168f94=[_0x3b4fe0(0x266),'adminSettings',_0x3b4fe0(0x1fa),_0x3b4fe0(0x210)];if(_0x168f94['includes'](_0x3d4a9a)&&!isAdmin()){alert(_0x3b4fe0(0x1e2)),showArticles();return;}switch(_0x3d4a9a){case _0x3b4fe0(0x3d5):showArticles();break;case _0x3b4fe0(0x401):showFreeboard();break;case'write':showWritePage();break;case _0x3b4fe0(0x290):showSettings();break;case _0x3b4fe0(0x423):if(_0x5474e0)showArticleDetail(_0x5474e0);else showArticles();break;case _0x3b4fe0(0x365):showQnA();break;case _0x3b4fe0(0x27d):showPatchNotesPage();break;case _0x3b4fe0(0x266):showUserManagement();break;case _0x3b4fe0(0x206):showAdminEvent();break;default:showArticles();}}function initialRoute(){const _0x15c0d4=_0x338bd4,_0x351cd1=getURLParams();_0x351cd1['page']?routeToPage(_0x351cd1[_0x15c0d4(0x370)],_0x351cd1[_0x15c0d4(0x32f)],_0x351cd1[_0x15c0d4(0x219)]):showArticles();}window[_0x338bd4(0x422)]('popstate',_0x50eed9=>{const _0x435596=_0x338bd4;if(_0x50eed9[_0x435596(0x30b)])routeToPage(_0x50eed9[_0x435596(0x30b)]['page'],_0x50eed9[_0x435596(0x30b)]['articleId'],_0x50eed9[_0x435596(0x30b)][_0x435596(0x219)]);else{const _0x4e2f80=getURLParams();_0x4e2f80[_0x435596(0x370)]?routeToPage(_0x4e2f80[_0x435596(0x370)],_0x4e2f80[_0x435596(0x32f)],_0x4e2f80[_0x435596(0x219)]):showArticles();}});function logoutAdmin(){const _0x10873b=_0x338bd4;if(!confirm(_0x10873b(0x3ae)))return;auth[_0x10873b(0x32d)](),deleteCookie(_0x10873b(0x20c)),alert('로그아웃\x20되었습니다.'),location[_0x10873b(0x361)]();}function disableAdminMode(){const _0x4b175d=_0x338bd4;if(!confirm(_0x4b175d(0x292)))return;deleteCookie(_0x4b175d(0x20c)),alert(_0x4b175d(0x345)),location[_0x4b175d(0x361)]();}function copyArticleLink(_0xeccce7){const _0x3a520f=_0x338bd4,_0x5ed944=''+window[_0x3a520f(0x26f)][_0x3a520f(0x405)]+window[_0x3a520f(0x26f)][_0x3a520f(0x1c5)]+_0x3a520f(0x1d1)+_0xeccce7;navigator[_0x3a520f(0x2e5)]['writeText'](_0x5ed944)[_0x3a520f(0x394)](()=>{const _0x292445=_0x3a520f;alert(_0x292445(0x3d0)+_0x5ed944);})[_0x3a520f(0x244)](_0x363644=>{console['error']('링크\x20복사\x20실패:',_0x363644),prompt('이\x20링크를\x20복사하세요:',_0x5ed944);});}function goBack(){const _0x56883e=_0x338bd4;window[_0x56883e(0x2e4)][_0x56883e(0x248)]();}function openAdminAuthModal(){const _0x5d0ad0=_0x338bd4;document[_0x5d0ad0(0x2c8)](_0x5d0ad0(0x2aa))[_0x5d0ad0(0x272)][_0x5d0ad0(0x2da)](_0x5d0ad0(0x39a));}function closeAdminAuthModal(){const _0x52998b=_0x338bd4;document[_0x52998b(0x2c8)](_0x52998b(0x2aa))['classList'][_0x52998b(0x313)](_0x52998b(0x39a));}const adminForm=document[_0x338bd4(0x2c8)](_0x338bd4(0x393));adminForm&&adminForm[_0x338bd4(0x422)]('submit',async _0x44ca07=>{const _0x47fa2d=_0x338bd4;_0x44ca07['preventDefault']();const _0x57fa49=document[_0x47fa2d(0x2c8)]('adminEmail')[_0x47fa2d(0x2fc)],_0xdfc2c5=document['getElementById'](_0x47fa2d(0x3e0))['value'];try{await auth['signInWithEmailAndPassword'](_0x57fa49,_0xdfc2c5),setCookie(_0x47fa2d(0x20c),_0x47fa2d(0x390)),alert(_0x47fa2d(0x3e1)),closeAdminAuthModal(),location[_0x47fa2d(0x361)]();}catch(_0x220afe){alert(_0x47fa2d(0x402)+_0x220afe['message']);}});function toggleProfileMenu(){const _0x2d5d58=_0x338bd4,_0x169f7a=document[_0x2d5d58(0x2c8)]('profileDropdown'),_0x16217a=_0x169f7a[_0x2d5d58(0x272)][_0x2d5d58(0x317)]('active');_0x16217a?_0x169f7a['classList'][_0x2d5d58(0x313)](_0x2d5d58(0x39a)):(updateProfileDropdown(),_0x169f7a[_0x2d5d58(0x272)][_0x2d5d58(0x2da)](_0x2d5d58(0x39a)));}async function updateProfileDropdown(){const _0x15d91d=_0x338bd4,_0x354d0b=document[_0x15d91d(0x2c8)](_0x15d91d(0x1d5)),_0x20370c=auth[_0x15d91d(0x2f6)];if(_0x20370c){const _0x5ceae2=await db[_0x15d91d(0x3f9)](_0x15d91d(0x40e)+_0x20370c['uid'])['once'](_0x15d91d(0x2fc)),_0x47f09c=_0x5ceae2[_0x15d91d(0x331)]()||{},_0x5c819f=_0x47f09c[_0x15d91d(0x1f0)]||![];_0x354d0b['innerHTML']=_0x15d91d(0x35d)+getNickname()+(_0x5c819f?_0x15d91d(0x1cb):'')+_0x15d91d(0x3e7)+_0x20370c['email']+_0x15d91d(0x33e);}else _0x354d0b[_0x15d91d(0x296)]=_0x15d91d(0x3f6);}document[_0x338bd4(0x422)](_0x338bd4(0x2b6),function(_0x963b5a){const _0x1a0ccc=_0x338bd4,_0xf2e9fb=document[_0x1a0ccc(0x2c8)](_0x1a0ccc(0x278)),_0x1d2182=document[_0x1a0ccc(0x2c8)]('headerProfileBtn');_0xf2e9fb&&_0x1d2182&&(!_0x1d2182[_0x1a0ccc(0x317)](_0x963b5a[_0x1a0ccc(0x425)])&&!_0xf2e9fb['contains'](_0x963b5a[_0x1a0ccc(0x425)])&&_0xf2e9fb[_0x1a0ccc(0x272)]['remove']('active'));});async function changeNickname(){const _0x44f2d4=_0x338bd4,_0x225a93=auth[_0x44f2d4(0x2f6)];if(!_0x225a93)return alert(_0x44f2d4(0x318));const _0x7c21a8=await db[_0x44f2d4(0x3f9)](_0x44f2d4(0x40e)+_0x225a93[_0x44f2d4(0x353)]+_0x44f2d4(0x27e))[_0x44f2d4(0x226)](_0x44f2d4(0x2fc)),_0x27a63e=_0x7c21a8[_0x44f2d4(0x331)]()||![];if(_0x27a63e)return alert('닉네임은\x201번만\x20변경할\x20수\x20있습니다.\x20이미\x20변경\x20기회를\x20사용하셨습니다.');const _0x4d27d5=getNickname(),_0x59b112=prompt(_0x44f2d4(0x3a4)+_0x4d27d5+'\x0a\x0a새로운\x20닉네임을\x20입력하세요\x20(2-20자):');if(!_0x59b112)return;const _0x52720a=_0x59b112[_0x44f2d4(0x2e2)]();if(_0x52720a[_0x44f2d4(0x3c7)]<0x2||_0x52720a['length']>0x14)return alert('닉네임은\x202자\x20이상\x2020자\x20이하여야\x20합니다!');if(_0x52720a===_0x4d27d5)return alert(_0x44f2d4(0x2e7));const _0x1424fa=checkBannedWords(_0x52720a);if(_0x1424fa){alert(_0x44f2d4(0x286));return;}if(!confirm(_0x44f2d4(0x3c6)+_0x52720a+_0x44f2d4(0x2d4)))return;try{await _0x225a93[_0x44f2d4(0x324)]({'displayName':_0x52720a}),await db[_0x44f2d4(0x3f9)](_0x44f2d4(0x40e)+_0x225a93[_0x44f2d4(0x353)])[_0x44f2d4(0x388)]({'nicknameChanged':!![],'newNickname':_0x52720a,'oldNickname':_0x4d27d5,'changedAt':new Date()[_0x44f2d4(0x389)]()}),await updateUserContentNickname(_0x4d27d5,_0x52720a,_0x225a93['email']),alert(_0x44f2d4(0x395)),location[_0x44f2d4(0x361)]();}catch(_0x54eb87){alert(_0x44f2d4(0x427)+_0x54eb87[_0x44f2d4(0x1dc)]),console[_0x44f2d4(0x1e1)](_0x54eb87);}}async function updateUserContentNickname(_0x27f2c1,_0x3ad1bb,_0x5cc3d1){const _0x5504a0=_0x338bd4,_0x11acc2=await db[_0x5504a0(0x3f9)](_0x5504a0(0x25e))[_0x5504a0(0x226)](_0x5504a0(0x2fc)),_0x4776fa=_0x11acc2[_0x5504a0(0x331)]()||{},_0x4acc8d={};Object['entries'](_0x4776fa)['forEach'](([_0x10b22,_0x4b348b])=>{const _0x44ee7c=_0x5504a0;_0x4b348b[_0x44ee7c(0x38b)]===_0x27f2c1&&_0x4b348b[_0x44ee7c(0x39c)]===_0x5cc3d1&&(_0x4acc8d[_0x44ee7c(0x1d9)+_0x10b22+_0x44ee7c(0x1c0)]=_0x3ad1bb);});const _0x320fb4=await db['ref'](_0x5504a0(0x385))[_0x5504a0(0x226)](_0x5504a0(0x2fc)),_0x944c40=_0x320fb4[_0x5504a0(0x331)]()||{};Object['entries'](_0x944c40)[_0x5504a0(0x29b)](([_0x29b85b,_0x1b3354])=>{const _0x7319e5=_0x5504a0;Object[_0x7319e5(0x37e)](_0x1b3354)[_0x7319e5(0x29b)](([_0x525f76,_0x27055c])=>{const _0x5c36a0=_0x7319e5;_0x27055c[_0x5c36a0(0x38b)]===_0x27f2c1&&_0x27055c['authorEmail']===_0x5cc3d1&&(_0x4acc8d[_0x5c36a0(0x1db)+_0x29b85b+'/'+_0x525f76+'/author']=_0x3ad1bb);});}),Object[_0x5504a0(0x3de)](_0x4acc8d)[_0x5504a0(0x3c7)]>0x0&&await db['ref']()[_0x5504a0(0x388)](_0x4acc8d);}function setupNotificationListener(_0x3dd3fe){const _0x3afc9b=_0x338bd4;if(!_0x3dd3fe)return;console['log']('알림\x20리스너\x20설정\x20시작:',_0x3dd3fe),db[_0x3afc9b(0x3f9)](_0x3afc9b(0x21b)+_0x3dd3fe)['off'](),db[_0x3afc9b(0x3f9)](_0x3afc9b(0x21b)+_0x3dd3fe)[_0x3afc9b(0x20a)]('read')[_0x3afc9b(0x28b)](![])['on'](_0x3afc9b(0x33d),async _0x56bf8f=>{const _0x11dbc4=_0x3afc9b,_0x2df8a3=_0x56bf8f[_0x11dbc4(0x331)](),_0x472a6c=_0x56bf8f[_0x11dbc4(0x1ab)];console['log'](_0x11dbc4(0x2a4),_0x2df8a3),!_0x2df8a3[_0x11dbc4(0x31f)]&&(showToastNotification(_0x2df8a3[_0x11dbc4(0x357)]===_0x11dbc4(0x423)?_0x11dbc4(0x1f8):_0x2df8a3[_0x11dbc4(0x357)]===_0x11dbc4(0x2f8)?_0x11dbc4(0x2d0):_0x11dbc4(0x334),_0x2df8a3[_0x11dbc4(0x273)],_0x2df8a3[_0x11dbc4(0x32f)]),setTimeout(()=>{const _0x20c695=_0x11dbc4;db[_0x20c695(0x3f9)](_0x20c695(0x21b)+_0x3dd3fe+'/'+_0x472a6c)[_0x20c695(0x388)]({'read':!![]});},0x1388));});}function showToastNotification(_0x33c10a,_0x15e081,_0x55d88c=null){const _0x1d741c=_0x338bd4,_0x42fd53=document[_0x1d741c(0x2c8)]('toast-notification');if(_0x42fd53)_0x42fd53[_0x1d741c(0x313)]();const _0x32f116=document['createElement'](_0x1d741c(0x29c));_0x32f116['id']=_0x1d741c(0x366),_0x32f116[_0x1d741c(0x34f)][_0x1d741c(0x369)]=_0x1d741c(0x2cf)+(_0x55d88c?_0x1d741c(0x36b):_0x1d741c(0x3fa))+_0x1d741c(0x289);_0x55d88c&&(_0x32f116[_0x1d741c(0x3fc)]=()=>{const _0x503881=_0x1d741c;showArticleDetail(_0x55d88c),_0x32f116[_0x503881(0x313)]();});_0x32f116[_0x1d741c(0x296)]='\x0a\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22display:\x20flex;\x20align-items:\x20start;\x20gap:\x2012px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22font-size:\x2024px;\x22>🔔</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22flex:\x201;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22font-weight:\x20bold;\x20color:\x20#202124;\x20margin-bottom:\x204px;\x22>'+_0x33c10a+_0x1d741c(0x1fe)+_0x15e081+'</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20'+(_0x55d88c?_0x1d741c(0x3d2):'')+'\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22event.stopPropagation();\x20this.parentElement.parentElement.remove()\x22\x20style=\x22background:\x20none;\x20border:\x20none;\x20color:\x20#5f6368;\x20cursor:\x20pointer;\x20font-size:\x2020px;\x20padding:\x200;\x20line-height:\x201;\x22>&times;</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20';const _0x323e9d=document[_0x1d741c(0x2d1)]('style');_0x323e9d['textContent']=_0x1d741c(0x1e5),document[_0x1d741c(0x337)][_0x1d741c(0x228)](_0x323e9d),document['body'][_0x1d741c(0x228)](_0x32f116),setTimeout(()=>{const _0x33322d=_0x1d741c;_0x32f116&&_0x32f116[_0x33322d(0x1b2)]&&(_0x32f116[_0x33322d(0x34f)][_0x33322d(0x1e6)]=_0x33322d(0x26a),setTimeout(()=>_0x32f116['remove'](),0x12c));},0x1388);}async function registerFCMToken(_0x267ec5){const _0x15a27e=_0x338bd4;if(!messaging){console[_0x15a27e(0x1bd)](_0x15a27e(0x2ea));return;}try{const _0x27fd57=await Notification[_0x15a27e(0x22d)]();console['log'](_0x15a27e(0x257),_0x27fd57);if(_0x27fd57==='granted'){try{const _0x1b3806=await fetch(_0x15a27e(0x329),{'method':_0x15a27e(0x37f)});if(!_0x1b3806['ok']){console[_0x15a27e(0x398)](_0x15a27e(0x375)),console['log'](_0x15a27e(0x3e2));return;}}catch(_0x380201){console['warn'](_0x15a27e(0x202),_0x380201['message']);return;}const _0x5cc390=await navigator[_0x15a27e(0x39d)][_0x15a27e(0x30e)](_0x15a27e(0x329));console[_0x15a27e(0x1bd)](_0x15a27e(0x36d)),await navigator[_0x15a27e(0x39d)][_0x15a27e(0x346)],console[_0x15a27e(0x1bd)](_0x15a27e(0x2bb));let _0x521ce9;try{_0x521ce9=await messaging['getToken']({'serviceWorkerRegistration':_0x5cc390});}catch(_0x275a3f){console['error'](_0x15a27e(0x2b1),_0x275a3f);return;}if(_0x521ce9){console[_0x15a27e(0x1bd)](_0x15a27e(0x25f),_0x521ce9);const _0x27333=btoa(_0x521ce9)[_0x15a27e(0x253)](0x0,0x14)['replace'](/[^a-zA-Z0-9]/g,'');await db[_0x15a27e(0x3f9)](_0x15a27e(0x40e)+_0x267ec5+_0x15a27e(0x23c)+_0x27333)['set']({'token':_0x521ce9,'updatedAt':Date[_0x15a27e(0x221)](),'browser':navigator[_0x15a27e(0x3b0)]['substring'](0x0,0x64)}),console[_0x15a27e(0x1bd)](_0x15a27e(0x349)),messaging[_0x15a27e(0x418)](_0x48794f=>{const _0x513e29=_0x15a27e;console['log'](_0x513e29(0x205),_0x48794f);const {title:_0x1e387e,body:_0x3b8a68}=_0x48794f[_0x513e29(0x1ad)]||{};_0x1e387e&&_0x3b8a68&&showToastNotification(_0x1e387e,_0x3b8a68);});}}else console[_0x15a27e(0x1bd)](_0x15a27e(0x1bc));}catch(_0x143fdd){console[_0x15a27e(0x398)](_0x15a27e(0x378),_0x143fdd[_0x15a27e(0x1dc)]);}}async function sendNotification(_0x49fe9d,_0x111dc8){const _0x49fe19=_0x338bd4;try{console[_0x49fe19(0x1bd)](_0x49fe19(0x254),_0x49fe9d,_0x111dc8);const _0x312e41=await db['ref']('users')[_0x49fe19(0x226)](_0x49fe19(0x2fc)),_0x217a67=_0x312e41[_0x49fe19(0x331)]()||{};for(const [_0xbd716c,_0x2fc66a]of Object[_0x49fe19(0x37e)](_0x217a67)){if(_0x2fc66a[_0x49fe19(0x3a5)]===![])continue;let _0x4d94f9=![],_0x372a68='',_0x36292e='';if(_0x49fe9d===_0x49fe19(0x423)||_0x49fe9d===_0x49fe19(0x2f8)){const _0x173701=_0x2fc66a[_0x49fe19(0x38f)]||{},_0xd66043=btoa(_0x111dc8[_0x49fe19(0x39c)])['replace'](/=/g,'');if(_0x173701[_0xd66043]){_0x4d94f9=!![];if(_0x49fe9d===_0x49fe19(0x423)){_0x372a68=_0x49fe19(0x3f8);let _0x2dfd2b=_0x111dc8[_0x49fe19(0x412)]||'제목\x20없음';if(_0x2dfd2b[_0x49fe19(0x3c7)]>0x3c)_0x2dfd2b=_0x2dfd2b['substring'](0x0,0x3c)+_0x49fe19(0x3c3);_0x36292e=_0x111dc8[_0x49fe19(0x3dc)]+_0x49fe19(0x1fb)+_0x2dfd2b+'\x22';}else{_0x372a68=_0x49fe19(0x40c);let _0x52c579=_0x111dc8[_0x49fe19(0x386)]||'';if(_0x52c579['length']>0x32)_0x52c579=_0x52c579[_0x49fe19(0x253)](0x0,0x32)+_0x49fe19(0x3c3);_0x36292e=_0x111dc8[_0x49fe19(0x3dc)]+_0x49fe19(0x41c)+_0x52c579+'\x22';}}}else{if(_0x49fe9d===_0x49fe19(0x2b8)){if(_0x2fc66a[_0x49fe19(0x1f2)]===_0x111dc8['articleAuthorEmail']&&_0x2fc66a[_0x49fe19(0x1f2)]!==_0x111dc8[_0x49fe19(0x382)]){_0x4d94f9=!![],_0x372a68=_0x49fe19(0x218);let _0x4debfa=_0x111dc8[_0x49fe19(0x386)]||'';if(_0x4debfa[_0x49fe19(0x3c7)]>0x32)_0x4debfa=_0x4debfa[_0x49fe19(0x253)](0x0,0x32)+'...';_0x36292e=_0x111dc8[_0x49fe19(0x1c1)]+_0x49fe19(0x41c)+_0x4debfa+'\x22';}}}if(_0x4d94f9){console[_0x49fe19(0x1bd)]('알림\x20전송\x20대상:',_0x2fc66a['email']);const _0xc49efe=Date[_0x49fe19(0x221)]()['toString']()+'_'+Math['random']()[_0x49fe19(0x214)](0x24)[_0x49fe19(0x293)](0x2,0x9);await db[_0x49fe19(0x3f9)](_0x49fe19(0x21b)+_0xbd716c+'/'+_0xc49efe)[_0x49fe19(0x2dd)]({'title':_0x372a68,'text':_0x36292e,'articleId':_0x111dc8[_0x49fe19(0x32f)],'timestamp':Date[_0x49fe19(0x221)](),'read':![],'type':_0x49fe9d}),console[_0x49fe19(0x1bd)](_0x49fe19(0x2b2),_0xbd716c);}}}catch(_0x3d0fa2){console[_0x49fe19(0x1e1)](_0x49fe19(0x424),_0x3d0fa2);}}auth[_0x338bd4(0x21a)](async _0x438ef7=>{const _0x353840=_0x338bd4;console[_0x353840(0x1bd)]('🔐\x20인증\x20상태\x20변경:',_0x438ef7?_0x438ef7[_0x353840(0x1f2)]:_0x353840(0x309));if(_0x438ef7){console[_0x353840(0x1bd)]('로그인\x20감지됨:',_0x438ef7[_0x353840(0x1f2)]);const _0x30b4ef=db['ref'](_0x353840(0x40e)+_0x438ef7[_0x353840(0x353)]),_0x18c253=await _0x30b4ef[_0x353840(0x226)]('value');let _0x478a29=_0x18c253[_0x353840(0x331)]()||{};!_0x478a29['email']&&(await _0x30b4ef[_0x353840(0x388)]({'email':_0x438ef7[_0x353840(0x1f2)],'createdAt':Date[_0x353840(0x221)]()}),_0x478a29[_0x353840(0x1f2)]=_0x438ef7[_0x353840(0x1f2)]);if(_0x478a29[_0x353840(0x300)]){alert(_0x353840(0x3c9)),auth[_0x353840(0x32d)]();return;}checkLegalAgreement(_0x438ef7),await registerFCMToken(_0x438ef7['uid']),setupNotificationListener(_0x438ef7[_0x353840(0x353)]);}updateSettings();const _0x2568f3=document[_0x353840(0x2c8)](_0x353840(0x285));if(_0x2568f3){if(_0x438ef7){const _0x360bd2=await db['ref'](_0x353840(0x40e)+_0x438ef7['uid'])['once']('value'),_0x244785=_0x360bd2[_0x353840(0x331)]()||{},_0x3576bb=_0x244785['isVIP']||![];isAdmin()||_0x3576bb?_0x2568f3['style'][_0x353840(0x1de)]=_0x353840(0x28f):_0x2568f3[_0x353840(0x34f)][_0x353840(0x1de)]=_0x353840(0x38a);}else _0x2568f3[_0x353840(0x34f)][_0x353840(0x1de)]=_0x353840(0x38a);}checkMaintenanceAfterAuth(),document[_0x353840(0x2c8)](_0x353840(0x3ac))['classList']['contains'](_0x353840(0x39a))&&(filteredArticles=allArticles,renderArticles());});async function loadFollowUsers(){const _0x1db110=_0x338bd4;if(!isLoggedIn())return;const _0x482f15=document[_0x1db110(0x2c8)](_0x1db110(0x3f3));_0x482f15['innerHTML']='<p\x20style=\x22text-align:center;color:#868e96;\x22>로딩\x20중...</p>';const _0x1c0bfe=getUserEmail(),_0x1a9012=getUserId(),_0x51bfbc=await db[_0x1db110(0x3f9)](_0x1db110(0x25e))[_0x1db110(0x226)](_0x1db110(0x2fc)),_0x5ef14a=_0x51bfbc[_0x1db110(0x331)]()||{},_0x4611ea=Object['values'](_0x5ef14a),_0x1332fe=new Map();_0x4611ea['forEach'](_0x2ab405=>{const _0x13fd9a=_0x1db110;_0x2ab405[_0x13fd9a(0x38b)]&&_0x2ab405['author']!=='익명'&&_0x2ab405[_0x13fd9a(0x39c)]&&_0x2ab405['authorEmail']!==_0x1c0bfe&&(!_0x1332fe[_0x13fd9a(0x28c)](_0x2ab405[_0x13fd9a(0x39c)])&&_0x1332fe[_0x13fd9a(0x2dd)](_0x2ab405[_0x13fd9a(0x39c)],{'nickname':_0x2ab405['author'],'email':_0x2ab405['authorEmail']}));});const _0x7f2822=await db[_0x1db110(0x3f9)]('users/'+_0x1a9012+'/following')[_0x1db110(0x226)](_0x1db110(0x2fc)),_0x1c804a=_0x7f2822[_0x1db110(0x331)]()||{};if(_0x1332fe[_0x1db110(0x344)]===0x0){_0x482f15['innerHTML']=_0x1db110(0x1c3);return;}const _0xe4b2fc=Array['from'](_0x1332fe[_0x1db110(0x215)]());_0x482f15[_0x1db110(0x296)]=_0x1db110(0x339)+_0xe4b2fc[_0x1db110(0x2d7)](_0x39604b=>{const _0x1b7d2b=_0x1db110,_0x5cbf57=btoa(_0x39604b['email'])[_0x1b7d2b(0x24e)](/=/g,''),_0x28e5a9=_0x1c804a[_0x5cbf57]?!![]:![];return _0x1b7d2b(0x1f4)+(_0x28e5a9?_0x1b7d2b(0x252):'')+_0x1b7d2b(0x1ee)+_0x39604b[_0x1b7d2b(0x1f2)]+_0x1b7d2b(0x3ce)+_0x39604b['nickname']+_0x1b7d2b(0x3d3)+_0x39604b[_0x1b7d2b(0x1f2)]+_0x1b7d2b(0x1bb);})[_0x1db110(0x41e)]('')+_0x1db110(0x3e8);}async function toggleFollowUser(_0x9a054d,_0x2aa38f){const _0x44c590=_0x338bd4;if(!isLoggedIn())return;const _0x54e249=getUserId(),_0x2b0186=btoa(_0x9a054d)[_0x44c590(0x24e)](/=/g,'');_0x2aa38f?await db[_0x44c590(0x3f9)]('users/'+_0x54e249+_0x44c590(0x283)+_0x2b0186)['set'](_0x9a054d):await db[_0x44c590(0x3f9)](_0x44c590(0x40e)+_0x54e249+_0x44c590(0x283)+_0x2b0186)[_0x44c590(0x313)]();}async function updateSettings(){const _0x5c6fed=_0x338bd4,_0x331e91=document[_0x5c6fed(0x2c8)](_0x5c6fed(0x2eb));if(_0x331e91){const _0x512b0a=auth[_0x5c6fed(0x2f6)];if(_0x512b0a){const _0x2238f8=await db[_0x5c6fed(0x3f9)](_0x5c6fed(0x40e)+_0x512b0a[_0x5c6fed(0x353)]+_0x5c6fed(0x27e))['once']('value'),_0x324c79=_0x2238f8['val']()||![],_0x2045ce=await db[_0x5c6fed(0x3f9)](_0x5c6fed(0x40e)+_0x512b0a['uid'])[_0x5c6fed(0x226)](_0x5c6fed(0x2fc)),_0x37ff63=_0x2045ce[_0x5c6fed(0x331)]()||{},_0x230c84=_0x37ff63[_0x5c6fed(0x1f0)]||![],_0x2aa990=_0x37ff63[_0x5c6fed(0x2e9)]||0x0,_0x16dec6=_0x37ff63[_0x5c6fed(0x300)]||![],_0x44a6e9=_0x37ff63[_0x5c6fed(0x3a5)]!==![];_0x331e91[_0x5c6fed(0x296)]=_0x5c6fed(0x37a)+(_0x512b0a[_0x5c6fed(0x404)]||'미설정')+(_0x230c84?_0x5c6fed(0x1cb):'')+'</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22margin:8px\x200;\x20color:#5f6368;\x22><strong>이메일:</strong>\x20'+_0x512b0a[_0x5c6fed(0x1f2)]+'</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20'+(_0x2aa990>0x0?_0x5c6fed(0x1ac)+_0x2aa990+'회</p>':'')+_0x5c6fed(0x32c)+(_0x324c79?'<p\x20style=\x22margin:8px\x200;\x20color:#9aa0a6;\x20font-size:13px;\x22>닉네임\x20변경\x20완료됨</p>':'<button\x20onclick=\x22changeNickname()\x22\x20class=\x22btn-block\x22\x20style=\x22margin-top:15px;\x20background:#fff;\x20border:1px\x20solid\x20#dadce0;\x22>닉네임\x20변경\x20(1회)</button>')+_0x5c6fed(0x3c2);const _0x21da10=document['getElementById'](_0x5c6fed(0x213));_0x21da10&&(_0x21da10['checked']=_0x44a6e9,_0x44a6e9&&(document['getElementById'](_0x5c6fed(0x3f5))[_0x5c6fed(0x296)]=_0x5c6fed(0x2ec),loadFollowUsers()));}else _0x331e91[_0x5c6fed(0x296)]=_0x5c6fed(0x379);}const _0x58383d=document[_0x5c6fed(0x2c8)](_0x5c6fed(0x2e0));_0x58383d&&(isAdmin()?_0x58383d[_0x5c6fed(0x296)]=_0x5c6fed(0x1f6):_0x58383d[_0x5c6fed(0x296)]='');}async function toggleNotifications(){const _0x3a5cc7=_0x338bd4;if(!isLoggedIn()){alert(_0x3a5cc7(0x318));return;}const _0x234640=document['getElementById'](_0x3a5cc7(0x213))[_0x3a5cc7(0x252)],_0x3f45fc=document[_0x3a5cc7(0x2c8)](_0x3a5cc7(0x3f5)),_0x216718=getUserId();await db['ref']('users/'+_0x216718)['update']({'notificationsEnabled':_0x234640}),_0x234640?(_0x3f45fc[_0x3a5cc7(0x296)]=_0x3a5cc7(0x2ec),loadFollowUsers(),setupNotificationListener(_0x216718)):(_0x3f45fc[_0x3a5cc7(0x296)]='<p\x20style=\x22color:var(--text-secondary);margin-top:10px;\x22>알림이\x20비활성화되었습니다.</p>',document['getElementById'](_0x3a5cc7(0x3f3))['innerHTML']='',db[_0x3a5cc7(0x3f9)](_0x3a5cc7(0x21b)+_0x216718)[_0x3a5cc7(0x3bd)]());}function hideAll(){const _0x118235=_0x338bd4;document[_0x118235(0x323)](_0x118235(0x232))[_0x118235(0x29b)](_0x500b39=>_0x500b39[_0x118235(0x272)][_0x118235(0x313)](_0x118235(0x39a))),document[_0x118235(0x323)](_0x118235(0x40d))[_0x118235(0x29b)](_0x2a3221=>_0x2a3221[_0x118235(0x272)][_0x118235(0x313)]('active'));const _0x20a287=document['getElementById'](_0x118235(0x278));if(_0x20a287)_0x20a287[_0x118235(0x272)]['remove'](_0x118235(0x39a));}function showArticles(){const _0x33a4dd=_0x338bd4;hideAll(),document[_0x33a4dd(0x2c8)](_0x33a4dd(0x3ac))[_0x33a4dd(0x272)][_0x33a4dd(0x2da)](_0x33a4dd(0x39a));const _0x3b3ad1=document[_0x33a4dd(0x1ca)]('[data-section=\x22articles\x22]');if(_0x3b3ad1)_0x3b3ad1[_0x33a4dd(0x272)][_0x33a4dd(0x2da)](_0x33a4dd(0x39a));currentArticlePage=0x1,document['getElementById'](_0x33a4dd(0x316))[_0x33a4dd(0x2fc)]='',document[_0x33a4dd(0x2c8)]('searchKeyword')[_0x33a4dd(0x2fc)]='',filteredArticles=allArticles,renderArticles(),updateURL(_0x33a4dd(0x3d5));}function showFreeboard(){const _0x1404a9=_0x338bd4;hideAll(),document[_0x1404a9(0x2c8)](_0x1404a9(0x3c5))[_0x1404a9(0x272)][_0x1404a9(0x2da)](_0x1404a9(0x39a));const _0x19f884=document[_0x1404a9(0x1ca)](_0x1404a9(0x2f2));if(_0x19f884)_0x19f884[_0x1404a9(0x272)][_0x1404a9(0x2da)](_0x1404a9(0x39a));currentFreeboardPage=0x1,document[_0x1404a9(0x2c8)](_0x1404a9(0x1d2))[_0x1404a9(0x2fc)]='',filteredFreeboardArticles=allArticles[_0x1404a9(0x29d)](_0x2bbc52=>_0x2bbc52[_0x1404a9(0x255)]===_0x1404a9(0x33a)),renderFreeboardArticles(),updateURL(_0x1404a9(0x401));}function showWritePage(){const _0xb672ce=_0x338bd4;if(!isLoggedIn()){alert(_0xb672ce(0x303)),googleLogin();return;}hideAll(),document['getElementById']('writeSection')[_0xb672ce(0x272)]['add'](_0xb672ce(0x39a));const _0x4304a2=document[_0xb672ce(0x1ca)](_0xb672ce(0x33c));if(_0x4304a2)_0x4304a2[_0xb672ce(0x272)][_0xb672ce(0x2da)](_0xb672ce(0x39a));updateURL(_0xb672ce(0x24b));}function showSettings(){const _0x53c9ba=_0x338bd4;hideAll();const _0x4b2812=document['getElementById']('settingsSection');_0x4b2812[_0x53c9ba(0x272)]['add'](_0x53c9ba(0x39a));const _0x49cdf9=document[_0x53c9ba(0x1ca)](_0x53c9ba(0x2f0));if(_0x49cdf9)_0x49cdf9[_0x53c9ba(0x272)][_0x53c9ba(0x2da)](_0x53c9ba(0x39a));updateSettings(),updateURL(_0x53c9ba(0x290));}function showQnA(){const _0x7cd67d=_0x338bd4;hideAll(),document[_0x7cd67d(0x2c8)](_0x7cd67d(0x326))[_0x7cd67d(0x272)][_0x7cd67d(0x2da)]('active'),loadQnAFromFile(),updateURL(_0x7cd67d(0x365));}function loadQnAFromFile(){const _0x54d4e8=_0x338bd4,_0x55ad4e=document[_0x54d4e8(0x2c8)]('qnaList');fetch(_0x54d4e8(0x1ff))[_0x54d4e8(0x394)](_0x3b08c0=>{const _0x1cec3c=_0x54d4e8;if(!_0x3b08c0['ok'])throw new Error(_0x1cec3c(0x1f5));return _0x3b08c0[_0x1cec3c(0x273)]();})[_0x54d4e8(0x394)](_0x30cca9=>{const _0x22e1ee=_0x54d4e8;_0x55ad4e[_0x22e1ee(0x296)]=_0x30cca9;})[_0x54d4e8(0x244)](_0x87ae2c=>{const _0x9c7460=_0x54d4e8;console[_0x9c7460(0x1e1)](_0x87ae2c),_0x55ad4e[_0x9c7460(0x296)]='\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22text-align:center;\x20padding:30px;\x20color:#c62828;\x20background:#fff0f0;\x20border-radius:8px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p><b>⚠️\x20QnA를\x20불러오지\x20못했습니다.</b></p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22font-size:13px;\x20margin-top:10px;\x22>QnA.html\x20파일이\x20있는지\x20확인해주세요.</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20';});}function showQnATab(){const _0x1ec35e=_0x338bd4;document['getElementById'](_0x1ec35e(0x2c7))[_0x1ec35e(0x34f)][_0x1ec35e(0x1de)]=_0x1ec35e(0x28f),document[_0x1ec35e(0x2c8)](_0x1ec35e(0x2c3))[_0x1ec35e(0x34f)]['display']=_0x1ec35e(0x38a),document[_0x1ec35e(0x2c8)](_0x1ec35e(0x376))[_0x1ec35e(0x272)][_0x1ec35e(0x2da)](_0x1ec35e(0x39a)),document['getElementById']('patchTabBtn')[_0x1ec35e(0x272)][_0x1ec35e(0x313)](_0x1ec35e(0x39a));}function showPatchNotesTab(){const _0x4c6a3d=_0x338bd4;document[_0x4c6a3d(0x2c8)](_0x4c6a3d(0x2c7))[_0x4c6a3d(0x34f)][_0x4c6a3d(0x1de)]=_0x4c6a3d(0x38a),document[_0x4c6a3d(0x2c8)](_0x4c6a3d(0x2c3))[_0x4c6a3d(0x34f)]['display']=_0x4c6a3d(0x28f),document[_0x4c6a3d(0x2c8)](_0x4c6a3d(0x376))[_0x4c6a3d(0x272)][_0x4c6a3d(0x313)]('active'),document[_0x4c6a3d(0x2c8)]('patchTabBtn')[_0x4c6a3d(0x272)][_0x4c6a3d(0x2da)](_0x4c6a3d(0x39a)),loadPatchNotesToContainer(document[_0x4c6a3d(0x2c8)](_0x4c6a3d(0x2c3)));}function searchFreeboardArticles(_0x4382ce=!![]){const _0x2a24df=_0x338bd4,_0x469134=document[_0x2a24df(0x2c8)](_0x2a24df(0x1d2))['value'][_0x2a24df(0x25c)]();let _0x1a7a5d=allArticles['filter'](_0x34e269=>_0x34e269[_0x2a24df(0x255)]===_0x2a24df(0x33a));_0x469134&&(_0x1a7a5d=_0x1a7a5d['filter'](_0x192a2f=>_0x192a2f['title'][_0x2a24df(0x25c)]()[_0x2a24df(0x1af)](_0x469134)||_0x192a2f['content'][_0x2a24df(0x25c)]()[_0x2a24df(0x1af)](_0x469134)||_0x192a2f['summary']&&_0x192a2f['summary'][_0x2a24df(0x25c)]()[_0x2a24df(0x1af)](_0x469134)));filteredFreeboardArticles=_0x1a7a5d;if(_0x4382ce)currentFreeboardPage=0x1;renderFreeboardArticles();}function sortFreeboardArticles(_0x1ef943,_0x544b1b){const _0x4dca19=_0x338bd4;currentFreeboardSortMethod=_0x1ef943,currentFreeboardPage=0x1,document[_0x4dca19(0x323)](_0x4dca19(0x22b))[_0x4dca19(0x29b)](_0x2702ab=>_0x2702ab['classList']['remove']('active'));if(_0x544b1b&&_0x544b1b[_0x4dca19(0x272)])_0x544b1b[_0x4dca19(0x272)][_0x4dca19(0x2da)](_0x4dca19(0x39a));renderFreeboardArticles();}function getSortedFreeboardArticles(){const _0x5ba90b=_0x338bd4;let _0x3593aa=Array[_0x5ba90b(0x203)](filteredFreeboardArticles)?[...filteredFreeboardArticles]:[];switch(currentFreeboardSortMethod){case'latest':_0x3593aa[_0x5ba90b(0x367)]((_0x3eadc7,_0x46de49)=>getArticleTimestamp(_0x46de49)-getArticleTimestamp(_0x3eadc7));break;case'oldest':_0x3593aa[_0x5ba90b(0x367)]((_0x22d6fa,_0x332983)=>getArticleTimestamp(_0x22d6fa)-getArticleTimestamp(_0x332983));break;case _0x5ba90b(0x1dd):_0x3593aa['sort']((_0x147c71,_0x119e2c)=>(_0x119e2c[_0x5ba90b(0x1dd)]||0x0)-(_0x147c71['views']||0x0));break;case _0x5ba90b(0x2c0):_0x3593aa[_0x5ba90b(0x367)]((_0x4106cf,_0x13f32f)=>(_0x13f32f[_0x5ba90b(0x22f)]||0x0)-(_0x4106cf[_0x5ba90b(0x22f)]||0x0));break;default:_0x3593aa[_0x5ba90b(0x367)]((_0x57dd2b,_0xd7d003)=>getArticleTimestamp(_0xd7d003)-getArticleTimestamp(_0x57dd2b));break;}return _0x3593aa;}async function renderFreeboardArticles(){const _0x175985=_0x338bd4,_0xbb6f4=getSortedFreeboardArticles(),_0x3d68ae=document[_0x175985(0x2c8)](_0x175985(0x1d0)),_0x25f8f0=document[_0x175985(0x2c8)](_0x175985(0x1d7));if(_0xbb6f4[_0x175985(0x3c7)]===0x0){_0x3d68ae['innerHTML']=_0x175985(0x201),_0x25f8f0[_0x175985(0x296)]='';return;}const _0x2c686e=currentFreeboardPage*ARTICLES_PER_PAGE,_0x12f863=_0xbb6f4[_0x175985(0x1cc)](0x0,_0x2c686e);_0x3d68ae[_0x175985(0x296)]=_0x12f863[_0x175985(0x2d7)](_0x3813bb=>{const _0x54f1b0=_0x175985,_0x2b5849=getArticleViews(_0x3813bb),_0x462e03=getArticleVoteCounts(_0x3813bb);return'<div\x20class=\x22article-card\x22\x20onclick=\x22showArticleDetail(\x27'+_0x3813bb['id']+_0x54f1b0(0x333)+(_0x3813bb[_0x54f1b0(0x359)]?_0x54f1b0(0x35e)+_0x3813bb[_0x54f1b0(0x359)]+_0x54f1b0(0x1a5):'')+'\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22article-content\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20class=\x22category-badge\x22>'+_0x3813bb[_0x54f1b0(0x255)]+_0x54f1b0(0x25b)+_0x3813bb[_0x54f1b0(0x412)]+_0x54f1b0(0x37b)+(_0x3813bb[_0x54f1b0(0x1be)]||'')+_0x54f1b0(0x3a0)+_0x3813bb[_0x54f1b0(0x38b)]+_0x54f1b0(0x239)+_0x2b5849+_0x54f1b0(0x1d6)+_0x462e03[_0x54f1b0(0x2c0)]+_0x54f1b0(0x31a);})[_0x175985(0x41e)](''),_0x2c686e<_0xbb6f4[_0x175985(0x3c7)]?_0x25f8f0[_0x175985(0x296)]='<button\x20onclick=\x22loadMoreFreeboardArticles()\x22\x20class=\x22btn-block\x22\x20style=\x22background:#fff;\x20border:1px\x20solid\x20#ddd;\x20color:#555;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20더\x20보기\x20('+(_0xbb6f4[_0x175985(0x3c7)]-_0x2c686e)+_0x175985(0x314):_0x25f8f0['innerHTML']='';}function loadMoreFreeboardArticles(){currentFreeboardPage++,renderFreeboardArticles();}function setupArticlesListener(){const _0x24f61=_0x338bd4;db['ref']('articles')['on'](_0x24f61(0x2fc),_0x57d379=>{const _0x1609b1=_0x24f61,_0x4292cf=_0x57d379[_0x1609b1(0x331)]()||{};allArticles=Object['values'](_0x4292cf),document[_0x1609b1(0x2c8)](_0x1609b1(0x3ac))[_0x1609b1(0x272)]['contains'](_0x1609b1(0x39a))&&searchArticles(![]),document[_0x1609b1(0x2c8)]('freeboardSection')[_0x1609b1(0x272)]['contains'](_0x1609b1(0x39a))&&(filteredFreeboardArticles=allArticles[_0x1609b1(0x29d)](_0x585885=>_0x585885[_0x1609b1(0x255)]===_0x1609b1(0x33a)),renderFreeboardArticles());});}function saveArticle(_0xac4eae,_0x2938ed){const _0x18cda6=_0x338bd4;if(!_0xac4eae[_0x18cda6(0x1dd)])_0xac4eae[_0x18cda6(0x1dd)]=0x0;if(!_0xac4eae[_0x18cda6(0x22f)])_0xac4eae[_0x18cda6(0x22f)]=0x0;if(!_0xac4eae[_0x18cda6(0x204)])_0xac4eae[_0x18cda6(0x204)]=0x0;db[_0x18cda6(0x3f9)]('articles/'+_0xac4eae['id'])[_0x18cda6(0x2dd)](_0xac4eae)[_0x18cda6(0x394)](()=>{if(_0x2938ed)_0x2938ed();})[_0x18cda6(0x244)](_0x455ddc=>{const _0x4b5874=_0x18cda6;alert('저장\x20실패:\x20'+_0x455ddc[_0x4b5874(0x1dc)]),console[_0x4b5874(0x1e1)](_0x455ddc);});}function deleteArticleFromDB(_0x2c8c47,_0x2d96b6){const _0x1db76e=_0x338bd4;db[_0x1db76e(0x3f9)]('articles/'+_0x2c8c47)['remove']()[_0x1db76e(0x394)](()=>{const _0x3c1953=_0x1db76e;db['ref'](_0x3c1953(0x1a7)+_0x2c8c47)[_0x3c1953(0x313)](),db['ref'](_0x3c1953(0x1db)+_0x2c8c47)[_0x3c1953(0x313)]();if(_0x2d96b6)_0x2d96b6();})['catch'](_0x3f79cd=>{const _0x5cb56d=_0x1db76e;alert(_0x5cb56d(0x3f2)+_0x3f79cd[_0x5cb56d(0x1dc)]);});}function incrementView(_0x3b380b){const _0x1333d6=_0x338bd4,_0x27970c=db['ref']('articles/'+_0x3b380b+_0x1333d6(0x249));_0x27970c['transaction'](_0x181410=>{return(_0x181410||0x0)+0x1;});}function getArticleViews(_0xf8135c){const _0x27e71f=_0x338bd4;return _0xf8135c[_0x27e71f(0x1dd)]||0x0;}function getArticleTimestamp(_0x274657){const _0x72f9d3=_0x338bd4;if(!_0x274657)return 0x0;if(_0x274657[_0x72f9d3(0x3ed)])return Number(_0x274657['createdAt']);if(_0x274657[_0x72f9d3(0x342)])return new Date(_0x274657[_0x72f9d3(0x342)])[_0x72f9d3(0x2d2)]()||0x0;return 0x0;}async function checkUserVote(_0x2e27a0){const _0x5dcc91=_0x338bd4;if(!isLoggedIn())return null;const _0x4a320b=getUserId(),_0x411ea2=await db[_0x5dcc91(0x3f9)](_0x5dcc91(0x1a7)+_0x2e27a0+'/'+_0x4a320b)[_0x5dcc91(0x226)](_0x5dcc91(0x2fc));return _0x411ea2[_0x5dcc91(0x331)]();}function toggleVote(_0x356990,_0x43ef29){const _0x593f46=_0x338bd4;if(!isLoggedIn()){alert(_0x593f46(0x2cb));return;}const _0x5605dd=getUserId(),_0xf6a218=db[_0x593f46(0x3f9)]('votes/'+_0x356990+'/'+_0x5605dd),_0x4855ff=db[_0x593f46(0x3f9)]('articles/'+_0x356990);_0xf6a218[_0x593f46(0x226)](_0x593f46(0x2fc))['then'](_0x14c20a=>{const _0x5097e4=_0x593f46,_0x3c4fbb=_0x14c20a['val']();_0x4855ff[_0x5097e4(0x3dd)](_0x5cdefe=>{const _0x4f0ae2=_0x5097e4;if(!_0x5cdefe)return _0x5cdefe;if(!_0x5cdefe['likeCount'])_0x5cdefe[_0x4f0ae2(0x22f)]=0x0;if(!_0x5cdefe['dislikeCount'])_0x5cdefe[_0x4f0ae2(0x204)]=0x0;if(_0x3c4fbb===_0x43ef29){if(_0x43ef29===_0x4f0ae2(0x2ab))_0x5cdefe[_0x4f0ae2(0x22f)]--;if(_0x43ef29===_0x4f0ae2(0x263))_0x5cdefe[_0x4f0ae2(0x204)]--;_0xf6a218[_0x4f0ae2(0x313)]();}else{if(_0x3c4fbb==='like')_0x5cdefe['likeCount']--;if(_0x3c4fbb==='dislike')_0x5cdefe[_0x4f0ae2(0x204)]--;if(_0x43ef29===_0x4f0ae2(0x2ab))_0x5cdefe[_0x4f0ae2(0x22f)]++;if(_0x43ef29==='dislike')_0x5cdefe[_0x4f0ae2(0x204)]++;_0xf6a218['set'](_0x43ef29);}return _0x5cdefe;})[_0x5097e4(0x394)](()=>{const _0x697dfb=_0x5097e4;document['getElementById'](_0x697dfb(0x30a))[_0x697dfb(0x272)][_0x697dfb(0x317)](_0x697dfb(0x39a))&&showArticleDetail(_0x356990);});});}function getArticleVoteCounts(_0x10edbc){const _0x588db4=_0x338bd4;return{'likes':_0x10edbc[_0x588db4(0x22f)]||0x0,'dislikes':_0x10edbc[_0x588db4(0x204)]||0x0};}function searchArticles(_0x181624=!![]){const _0x37167a=_0x338bd4,_0xd138be=document[_0x37167a(0x2c8)]('searchCategory')[_0x37167a(0x2fc)],_0x32b4ac=document[_0x37167a(0x2c8)](_0x37167a(0x245))['value'][_0x37167a(0x25c)]();let _0x4aadd1=[...allArticles];_0xd138be&&(_0x4aadd1=_0x4aadd1[_0x37167a(0x29d)](_0x193b77=>_0x193b77['category']===_0xd138be));_0x32b4ac&&(_0x4aadd1=_0x4aadd1['filter'](_0x173b57=>_0x173b57[_0x37167a(0x412)]['toLowerCase']()[_0x37167a(0x1af)](_0x32b4ac)||_0x173b57[_0x37167a(0x386)][_0x37167a(0x25c)]()[_0x37167a(0x1af)](_0x32b4ac)||_0x173b57[_0x37167a(0x1be)]&&_0x173b57[_0x37167a(0x1be)][_0x37167a(0x25c)]()['includes'](_0x32b4ac)));filteredArticles=_0x4aadd1;if(_0x181624)currentArticlePage=0x1;renderArticles();}function sortArticles(_0x1e41eb,_0x3982e2){const _0x18b946=_0x338bd4;currentSortMethod=_0x1e41eb,currentArticlePage=0x1,document['querySelectorAll'](_0x18b946(0x41d))[_0x18b946(0x29b)](_0x541e63=>_0x541e63[_0x18b946(0x272)][_0x18b946(0x313)]('active'));if(_0x3982e2&&_0x3982e2['classList'])_0x3982e2[_0x18b946(0x272)]['add'](_0x18b946(0x39a));renderArticles();}function getSortedArticles(){const _0x363650=_0x338bd4;let _0xb47d82=Array['isArray'](filteredArticles)?[...filteredArticles]:[];switch(currentSortMethod){case _0x363650(0x1a6):_0xb47d82['sort']((_0x81361c,_0x129527)=>getArticleTimestamp(_0x129527)-getArticleTimestamp(_0x81361c));break;case _0x363650(0x403):_0xb47d82['sort']((_0x502a19,_0x271996)=>getArticleTimestamp(_0x502a19)-getArticleTimestamp(_0x271996));break;case _0x363650(0x1dd):_0xb47d82['sort']((_0x466004,_0x56c9d1)=>(_0x56c9d1[_0x363650(0x1dd)]||0x0)-(_0x466004[_0x363650(0x1dd)]||0x0));break;case _0x363650(0x2c0):_0xb47d82[_0x363650(0x367)]((_0x5ba1ba,_0x5ef6bc)=>(_0x5ef6bc[_0x363650(0x22f)]||0x0)-(_0x5ba1ba[_0x363650(0x22f)]||0x0));break;default:_0xb47d82['sort']((_0x1d4b7b,_0x1d1f5b)=>getArticleTimestamp(_0x1d1f5b)-getArticleTimestamp(_0x1d4b7b));break;}return _0xb47d82;}async function renderArticles(){const _0x36cf9a=_0x338bd4,_0x2d53a0=getSortedArticles(),_0x4f9393=document[_0x36cf9a(0x2c8)]('adSection'),_0x5c2d1f=document['getElementById'](_0x36cf9a(0x26b)),_0x18b10c=document[_0x36cf9a(0x2c8)](_0x36cf9a(0x3bb)),_0x21fb53=document['getElementById']('articlesGrid'),_0x560410=document[_0x36cf9a(0x2c8)](_0x36cf9a(0x208)),_0x43cbee=await db[_0x36cf9a(0x3f9)](_0x36cf9a(0x34a))[_0x36cf9a(0x226)](_0x36cf9a(0x2fc)),_0x458afb=_0x43cbee['val']()||{},_0x2c036d=Object[_0x36cf9a(0x215)](_0x458afb)[_0x36cf9a(0x367)]((_0x64c4a2,_0x5d4d62)=>_0x5d4d62[_0x36cf9a(0x3ed)]-_0x64c4a2[_0x36cf9a(0x3ed)]),_0x3d6908=await db[_0x36cf9a(0x3f9)](_0x36cf9a(0x3e4))[_0x36cf9a(0x226)](_0x36cf9a(0x2fc)),_0x248970=_0x3d6908[_0x36cf9a(0x331)]()||{},_0x55a872=Object[_0x36cf9a(0x3de)](_0x248970),_0x3ade39=[],_0x24da72=[];_0x2d53a0[_0x36cf9a(0x29b)](_0x44fdd1=>{const _0x481195=_0x36cf9a;_0x55a872[_0x481195(0x1af)](_0x44fdd1['id'])?(_0x44fdd1[_0x481195(0x269)]=_0x248970[_0x44fdd1['id']][_0x481195(0x269)],_0x3ade39[_0x481195(0x3ea)](_0x44fdd1)):_0x24da72[_0x481195(0x3ea)](_0x44fdd1);}),_0x3ade39[_0x36cf9a(0x367)]((_0x2d243c,_0x5ad7bd)=>_0x5ad7bd[_0x36cf9a(0x269)]-_0x2d243c[_0x36cf9a(0x269)]);_0x2c036d[_0x36cf9a(0x3c7)]>0x0?_0x4f9393[_0x36cf9a(0x296)]=_0x2c036d[_0x36cf9a(0x2d7)](_0x557dff=>_0x36cf9a(0x41a)+_0x557dff['color']+_0x36cf9a(0x3a1)+_0x557dff[_0x36cf9a(0x412)]+'</h3>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22margin:5px\x200;\x20font-size:14px;\x20color:#555;\x22>'+_0x557dff[_0x36cf9a(0x386)]+_0x36cf9a(0x1b0)+(_0x557dff[_0x36cf9a(0x374)]?_0x36cf9a(0x3cb)+_0x557dff[_0x36cf9a(0x374)]+_0x36cf9a(0x2f1):'')+_0x36cf9a(0x354))[_0x36cf9a(0x41e)](''):_0x4f9393['innerHTML']='';_0x3ade39[_0x36cf9a(0x3c7)]>0x0?_0x5c2d1f['innerHTML']=_0x3ade39[_0x36cf9a(0x2d7)](_0x4a61dc=>{const _0x2dd0c5=_0x36cf9a,_0x3d9143=getArticleViews(_0x4a61dc);return'<div\x20class=\x22article-card\x22\x20onclick=\x22showArticleDetail(\x27'+_0x4a61dc['id']+_0x2dd0c5(0x261)+_0x4a61dc[_0x2dd0c5(0x255)]+_0x2dd0c5(0x1c6)+_0x4a61dc[_0x2dd0c5(0x412)]+_0x2dd0c5(0x2b7)+_0x4a61dc[_0x2dd0c5(0x38b)]+_0x2dd0c5(0x3fe)+_0x3d9143+_0x2dd0c5(0x22a);})['join'](''):_0x5c2d1f['innerHTML']='';if(_0x2d53a0[_0x36cf9a(0x3c7)]===0x0){_0x18b10c['innerHTML']=_0x36cf9a(0x281),_0x21fb53[_0x36cf9a(0x296)]='',_0x560410[_0x36cf9a(0x296)]='';return;}const _0x1a24fc=currentArticlePage*ARTICLES_PER_PAGE,_0xcba43=_0x24da72['slice'](0x0,_0x1a24fc);_0x18b10c[_0x36cf9a(0x296)]='',_0x21fb53[_0x36cf9a(0x296)]=_0xcba43[_0x36cf9a(0x2d7)](_0x236c80=>{const _0x192337=_0x36cf9a,_0x34e24d=getArticleViews(_0x236c80),_0x5e771b=getArticleVoteCounts(_0x236c80);return _0x192337(0x3bf)+_0x236c80['id']+'\x27)\x22\x20style=\x22cursor:pointer;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20'+(_0x236c80[_0x192337(0x359)]?_0x192337(0x35e)+_0x236c80[_0x192337(0x359)]+'\x22\x20class=\x22article-thumbnail\x22\x20alt=\x22썸네일\x22>':'')+'\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22article-content\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20class=\x22category-badge\x22>'+_0x236c80[_0x192337(0x255)]+_0x192337(0x25b)+_0x236c80[_0x192337(0x412)]+_0x192337(0x37b)+(_0x236c80[_0x192337(0x1be)]||'')+'</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22article-meta\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span>'+_0x236c80[_0x192337(0x38b)]+'</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22article-stats\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20class=\x22stat-item\x22>👁️\x20'+_0x34e24d+'</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20class=\x22stat-item\x22>👍\x20'+_0x5e771b[_0x192337(0x2c0)]+_0x192337(0x31a);})[_0x36cf9a(0x41e)](''),_0x1a24fc<_0x24da72[_0x36cf9a(0x3c7)]?_0x560410[_0x36cf9a(0x296)]=_0x36cf9a(0x2c2)+(_0x24da72['length']-_0x1a24fc)+_0x36cf9a(0x314):_0x560410[_0x36cf9a(0x296)]='';}function loadMoreArticles(){currentArticlePage++,renderArticles();}async function showArticleDetail(_0x1e49ad){const _0x2c7310=_0x338bd4;db['ref']('articles/'+_0x1e49ad)[_0x2c7310(0x226)]('value')['then'](async _0xb7b650=>{const _0x52eb65=_0x2c7310,_0x2fc9cc=_0xb7b650[_0x52eb65(0x331)]();if(!_0x2fc9cc){alert(_0x52eb65(0x259)),showArticles();return;}currentArticleId!==_0x1e49ad&&incrementView(_0x1e49ad);currentArticleId=_0x1e49ad,currentCommentPage=0x1,hideAll(),document[_0x52eb65(0x2c8)](_0x52eb65(0x30a))[_0x52eb65(0x272)][_0x52eb65(0x2da)](_0x52eb65(0x39a));const _0x436880=getNickname(),_0x5166c=isLoggedIn()&&(_0x2fc9cc[_0x52eb65(0x38b)]===_0x436880||isAdmin()),_0x507035=getArticleViews(_0x2fc9cc),_0x1d7b28=getArticleVoteCounts(_0x2fc9cc),_0x102f95=await checkUserVote(_0x1e49ad),_0x1940e5=document[_0x52eb65(0x2c8)]('articleDetail');_0x1940e5['innerHTML']=_0x52eb65(0x3ab)+_0x2fc9cc[_0x52eb65(0x255)]+_0x52eb65(0x271)+_0x2fc9cc[_0x52eb65(0x412)]+_0x52eb65(0x336)+_0x2fc9cc['author']+_0x52eb65(0x380)+_0x2fc9cc[_0x52eb65(0x342)]+_0x52eb65(0x340)+_0x507035+_0x52eb65(0x35b)+(_0x2fc9cc['thumbnail']?_0x52eb65(0x35e)+_0x2fc9cc[_0x52eb65(0x359)]+_0x52eb65(0x1b5):'')+_0x52eb65(0x3d6)+_0x2fc9cc['content']+'</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22display:flex;gap:10px;padding-top:20px;margin-top:20px;border-top:1px\x20solid\x20#eee;\x20justify-content:center;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22toggleVote(\x27'+_0x2fc9cc['id']+'\x27,\x20\x27like\x27)\x22\x20class=\x22vote-btn\x20'+(_0x102f95==='like'?'active':'')+_0x52eb65(0x1f1)+_0x1d7b28[_0x52eb65(0x2c0)]+'\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22toggleVote(\x27'+_0x2fc9cc['id']+'\x27,\x20\x27dislike\x27)\x22\x20class=\x22vote-btn\x20dislike\x20'+(_0x102f95===_0x52eb65(0x263)?_0x52eb65(0x39a):'')+_0x52eb65(0x3aa)+_0x1d7b28['dislikes']+'\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20'+(_0x5166c?_0x52eb65(0x2c6)+_0x2fc9cc['id']+'\x27)\x22\x20class=\x22btn-secondary\x22>수정</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22deleteArticle(\x27'+_0x2fc9cc['id']+_0x52eb65(0x238):'')+_0x52eb65(0x2ad),loadComments(_0x1e49ad),updateURL('article',_0x1e49ad);});}function deleteArticle(_0x5ad747){const _0x2a93c5=_0x338bd4;db['ref'](_0x2a93c5(0x1d9)+_0x5ad747)[_0x2a93c5(0x226)](_0x2a93c5(0x2fc))[_0x2a93c5(0x394)](_0x55ec12=>{const _0x5247b5=_0x2a93c5,_0x2f0a3=_0x55ec12[_0x5247b5(0x331)]();if(!_0x2f0a3)return alert(_0x5247b5(0x268));const _0x360298=getNickname();if(!isLoggedIn()||_0x2f0a3['author']!==_0x360298&&!isAdmin())return alert('삭제\x20권한이\x20없습니다!');if(!confirm(_0x5247b5(0x3d8)))return;deleteArticleFromDB(_0x5ad747,()=>{const _0x1e2a3c=_0x5247b5;alert(_0x1e2a3c(0x267)),showArticles();});});}function editArticle(_0x2e72ea){const _0x1b8e8a=_0x338bd4;db[_0x1b8e8a(0x3f9)](_0x1b8e8a(0x1d9)+_0x2e72ea)[_0x1b8e8a(0x226)](_0x1b8e8a(0x2fc))[_0x1b8e8a(0x394)](_0x3da76a=>{const _0x5d7fff=_0x1b8e8a,_0x1b0a18=_0x3da76a['val']();if(!_0x1b0a18)return alert(_0x5d7fff(0x268));const _0x4bf198=getNickname();if(!isLoggedIn()||_0x1b0a18[_0x5d7fff(0x38b)]!==_0x4bf198&&!isAdmin())return alert(_0x5d7fff(0x1c7));hideAll(),document[_0x5d7fff(0x2c8)](_0x5d7fff(0x262))[_0x5d7fff(0x272)][_0x5d7fff(0x2da)]('active');const _0x2cdd0f=document[_0x5d7fff(0x1ca)]('[data-section=\x22write\x22]');if(_0x2cdd0f)_0x2cdd0f[_0x5d7fff(0x272)][_0x5d7fff(0x2da)](_0x5d7fff(0x39a));document['getElementById'](_0x5d7fff(0x255))[_0x5d7fff(0x2fc)]=_0x1b0a18[_0x5d7fff(0x255)],document['getElementById']('title')[_0x5d7fff(0x2fc)]=_0x1b0a18[_0x5d7fff(0x412)],document[_0x5d7fff(0x2c8)]('summary')['value']=_0x1b0a18['summary']||'',document['getElementById'](_0x5d7fff(0x386))[_0x5d7fff(0x2fc)]=_0x1b0a18[_0x5d7fff(0x386)];if(_0x1b0a18['thumbnail']){const _0x459c80=document[_0x5d7fff(0x2c8)](_0x5d7fff(0x1ec)),_0x40c586=document[_0x5d7fff(0x2c8)]('uploadText');_0x459c80['src']=_0x1b0a18['thumbnail'],_0x459c80[_0x5d7fff(0x34f)][_0x5d7fff(0x1de)]=_0x5d7fff(0x28f),_0x40c586[_0x5d7fff(0x296)]=_0x5d7fff(0x35f);}setupEditForm(_0x1b0a18,_0x2e72ea);});}function setupEditForm(_0x3fab7f,_0x4111fa){const _0x3d5a4f=_0x338bd4,_0x31ae3d=document[_0x3d5a4f(0x2c8)](_0x3d5a4f(0x3b7)),_0x25b2bb=_0x31ae3d[_0x3d5a4f(0x348)](!![]);_0x31ae3d[_0x3d5a4f(0x220)][_0x3d5a4f(0x2ce)](_0x25b2bb,_0x31ae3d);const _0x15babf=_0x25b2bb[_0x3d5a4f(0x1ca)](_0x3d5a4f(0x3a7)),_0x554ea5=_0x25b2bb[_0x3d5a4f(0x1ca)](_0x3d5a4f(0x2a0)),_0x551b71=_0x25b2bb['querySelector'](_0x3d5a4f(0x29a)),_0x4dfb85=_0x25b2bb[_0x3d5a4f(0x1ca)]('#bannedWordWarning');function _0x55169c(){const _0x422d42=_0x3d5a4f,_0x12e04e=_0x15babf[_0x422d42(0x2fc)]+'\x20'+_0x554ea5['value']+'\x20'+_0x551b71[_0x422d42(0x2fc)],_0x12d5db=checkBannedWords(_0x12e04e);_0x12d5db?(_0x4dfb85[_0x422d42(0x301)]='🚫\x20사용할\x20수\x20없는\x20단어가\x20포함되어\x20있습니다:\x20\x22'+_0x12d5db+'\x22',_0x4dfb85[_0x422d42(0x34f)][_0x422d42(0x1de)]='block'):_0x4dfb85[_0x422d42(0x34f)][_0x422d42(0x1de)]=_0x422d42(0x38a);}_0x15babf[_0x3d5a4f(0x422)](_0x3d5a4f(0x1b8),_0x55169c),_0x554ea5['addEventListener'](_0x3d5a4f(0x1b8),_0x55169c),_0x551b71[_0x3d5a4f(0x422)](_0x3d5a4f(0x1b8),_0x55169c);const _0x4cb947=_0x25b2bb['querySelector']('#thumbnailInput');_0x4cb947[_0x3d5a4f(0x422)]('change',previewThumbnail),_0x25b2bb[_0x3d5a4f(0x422)](_0x3d5a4f(0x1c8),function(_0xe9b160){const _0x56d747=_0x3d5a4f;_0xe9b160[_0x56d747(0x2bc)]();const _0x39c01d=_0x15babf[_0x56d747(0x2fc)],_0x46ea4c=_0x551b71[_0x56d747(0x2fc)],_0x2ed6af=_0x554ea5[_0x56d747(0x2fc)],_0x3b1a92=checkBannedWords(_0x39c01d+'\x20'+_0x46ea4c+'\x20'+_0x2ed6af);if(_0x3b1a92){alert(_0x56d747(0x274)+_0x3b1a92+_0x56d747(0x3d4)),addWarningToCurrentUser();return;}const _0x230360=_0x25b2bb[_0x56d747(0x1ca)](_0x56d747(0x335));if(_0x230360['files'][0x0]){const _0x5ae515=new FileReader();_0x5ae515['onload']=function(_0x3f365f){const _0x51ad7c=_0x56d747;_0x3fab7f[_0x51ad7c(0x359)]=_0x3f365f[_0x51ad7c(0x425)]['result'],_0x407b5f();},_0x5ae515[_0x56d747(0x2b9)](_0x230360[_0x56d747(0x27f)][0x0]);}else _0x407b5f();function _0x407b5f(){const _0x19915c=_0x56d747;_0x3fab7f[_0x19915c(0x255)]=_0x25b2bb['querySelector'](_0x19915c(0x1ef))[_0x19915c(0x2fc)],_0x3fab7f['title']=_0x39c01d,_0x3fab7f[_0x19915c(0x1be)]=_0x2ed6af,_0x3fab7f['content']=_0x46ea4c,_0x3fab7f[_0x19915c(0x342)]=new Date()[_0x19915c(0x389)]()+_0x19915c(0x3af),saveArticle(_0x3fab7f,()=>{const _0x1ed65f=_0x19915c;_0x25b2bb['reset'](),document['getElementById'](_0x1ed65f(0x1ec))[_0x1ed65f(0x34f)][_0x1ed65f(0x1de)]=_0x1ed65f(0x38a),document[_0x1ed65f(0x2c8)](_0x1ed65f(0x362))['innerHTML']=_0x1ed65f(0x3f0),_0x4dfb85[_0x1ed65f(0x34f)][_0x1ed65f(0x1de)]='none',alert(_0x1ed65f(0x1eb)),showArticleDetail(_0x4111fa);});}});}function previewThumbnail(_0x42c302){const _0x34f89b=_0x338bd4,_0x1c71c4=_0x42c302[_0x34f89b(0x425)][_0x34f89b(0x27f)][0x0];if(_0x1c71c4){const _0x14d88e=new FileReader();_0x14d88e[_0x34f89b(0x363)]=function(_0x56e3f0){const _0x3b8a27=_0x34f89b,_0x3c5e4f=document[_0x3b8a27(0x2c8)](_0x3b8a27(0x1ec)),_0x1f3411=document[_0x3b8a27(0x2c8)](_0x3b8a27(0x362));_0x3c5e4f[_0x3b8a27(0x236)]=_0x56e3f0['target'][_0x3b8a27(0x426)],_0x3c5e4f[_0x3b8a27(0x34f)]['display']=_0x3b8a27(0x28f),_0x1f3411[_0x3b8a27(0x296)]=_0x3b8a27(0x2bd);},_0x14d88e[_0x34f89b(0x2b9)](_0x1c71c4);}}function _0x2e8e(){const _0x16cebc=['write','(^|\x20)','marginBottom','replace','광고가\x20삭제되었습니다.','관리자\x20권한이\x20필요합니다!','saveBannedWords','checked','substring','알림\x20전송\x20시작:','category','팝업이\x20삭제되었습니다!','알림\x20권한\x20상태:','#ffd700','존재하지\x20않는\x20기사입니다!','savePatchNote','</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h3\x20class=\x22article-title\x22>','toLowerCase','showUserManagement','articles','FCM\x20토큰\x20발급\x20성공:','bannedAt','\x27)\x22\x20style=\x22border-left:4px\x20solid\x20#ffd700;cursor:pointer;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22article-content\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20class=\x22category-badge\x22>','writeSection','dislike','</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22user-card\x22\x20style=\x22opacity:\x20','users','기사가\x20삭제되었습니다.','없는\x20기사!','pinnedAt','slideOut\x200.3s\x20ease','pinnedSection','125856tCKNZK','</strong><br>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20📰\x20기사:\x20<strong>','</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','location','⚠️\x20이\x20브라우저는\x20Firebase\x20Messaging을\x20지원하지\x20않습니다.','</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h1\x20style=\x22font-size:22px;font-weight:700;margin:15px\x200;line-height:1.4;\x22>','classList','text','⚠️\x20금지어(\x22','agreed',';border:2px\x20solid\x20#856404;padding:20px;border-radius:8px;margin-bottom:15px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22flex:1;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h4\x20style=\x22margin:0\x200\x208px\x200;color:#212529;\x22>','</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','profileDropdown','mtTitleInput','개\x20남음)</button>','match','openPatchNoteModal','patchnotes','/nicknameChanged','files','\x0a\x20\x20\x20\x20\x20\x20\x20\x20<div\x20id=\x22popupEditModal\x22\x20class=\x22modal\x20active\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22modal-content\x22\x20style=\x22max-width:700px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h3\x20style=\x22margin-bottom:20px;color:#c62828;\x22>✏️\x20팝업\x20수정</h3>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<form\x20id=\x22popupEditForm\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22form-group\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<label\x20class=\x22form-label\x22\x20for=\x22editPopupTitle\x22>팝업\x20제목</label>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<input\x20id=\x22editPopupTitle\x22\x20class=\x22form-control\x22\x20required\x20value=\x22','<div\x20style=\x22text-align:center;padding:60px\x2020px;background:#fff;border-radius:8px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22color:#868e96;font-size:16px;\x22>등록된\x20기사가\x20없습니다.</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20</div>','editPopupTitle','/following/','reason','adminEventBtn','금지어가\x20포함된\x20닉네임은\x20사용할\x20수\x20없습니다.','</strong>\x20|\x20💬\x20댓글:\x20<strong>','popupActive',';\x0a\x20\x20\x20\x20','#bannedWordWarning','equalTo','has','version','popupEditModal','block','settings','<span\x20style=\x22background:#28a745;color:#fff;padding:3px\x2010px;border-radius:12px;font-size:11px;margin-left:8px;\x22>활성화</span>','관리자\x20모드를\x20해제하시겠습니까?\x0a\x0a일반\x20사용자\x20모드로\x20전환됩니다.','substr','get','showMaintenanceManager','innerHTML','legalModal','<p\x20style=\x22text-align:center;color:#868e96;padding:40px;\x22>등록된\x20광고가\x20없습니다.</p>','#c62828','#content','forEach','div','filter','개)</h4>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','\x0a\x20\x20\x20\x20\x20\x20\x20\x20<div\x20id=\x22popupCreateModal\x22\x20class=\x22modal\x20active\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22modal-content\x22\x20style=\x22max-width:700px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h3\x20style=\x22margin-bottom:20px;color:#c62828;\x22>📢\x20팝업\x20만들기</h3>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<form\x20id=\x22popupCreateForm\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22form-group\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<label\x20class=\x22form-label\x22\x20for=\x22popupTitle\x22>팝업\x20제목</label>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<input\x20id=\x22popupTitle\x22\x20class=\x22form-control\x22\x20required\x20placeholder=\x22예:\x20중요\x20공지사항\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22form-group\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<label\x20class=\x22form-label\x22\x20for=\x22popupContent\x22>팝업\x20내용</label>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<textarea\x20id=\x22popupContent\x22\x20class=\x22form-control\x22\x20required\x20placeholder=\x22사용자에게\x20표시할\x20내용을\x20입력하세요\x22\x20style=\x22min-height:200px;\x22></textarea>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22form-group\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<label\x20style=\x22display:flex;align-items:center;cursor:pointer;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<input\x20type=\x22checkbox\x22\x20id=\x22popupActive\x22\x20checked\x20style=\x22width:20px;height:20px;margin-right:10px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20style=\x22font-weight:600;color:#212529;\x22>즉시\x20활성화</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</label>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20type=\x22submit\x22\x20class=\x22btn\x20btn-primary\x22\x20style=\x22width:100%;margin-bottom:10px;\x22>팝업\x20생성</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20type=\x22button\x22\x20onclick=\x22closePopupCreateModal()\x22\x20class=\x22btn\x20btn-gray\x22\x20style=\x22width:100%;\x22>취소</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</form>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20','#summary','<p\x20style=\x22margin:8px\x200\x200\x200;\x22><a\x20href=\x22','\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22form-group\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<label\x20class=\x22form-label\x22\x20for=\x22editPopupContent\x22>팝업\x20내용</label>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<textarea\x20id=\x22editPopupContent\x22\x20class=\x22form-control\x22\x20required\x20style=\x22min-height:200px;\x22>','eventContent','새\x20알림\x20감지:','</a></p>','maintenanceOverlay','기사가\x20고정되었습니다.','imageUrl','changeWarning','adminAuthModal','like','\x27)\x22\x20class=\x22btn-secondary\x22\x20style=\x22padding:6px\x2012px;font-size:11px;\x22>삭제</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>','\x0a\x20\x20\x20\x20\x20\x20\x20\x20</div>','차단\x20해제','hsj-news.firebasestorage.app','</strong>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22font-size:12px;color:#6c757d;margin-top:4px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','토큰\x20발급\x20상세\x20오류:','알림\x20저장\x20완료:','\x27,\x20true)\x22\x20class=\x22btn-dark\x22>차단하기</button>','</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22margin-top:30px;display:flex;gap:10px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22closeUserPopup(\x27','cookie','click','</h3>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22article-meta\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span>','myArticleComment','readAsDataURL','popupCreateModal','✅\x20Service\x20Worker가\x20활성화(Active)\x20되었습니다.','preventDefault','<i\x20class=\x22fas\x20fa-check\x22></i><p>이미지\x20선택됨\x20(클릭하여\x20변경)</p>','관리자\x20권한으로\x20접속\x20중입니다.','closePatchNoteModal','likes','closeAdCreateModal','<button\x20onclick=\x22loadMoreArticles()\x22\x20class=\x22btn-block\x22\x20style=\x22background:#fff;\x20border:1px\x20solid\x20#ddd;\x20color:#555;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20더\x20보기\x20(','patchNotesContainer','🚨\x20모든\x20항목에\x20필수로\x20동의해야만\x20입장할\x20수\x20있습니다.\x0a체크박스를\x20모두\x20확인해주세요.','adminSettings/bannedWords','<div\x20style=\x22margin-top:20px;text-align:right;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22editArticle(\x27','qnaList','getElementById','\x0a\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20','557217fYEeGY','추천/비추천은\x20로그인\x20후\x20가능합니다!','정말\x20삭제하시겠습니까?','=([^;]+)','replaceChild','\x0a\x20\x20\x20\x20\x20\x20\x20\x20position:\x20fixed;\x0a\x20\x20\x20\x20\x20\x20\x20\x20top:\x2080px;\x0a\x20\x20\x20\x20\x20\x20\x20\x20right:\x2020px;\x0a\x20\x20\x20\x20\x20\x20\x20\x20background:\x20white;\x0a\x20\x20\x20\x20\x20\x20\x20\x20border-left:\x204px\x20solid\x20#c62828;\x0a\x20\x20\x20\x20\x20\x20\x20\x20padding:\x2016px\x2020px;\x0a\x20\x20\x20\x20\x20\x20\x20\x20border-radius:\x208px;\x0a\x20\x20\x20\x20\x20\x20\x20\x20box-shadow:\x200\x204px\x2012px\x20rgba(0,0,0,0.15);\x0a\x20\x20\x20\x20\x20\x20\x20\x20z-index:\x2010000;\x0a\x20\x20\x20\x20\x20\x20\x20\x20min-width:\x20300px;\x0a\x20\x20\x20\x20\x20\x20\x20\x20max-width:\x20400px;\x0a\x20\x20\x20\x20\x20\x20\x20\x20animation:\x20slideIn\x200.3s\x20ease;\x0a\x20\x20\x20\x20\x20\x20\x20\x20cursor:\x20','💬\x20새\x20댓글','createElement','getTime','이\x20팝업을\x20삭제하시겠습니까?','\x22로\x20변경하시겠습니까?\x0a\x0a⚠️\x20닉네임은\x201번만\x20변경할\x20수\x20있습니다!','popupTitle','database','map','<div\x20style=\x22text-align:center;\x20padding:20px;\x22>로딩\x20중...</div>','lastActivity','add','commentCount','timestamp','set','1744208DNuEDG','\x27,\x20true)\x22\x20class=\x22btn\x20btn-gray\x22\x20style=\x22flex:1;\x22>다시\x20보지\x20않기</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22closeUserPopup(\x27','adminModeIndicator','showPinManager','trim','회\x20(3회\x20시\x20자동\x20차단)','history','clipboard','\x22\x20style=\x22font-size:12px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','현재\x20닉네임과\x20동일합니다!','unhandledrejection','warningCount','Messaging\x20not\x20available','profileNickname','<p\x20style=\x22color:var(--success-color);margin-top:10px;\x22>✅\x20알림이\x20활성화되었습니다.</p>','commentId','mtImgInput',';expires=','[data-section=\x22settings\x22]','\x22\x20target=\x22_blank\x22\x20style=\x22font-size:12px;\x20text-decoration:underline;\x22>더보기\x20&gt;</a>','[data-section=\x22freeboard\x22]','점검\x20중\x20접속이\x20허용된\x20계정입니다.','mtActiveToggle','관리자만\x20접근\x20가능합니다.','currentUser','adTitle','comment','</h3>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22margin-bottom:20px;color:#6c757d;\x22>Email:\x20','<button\x20onclick=\x22openPatchNoteModal()\x22\x20class=\x22btn-primary\x20btn-block\x22><i\x20class=\x22fas\x20fa-plus\x22></i>\x20새\x20패치노트\x20작성</button>','이\x20댓글을\x20삭제하시겠습니까?','value','\x27)\x22\x20class=\x22btn-danger\x22\x20style=\x22padding:4px\x208px;\x20font-size:11px;\x22>삭제</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','editPopupContent','동의\x20기록\x20없음.\x20모달\x20표시!','isBanned','textContent','댓글\x20수정','기사\x20작성은\x20로그인\x20후\x20가능합니다!','46njpPWI','insertAdjacentHTML','\x27,\x20\x27','전역\x20에러:','/legalAgreement','로그아웃','articleDetailSection','state','</strong><br>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20⚠️\x20누적\x20경고:\x20<strong>','createdBy','register','maintenanceModal','🚫\x20사용할\x20수\x20없는\x20단어가\x20포함되어\x20있습니다:\x20\x22','usersList','patchNotes/','remove',')</button>','hsj-news','searchCategory','contains','로그인이\x20필요합니다!','mtTitle','</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20</div>','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22background:','저장\x20실패:\x20','\x27)\x22\x20class=\x22btn-warning\x22\x20style=\x22white-space:nowrap;\x22>고정하기</button>','toggleVIPStatus','read','</textarea>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20type=\x22submit\x22\x20class=\x22btn\x20btn-primary\x22\x20style=\x22width:100%;margin-bottom:10px;\x22>수정\x20완료</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20type=\x22button\x22\x20onclick=\x22closePopupEditModal()\x22\x20class=\x22btn\x20btn-gray\x22\x20style=\x22width:100%;\x22>취소</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</form>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20','삭제되었습니다.','<p\x20style=\x27text-align:center;color:#868e96;padding:40px;\x27>로딩\x20중...</p>','querySelectorAll','updateProfile','🛠️\x20점검\x20모드\x20활성','qnaSection','mtMessageInput','userPopupModal','/firebase-messaging-sw.js','\x27,\x20false)\x22\x20class=\x22btn-success\x22>차단해제</button>','anonymous','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','signOut','adCreateForm','articleId','\x27,\x20','val','#dee2e6','\x27)\x22\x20style=\x22cursor:pointer;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','🔔\x20알림','#thumbnailInput','</h1>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22article-meta\x22\x20style=\x22border-bottom:1px\x20solid\x20#eee;\x20padding-bottom:15px;\x20margin-bottom:20px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span>','head','deleteArticleFromAdmin','\x0a\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22border-top:1px\x20solid\x20#eee;padding-top:15px;margin-top:15px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h4\x20style=\x22margin:0\x200\x2012px\x200;color:#202124;font-size:14px;\x22>👥\x20알림\x20받을\x20사용자\x20선택</h4>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22max-height:200px;overflow-y:auto;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','자유게시판','110HqfoRT','[data-section=\x22write\x22]','child_added','</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22logoutAdmin()\x22\x20class=\x22btn-block\x22\x20style=\x22background:#fff;\x20border:1px\x20solid\x20#ddd;\x20color:#333;\x20text-align:left;\x20padding:10px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<i\x20class=\x22fas\x20fa-sign-out-alt\x22\x20style=\x22margin-right:8px;\x22></i>\x20로그아웃\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20','adminEventSection','</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20style=\x22float:right;\x22>👁️\x20','❌\x20오류:\x20','date','\x27,\x201)\x22\x20class=\x22btn-warning\x22>경고\x20+1</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22changeWarning(\x27','size','관리자\x20모드가\x20해제되었습니다.','ready','\x27)\x22\x20class=\x22btn-secondary\x22\x20style=\x22height:32px;padding:0\x2012px;font-size:12px;margin-left:6px;background:#6c757d;color:white;border:none;\x22>삭제</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>','cloneNode','토큰\x20DB\x20저장\x20완료','advertisements','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22margin:0;line-height:1.6;color:#495057;\x22>','\x27)\x22\x20class=\x22btn-danger\x22>삭제</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20','🔓\x20접속\x20허용','#6c757d','style','adminSettings','mtAllowedUsers','🚀\x20시스템\x20초기화\x20시작...','uid','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20','body','bannedWordsInput','type','<button\x20onclick=\x22toggleVIPStatus(\x27','thumbnail','🚨\x20점검\x20모드가\x20시작되었습니다.','</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20',';\x20border-left-color:\x20','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22profile-info\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22profile-avatar\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<i\x20class=\x22fas\x20fa-user\x22></i>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22profile-details\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h4\x20style=\x22color:#000;\x20font-weight:700;\x22>','<img\x20src=\x22','<i\x20class=\x22fas\x20fa-check\x22></i><p>기존\x20이미지\x20(클릭하여\x20변경)</p>','VIP\x20상태\x20변경\x20오류:','reload','uploadText','onload','pinArticle','qna','toast-notification','sort','/isVIP','cssText','patchVersion','pointer','getFullYear','Service\x20Worker\x20등록\x20요청됨...','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','생성\x20실패:\x20','page','openAdCreateModal','\x22\x20사용자를\x20정말\x20삭제하시겠습니까?\x0a\x0a이\x20작업은\x20되돌릴\x20수\x20없으며,\x20해당\x20사용자의\x20모든\x20기사와\x20댓글이\x20삭제됩니다.','vip_','link','⚠️\x20Service\x20Worker\x20파일이\x20없습니다.\x20FCM\x20푸시\x20알림이\x20비활성화됩니다.','qnaTabBtn','search','FCM\x20초기화\x20건너뜀:','<div\x20style=\x22background:#fff;\x20border:1px\x20solid\x20#dadce0;\x20padding:20px;\x20border-radius:8px;\x20text-align:center;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22color:#5f6368;\x22>로그인이\x20필요합니다.</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22googleLogin()\x22\x20class=\x22btn-primary\x22\x20style=\x22width:100%;\x20margin-top:15px;\x22>Google\x20로그인</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22background:#fff;\x20border:1px\x20solid\x20#dadce0;\x20padding:20px;\x20border-radius:8px;\x20margin-bottom:20px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h4\x20style=\x22margin:0\x200\x2015px\x200;\x20color:#202124;\x22>내\x20정보</h4>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22margin:8px\x200;\x20color:#5f6368;\x22><strong>이름:</strong>\x20','</h3>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20class=\x22article-summary\x22>','<button\x20onclick=\x22pinArticle(\x27','color','entries','HEAD','</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20style=\x22color:#888;\x22>','legal_agreed_','commenterEmail','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22background:#f8f9fa;padding:12px;margin-bottom:8px;border-left:3px\x20solid\x20#c62828;border-radius:4px;display:flex;justify-content:space-between;align-items:center;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20style=\x22flex:1;\x22>','[data-section=\x22admin\x22]','comments','content','동의\x20처리\x20중\x20오류가\x20발생했습니다:\x20','update','toLocaleString','none','author','42oxfSMW','split','deleteCommentFromAdmin','following','true','\x27,\x27','팝업이\x20비활성화되었습니다!','adminAuthForm','then','닉네임이\x20성공적으로\x20변경되었습니다!','\x0a\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22padding:20px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h3\x20style=\x22margin-top:0;color:#c62828;font-size:22px;\x22>👤\x20','patchNoteForm','warn','18114otoaKw','active','VIP\x20취소','authorEmail','serviceWorker','userDetailContent','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22user-actions\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22showUserDetail(\x27','</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22article-meta\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span>',';\x20border:1px\x20solid\x20#ddd;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20class=\x22ad-badge\x22>광고</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h3\x20style=\x22margin:5px\x200;\x20font-size:18px;\x22>','1.0','<p\x20style=\x27color:#868e96;text-align:center;padding:30px;\x27>댓글이\x20없습니다.</p>','현재\x20닉네임:\x20','notificationsEnabled','toUTCString','#title','permission','isActive','\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20👎\x20비추천\x20','<div\x20style=\x22background:#fff;padding:20px;border-radius:8px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20class=\x22category-badge\x22>','articlesSection','시스템\x20점검\x20중입니다','로그아웃\x20하시겠습니까?','\x20(수정됨)','userAgent','seen_popups','</h3>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22padding:0\x2010px;max-height:400px;overflow-y:auto;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22white-space:pre-wrap;line-height:1.8;color:#212529;font-size:15px;\x22>','admin-patch-controls','21153044RpssCC','\x0a\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22margin-bottom:30px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h3\x20style=\x22color:#c62828;margin-bottom:20px;\x22>📢\x20팝업\x20관리</h3>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22openPopupCreateModal()\x22\x20class=\x22btn\x20btn-primary\x22\x20style=\x22width:100%;margin-bottom:20px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20➕\x20새\x20팝업\x20만들기\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22background:#fff3cd;padding:15px;border-radius:8px;margin-bottom:20px;border-left:4px\x20solid\x20#856404;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22margin:0;color:#856404;font-size:14px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<strong>ℹ️\x20안내:</strong>\x20팝업은\x20사용자가\x20사이트에\x20접속할\x20때\x20자동으로\x20표시됩니다.\x20\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20중요한\x20공지사항이나\x20이벤트\x20알림에\x20활용하세요.\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x0a\x20\x20\x20\x20\x20\x20\x20\x20<div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h4\x20style=\x22margin-bottom:15px;\x22>등록된\x20팝업\x20목록</h4>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','🚨\x20누적\x20경고\x203회로\x20인해\x20계정이\x20차단됩니다.\x20로그아웃\x20처리됩니다.','articleForm','AIzaSyDgooYtVr8-jm15-fx_WvGLCDxonLpNPuU','고정이\x20해제되었습니다.','하시겠습니까?','featuredArticle','⚠️\x20Firebase\x20Messaging\x20초기화\x20실패:','off',';\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h4\x20style=\x22color:','<div\x20class=\x22article-card\x22\x20onclick=\x22showArticleDetail(\x27','nickname','\x22\x20사용자를\x20','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','...','1196065aJVnXZ','freeboardSection','정말\x20닉네임을\x20\x22','length','로그인\x20정보가\x20없습니다.','🚫\x20차단된\x20계정입니다.','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','<a\x20href=\x22','change','toggleBan','\x27,\x20this.checked)\x22\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20style=\x22margin-right:10px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20style=\x22flex:1;color:#333;\x22>','messaging','📋\x20링크가\x20복사되었습니다!\x0a\x0a','userManagementSection','<div\x20style=\x22color:\x20#1a73e8;\x20font-size:\x2012px;\x20margin-top:\x206px;\x22>👉\x20클릭하여\x20기사\x20보기</div>','</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<small\x20style=\x22color:#868e96;\x22>','\x22)가\x20포함되어\x20있어\x20수정이\x20불가능하며,\x20경고\x201회가\x20누적됩니다.','home','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22font-size:16px;line-height:1.8;color:#333;white-space:pre-wrap;\x22>','VIP로\x20승급','정말\x20이\x20기사를\x20삭제하시겠습니까?','popupContent','flex','closeBannedWordsModal','authorName','transaction','keys','patchnotesSection','adminPw','관리자\x20로그인\x20성공!','💡\x20GitHub\x20Pages에서\x20FCM을\x20사용하려면\x20루트에\x20firebase-messaging-sw.js\x20파일을\x20추가하세요.','업데이트\x20확인:','pinnedArticles','?page=','patchDate','</h4>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p>','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20','adminSettings/maintenance','push','\x0a\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22deleteUserCompletely(\x27','댓글이\x20삭제되었습니다.','createdAt','patchNotes','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</h4>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22user-info\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20📧\x20이메일:\x20<strong>','<i\x20class=\x22fas\x20fa-camera\x22></i><p>클릭하여\x20이미지\x20업로드</p>','qna-card','삭제\x20실패:\x20','followUsersSection','</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22qna-body\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22a-part\x22\x20style=\x22white-space:\x20pre-wrap;\x22>','notificationStatus','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22text-align:center;padding:20px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22color:var(--text-secondary);margin-bottom:16px;\x22>로그인하여\x20더\x20많은\x20기능을\x20이용하세요</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22googleLogin()\x22\x20class=\x22btn-primary\x20btn-block\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<i\x20class=\x22fab\x20fa-google\x22></i>\x20Google\x20로그인\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20','정말\x20이\x20댓글을\x20삭제하시겠습니까?','📰\x20새\x20기사\x20알림','ref','default','hsj-news.firebaseapp.com','onclick','광고가\x20생성되었습니다!','</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span>👁️\x20',';path=/','금지어\x20목록이\x20저장되었습니다.','freeboard','로그인\x20실패:\x20','oldest','displayName','origin','20px','<p\x20style=\x22color:#dc3545;text-align:center;\x22>오류:\x20',')\x22\x20class=\x22btn\x20','비활성화','✅\x20동의가\x20완료되었습니다.\x0a환영합니다,\x20','권한이\x20없습니다\x20(VIP\x20또는\x20관리자\x20전용).','💬\x20새\x20댓글\x20알림','.nav-btn','users/','toISOString','<p\x20style=\x22text-align:center;color:#868e96;padding:30px;\x22>등록된\x20팝업이\x20없습니다.</p>','#343a40','title','\x20|\x20생성자:\x20','\x22\x20target=\x22_blank\x22\x20style=\x22color:#1976d2;\x22>🔗\x20','</h4>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22margin:0;color:#495057;white-space:pre-wrap;\x22>','<p\x20style=\x27text-align:center;color:#868e96;padding:40px;\x27>기사가\x20없습니다.</p>','더\x20나은\x20서비스를\x20위해\x20점검을\x20진행하고\x20있습니다.','onMessage','정말\x20이\x20사용자를\x20','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22ad-banner\x22\x20style=\x22background:','email_','님이\x20댓글을\x20남겼습니다:\x0a\x22','#articlesSection\x20.chip','join','<button\x20onclick=\x22toggleBan(\x27','\x20|\x20','adCreateModal','addEventListener','article','알림\x20전송\x20오류:','target','result','닉네임\x20변경\x20실패:\x20','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22qna-header\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<i\x20class=\x22fas\x20fa-tag\x22></i>\x20','\x20<span\x20style=\x22background:#343a40;color:#fff;padding:2px\x208px;border-radius:10px;font-size:11px;\x22>🚫\x20차단됨</span>','\x22\x20class=\x22article-thumbnail\x22\x20alt=\x22썸네일\x22>','latest','votes/','1:437842430700:web:e3822bde4cfecdc04633c9','loadMoreComments','<p\x20style=\x27text-align:center;color:#868e96;\x27>등록된\x20사용자가\x20없습니다.</p>','key','<p\x20style=\x22margin:8px\x200;\x20color:#d93025;\x22><strong>⚠\x20경고:</strong>\x20','notification','load','includes','</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','437842430700','parentElement','saveMaintenanceSettings','reverse','\x22\x20style=\x22width:100%;border-radius:8px;margin-bottom:20px;\x22\x20alt=\x22이미지\x22>',';border-radius:4px;display:flex;justify-content:space-between;align-items:center;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22flex:1;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<strong\x20style=\x22color:#212529;\x22>','</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22deleteArticleFromAdmin(\x27','input','commentInput','<div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22editComment(\x27','</small>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</label>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','알림\x20권한이\x20거부됨','log','summary','random','/author','commenterName','isSupported','<p\x20style=\x22text-align:center;color:#868e96;font-size:13px;margin-top:15px;\x22>팔로우\x20가능한\x20사용자가\x20없습니다.</p>','startsWith','pathname','</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20class=\x22pinned-badge\x22>📌\x20고정</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h3\x20class=\x22article-title\x22>','수정\x20권한이\x20없습니다!','submit','\x27)\x22\x20class=\x22btn\x20btn-dark\x22\x20style=\x22font-size:12px;\x22>삭제</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','querySelector','\x20<span\x20class=\x22vip-badge\x22>⭐\x20VIP</span>','slice','이\x20기사의\x20고정을\x20해제하시겠습니까?','reset','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22margin-top:20px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h4\x20style=\x22color:#1976d2;margin-bottom:15px;\x22>💬\x20작성\x20댓글\x20(','freeboardGrid','?page=article&id=','freeboardSearchKeyword','https://hsj-news-default-rtdb.firebaseio.com','from','profileDropdownContent','</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20class=\x22stat-item\x22>👍\x20','freeboardLoadMoreContainer','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</h5>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22margin:0;color:#6c757d;font-size:13px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20작성:\x20','articles/','</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22display:flex;gap:8px;flex-wrap:wrap;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22togglePopupStatus(\x27','comments/','message','views','display','제목과\x20내용을\x20모두\x20입력해주세요!','\x27)\x22\x20class=\x22btn-secondary\x22\x20style=\x22padding:4px\x208px;\x20font-size:11px;\x22>수정</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22deletePatchNote(\x27','error','🚫\x20관리자\x20권한이\x20필요합니다.','4NyFbkr','\x22)가\x20포함된\x20기사를\x20업로드하려고\x20시도하여,\x20업로드가\x20차단되고\x20경고\x201회가\x20누적됩니다.','\x0a\x20\x20\x20\x20\x20\x20\x20\x20@keyframes\x20slideIn\x20{\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20from\x20{\x20transform:\x20translateX(400px);\x20opacity:\x200;\x20}\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20to\x20{\x20transform:\x20translateX(0);\x20opacity:\x201;\x20}\x0a\x20\x20\x20\x20\x20\x20\x20\x20}\x0a\x20\x20\x20\x20\x20\x20\x20\x20@keyframes\x20slideOut\x20{\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20from\x20{\x20transform:\x20translateX(0);\x20opacity:\x201;\x20}\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20to\x20{\x20transform:\x20translateX(400px);\x20opacity:\x200;\x20}\x0a\x20\x20\x20\x20\x20\x20\x20\x20}\x0a\x20\x20\x20\x20','animation','\x0a\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22background:#fff;border-radius:12px;padding:20px;box-shadow:0\x202px\x208px\x20rgba(0,0,0,0.1);\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h3\x20style=\x22margin:0;color:#c62828;\x22>📢\x20광고\x20관리</h3>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22openAdCreateModal()\x22\x20class=\x22btn-primary\x22>새\x20광고\x20만들기</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','\x20완료되었습니다.','popups/','삭제\x20권한이\x20없습니다!','기사가\x20수정되었습니다!','thumbnailPreview','<p\x20style=\x27text-align:center;color:#868e96;\x27>사용자\x20정보\x20로딩\x20중...</p>','\x20\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20onchange=\x22toggleFollowUser(\x27','#category','isVIP','\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20👍\x20추천\x20','email','\x20<span\x20style=\x22font-size:12px;\x20margin-left:auto;\x20opacity:0.8;\x22>','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<label\x20style=\x22display:flex;align-items:center;padding:8px;background:#f8f9fa;border-radius:4px;margin-bottom:6px;cursor:pointer;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<input\x20type=\x22checkbox\x22\x20\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','QnA.html\x20파일을\x20찾을\x20수\x20없습니다.','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22background:#e8f0fe;\x20border:1px\x20solid\x20#1967d2;\x20padding:15px;\x20border-radius:8px;\x20margin:20px\x200;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h4\x20style=\x22margin:0\x200\x2010px\x200;\x20color:#1967d2;\x22>🛡️\x20관리자\x20모드\x20ON</h4>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22disableAdminMode()\x22\x20class=\x22btn-block\x22\x20style=\x22background:#fff;\x20color:#1967d2;\x20border:1px\x20solid\x20#1967d2;\x22>모드\x20해제</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','deleteUserCompletely','📰\x20새\x20기사','댓글\x20작성은\x20로그인\x20후\x20가능합니다!','eventManager','님이\x20새\x20기사를\x20작성했습니다:\x0a\x22','처리되지\x20않은\x20Promise\x20거부:','setFullYear','</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22color:\x20#5f6368;\x20font-size:\x2014px;\x20line-height:\x201.4;\x22>','QnA.html','allowedUsers','<div\x20style=\x22text-align:center;padding:60px\x2020px;background:#fff;border-radius:8px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22color:#868e96;font-size:16px;\x22>자유게시판에\x20등록된\x20기사가\x20없습니다.</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20</div>','⚠️\x20Service\x20Worker\x20파일\x20확인\x20실패.\x20FCM\x20비활성화:','isArray','dislikeCount','포그라운드\x20메시지\x20수신:','admin','활성화','loadMoreContainer','✅\x20점검\x20모드가\x20해제되었습니다.','orderByChild','<p\x20style=\x22color:#868e96;text-align:center;padding:20px;\x22>작성한\x20기사가\x20없습니다.</p>','is_admin','기사가\x20발행되었습니다!','\x27,\x20false)\x22\x20class=\x22btn\x20btn-primary\x22\x20style=\x22flex:1;\x22>확인</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20<style>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20@keyframes\x20slideDown\x20{\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20from\x20{\x20transform:\x20translateY(-50px);\x20opacity:\x200;\x20}\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20to\x20{\x20transform:\x20translateY(0);\x20opacity:\x201;\x20}\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20}\x0a\x20\x20\x20\x20\x20\x20\x20\x20</style>\x0a\x20\x20\x20\x20','patchNoteModal','management','\x20<span\x20style=\x22background:#000;color:#fff;padding:2px\x208px;border-radius:10px;font-size:11px;\x22>👤\x20나</span>','advertisements/','notificationToggle','toString','values','Notification','<div\x20class=\x22comment-card\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20class=\x22comment-author\x22>','💭\x20내\x20기사에\x20새\x20댓글','section','onAuthStateChanged','notifications/','\x27)\x22\x20class=\x22btn-info\x22>상세</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','이\x20기사를\x20삭제하시겠습니까?','정말로\x20동의하십니까?\x0a이\x20정보는\x20법적\x20근거로\x20활용될\x20수\x20있으며\x20영구\x20저장됩니다.','</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<small\x20style=\x22color:#868e96;margin-left:10px;\x22>','parentNode','now','patchContent','\x0a\x20\x20\x20\x20\x20\x20\x20\x20<div\x20id=\x22legalModal\x22\x20class=\x22modal\x20active\x22\x20style=\x22display:\x20flex\x20!important;\x20position:\x20fixed;\x20top:\x200;\x20left:\x200;\x20width:\x20100%;\x20height:\x20100%;\x20z-index:\x2099999;\x20background:\x20rgba(0,0,0,0.9);\x20justify-content:\x20center;\x20align-items:\x20center;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22modal-content\x22\x20style=\x22background:\x20white;\x20width:\x2090%;\x20max-width:\x20600px;\x20max-height:\x2090vh;\x20border:\x202px\x20solid\x20#c62828;\x20border-radius:\x208px;\x20padding:\x2020px;\x20display:\x20flex;\x20flex-direction:\x20column;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22text-align:center;\x20border-bottom:1px\x20solid\x20#eee;\x20padding-bottom:15px;\x20margin-bottom:15px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h2\x20style=\x22color:#c62828;\x20margin:0;\x20font-size:\x2024px;\x22>🚨\x20서비스\x20이용\x20및\x20법적\x20책임\x20동의</h2>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22color:#666;\x20font-size:13px;\x20margin-top:5px;\x22>사이트\x20이용을\x20위해\x20아래\x20내용에\x20대한\x20확인\x20및\x20동의가\x20<strong>필수</strong>입니다.</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22flex:\x201;\x20overflow-y:\x20auto;\x20text-align:\x20left;\x20padding-right:\x205px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22legal-item\x22\x20style=\x22background:#fff5f5;\x20padding:15px;\x20border-radius:8px;\x20margin-bottom:15px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h4\x20style=\x22margin-top:0;\x20margin-bottom:\x208px;\x20color:#b71c1c;\x22>1.\x20콘텐츠의\x20허구성과\x20과장성\x20인지</h4>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22font-size:13px;\x20color:#333;\x20line-height:1.6;\x20margin:0;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20본\x20사이트(해정뉴스)에\x20게시되는\x20모든\x20기사,\x20댓글,\x20게시물은\x20유머와\x20풍자를\x20목적으로\x20작성될\x20수\x20있으며,\x20\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<strong>사실이\x20아닌\x20허구,\x20과장,\x20왜곡된\x20정보</strong>가\x20포함될\x20수\x20있음을\x20인지합니다.\x20\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20이를\x20실제\x20사실로\x20오인하여\x20발생하는\x20모든\x20문제에\x20대해\x20본인은\x20이의를\x20제기하지\x20않습니다.\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<label\x20style=\x22display:flex;\x20align-items:center;\x20margin-top:10px;\x20cursor:pointer;\x20background:\x20#fff;\x20padding:\x205px;\x20border-radius:\x204px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<input\x20type=\x22checkbox\x22\x20class=\x22legal-check\x22\x20style=\x22width:18px;\x20height:18px;\x20margin-right:8px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20style=\x22font-size:14px;\x20font-weight:bold;\x20color:\x20#b71c1c;\x22>[필수]\x20위\x20내용을\x20이해하고\x20동의합니다.</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</label>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22legal-item\x22\x20style=\x22background:#fff5f5;\x20padding:15px;\x20border-radius:8px;\x20margin-bottom:15px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h4\x20style=\x22margin-top:0;\x20margin-bottom:\x208px;\x20color:#b71c1c;\x22>2.\x20명예훼손\x20및\x20모욕에\x20대한\x20책임</h4>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22font-size:13px;\x20color:#333;\x20line-height:1.6;\x20margin:0;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20본\x20사이트\x20내에서\x20발생하는\x20<strong>비난,\x20조롱,\x20사실적시,\x20욕설,\x20저격</strong>\x20등\x20타인의\x20명예를\x20훼손할\x20수\x20있는\x20\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20모든\x20콘텐츠에\x20대한\x20법적\x20책임은\x20전적으로\x20게시물을\x20작성한\x20<strong>사용자\x20본인</strong>에게\x20있습니다.\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20해당\x20행위로\x20인한\x20형법상\x20고소/고발\x20조치\x20시\x20사이트\x20운영자는\x20어떠한\x20보호도\x20제공하지\x20않습니다.\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<label\x20style=\x22display:flex;\x20align-items:center;\x20margin-top:10px;\x20cursor:pointer;\x20background:\x20#fff;\x20padding:\x205px;\x20border-radius:\x204px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<input\x20type=\x22checkbox\x22\x20class=\x22legal-check\x22\x20style=\x22width:18px;\x20height:18px;\x20margin-right:8px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20style=\x22font-size:14px;\x20font-weight:bold;\x20color:\x20#b71c1c;\x22>[필수]\x20법적\x20책임을\x20본인이\x20직접\x20동의합니다.</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</label>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22legal-item\x22\x20style=\x22background:#fff5f5;\x20padding:15px;\x20border-radius:8px;\x20margin-bottom:15px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h4\x20style=\x22margin-top:0;\x20margin-bottom:\x208px;\x20color:#b71c1c;\x22>3.\x20관리자\x20및\x20운영자\x20면책\x20동의</h4>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22font-size:13px;\x20color:#333;\x20line-height:1.6;\x20margin:0;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20사이트\x20운영자\x20및\x20관리자는\x20사용자가\x20게시한\x20콘텐츠의\x20내용에\x20대해\x20\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<strong>어떠한\x20민·형사상\x20법적\x20책임도\x20지지\x20않습니다.</strong>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20또한,\x20운영자는\x20임의로\x20게시물을\x20삭제하거나\x20사용자를\x20차단할\x20권리를\x20가지며\x20이에\x20대해\x20이의를\x20제기할\x20수\x20없습니다.\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<label\x20style=\x22display:flex;\x20align-items:center;\x20margin-top:10px;\x20cursor:pointer;\x20background:\x20#fff;\x20padding:\x205px;\x20border-radius:\x204px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<input\x20type=\x22checkbox\x22\x20class=\x22legal-check\x22\x20style=\x22width:18px;\x20height:18px;\x20margin-right:8px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20style=\x22font-size:14px;\x20font-weight:bold;\x20color:\x20#b71c1c;\x22>[필수]\x20운영자의\x20법적\x20책임\x20면책에\x20동의합니다.</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</label>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22legal-item\x22\x20style=\x22background:#f8f9fa;\x20padding:15px;\x20border-radius:8px;\x20margin-bottom:15px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h4\x20style=\x22margin-top:0;\x20margin-bottom:\x208px;\x20color:#212529;\x22>4.\x20동의\x20내역\x20영구\x20저장\x20안내</h4>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22font-size:13px;\x20color:#333;\x20line-height:1.6;\x20margin:0;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20본\x20동의\x20절차는\x20법적\x20효력을\x20위해\x20사용자의\x20<strong>닉네임,\x20이메일,\x20접속\x20IP(식별정보),\x20동의\x20일시</strong>가\x20\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20서버\x20및\x20귀하의\x20브라우저\x20쿠키에\x20<strong>영구적으로\x20저장</strong>됨을\x20안내드립니다.\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<label\x20style=\x22display:flex;\x20align-items:center;\x20margin-top:10px;\x20cursor:pointer;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<input\x20type=\x22checkbox\x22\x20class=\x22legal-check\x22\x20style=\x22width:18px;\x20height:18px;\x20margin-right:8px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20style=\x22font-size:14px;\x20font-weight:bold;\x22>[필수]\x20정보\x20저장\x20및\x20영구\x20쿠키\x20생성에\x20동의합니다.</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</label>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22margin-top:20px;\x20border-top:\x201px\x20solid\x20#eee;\x20padding-top:\x2020px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22submitLegalAgreement()\x22\x20style=\x22width:\x20100%;\x20background:#c62828;\x20color:\x20white;\x20border:\x20none;\x20padding:\x2015px;\x20font-size:\x2016px;\x20font-weight:\x20bold;\x20border-radius:\x208px;\x20cursor:\x20pointer;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<i\x20class=\x22fas\x20fa-check-circle\x22></i>\x20모든\x20약관에\x20동의하고\x20입장하기\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22text-align:center;\x20color:#868e96;\x20font-size:12px;\x20margin-top:10px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20동의하지\x20않을\x20경우\x20사이트를\x20이용하실\x20수\x20없습니다.\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20','VIP\x20상태\x20업데이트\x20검증\x20실패','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22background:#fff;padding:15px;border-radius:6px;margin-bottom:15px;max-height:100px;overflow:auto;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22margin:0;color:#495057;font-size:14px;white-space:pre-wrap;\x22>','once','📄\x20script.js\x20로드\x20완료\x20-\x20모든\x20파트\x20준비됨','appendChild','법적\x20동의\x20체크\x20시작...','</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>','#freeboardSection\x20.chip','editPatchId','requestPermission','beforeend','likeCount','3798935ADHiVp',';\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22flex:1;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h5\x20style=\x22margin:0\x200\x208px\x200;color:#212529;font-size:18px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','.page-section','closeUserDetail','className','#28a745','src','\x27,\x20-1)\x22\x20class=\x22btn-secondary\x22>경고\x20-1</button>\x0a\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','\x27)\x22\x20class=\x22btn-danger\x22>삭제</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>','</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22article-stats\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20class=\x22stat-item\x22>👁️\x20','<span\x20style=\x22background:#6c757d;color:#fff;padding:3px\x2010px;border-radius:12px;font-size:11px;margin-left:8px;\x22>비활성화</span>','<button\x20onclick=\x22loadMoreComments()\x22\x20class=\x22btn-secondary\x22\x20style=\x22width:100%;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20댓글\x20더보기\x20(','/fcmTokens/','&id=','btn-gray','🔍\x20점검\x20모드\x20체크:','\x27)\x22\x20class=\x22btn-secondary\x22\x20style=\x22height:32px;padding:0\x2012px;font-size:12px;\x22>수정</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22deleteComment(\x27','btn-green','userDetailModal','\x27)\x22\x20class=\x22btn-secondary\x22\x20style=\x22white-space:nowrap;\x22>고정\x20해제</button>','catch','searchKeyword','<p\x20style=\x22color:#868e96;text-align:center;padding:20px;\x22>작성한\x20댓글이\x20없습니다.</p>','showAdManager','back','/views','showUserDetail'];_0x2e8e=function(){return _0x16cebc;};return _0x2e8e();}function setupArticleForm(){const _0x4acec6=_0x338bd4,_0x5ebca6=document[_0x4acec6(0x2c8)](_0x4acec6(0x3b7));if(!_0x5ebca6)return;const _0x1145de=_0x5ebca6[_0x4acec6(0x1ca)](_0x4acec6(0x3a7)),_0x546a89=_0x5ebca6[_0x4acec6(0x1ca)](_0x4acec6(0x2a0)),_0x1ba066=_0x5ebca6['querySelector']('#content'),_0x3aec87=_0x5ebca6[_0x4acec6(0x1ca)](_0x4acec6(0x28a));function _0x508653(){const _0x1fd5c9=_0x4acec6,_0x11d8a6=_0x1145de[_0x1fd5c9(0x2fc)]+'\x20'+_0x546a89[_0x1fd5c9(0x2fc)]+'\x20'+_0x1ba066['value'],_0xce6cd8=checkBannedWords(_0x11d8a6);_0xce6cd8?(_0x3aec87[_0x1fd5c9(0x301)]=_0x1fd5c9(0x310)+_0xce6cd8+'\x22',_0x3aec87[_0x1fd5c9(0x34f)]['display']=_0x1fd5c9(0x28f)):_0x3aec87['style']['display']=_0x1fd5c9(0x38a);}_0x1145de[_0x4acec6(0x422)]('input',_0x508653),_0x546a89['addEventListener'](_0x4acec6(0x1b8),_0x508653),_0x1ba066[_0x4acec6(0x422)]('input',_0x508653);const _0x35401a=_0x5ebca6[_0x4acec6(0x1ca)](_0x4acec6(0x335));_0x35401a[_0x4acec6(0x422)](_0x4acec6(0x3cc),previewThumbnail),_0x5ebca6[_0x4acec6(0x422)](_0x4acec6(0x1c8),function(_0x3fe4b4){const _0x2a7d9b=_0x4acec6;_0x3fe4b4[_0x2a7d9b(0x2bc)]();if(!isLoggedIn()){alert(_0x2a7d9b(0x303));return;}const _0x803e44=_0x1145de['value'],_0x52c767=_0x1ba066['value'],_0x4aa0c5=_0x546a89['value'],_0x44111f=checkBannedWords(_0x803e44+'\x20'+_0x52c767+'\x20'+_0x4aa0c5);if(_0x44111f){alert('⚠️\x20금지어(\x22'+_0x44111f+_0x2a7d9b(0x1e4)),addWarningToCurrentUser();return;}const _0x4031d3={'id':Date[_0x2a7d9b(0x221)]()['toString'](),'category':_0x5ebca6['querySelector'](_0x2a7d9b(0x1ef))[_0x2a7d9b(0x2fc)],'title':_0x803e44,'summary':_0x4aa0c5,'content':_0x52c767,'author':getNickname(),'authorEmail':getUserEmail(),'date':new Date()[_0x2a7d9b(0x389)](),'createdAt':Date[_0x2a7d9b(0x221)](),'views':0x0,'likeCount':0x0,'dislikeCount':0x0,'thumbnail':null};if(_0x35401a[_0x2a7d9b(0x27f)][0x0]){const _0x49c46b=new FileReader();_0x49c46b['onload']=function(_0x328c0f){const _0x11929f=_0x2a7d9b;_0x4031d3[_0x11929f(0x359)]=_0x328c0f[_0x11929f(0x425)][_0x11929f(0x426)],saveArticle(_0x4031d3,()=>{const _0x19d2b7=_0x11929f;_0x5ebca6[_0x19d2b7(0x1ce)](),document[_0x19d2b7(0x2c8)](_0x19d2b7(0x1ec))[_0x19d2b7(0x34f)]['display']=_0x19d2b7(0x38a),document[_0x19d2b7(0x2c8)](_0x19d2b7(0x362))['innerHTML']='<i\x20class=\x22fas\x20fa-camera\x22></i><p>클릭하여\x20이미지\x20업로드</p>',_0x3aec87['style'][_0x19d2b7(0x1de)]='none',alert(_0x19d2b7(0x20d)),sendNotification(_0x19d2b7(0x423),{'authorEmail':_0x4031d3[_0x19d2b7(0x39c)],'authorName':_0x4031d3[_0x19d2b7(0x38b)],'title':_0x4031d3[_0x19d2b7(0x412)],'articleId':_0x4031d3['id']}),showArticles();});},_0x49c46b[_0x2a7d9b(0x2b9)](_0x35401a[_0x2a7d9b(0x27f)][0x0]);}else saveArticle(_0x4031d3,()=>{const _0x678403=_0x2a7d9b;_0x5ebca6[_0x678403(0x1ce)](),document[_0x678403(0x2c8)](_0x678403(0x1ec))[_0x678403(0x34f)][_0x678403(0x1de)]=_0x678403(0x38a),document[_0x678403(0x2c8)]('uploadText')[_0x678403(0x296)]='<i\x20class=\x22fas\x20fa-camera\x22></i><p>클릭하여\x20이미지\x20업로드</p>',_0x3aec87[_0x678403(0x34f)][_0x678403(0x1de)]=_0x678403(0x38a),alert('기사가\x20발행되었습니다!'),sendNotification(_0x678403(0x423),{'authorEmail':_0x4031d3[_0x678403(0x39c)],'authorName':_0x4031d3[_0x678403(0x38b)],'title':_0x4031d3[_0x678403(0x412)],'articleId':_0x4031d3['id']}),showArticles();});});}function loadComments(_0x477ae7){const _0xe134a1=_0x338bd4,_0x115455=getNickname();db[_0xe134a1(0x3f9)]('comments/'+_0x477ae7)[_0xe134a1(0x226)]('value')[_0xe134a1(0x394)](_0x5341c3=>{const _0x9583a1=_0xe134a1,_0x193be8=_0x5341c3['val']()||{},_0x4dbdbc=Object[_0x9583a1(0x37e)](_0x193be8)[_0x9583a1(0x367)]((_0x524d3f,_0x10e3eb)=>new Date(_0x10e3eb[0x1][_0x9583a1(0x2dc)])-new Date(_0x524d3f[0x1]['timestamp'])),_0x2dc3df=document[_0x9583a1(0x2c8)](_0x9583a1(0x385)),_0x4329ce=document[_0x9583a1(0x2c8)](_0x9583a1(0x2db));_0x4329ce[_0x9583a1(0x301)]='('+_0x4dbdbc[_0x9583a1(0x3c7)]+')';if(!_0x4dbdbc['length']){_0x2dc3df[_0x9583a1(0x296)]=_0x9583a1(0x3a3),document[_0x9583a1(0x2c8)](_0x9583a1(0x1a9))[_0x9583a1(0x296)]='';return;}const _0x2f4570=currentCommentPage*COMMENTS_PER_PAGE,_0x410c46=_0x4dbdbc[_0x9583a1(0x1cc)](0x0,_0x2f4570);_0x2dc3df['innerHTML']=_0x410c46[_0x9583a1(0x2d7)](([_0x4b12d1,_0x3a6c95])=>{const _0x381669=_0x9583a1,_0x2dad9f=isLoggedIn()&&(_0x3a6c95[_0x381669(0x38b)]===_0x115455||isAdmin());return _0x381669(0x217)+_0x3a6c95['author']+_0x381669(0x21f)+_0x3a6c95[_0x381669(0x2dc)]+'</small>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20'+(_0x2dad9f?_0x381669(0x1ba)+_0x477ae7+_0x381669(0x391)+_0x4b12d1+_0x381669(0x391)+_0x3a6c95[_0x381669(0x38b)]+_0x381669(0x240)+_0x477ae7+_0x381669(0x391)+_0x4b12d1+'\x27,\x27'+_0x3a6c95['author']+_0x381669(0x347):'')+_0x381669(0x34b)+_0x3a6c95['text']+_0x381669(0x264);})['join']('');const _0x5f3e4c=document[_0x9583a1(0x2c8)](_0x9583a1(0x1a9));_0x2f4570<_0x4dbdbc[_0x9583a1(0x3c7)]?_0x5f3e4c[_0x9583a1(0x296)]=_0x9583a1(0x23b)+(_0x4dbdbc['length']-_0x2f4570)+_0x9583a1(0x27a):_0x5f3e4c['innerHTML']='';});}function loadMoreComments(){currentCommentPage++,loadComments(currentArticleId);}function submitCommentFromDetail(){submitComment(currentArticleId);}function submitComment(_0x39ab87){const _0x5a791f=_0x338bd4;if(!isLoggedIn()){alert(_0x5a791f(0x1f9));return;}const _0x39d34f=document['getElementById'](_0x5a791f(0x1b9))['value'][_0x5a791f(0x2e2)]();if(!_0x39d34f)return alert('댓글\x20내용을\x20입력해주세요!');const _0x25adf6=checkBannedWords(_0x39d34f);if(_0x25adf6){alert('⚠️\x20금지어(\x22'+_0x25adf6+'\x22)가\x20포함되어\x20등록할\x20수\x20없으며,\x20경고\x201회가\x20누적됩니다.'),addWarningToCurrentUser();return;}const _0x281b2c=Date[_0x5a791f(0x221)]()[_0x5a791f(0x214)](),_0x189f69={'author':getNickname(),'authorEmail':getUserEmail(),'text':_0x39d34f,'timestamp':new Date()[_0x5a791f(0x389)]()};db[_0x5a791f(0x3f9)](_0x5a791f(0x1db)+_0x39ab87+'/'+_0x281b2c)[_0x5a791f(0x2dd)](_0x189f69)[_0x5a791f(0x394)](()=>{const _0xcbe07c=_0x5a791f;db[_0xcbe07c(0x3f9)](_0xcbe07c(0x1d9)+_0x39ab87)['once'](_0xcbe07c(0x2fc))['then'](_0x256d61=>{const _0x3b09f0=_0xcbe07c,_0x4aecf4=_0x256d61[_0x3b09f0(0x331)]();_0x4aecf4&&(sendNotification(_0x3b09f0(0x2f8),{'authorEmail':_0x189f69[_0x3b09f0(0x39c)],'authorName':_0x189f69['author'],'content':_0x39d34f,'articleId':_0x39ab87}),_0x4aecf4[_0x3b09f0(0x39c)]!==_0x189f69[_0x3b09f0(0x39c)]&&sendNotification('myArticleComment',{'articleAuthorEmail':_0x4aecf4['authorEmail'],'commenterEmail':_0x189f69['authorEmail'],'commenterName':_0x189f69['author'],'content':_0x39d34f,'articleId':_0x39ab87}));});}),document[_0x5a791f(0x2c8)](_0x5a791f(0x1b9))[_0x5a791f(0x2fc)]='',currentCommentPage=0x1,loadComments(_0x39ab87);}function _0x4802(_0x28e230,_0xcdf870){_0x28e230=_0x28e230-0x1a4;const _0x2e8e91=_0x2e8e();let _0x4802dc=_0x2e8e91[_0x28e230];return _0x4802dc;}function editComment(_0xea39a0,_0x28e97a,_0x15c9b0){const _0x1848de=_0x338bd4,_0x2672ab=getNickname();if(!isLoggedIn()||_0x15c9b0!==_0x2672ab&&!isAdmin())return alert(_0x1848de(0x1c7));db[_0x1848de(0x3f9)]('comments/'+_0xea39a0+'/'+_0x28e97a)['once'](_0x1848de(0x2fc))[_0x1848de(0x394)](_0xcfd275=>{const _0x2922a5=_0x1848de,_0x373288=_0xcfd275['val']();if(!_0x373288)return;const _0x4b242e=prompt(_0x2922a5(0x302),_0x373288[_0x2922a5(0x273)]);if(_0x4b242e===null||_0x4b242e[_0x2922a5(0x2e2)]()==='')return;const _0x19b64f=checkBannedWords(_0x4b242e);if(_0x19b64f){alert(_0x2922a5(0x274)+_0x19b64f+'\x22)가\x20포함되어\x20수정할\x20수\x20없습니다.');return;}_0x373288[_0x2922a5(0x273)]=_0x4b242e[_0x2922a5(0x2e2)](),_0x373288['timestamp']=new Date()['toLocaleString']()+'\x20(수정됨)',db['ref'](_0x2922a5(0x1db)+_0xea39a0+'/'+_0x28e97a)[_0x2922a5(0x2dd)](_0x373288),loadComments(_0xea39a0);});}function deleteComment(_0x162f2d,_0x5bd72a,_0x961a4f){const _0x3b5620=_0x338bd4,_0x599971=getNickname();if(!isLoggedIn()||_0x961a4f!==_0x599971&&!isAdmin())return alert(_0x3b5620(0x1ea));if(!confirm(_0x3b5620(0x3f7)))return;db['ref'](_0x3b5620(0x1db)+_0x162f2d+'/'+_0x5bd72a)[_0x3b5620(0x313)]()[_0x3b5620(0x394)](()=>{const _0x160256=_0x3b5620;alert(_0x160256(0x3ec)),loadComments(_0x162f2d);})[_0x3b5620(0x244)](_0x514ddf=>{const _0x58e270=_0x3b5620;alert('삭제\x20실패:\x20'+_0x514ddf[_0x58e270(0x1dc)]);});}async function showPopupManager(){const _0x2f1607=_0x338bd4;if(!isAdmin())return alert(_0x2f1607(0x250));hideAll(),document['getElementById'](_0x2f1607(0x3d1))['classList'][_0x2f1607(0x2da)](_0x2f1607(0x39a));const _0x25167e=document['getElementById'](_0x2f1607(0x311));if(!_0x25167e)return;_0x25167e[_0x2f1607(0x296)]='<p\x20style=\x22text-align:center;color:#868e96;\x22>로딩\x20중...</p>';const _0x1f003d=await db[_0x2f1607(0x3f9)]('popups')['once']('value'),_0x111484=_0x1f003d[_0x2f1607(0x331)]()||{},_0x175f39=Object['entries'](_0x111484)[_0x2f1607(0x2d7)](([_0x33358f,_0x244910])=>({'id':_0x33358f,..._0x244910}))['sort']((_0x378fec,_0x48883f)=>_0x48883f[_0x2f1607(0x3ed)]-_0x378fec[_0x2f1607(0x3ed)]);_0x25167e[_0x2f1607(0x296)]=_0x2f1607(0x3b5)+(_0x175f39[_0x2f1607(0x3c7)]===0x0?_0x2f1607(0x410):_0x175f39[_0x2f1607(0x2d7)](_0x4433bb=>'\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22background:#f8f9fa;padding:20px;border-radius:8px;margin-bottom:15px;border-left:4px\x20solid\x20'+(_0x4433bb['isActive']?_0x2f1607(0x235):_0x2f1607(0x34e))+_0x2f1607(0x231)+_0x4433bb[_0x2f1607(0x412)]+_0x2f1607(0x3ca)+(_0x4433bb['isActive']?_0x2f1607(0x291):_0x2f1607(0x23a))+_0x2f1607(0x1d8)+_0x4433bb[_0x2f1607(0x30d)]+_0x2f1607(0x420)+new Date(_0x4433bb[_0x2f1607(0x3ed)])[_0x2f1607(0x389)]()+_0x2f1607(0x225)+_0x4433bb[_0x2f1607(0x386)]+_0x2f1607(0x1da)+_0x4433bb['id']+_0x2f1607(0x330)+!_0x4433bb[_0x2f1607(0x3a9)]+_0x2f1607(0x408)+(_0x4433bb[_0x2f1607(0x3a9)]?_0x2f1607(0x23e):_0x2f1607(0x241))+_0x2f1607(0x2e6)+(_0x4433bb[_0x2f1607(0x3a9)]?_0x2f1607(0x409):_0x2f1607(0x207))+'\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22editPopup(\x27'+_0x4433bb['id']+'\x27)\x22\x20class=\x22btn\x20btn-blue\x22\x20style=\x22font-size:12px;\x22>수정</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22deletePopup(\x27'+_0x4433bb['id']+_0x2f1607(0x1c9))[_0x2f1607(0x41e)](''))+_0x2f1607(0x2c9);}function openPopupCreateModal(){const _0x54cc8a=_0x338bd4,_0x5ec8dc=_0x54cc8a(0x29f);document[_0x54cc8a(0x355)][_0x54cc8a(0x305)](_0x54cc8a(0x22e),_0x5ec8dc),document[_0x54cc8a(0x2c8)]('popupCreateForm')['addEventListener'](_0x54cc8a(0x1c8),async function(_0x2ad4ec){_0x2ad4ec['preventDefault'](),await createPopup();});}function closePopupCreateModal(){const _0x465302=_0x338bd4,_0x3768fe=document['getElementById'](_0x465302(0x2ba));if(_0x3768fe)_0x3768fe[_0x465302(0x313)]();}async function createPopup(){const _0x44f311=_0x338bd4,_0xbc6924=document['getElementById'](_0x44f311(0x2d5))[_0x44f311(0x2fc)][_0x44f311(0x2e2)](),_0x54e3ca=document[_0x44f311(0x2c8)](_0x44f311(0x3d9))[_0x44f311(0x2fc)]['trim'](),_0x4f7234=document[_0x44f311(0x2c8)](_0x44f311(0x288))['checked'];if(!_0xbc6924||!_0x54e3ca)return alert(_0x44f311(0x1df));const _0x204e9b={'id':Date[_0x44f311(0x221)]()['toString'](),'title':_0xbc6924,'content':_0x54e3ca,'isActive':_0x4f7234,'createdAt':Date[_0x44f311(0x221)](),'createdBy':getNickname()};try{await db[_0x44f311(0x3f9)](_0x44f311(0x1e9)+_0x204e9b['id'])[_0x44f311(0x2dd)](_0x204e9b),alert('팝업이\x20생성되었습니다!'),closePopupCreateModal(),showPopupManager();}catch(_0x5ee48e){alert(_0x44f311(0x36f)+_0x5ee48e[_0x44f311(0x1dc)]);}}async function togglePopupStatus(_0x2f60e8,_0x552521){const _0x472011=_0x338bd4;if(!isAdmin())return;try{await db['ref']('popups/'+_0x2f60e8+'/isActive')['set'](_0x552521),alert(_0x552521?'팝업이\x20활성화되었습니다!':_0x472011(0x392)),showPopupManager();}catch(_0x5375b1){alert('상태\x20변경\x20실패:\x20'+_0x5375b1[_0x472011(0x1dc)]);}}async function editPopup(_0xdb5b30){const _0x56d7f9=_0x338bd4,_0x35042f=await db['ref'](_0x56d7f9(0x1e9)+_0xdb5b30)[_0x56d7f9(0x226)](_0x56d7f9(0x2fc)),_0x15f0a4=_0x35042f[_0x56d7f9(0x331)]();if(!_0x15f0a4)return;const _0x302a82=_0x56d7f9(0x280)+_0x15f0a4[_0x56d7f9(0x412)]+_0x56d7f9(0x2a2)+_0x15f0a4['content']+_0x56d7f9(0x320);document['body'][_0x56d7f9(0x305)](_0x56d7f9(0x22e),_0x302a82),document[_0x56d7f9(0x2c8)]('popupEditForm')[_0x56d7f9(0x422)](_0x56d7f9(0x1c8),async function(_0x132ccc){const _0x20514c=_0x56d7f9;_0x132ccc[_0x20514c(0x2bc)]();const _0x2e8abd=document[_0x20514c(0x2c8)](_0x20514c(0x282))[_0x20514c(0x2fc)][_0x20514c(0x2e2)](),_0x2ff55f=document[_0x20514c(0x2c8)](_0x20514c(0x2fe))[_0x20514c(0x2fc)]['trim']();if(!_0x2e8abd||!_0x2ff55f)return alert(_0x20514c(0x1df));try{await db[_0x20514c(0x3f9)](_0x20514c(0x1e9)+_0xdb5b30)[_0x20514c(0x388)]({'title':_0x2e8abd,'content':_0x2ff55f}),alert('팝업이\x20수정되었습니다!'),closePopupEditModal(),showPopupManager();}catch(_0x10a55d){alert('수정\x20실패:\x20'+_0x10a55d[_0x20514c(0x1dc)]);}});}function closePopupEditModal(){const _0x2ec6de=_0x338bd4,_0x3e9115=document[_0x2ec6de(0x2c8)](_0x2ec6de(0x28e));if(_0x3e9115)_0x3e9115[_0x2ec6de(0x313)]();}async function deletePopup(_0xd67d02){const _0x14f7aa=_0x338bd4;if(!confirm(_0x14f7aa(0x2d3)))return;try{await db[_0x14f7aa(0x3f9)](_0x14f7aa(0x1e9)+_0xd67d02)[_0x14f7aa(0x313)](),alert(_0x14f7aa(0x256)),showPopupManager();}catch(_0x10bb08){alert(_0x14f7aa(0x3f2)+_0x10bb08['message']);}}async function showActivePopupsToUser(){const _0x3376e2=_0x338bd4,_0x206bd7=await db['ref']('popups')[_0x3376e2(0x226)](_0x3376e2(0x2fc)),_0x375fee=_0x206bd7[_0x3376e2(0x331)]()||{},_0x38988e=Object[_0x3376e2(0x215)](_0x375fee)['filter'](_0x2819dd=>_0x2819dd['isActive'])[_0x3376e2(0x367)]((_0x2e6672,_0x45907c)=>_0x45907c[_0x3376e2(0x3ed)]-_0x2e6672['createdAt']);if(_0x38988e[_0x3376e2(0x3c7)]===0x0)return;const _0x5caaf9=_0x38988e[0x0],_0x30e1a2=getCookie(_0x3376e2(0x3b1));if(_0x30e1a2&&_0x30e1a2[_0x3376e2(0x1af)](_0x5caaf9['id']))return;const _0x13f1d2='\x0a\x20\x20\x20\x20\x20\x20\x20\x20<div\x20id=\x22userPopupModal\x22\x20class=\x22modal\x20active\x22\x20style=\x22z-index:10000;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22modal-content\x22\x20style=\x22max-width:600px;animation:slideDown\x200.3s\x20ease;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22background:linear-gradient(135deg,\x20#c62828\x200%,\x20#b71c1c\x20100%);color:#fff;padding:20px;border-radius:8px\x208px\x200\x200;margin:-30px\x20-30px\x2020px\x20-30px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h3\x20style=\x22margin:0;font-size:24px;\x22>📢\x20'+_0x5caaf9['title']+_0x3376e2(0x3b2)+_0x5caaf9[_0x3376e2(0x386)]+_0x3376e2(0x2b4)+_0x5caaf9['id']+_0x3376e2(0x2df)+_0x5caaf9['id']+_0x3376e2(0x20e);document[_0x3376e2(0x355)][_0x3376e2(0x305)](_0x3376e2(0x22e),_0x13f1d2);}function closeUserPopup(_0x520f33,_0x1cc065){const _0xb1b711=_0x338bd4,_0x1b6438=document[_0xb1b711(0x2c8)](_0xb1b711(0x328));if(_0x1b6438)_0x1b6438[_0xb1b711(0x313)]();if(_0x1cc065){const _0x4d8485=getCookie('seen_popups')||'',_0x2b60fe=_0x4d8485?_0x4d8485+','+_0x520f33:_0x520f33,_0x362e65=new Date();_0x362e65[_0xb1b711(0x1fd)](_0x362e65[_0xb1b711(0x36c)]()+0xa),document['cookie']='seen_popups='+_0x2b60fe+';expires='+_0x362e65[_0xb1b711(0x3a6)]()+_0xb1b711(0x3ff);}}function showPatchNotesPage(){const _0x3b0701=_0x338bd4;hideAll(),document[_0x3b0701(0x2c8)](_0x3b0701(0x3df))['classList'][_0x3b0701(0x2da)]('active'),loadPatchNotesToContainer(document['getElementById']('patchNotesList')),updateURL(_0x3b0701(0x27d));}function loadPatchNotesToContainer(_0x494942){const _0x5cad32=_0x338bd4;_0x494942[_0x5cad32(0x296)]=_0x5cad32(0x2d8),db[_0x5cad32(0x3f9)](_0x5cad32(0x3ee))['orderByChild'](_0x5cad32(0x342))[_0x5cad32(0x226)]('value')[_0x5cad32(0x394)](_0x41e151=>{const _0x5792f9=_0x5cad32;_0x494942[_0x5792f9(0x296)]='';if(isAdmin()){const _0x59a034=document[_0x5792f9(0x2d1)](_0x5792f9(0x29c));_0x59a034[_0x5792f9(0x234)]=_0x5792f9(0x3b3),_0x59a034[_0x5792f9(0x34f)][_0x5792f9(0x24d)]=_0x5792f9(0x406),_0x59a034[_0x5792f9(0x296)]=_0x5792f9(0x2fa),_0x494942[_0x5792f9(0x228)](_0x59a034);}const _0xa36465=[];_0x41e151['forEach'](_0x48d1f8=>{const _0x84899f=_0x5792f9;_0xa36465[_0x84899f(0x3ea)]({'id':_0x48d1f8['key'],..._0x48d1f8[_0x84899f(0x331)]()});}),_0xa36465[_0x5792f9(0x3c7)]===0x0&&(_0x494942[_0x5792f9(0x296)]+='<p\x20style=\x22text-align:center;\x20color:#888;\x22>등록된\x20패치노트가\x20없습니다.</p>'),_0xa36465[_0x5792f9(0x1b4)]()[_0x5792f9(0x29b)](_0x13fb4d=>{const _0x193d39=_0x5792f9,_0x28d285=document[_0x193d39(0x2d1)](_0x193d39(0x29c));_0x28d285[_0x193d39(0x234)]=_0x193d39(0x3f1);let _0x303cb1='';isAdmin()&&(_0x303cb1='\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22margin-top:10px;\x20border-top:1px\x20solid\x20#eee;\x20padding-top:10px;\x20text-align:right;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22openPatchNoteModal(\x27'+_0x13fb4d['id']+_0x193d39(0x1e0)+_0x13fb4d['id']+_0x193d39(0x2fd)),_0x28d285[_0x193d39(0x296)]=_0x193d39(0x428)+_0x13fb4d['version']+_0x193d39(0x1f3)+_0x13fb4d['date']+_0x193d39(0x3f4)+_0x13fb4d[_0x193d39(0x386)]+_0x193d39(0x26e)+_0x303cb1+_0x193d39(0x3c2),_0x494942[_0x193d39(0x228)](_0x28d285);});});}window[_0x338bd4(0x27c)]=function(_0x18b5bd=null){const _0x74dc5=_0x338bd4,_0x1b0d6d=document[_0x74dc5(0x2c8)](_0x74dc5(0x20f)),_0x2b3113=document['getElementById'](_0x74dc5(0x397));_0x2b3113['reset'](),document['getElementById'](_0x74dc5(0x22c))[_0x74dc5(0x2fc)]='',_0x18b5bd?db['ref']('patchNotes/'+_0x18b5bd)['once']('value')['then'](_0x358e95=>{const _0x577960=_0x74dc5,_0x2c35a9=_0x358e95[_0x577960(0x331)]();document[_0x577960(0x2c8)](_0x577960(0x22c))[_0x577960(0x2fc)]=_0x18b5bd,document[_0x577960(0x2c8)](_0x577960(0x36a))['value']=_0x2c35a9[_0x577960(0x28d)],document[_0x577960(0x2c8)](_0x577960(0x3e6))['value']=_0x2c35a9[_0x577960(0x342)],document['getElementById'](_0x577960(0x222))['value']=_0x2c35a9[_0x577960(0x386)],_0x1b0d6d[_0x577960(0x272)]['add'](_0x577960(0x39a));}):(document[_0x74dc5(0x2c8)](_0x74dc5(0x3e6))[_0x74dc5(0x2fc)]=new Date()[_0x74dc5(0x40f)]()[_0x74dc5(0x38d)]('T')[0x0],_0x1b0d6d[_0x74dc5(0x272)][_0x74dc5(0x2da)](_0x74dc5(0x39a)));},window[_0x338bd4(0x2bf)]=function(){const _0x23113c=_0x338bd4;document[_0x23113c(0x2c8)]('patchNoteModal')['classList']['remove'](_0x23113c(0x39a));},window[_0x338bd4(0x25a)]=function(_0x5d7382){const _0x38417d=_0x338bd4;_0x5d7382[_0x38417d(0x2bc)]();if(!isAdmin())return alert('관리자만\x20가능합니다.');const _0x2fbebc=document[_0x38417d(0x2c8)](_0x38417d(0x22c))['value'],_0x450ff4={'version':document[_0x38417d(0x2c8)](_0x38417d(0x36a))[_0x38417d(0x2fc)],'date':document[_0x38417d(0x2c8)]('patchDate')[_0x38417d(0x2fc)],'content':document[_0x38417d(0x2c8)](_0x38417d(0x222))['value']};_0x2fbebc?db[_0x38417d(0x3f9)](_0x38417d(0x312)+_0x2fbebc)[_0x38417d(0x388)](_0x450ff4):db[_0x38417d(0x3f9)](_0x38417d(0x3ee))[_0x38417d(0x3ea)](_0x450ff4);closePatchNoteModal();if(document[_0x38417d(0x2c8)](_0x38417d(0x3df))[_0x38417d(0x272)][_0x38417d(0x317)](_0x38417d(0x39a)))showPatchNotesPage();else document[_0x38417d(0x2c8)](_0x38417d(0x326))[_0x38417d(0x272)][_0x38417d(0x317)]('active')&&showPatchNotesTab();},window['deletePatchNote']=function(_0x33e037){const _0x2c8698=_0x338bd4;if(!isAdmin())return;confirm(_0x2c8698(0x2cc))&&db[_0x2c8698(0x3f9)]('patchNotes/'+_0x33e037)['remove']()[_0x2c8698(0x394)](()=>{const _0x5bb979=_0x2c8698;if(document[_0x5bb979(0x2c8)]('patchnotesSection')[_0x5bb979(0x272)]['contains']('active'))showPatchNotesPage();else document[_0x5bb979(0x2c8)](_0x5bb979(0x326))[_0x5bb979(0x272)][_0x5bb979(0x317)]('active')&&showPatchNotesTab();});};async function showAdminEvent(){const _0x31c85d=_0x338bd4,_0x14f17b=auth[_0x31c85d(0x2f6)];if(!_0x14f17b)return alert(_0x31c85d(0x318));const _0x479f2c=await db[_0x31c85d(0x3f9)](_0x31c85d(0x40e)+_0x14f17b[_0x31c85d(0x353)]+_0x31c85d(0x368))['once'](_0x31c85d(0x2fc)),_0x43ae12=_0x479f2c[_0x31c85d(0x331)]()||![];if(!isAdmin()&&!_0x43ae12)return alert(_0x31c85d(0x40b));hideAll(),document[_0x31c85d(0x2c8)](_0x31c85d(0x33f))[_0x31c85d(0x272)]['add'](_0x31c85d(0x39a));const _0x5ea6ee=document['querySelector'](_0x31c85d(0x384));if(_0x5ea6ee)_0x5ea6ee[_0x31c85d(0x272)][_0x31c85d(0x2da)](_0x31c85d(0x39a));document['getElementById'](_0x31c85d(0x2a3))[_0x31c85d(0x296)]='\x0a\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22text-align:center;padding:60px\x2020px;color:#868e96;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22font-size:18px;margin-bottom:10px;\x22>관리할\x20항목을\x20위에서\x20선택해주세요</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20',updateURL(_0x31c85d(0x206));}window[_0x338bd4(0x2e1)]=async function(){const _0x31bcd0=_0x338bd4,_0xed4d02=document[_0x31bcd0(0x2c8)]('eventContent');_0xed4d02[_0x31bcd0(0x296)]='<p\x20style=\x27text-align:center;color:#868e96;padding:40px;\x27>로딩\x20중...</p>';const _0x442853=await db['ref'](_0x31bcd0(0x25e))[_0x31bcd0(0x226)](_0x31bcd0(0x2fc)),_0x2135bf=_0x442853[_0x31bcd0(0x331)]()||{},_0x4e433a=Object[_0x31bcd0(0x215)](_0x2135bf),_0x5cd228=await db[_0x31bcd0(0x3f9)](_0x31bcd0(0x3e4))['once']('value'),_0x35ba01=_0x5cd228['val']()||{},_0x37f07e=Object[_0x31bcd0(0x3de)](_0x35ba01);if(_0x4e433a[_0x31bcd0(0x3c7)]===0x0){_0xed4d02['innerHTML']=_0x31bcd0(0x416);return;}_0xed4d02[_0x31bcd0(0x296)]='\x0a\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22background:#fff;border-radius:12px;padding:20px;box-shadow:0\x202px\x208px\x20rgba(0,0,0,0.1);\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h3\x20style=\x22margin-top:0;color:#c62828;\x22>📌\x20기사\x20고정\x20관리</h3>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<p\x20style=\x22color:#6c757d;margin-bottom:20px;\x22>고정할\x20기사를\x20선택하세요.\x20고정된\x20기사는\x20목록\x20상단에\x20표시됩니다.</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20'+_0x4e433a['map'](_0x538bde=>{const _0x1f5fee=_0x31bcd0,_0x4a9e59=_0x37f07e[_0x1f5fee(0x1af)](_0x538bde['id']);return'\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22background:#f8f9fa;padding:15px;margin-bottom:12px;border-left:4px\x20solid\x20'+(_0x4a9e59?_0x1f5fee(0x258):_0x1f5fee(0x332))+_0x1f5fee(0x1b6)+_0x538bde['title']+_0x1f5fee(0x2b0)+_0x538bde[_0x1f5fee(0x255)]+_0x1f5fee(0x420)+_0x538bde[_0x1f5fee(0x38b)]+_0x1f5fee(0x420)+_0x538bde[_0x1f5fee(0x342)]+_0x1f5fee(0x36e)+(_0x4a9e59?'<button\x20onclick=\x22unpinArticle(\x27'+_0x538bde['id']+_0x1f5fee(0x243):_0x1f5fee(0x37c)+_0x538bde['id']+_0x1f5fee(0x31d))+'\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20';})[_0x31bcd0(0x41e)]('')+_0x31bcd0(0x2c9);},window[_0x338bd4(0x364)]=async function(_0x40bbb3){const _0xd3868b=_0x338bd4;if(!confirm('이\x20기사를\x20상단에\x20고정하시겠습니까?'))return;await db['ref']('pinnedArticles/'+_0x40bbb3)[_0xd3868b(0x2dd)]({'pinnedAt':Date[_0xd3868b(0x221)](),'pinnedBy':getNickname()}),alert(_0xd3868b(0x2a7)),showPinManager();},window['unpinArticle']=async function(_0x74e062){const _0x145fbc=_0x338bd4;if(!confirm(_0x145fbc(0x1cd)))return;await db[_0x145fbc(0x3f9)]('pinnedArticles/'+_0x74e062)['remove'](),alert(_0x145fbc(0x3b9)),showPinManager();},window[_0x338bd4(0x247)]=async function(){const _0x517280=_0x338bd4,_0x3ad7dd=document[_0x517280(0x2c8)](_0x517280(0x2a3));_0x3ad7dd[_0x517280(0x296)]=_0x517280(0x322);const _0x182f97=await db[_0x517280(0x3f9)]('advertisements')[_0x517280(0x226)](_0x517280(0x2fc)),_0x35d59b=_0x182f97[_0x517280(0x331)]()||{},_0x1016bd=Object[_0x517280(0x215)](_0x35d59b)[_0x517280(0x367)]((_0x101669,_0x415895)=>_0x415895[_0x517280(0x3ed)]-_0x101669[_0x517280(0x3ed)]);_0x3ad7dd[_0x517280(0x296)]=_0x517280(0x1e7)+(_0x1016bd[_0x517280(0x3c7)]===0x0?_0x517280(0x298):_0x1016bd[_0x517280(0x2d7)](_0x177950=>_0x517280(0x31b)+_0x177950[_0x517280(0x37d)]+_0x517280(0x276)+_0x177950['title']+_0x517280(0x415)+_0x177950['content']+_0x517280(0x277)+(_0x177950[_0x517280(0x374)]?_0x517280(0x2a1)+_0x177950['link']+_0x517280(0x414)+_0x177950[_0x517280(0x374)]+_0x517280(0x2a5):'')+'\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22deleteAd(\x27'+_0x177950['id']+'\x27)\x22\x20class=\x22btn-danger\x22\x20style=\x22margin-left:12px;\x22>삭제</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22font-size:11px;color:#6c757d;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20생성:\x20'+new Date(_0x177950['createdAt'])[_0x517280(0x389)]()+_0x517280(0x413)+_0x177950['createdBy']+'\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20')[_0x517280(0x41e)](''))+_0x517280(0x2c9);},window[_0x338bd4(0x371)]=function(){const _0x3367b2=_0x338bd4;document['getElementById']('adCreateModal')['classList'][_0x3367b2(0x2da)](_0x3367b2(0x39a));},window[_0x338bd4(0x2c1)]=function(){const _0x1a21a6=_0x338bd4;document[_0x1a21a6(0x2c8)](_0x1a21a6(0x421))['classList'][_0x1a21a6(0x313)](_0x1a21a6(0x39a)),document[_0x1a21a6(0x2c8)](_0x1a21a6(0x32e))[_0x1a21a6(0x1ce)]();};const adCreateForm=document[_0x338bd4(0x2c8)]('adCreateForm');adCreateForm&&adCreateForm[_0x338bd4(0x422)](_0x338bd4(0x1c8),async function(_0x3cfb95){const _0x57a7ba=_0x338bd4;_0x3cfb95[_0x57a7ba(0x2bc)]();const _0x41c5cc={'id':Date[_0x57a7ba(0x221)]()[_0x57a7ba(0x214)](),'title':document[_0x57a7ba(0x2c8)](_0x57a7ba(0x2f7))[_0x57a7ba(0x2fc)],'content':document[_0x57a7ba(0x2c8)]('adContent')[_0x57a7ba(0x2fc)],'link':document[_0x57a7ba(0x2c8)]('adLink')[_0x57a7ba(0x2fc)],'color':document[_0x57a7ba(0x2c8)]('adColor')['value'],'createdAt':Date[_0x57a7ba(0x221)](),'createdBy':getNickname()};await db[_0x57a7ba(0x3f9)](_0x57a7ba(0x212)+_0x41c5cc['id'])[_0x57a7ba(0x2dd)](_0x41c5cc),alert(_0x57a7ba(0x3fd)),closeAdCreateModal(),showAdManager();});window['deleteAd']=async function(_0x2d3cbb){const _0x49d9cf=_0x338bd4;if(!confirm('이\x20광고를\x20삭제하시겠습니까?'))return;await db['ref'](_0x49d9cf(0x212)+_0x2d3cbb)[_0x49d9cf(0x313)](),alert(_0x49d9cf(0x24f)),showAdManager();},window[_0x338bd4(0x25d)]=async function(){const _0x1bfa40=_0x338bd4;if(!isAdmin())return alert('관리자\x20권한\x20필요!');hideAll(),document[_0x1bfa40(0x2c8)]('userManagementSection')[_0x1bfa40(0x272)][_0x1bfa40(0x2da)](_0x1bfa40(0x39a));const _0x171167=document[_0x1bfa40(0x2c8)](_0x1bfa40(0x311));_0x171167[_0x1bfa40(0x296)]=_0x1bfa40(0x1ed),updateURL(_0x1bfa40(0x266));try{const _0x23f9fa=await db[_0x1bfa40(0x3f9)]('articles')[_0x1bfa40(0x226)](_0x1bfa40(0x2fc)),_0x38d4e0=_0x23f9fa[_0x1bfa40(0x331)]()||{},_0x19ad06=Object[_0x1bfa40(0x215)](_0x38d4e0),_0xbe0a42=await db['ref'](_0x1bfa40(0x385))[_0x1bfa40(0x226)]('value'),_0x432db3=_0xbe0a42[_0x1bfa40(0x331)]()||{},_0x38d559=new Map();_0x19ad06[_0x1bfa40(0x29b)](_0x1f4fc3=>{const _0x187ec8=_0x1bfa40;_0x1f4fc3[_0x187ec8(0x38b)]&&_0x1f4fc3[_0x187ec8(0x38b)]!=='익명'&&_0x1f4fc3['authorEmail']&&(!_0x38d559[_0x187ec8(0x28c)](_0x1f4fc3['authorEmail'])&&_0x38d559['set'](_0x1f4fc3[_0x187ec8(0x39c)],{'nickname':_0x1f4fc3['author'],'email':_0x1f4fc3[_0x187ec8(0x39c)],'articles':[],'comments':[],'lastActivity':_0x1f4fc3[_0x187ec8(0x342)]}),_0x38d559['get'](_0x1f4fc3[_0x187ec8(0x39c)])[_0x187ec8(0x25e)][_0x187ec8(0x3ea)](_0x1f4fc3));}),Object[_0x1bfa40(0x37e)](_0x432db3)[_0x1bfa40(0x29b)](([_0x315b1b,_0x31726c])=>{Object['entries'](_0x31726c)['forEach'](([_0x21a6cd,_0x2e94ee])=>{const _0x494849=_0x4802;_0x2e94ee[_0x494849(0x38b)]&&_0x2e94ee[_0x494849(0x38b)]!=='익명'&&_0x2e94ee[_0x494849(0x39c)]&&(!_0x38d559[_0x494849(0x28c)](_0x2e94ee['authorEmail'])&&_0x38d559[_0x494849(0x2dd)](_0x2e94ee[_0x494849(0x39c)],{'nickname':_0x2e94ee[_0x494849(0x38b)],'email':_0x2e94ee[_0x494849(0x39c)],'articles':[],'comments':[],'lastActivity':_0x2e94ee[_0x494849(0x2dc)]}),_0x38d559[_0x494849(0x294)](_0x2e94ee[_0x494849(0x39c)])[_0x494849(0x385)][_0x494849(0x3ea)]({..._0x2e94ee,'articleId':_0x315b1b,'commentId':_0x21a6cd}),_0x38d559['get'](_0x2e94ee[_0x494849(0x39c)])[_0x494849(0x2d9)]=_0x2e94ee[_0x494849(0x2dc)]);});});const _0x5c3e44=getUserEmail(),_0xfa5341=getNickname();_0x5c3e44&&_0xfa5341!=='익명'&&!_0x38d559[_0x1bfa40(0x28c)](_0x5c3e44)&&_0x38d559[_0x1bfa40(0x2dd)](_0x5c3e44,{'nickname':_0xfa5341,'email':_0x5c3e44,'articles':[],'comments':[],'lastActivity':new Date()[_0x1bfa40(0x389)]()});const _0x7dcf61=await db[_0x1bfa40(0x3f9)](_0x1bfa40(0x266))[_0x1bfa40(0x226)](_0x1bfa40(0x2fc)),_0x4d2699=_0x7dcf61[_0x1bfa40(0x331)]()||{};if(_0x38d559[_0x1bfa40(0x344)]===0x0){_0x171167[_0x1bfa40(0x296)]=_0x1bfa40(0x1aa);return;}const _0x4bd775=Array[_0x1bfa40(0x1d4)](_0x38d559[_0x1bfa40(0x215)]());_0x171167[_0x1bfa40(0x296)]=_0x4bd775[_0x1bfa40(0x2d7)](_0x2c88a3=>{const _0x5adaa5=_0x1bfa40;let _0xe223dd=null,_0x17c37b=null;for(const [_0x3fa5dc,_0x1fce99]of Object['entries'](_0x4d2699)){if(_0x1fce99[_0x5adaa5(0x1f2)]===_0x2c88a3[_0x5adaa5(0x1f2)]){_0xe223dd=_0x1fce99,_0x17c37b=_0x3fa5dc;break;}}const _0x56d76c=_0xe223dd?_0xe223dd[_0x5adaa5(0x1f0)]||![]:![],_0x5fbc28=_0xe223dd?_0xe223dd['warningCount']||0x0:0x0,_0xc7923e=_0xe223dd?_0xe223dd[_0x5adaa5(0x300)]||![]:![],_0x285367=_0x17c37b||'email_'+btoa(_0x2c88a3[_0x5adaa5(0x1f2)])[_0x5adaa5(0x24e)](/=/g,''),_0x32fe94=_0x2c88a3['email']===getUserEmail(),_0x126620=_0x32fe94?'#000000':_0xc7923e?_0x5adaa5(0x411):_0x56d76c?'#ffd700':'#c62828';return _0x5adaa5(0x265)+(_0xc7923e?'0.7':'1')+_0x5adaa5(0x35c)+(_0xc7923e?_0x5adaa5(0x411):_0x56d76c?_0x5adaa5(0x258):_0x5adaa5(0x299))+_0x5adaa5(0x3be)+_0x126620+';\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20'+_0x2c88a3['nickname']+(_0x32fe94?_0x5adaa5(0x211):'')+(_0x56d76c?_0x5adaa5(0x1cb):'')+_0x5adaa5(0x32c)+(_0xc7923e?_0x5adaa5(0x1a4):'')+_0x5adaa5(0x3ef)+_0x2c88a3[_0x5adaa5(0x1f2)]+_0x5adaa5(0x26d)+_0x2c88a3['articles'][_0x5adaa5(0x3c7)]+_0x5adaa5(0x287)+_0x2c88a3['comments'][_0x5adaa5(0x3c7)]+_0x5adaa5(0x30c)+_0x5fbc28+'회</strong><br>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20🕐\x20마지막\x20활동:\x20'+_0x2c88a3[_0x5adaa5(0x2d9)]+_0x5adaa5(0x39f)+_0x2c88a3[_0x5adaa5(0x3c0)]+_0x5adaa5(0x21c)+(_0x56d76c?'<button\x20onclick=\x22toggleVIPStatus(\x27'+_0x2c88a3[_0x5adaa5(0x1f2)]+'\x27,\x20false)\x22\x20class=\x22btn-secondary\x22>VIP해제</button>':_0x5adaa5(0x358)+_0x2c88a3[_0x5adaa5(0x1f2)]+'\x27,\x20true)\x22\x20class=\x22btn-warning\x22>VIP승급</button>')+'\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22changeWarning(\x27'+_0x285367+_0x5adaa5(0x306)+_0x2c88a3[_0x5adaa5(0x1f2)]+_0x5adaa5(0x343)+_0x285367+_0x5adaa5(0x306)+_0x2c88a3['email']+_0x5adaa5(0x237)+(_0xc7923e?_0x5adaa5(0x41f)+_0x285367+'\x27,\x20\x27'+_0x2c88a3[_0x5adaa5(0x1f2)]+_0x5adaa5(0x32a):_0x5adaa5(0x41f)+_0x285367+'\x27,\x20\x27'+_0x2c88a3[_0x5adaa5(0x1f2)]+_0x5adaa5(0x2b3))+_0x5adaa5(0x3eb)+_0x2c88a3[_0x5adaa5(0x3c0)]+_0x5adaa5(0x34c);})[_0x1bfa40(0x41e)]('');}catch(_0x4dd1e3){_0x171167['innerHTML']=_0x1bfa40(0x407)+_0x4dd1e3['message']+'</p>';}},window[_0x338bd4(0x2a9)]=async function(_0x1c9dba,_0x5487ad,_0x5a6b98){const _0x24d214=_0x338bd4;if(!isAdmin())return;_0x1c9dba[_0x24d214(0x1c4)](_0x24d214(0x41b))&&await db[_0x24d214(0x3f9)](_0x24d214(0x40e)+_0x1c9dba)[_0x24d214(0x388)]({'email':_0x5487ad});const _0x5b8679=await db[_0x24d214(0x3f9)](_0x24d214(0x40e)+_0x1c9dba)[_0x24d214(0x226)](_0x24d214(0x2fc)),_0x58d9b1=_0x5b8679[_0x24d214(0x331)]()||{};let _0x5e0d3d=_0x58d9b1[_0x24d214(0x2e9)]||0x0,_0x16f3b9=_0x5e0d3d+_0x5a6b98;if(_0x16f3b9<0x0)_0x16f3b9=0x0;let _0xf7d9b4={'warningCount':_0x16f3b9,'email':_0x5487ad};_0x16f3b9>=0x3&&!_0x58d9b1[_0x24d214(0x300)]&&(_0xf7d9b4[_0x24d214(0x300)]=!![],alert('🚨\x20누적\x20경고\x203회\x20도달로\x20인해\x20차단됩니다.')),await db['ref']('users/'+_0x1c9dba)[_0x24d214(0x388)](_0xf7d9b4),showUserManagement();},window[_0x338bd4(0x3cd)]=async function(_0x25a4ff,_0x26bd7e,_0x4f741b){const _0x9ce098=_0x338bd4;if(!isAdmin())return;const _0x1683dc=_0x4f741b?'차단':_0x9ce098(0x2ae);if(!confirm(_0x9ce098(0x419)+_0x1683dc+_0x9ce098(0x3ba)))return;_0x25a4ff['startsWith']('email_')&&await db[_0x9ce098(0x3f9)](_0x9ce098(0x40e)+_0x25a4ff)[_0x9ce098(0x388)]({'email':_0x26bd7e}),await db[_0x9ce098(0x3f9)](_0x9ce098(0x40e)+_0x25a4ff)[_0x9ce098(0x388)]({'isBanned':_0x4f741b,'email':_0x26bd7e}),alert(_0x1683dc+_0x9ce098(0x1e8)),showUserManagement();},window[_0x338bd4(0x31e)]=async function(_0x1074f9,_0x58a475){const _0x642809=_0x338bd4;if(!isAdmin())return alert('관리자\x20권한이\x20필요합니다!');const _0x17e412=_0x58a475?_0x642809(0x3d7):_0x642809(0x39b);if(!confirm('\x22'+_0x1074f9+_0x642809(0x3c1)+_0x17e412+'하시겠습니까?'))return;try{const _0x4ae30f=await db[_0x642809(0x3f9)](_0x642809(0x266))[_0x642809(0x226)]('value'),_0x261cce=_0x4ae30f[_0x642809(0x331)]()||{};let _0x1cc97a=null;for(const [_0x56878e,_0x379392]of Object[_0x642809(0x37e)](_0x261cce)){if(_0x379392&&_0x379392[_0x642809(0x1f2)]===_0x1074f9){_0x1cc97a=_0x56878e;break;}}if(!_0x1cc97a){const _0x383896=auth[_0x642809(0x2f6)];_0x383896&&_0x383896[_0x642809(0x1f2)]===_0x1074f9?_0x1cc97a=_0x383896['uid']:_0x1cc97a=_0x642809(0x373)+Date[_0x642809(0x221)]()+'_'+btoa(_0x1074f9)[_0x642809(0x24e)](/=/g,'')[_0x642809(0x253)](0x0,0xa);}console[_0x642809(0x1bd)]('VIP\x20업데이트:',{'targetUid':_0x1cc97a,'userEmail':_0x1074f9,'makeVIP':_0x58a475}),await db[_0x642809(0x3f9)](_0x642809(0x40e)+_0x1cc97a)[_0x642809(0x388)]({'email':_0x1074f9,'isVIP':_0x58a475,'vipUpdatedAt':Date['now'](),'vipUpdatedBy':getNickname()});const _0x4737f3=await db['ref'](_0x642809(0x40e)+_0x1cc97a)['once'](_0x642809(0x2fc)),_0x101102=_0x4737f3['val']();console[_0x642809(0x1bd)](_0x642809(0x3e3),_0x101102);if(_0x101102&&_0x101102[_0x642809(0x1f0)]===_0x58a475)alert('✅\x20'+_0x17e412+'이\x20완료되었습니다!');else throw new Error(_0x642809(0x224));await showUserManagement();}catch(_0x2f1f1f){console[_0x642809(0x1e1)](_0x642809(0x360),_0x2f1f1f),alert(_0x642809(0x341)+_0x2f1f1f['message']);}},window[_0x338bd4(0x24a)]=async function(_0x26c283){const _0x2182bf=_0x338bd4,_0x50db37=await db[_0x2182bf(0x3f9)](_0x2182bf(0x25e))['once'](_0x2182bf(0x2fc)),_0xd80b1e=_0x50db37[_0x2182bf(0x331)]()||{},_0xfd991b=Object[_0x2182bf(0x215)](_0xd80b1e)[_0x2182bf(0x29d)](_0x4d7230=>_0x4d7230[_0x2182bf(0x38b)]===_0x26c283),_0x530bd7=await db[_0x2182bf(0x3f9)](_0x2182bf(0x385))[_0x2182bf(0x226)](_0x2182bf(0x2fc)),_0x4e1185=_0x530bd7[_0x2182bf(0x331)]()||{},_0x34ef43=[];Object[_0x2182bf(0x37e)](_0x4e1185)[_0x2182bf(0x29b)](([_0x1a3507,_0x3d35a3])=>{const _0x43070b=_0x2182bf;Object[_0x43070b(0x37e)](_0x3d35a3)[_0x43070b(0x29b)](([_0x1f02a1,_0x33c7bc])=>{const _0x31c6ab=_0x43070b;_0x33c7bc[_0x31c6ab(0x38b)]===_0x26c283&&_0x34ef43[_0x31c6ab(0x3ea)]({..._0x33c7bc,'articleId':_0x1a3507,'commentId':_0x1f02a1});});});let _0x5958d0='미확인';if(_0xfd991b[_0x2182bf(0x3c7)]>0x0&&_0xfd991b[0x0][_0x2182bf(0x39c)])_0x5958d0=_0xfd991b[0x0][_0x2182bf(0x39c)];else{if(_0x34ef43[_0x2182bf(0x3c7)]>0x0&&_0x34ef43[0x0][_0x2182bf(0x39c)])_0x5958d0=_0x34ef43[0x0][_0x2182bf(0x39c)];}const _0x35f2dc=document[_0x2182bf(0x2c8)](_0x2182bf(0x242)),_0xdb3ba1=document[_0x2182bf(0x2c8)](_0x2182bf(0x39e));_0xdb3ba1[_0x2182bf(0x296)]=_0x2182bf(0x396)+_0x26c283+_0x2182bf(0x2f9)+_0x5958d0+'</p>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22margin-top:25px;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<h4\x20style=\x22color:#1976d2;margin-bottom:15px;\x22>📰\x20작성\x20기사\x20('+_0xfd991b['length']+_0x2182bf(0x29e)+(_0xfd991b['length']>0x0?_0xfd991b[_0x2182bf(0x2d7)](_0xce3f42=>_0x2182bf(0x383)+_0xce3f42[_0x2182bf(0x412)]+_0x2182bf(0x1b7)+_0xce3f42['id']+_0x2182bf(0x306)+_0x26c283+_0x2182bf(0x2ac))[_0x2182bf(0x41e)](''):_0x2182bf(0x20b))+_0x2182bf(0x1cf)+_0x34ef43[_0x2182bf(0x3c7)]+'개)</h4>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20'+(_0x34ef43[_0x2182bf(0x3c7)]>0x0?_0x34ef43[_0x2182bf(0x2d7)](_0x243c08=>'\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20style=\x22background:#f8f9fa;padding:12px;margin-bottom:8px;border-left:3px\x20solid\x20#6c757d;border-radius:4px;display:flex;justify-content:space-between;align-items:center;\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span\x20style=\x22flex:1;\x22>'+_0x243c08[_0x2182bf(0x273)]+'</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<button\x20onclick=\x22deleteCommentFromAdmin(\x27'+_0x243c08[_0x2182bf(0x32f)]+_0x2182bf(0x306)+_0x243c08[_0x2182bf(0x2ed)]+_0x2182bf(0x306)+_0x26c283+'\x27)\x22\x20class=\x22btn-secondary\x22\x20style=\x22padding:6px\x2012px;font-size:11px;\x22>삭제</button>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>')[_0x2182bf(0x41e)](''):_0x2182bf(0x246))+_0x2182bf(0x3e8),_0x35f2dc['classList'][_0x2182bf(0x2da)]('active');},window[_0x338bd4(0x233)]=function(){const _0x3f4ada=_0x338bd4;document[_0x3f4ada(0x2c8)]('userDetailModal')[_0x3f4ada(0x272)][_0x3f4ada(0x313)]('active');},window[_0x338bd4(0x338)]=function(_0x27ade2,_0x3706f5){const _0x4d8dae=_0x338bd4;if(!confirm(_0x4d8dae(0x21d)))return;deleteArticleFromDB(_0x27ade2,()=>{const _0x37a181=_0x4d8dae;db['ref'](_0x37a181(0x1db)+_0x27ade2)[_0x37a181(0x313)](),alert('삭제되었습니다.'),closeUserDetail(),showUserDetail(_0x3706f5);});},window[_0x338bd4(0x38e)]=function(_0x5065e5,_0x1bb81b,_0x318d31){const _0xe77bf2=_0x338bd4;if(!confirm(_0xe77bf2(0x2fb)))return;db['ref'](_0xe77bf2(0x1db)+_0x5065e5+'/'+_0x1bb81b)[_0xe77bf2(0x313)]()['then'](()=>{const _0x26645d=_0xe77bf2;alert(_0x26645d(0x321)),closeUserDetail(),showUserDetail(_0x318d31);});},window[_0x338bd4(0x1f7)]=function(_0x471d8a){const _0x202b7e=_0x338bd4;if(!confirm('\x22'+_0x471d8a+_0x202b7e(0x372)))return;db[_0x202b7e(0x3f9)](_0x202b7e(0x25e))[_0x202b7e(0x226)]('value')[_0x202b7e(0x394)](_0x1e046a=>{const _0x264a4d=_0x202b7e,_0xd65679=_0x1e046a['val']()||{};Object[_0x264a4d(0x37e)](_0xd65679)[_0x264a4d(0x29b)](([_0x3e49fd,_0x1815c1])=>{const _0x3bb66d=_0x264a4d;_0x1815c1[_0x3bb66d(0x38b)]===_0x471d8a&&db['ref'](_0x3bb66d(0x1d9)+_0x3e49fd)[_0x3bb66d(0x313)]();});}),db[_0x202b7e(0x3f9)](_0x202b7e(0x385))[_0x202b7e(0x226)]('value')['then'](_0xd4f93d=>{const _0x50e6b0=_0x202b7e,_0x596828=_0xd4f93d[_0x50e6b0(0x331)]()||{};Object['entries'](_0x596828)[_0x50e6b0(0x29b)](([_0x440fc4,_0x58f4da])=>{const _0x25dd7d=_0x50e6b0;Object[_0x25dd7d(0x37e)](_0x58f4da)[_0x25dd7d(0x29b)](([_0xc7d067,_0x32a25c])=>{const _0x51154c=_0x25dd7d;if(_0x32a25c[_0x51154c(0x38b)]===_0x471d8a)db[_0x51154c(0x3f9)](_0x51154c(0x1db)+_0x440fc4+'/'+_0xc7d067)[_0x51154c(0x313)]();});});}),alert('\x22'+_0x471d8a+'\x22\x20사용자가\x20삭제되었습니다.'),showUserManagement();},window['showBannedWordManager']=function(){const _0x4189bb=_0x338bd4,_0x468059=document['getElementById']('bannedWordsModal'),_0x54fdb7=document[_0x4189bb(0x2c8)](_0x4189bb(0x356));_0x54fdb7[_0x4189bb(0x2fc)]=bannedWordsList[_0x4189bb(0x41e)](',\x20'),_0x468059[_0x4189bb(0x272)][_0x4189bb(0x2da)](_0x4189bb(0x39a));},window[_0x338bd4(0x3db)]=function(){const _0x37f7c4=_0x338bd4;document[_0x37f7c4(0x2c8)]('bannedWordsModal')['classList'][_0x37f7c4(0x313)](_0x37f7c4(0x39a));},window[_0x338bd4(0x251)]=function(){const _0x459cab=_0x338bd4,_0x32926a=document['getElementById']('bannedWordsInput')[_0x459cab(0x2fc)],_0x4d6e4f=_0x32926a[_0x459cab(0x38d)](',')[_0x459cab(0x2d7)](_0x399ef3=>_0x399ef3[_0x459cab(0x2e2)]())[_0x459cab(0x29d)](_0x139a45=>_0x139a45!=='');db[_0x459cab(0x3f9)](_0x459cab(0x2c5))[_0x459cab(0x2dd)](_0x4d6e4f[_0x459cab(0x41e)](','))[_0x459cab(0x394)](()=>{const _0x3a9e62=_0x459cab;alert(_0x3a9e62(0x400)),closeBannedWordsModal();})[_0x459cab(0x244)](_0x3a3d83=>alert(_0x459cab(0x31c)+_0x3a3d83[_0x459cab(0x1dc)]));};function setPermanentCookie(_0x1a3d6c,_0x45cb3f){const _0x184b2f=_0x338bd4,_0x596c56=new Date();_0x596c56[_0x184b2f(0x1fd)](_0x596c56[_0x184b2f(0x36c)]()+0xa),document[_0x184b2f(0x2b5)]=_0x1a3d6c+'='+_0x45cb3f+';expires='+_0x596c56['toUTCString']()+_0x184b2f(0x3ff);}async function checkLegalAgreement(_0x4307cf){const _0x2373fc=_0x338bd4;if(!_0x4307cf)return;console[_0x2373fc(0x1bd)](_0x2373fc(0x229));const _0x309da3=_0x2373fc(0x381)+_0x4307cf[_0x2373fc(0x353)],_0x3e9d63=getCookie(_0x309da3);if(_0x3e9d63){console[_0x2373fc(0x1bd)]('쿠키에\x20동의\x20기록\x20있음.\x20패스.');return;}const _0x1c162a=await db[_0x2373fc(0x3f9)]('users/'+_0x4307cf[_0x2373fc(0x353)]+_0x2373fc(0x308))[_0x2373fc(0x226)](_0x2373fc(0x2fc)),_0x2d4a11=_0x1c162a['val']();_0x2d4a11&&_0x2d4a11[_0x2373fc(0x275)]?(console[_0x2373fc(0x1bd)]('DB에\x20동의\x20기록\x20있음.\x20쿠키\x20재생성.'),setPermanentCookie(_0x309da3,'true')):(console['log'](_0x2373fc(0x2ff)),showLegalModal(_0x4307cf));}function showLegalModal(_0x145eb9){const _0x397b41=_0x338bd4;if(document['getElementById']('legalModal'))return;const _0x543622=_0x397b41(0x223);document[_0x397b41(0x355)][_0x397b41(0x305)]('beforeend',_0x543622);}async function submitLegalAgreement(){const _0x53a23f=_0x338bd4,_0x516079=document['querySelectorAll']('.legal-check');let _0x230855=!![];_0x516079[_0x53a23f(0x29b)](_0x177801=>{const _0x30e704=_0x53a23f;if(!_0x177801[_0x30e704(0x252)])_0x230855=![];});if(!_0x230855){alert(_0x53a23f(0x2c4));return;}const _0x3bfc30=auth[_0x53a23f(0x2f6)];if(!_0x3bfc30)return alert(_0x53a23f(0x3c8));if(!confirm(_0x53a23f(0x21e)))return;try{const _0x57f5e7=Date[_0x53a23f(0x221)](),_0x18fdd1=new Date()[_0x53a23f(0x389)]();await db[_0x53a23f(0x3f9)](_0x53a23f(0x40e)+_0x3bfc30['uid']+'/legalAgreement')[_0x53a23f(0x2dd)]({'agreed':!![],'agreedAt':_0x57f5e7,'agreedDate':_0x18fdd1,'nickname':getNickname(),'email':_0x3bfc30[_0x53a23f(0x1f2)],'agreementVersion':_0x53a23f(0x3a2)}),setPermanentCookie('legal_agreed_'+_0x3bfc30[_0x53a23f(0x353)],_0x53a23f(0x390));const _0x243688=document['getElementById'](_0x53a23f(0x297));if(_0x243688)_0x243688[_0x53a23f(0x313)]();alert(_0x53a23f(0x40a)+getNickname()+'님.');}catch(_0x425a7e){alert(_0x53a23f(0x387)+_0x425a7e[_0x53a23f(0x1dc)]),console[_0x53a23f(0x1e1)](_0x425a7e);}}function initMaintenanceCheck(){db['ref']('adminSettings/maintenance')['on']('value',_0xa7a6f1=>{const _0x504ba4=_0x4802,_0x3e0b4a=_0xa7a6f1[_0x504ba4(0x331)]();if(!_0x3e0b4a)return;(auth[_0x504ba4(0x2f6)]!==null||auth[_0x504ba4(0x2f6)]===null)&&checkAndShowMaintenance(_0x3e0b4a);});}function checkMaintenanceAfterAuth(){const _0x58372e=_0x338bd4;db[_0x58372e(0x3f9)](_0x58372e(0x3e9))[_0x58372e(0x226)](_0x58372e(0x2fc))[_0x58372e(0x394)](_0x359276=>{const _0x42360c=_0x359276['val']();_0x42360c&&checkAndShowMaintenance(_0x42360c);});}function checkAndShowMaintenance(_0x214500){const _0x1c1172=_0x338bd4,_0x413390=document[_0x1c1172(0x2c8)](_0x1c1172(0x2a6));if(!_0x214500[_0x1c1172(0x3a9)]){_0x413390[_0x1c1172(0x34f)][_0x1c1172(0x1de)]=_0x1c1172(0x38a);return;}if(isAdmin()){console[_0x1c1172(0x1bd)]('✅\x20관리자\x20권한으로\x20점검\x20모드\x20우회'),showToastNotification(_0x1c1172(0x325),_0x1c1172(0x2be)),_0x413390[_0x1c1172(0x34f)][_0x1c1172(0x1de)]=_0x1c1172(0x38a);return;}const _0x511f8a=auth[_0x1c1172(0x2f6)],_0x8242d0=_0x511f8a?_0x511f8a[_0x1c1172(0x1f2)]:'',_0x2ba8f4=_0x214500[_0x1c1172(0x200)]?_0x214500[_0x1c1172(0x200)][_0x1c1172(0x38d)](',')[_0x1c1172(0x2d7)](_0x281fe5=>_0x281fe5[_0x1c1172(0x2e2)]())['filter'](_0x409121=>_0x409121):[];console[_0x1c1172(0x1bd)](_0x1c1172(0x23f),{'isLoggedIn':!!_0x511f8a,'userEmail':_0x8242d0,'allowedList':_0x2ba8f4,'isAllowed':_0x8242d0&&_0x2ba8f4[_0x1c1172(0x1af)](_0x8242d0)});if(_0x511f8a&&_0x8242d0&&_0x2ba8f4[_0x1c1172(0x1af)](_0x8242d0)){console[_0x1c1172(0x1bd)]('✅\x20점검\x20제외\x20사용자\x20확인:',_0x8242d0),showToastNotification(_0x1c1172(0x34d),_0x1c1172(0x2f3)),_0x413390['style'][_0x1c1172(0x1de)]=_0x1c1172(0x38a);return;}console[_0x1c1172(0x1bd)]('🚧\x20점검\x20모드\x20활성화\x20-\x20화면\x20표시'),renderMaintenanceScreen(_0x214500);}function renderMaintenanceScreen(_0x5c3336){const _0x18d8ed=_0x338bd4,_0x16a981=document['getElementById'](_0x18d8ed(0x2a6)),_0x348da3=document[_0x18d8ed(0x2c8)](_0x18d8ed(0x319)),_0x25123d=document['getElementById']('mtMessage'),_0x5d3279=document[_0x18d8ed(0x2c8)]('mtImageContainer');_0x348da3[_0x18d8ed(0x301)]=_0x5c3336[_0x18d8ed(0x412)]||_0x18d8ed(0x3ad),_0x25123d[_0x18d8ed(0x301)]=_0x5c3336['message']||_0x18d8ed(0x417),_0x5c3336['imageUrl']?_0x5d3279[_0x18d8ed(0x296)]=_0x18d8ed(0x35e)+_0x5c3336[_0x18d8ed(0x2a8)]+'\x22\x20alt=\x22점검\x20이미지\x22>':_0x5d3279[_0x18d8ed(0x296)]='',_0x16a981[_0x18d8ed(0x34f)][_0x18d8ed(0x1de)]=_0x18d8ed(0x3da);}window[_0x338bd4(0x295)]=function(){const _0x3a915d=_0x338bd4;if(!isAdmin())return alert(_0x3a915d(0x2f5));const _0x5eae23=document['getElementById'](_0x3a915d(0x30f));db[_0x3a915d(0x3f9)]('adminSettings/maintenance')[_0x3a915d(0x226)](_0x3a915d(0x2fc))[_0x3a915d(0x394)](_0x20be03=>{const _0x163fbe=_0x3a915d,_0x337e72=_0x20be03[_0x163fbe(0x331)]()||{};document[_0x163fbe(0x2c8)](_0x163fbe(0x2f4))[_0x163fbe(0x252)]=_0x337e72[_0x163fbe(0x3a9)]||![],document[_0x163fbe(0x2c8)]('mtTitleInput')[_0x163fbe(0x2fc)]=_0x337e72['title']||'',document[_0x163fbe(0x2c8)](_0x163fbe(0x327))[_0x163fbe(0x2fc)]=_0x337e72[_0x163fbe(0x1dc)]||'',document[_0x163fbe(0x2c8)](_0x163fbe(0x2ee))[_0x163fbe(0x2fc)]=_0x337e72[_0x163fbe(0x2a8)]||'',document['getElementById'](_0x163fbe(0x351))[_0x163fbe(0x2fc)]=_0x337e72[_0x163fbe(0x200)]||'',_0x5eae23[_0x163fbe(0x272)][_0x163fbe(0x2da)](_0x163fbe(0x39a));});},window[_0x338bd4(0x1b3)]=function(_0x5744b0){const _0x53c8b6=_0x338bd4;_0x5744b0[_0x53c8b6(0x2bc)]();const _0x1b05b5=document['getElementById'](_0x53c8b6(0x2f4))[_0x53c8b6(0x252)],_0x4b4c40=document[_0x53c8b6(0x2c8)](_0x53c8b6(0x279))[_0x53c8b6(0x2fc)],_0x1836aa=document[_0x53c8b6(0x2c8)](_0x53c8b6(0x327))[_0x53c8b6(0x2fc)],_0x35cd9e=document[_0x53c8b6(0x2c8)]('mtImgInput')['value'],_0xae246a=document['getElementById'](_0x53c8b6(0x351))['value'],_0x522179={'isActive':_0x1b05b5,'title':_0x4b4c40,'message':_0x1836aa,'imageUrl':_0x35cd9e,'allowedUsers':_0xae246a,'updatedAt':Date[_0x53c8b6(0x221)](),'updatedBy':getNickname()};db[_0x53c8b6(0x3f9)]('adminSettings/maintenance')[_0x53c8b6(0x2dd)](_0x522179)[_0x53c8b6(0x394)](()=>{const _0x27407b=_0x53c8b6;alert(_0x1b05b5?_0x27407b(0x35a):_0x27407b(0x209)),closeMaintenanceModal();})[_0x53c8b6(0x244)](_0x284b5f=>alert('저장\x20실패:\x20'+_0x284b5f[_0x53c8b6(0x1dc)]));},window['closeMaintenanceModal']=function(){const _0x59c65a=_0x338bd4;document['getElementById'](_0x59c65a(0x30f))[_0x59c65a(0x272)][_0x59c65a(0x313)]('active');},window[_0x338bd4(0x422)](_0x338bd4(0x1ae),()=>{const _0x41ebce=_0x338bd4;console[_0x41ebce(0x1bd)](_0x41ebce(0x352)),setupArticlesListener(),loadBannedWords(),setupArticleForm(),_0x41ebce(0x216)in window&&Notification[_0x41ebce(0x3a8)]===_0x41ebce(0x3fa)&&Notification[_0x41ebce(0x22d)](),setTimeout(()=>{showActivePopupsToUser();},0x3e8),initMaintenanceCheck(),initialRoute(),console['log']('✅\x20시스템\x20초기화\x20완료!');}),window['addEventListener'](_0x338bd4(0x1e1),function(_0x366165){const _0x153f93=_0x338bd4;console['error'](_0x153f93(0x307),_0x366165['error']);}),window[_0x338bd4(0x422)](_0x338bd4(0x2e8),function(_0x4ca2aa){const _0xced4a=_0x338bd4;console['error'](_0xced4a(0x1fc),_0x4ca2aa[_0xced4a(0x284)]);}),console[_0x338bd4(0x1bd)](_0x338bd4(0x227));
+// ===== Part 1: 기본 설정 및 Firebase 초기화 (수정됨) =====
+const firebaseConfig = {
+  apiKey: "AIzaSyDgooYtVr8-jm15-fx_WvGLCDxonLpNPuU",
+  authDomain: "hsj-news.firebaseapp.com",
+  databaseURL: "https://hsj-news-default-rtdb.firebaseio.com",
+  projectId: "hsj-news",
+  storageBucket: "hsj-news.firebasestorage.app",
+  messagingSenderId: "437842430700",
+  appId: "1:437842430700:web:e3822bde4cfecdc04633c9"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const auth = firebase.auth();
+
+// FCM Messaging 초기화 개선 (오류 해결)
+let messaging = null;
+try {
+  // Messaging이 지원되는지 먼저 확인
+  if (firebase.messaging.isSupported && firebase.messaging.isSupported()) {
+    messaging = firebase.messaging();
+    console.log("✅ Firebase Messaging 초기화 성공");
+  } else {
+    console.warn("⚠️ 이 브라우저는 Firebase Messaging을 지원하지 않습니다.");
+  }
+} catch(err) {
+  console.warn("⚠️ Firebase Messaging 초기화 실패:", err.message);
+}
+
+// 전역 변수
+let currentArticlePage = 1;
+const ARTICLES_PER_PAGE = 5;
+let currentCommentPage = 1;
+const COMMENTS_PER_PAGE = 10;
+let currentArticleId = null;
+let currentSortMethod = 'latest';
+let filteredArticles = [];
+let allArticles = [];
+let bannedWordsList = [];
+let currentFreeboardPage = 1;
+let currentFreeboardSortMethod = 'latest';
+let filteredFreeboardArticles = [];
+
+// 쿠키 관리
+function setCookie(n, v, days = 365) { 
+    const expires = new Date();
+    expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+    document.cookie = `${n}=${v};expires=${expires.toUTCString()};path=/;SameSite=Strict`;
+}
+
+function getCookie(n) {
+    const m = document.cookie.match(new RegExp(`(^| )${n}=([^;]+)`));
+    return m ? m[2] : null;
+}
+
+function deleteCookie(n) { 
+    document.cookie = n + '=; Max-Age=0; path=/'; 
+}
+
+// 사용자 정보
+function getNickname() {
+    const user = auth.currentUser;
+    return user ? user.displayName || user.email.split('@')[0] : "익명";
+}
+
+function getUserEmail() {
+    const user = auth.currentUser;
+    return user ? user.email : null;
+}
+
+function getUserId() {
+    const user = auth.currentUser;
+    return user ? user.uid : 'anonymous';
+}
+
+function isLoggedIn() {
+    return auth.currentUser !== null;
+}
+
+function isAdmin(){
+    return getCookie("is_admin") === "true";
+}
+
+// 금지어 관리
+function loadBannedWords() {
+    db.ref("adminSettings/bannedWords").on("value", snapshot => {
+        const val = snapshot.val();
+        if (val) {
+            bannedWordsList = val.split(',').map(s => s.trim()).filter(s => s !== "");
+        } else {
+            bannedWordsList = [];
+        }
+    });
+}
+
+function checkBannedWords(text) {
+    if (!text) return null;
+    for (const word of bannedWordsList) {
+        if (text.includes(word)) {
+            return word;
+        }
+    }
+    return null;
+}
+
+function addWarningToCurrentUser() {
+    const user = auth.currentUser;
+    if (!user) return;
+    
+    db.ref("users/" + user.uid).once("value").then(snapshot => {
+        const data = snapshot.val() || {};
+        const currentWarnings = (data.warningCount || 0) + 1;
+        
+        let updates = { warningCount: currentWarnings };
+        
+        if (currentWarnings >= 3) {
+            updates.isBanned = true;
+            updates.bannedAt = Date.now();
+            alert("🚨 누적 경고 3회로 인해 계정이 차단됩니다. 로그아웃 처리됩니다.");
+        } else {
+            alert(`현재 누적 경고: ${currentWarnings}회 (3회 시 자동 차단)`);
+        }
+        
+        db.ref("users/" + user.uid).update(updates).then(() => {
+            if (currentWarnings >= 3) {
+                auth.signOut().then(() => location.reload());
+            }
+        });
+    });
+}
+
+// ===== Part 2: URL 관리 및 라우팅 (보안 강화) =====
+
+// 🔐 민감한 페이지 암호화 함수 (복잡한 난독화)
+function encryptSensitivePage(pageName) {
+    const sensitivePages = ["users", "adminSettings", "eventManager", "management"];
+    
+    if (!sensitivePages.includes(pageName)) {
+        return pageName; // 일반 페이지는 그대로
+    }
+    
+    // Base64 + 추가 난독화
+    const base64 = btoa(pageName);
+    const timestamp = Date.now().toString(36);
+    const randomKey = Math.random().toString(36).substring(2, 8);
+    
+    // 복잡한 조합: timestamp_base64_randomKey
+    return `${timestamp}_${base64}_${randomKey}`;
+}
+
+// 🔓 민감한 페이지 복호화 함수
+function decryptSensitivePage(encodedPage) {
+    if (!encodedPage || !encodedPage.includes('_')) {
+        return encodedPage; // 일반 페이지
+    }
+    
+    try {
+        const parts = encodedPage.split('_');
+        if (parts.length === 3) {
+            // 중간 부분이 Base64 인코딩된 페이지명
+            return atob(parts[1]);
+        }
+        return encodedPage;
+    } catch(e) {
+        console.error("복호화 실패:", e);
+        return null;
+    }
+}
+
+// URL 파라미터 읽기 (수정됨)
+function getURLParams() {
+    const params = new URLSearchParams(window.location.search);
+    let page = params.get('page');
+    
+    // 민감한 페이지 복호화
+    if (page) {
+        const decrypted = decryptSensitivePage(page);
+        if (decrypted) {
+            page = decrypted;
+        }
+    }
+
+    return {
+        page: page,
+        articleId: params.get('id'),
+        section: params.get('section')
+    };
+}
+
+// URL 업데이트 (보안 강화)
+function updateURL(page, articleId = null, section = null) {
+    // 민감한 페이지 암호화
+    let urlPage = encryptSensitivePage(page);
+    
+    let url = `?page=${urlPage}`;
+    if (articleId) url += `&id=${articleId}`;
+    if (section) url += `&section=${section}`;
+    
+    // 브라우저 히스토리에 추가 (원본 페이지명 저장)
+    window.history.pushState({ page, articleId, section }, '', url);
+}
+
+// 페이지 라우팅 (중복 제거 및 최적화)
+function routeToPage(page, articleId = null, section = null) {
+    // 관리자 전용 페이지 접근 제어
+    const adminPages = ['users', 'adminSettings', 'eventManager', 'management'];
+    if (adminPages.includes(page) && !isAdmin()) {
+        alert("🚫 관리자 권한이 필요합니다.");
+        showArticles();
+        return;
+    }
+    
+    switch(page) {
+        case 'home':
+            showArticles();
+            break;
+        case 'freeboard':
+            showFreeboard();
+            break;
+        case 'write':
+            showWritePage();
+            break;
+        case 'settings':
+            showSettings();
+            break;
+        case 'article':
+            if (articleId) showArticleDetail(articleId);
+            else showArticles();
+            break;
+        case 'qna':
+            showQnA();
+            break;
+        case 'patchnotes':
+            showPatchNotesPage();
+            break;
+        case 'users':
+            showUserManagement();
+            break;
+        case 'admin':
+            showAdminEvent();
+            break;
+        default:
+            showArticles();
+    }
+}
+
+// 초기 라우팅 (수정됨 - 새로고침 문제 해결)
+function initialRoute() {
+    const params = getURLParams();
+    
+    if (params.page) {
+        routeToPage(params.page, params.articleId, params.section);
+    } else {
+        showArticles();
+    }
+}
+
+// 뒤로가기/앞으로가기 지원
+window.addEventListener('popstate', (event) => {
+    if (event.state) {
+        routeToPage(event.state.page, event.state.articleId, event.state.section);
+    } else {
+        const params = getURLParams();
+        if (params.page) {
+            routeToPage(params.page, params.articleId, params.section);
+        } else {
+            showArticles();
+        }
+    }
+});
+
+// 로그아웃
+function logoutAdmin(){
+    if(!confirm("로그아웃 하시겠습니까?")) return;
+    auth.signOut();
+    deleteCookie("is_admin");
+    alert("로그아웃 되었습니다.");
+    location.reload();
+}
+
+// 관리자 모드 해제
+function disableAdminMode() {
+    if(!confirm("관리자 모드를 해제하시겠습니까?\n\n일반 사용자 모드로 전환됩니다.")) return;
+    deleteCookie("is_admin");
+    alert("관리자 모드가 해제되었습니다.");
+    location.reload();
+}
+
+// 공유 가능한 링크 복사
+function copyArticleLink(articleId) {
+    const url = `${window.location.origin}${window.location.pathname}?page=article&id=${articleId}`;
+    navigator.clipboard.writeText(url).then(() => {
+        alert('📋 링크가 복사되었습니다!\n\n' + url);
+    }).catch(err => {
+        console.error('링크 복사 실패:', err);
+        prompt('이 링크를 복사하세요:', url);
+    });
+}
+
+// 뒤로가기 버튼
+function goBack() {
+    window.history.back();
+}
+
+// ===== Part 3: 관리자 인증 및 프로필 관리 =====
+
+// 관리자 인증 모달
+function openAdminAuthModal(){
+    document.getElementById("adminAuthModal").classList.add("active");
+}
+
+function closeAdminAuthModal(){
+    document.getElementById("adminAuthModal").classList.remove("active");
+}
+
+// 관리자 로그인 폼
+const adminForm = document.getElementById("adminAuthForm");
+if(adminForm) {
+    adminForm.addEventListener("submit", async e=>{
+        e.preventDefault();
+        const email = document.getElementById("adminEmail").value;
+        const pw = document.getElementById("adminPw").value;
+        try{
+            await auth.signInWithEmailAndPassword(email, pw);
+            setCookie("is_admin", "true");
+            alert("관리자 로그인 성공!");
+            closeAdminAuthModal();
+            location.reload();
+        }catch(err){
+            alert("로그인 실패: " + err.message);
+        }
+    });
+}
+
+// 프로필 드롭다운 토글
+function toggleProfileMenu() {
+    const dropdown = document.getElementById("profileDropdown");
+    const isActive = dropdown.classList.contains("active");
+    
+    if (isActive) {
+        dropdown.classList.remove("active");
+    } else {
+        updateProfileDropdown();
+        dropdown.classList.add("active");
+    }
+}
+
+// 프로필 드롭다운 내용 업데이트
+async function updateProfileDropdown() {
+    const content = document.getElementById("profileDropdownContent");
+    const user = auth.currentUser;
+    
+    if (user) {
+        const userSnapshot = await db.ref("users/" + user.uid).once("value");
+        const userData = userSnapshot.val() || {};
+        const isVIP = userData.isVIP || false;
+        
+        content.innerHTML = `
+            <div class="profile-info">
+                <div class="profile-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="profile-details">
+                    <h4 style="color:#000; font-weight:700;">${getNickname()}${isVIP ? ' <span class="vip-badge">⭐ VIP</span>' : ''}</h4>
+                    <p>${user.email}</p>
+                </div>
+            </div>
+            <button onclick="logoutAdmin()" class="btn-block" style="background:#fff; border:1px solid #ddd; color:#333; text-align:left; padding:10px;">
+                <i class="fas fa-sign-out-alt" style="margin-right:8px;"></i> 로그아웃
+            </button>
+        `;
+    } else {
+        content.innerHTML = `
+            <div style="text-align:center;padding:20px;">
+                <p style="color:var(--text-secondary);margin-bottom:16px;">로그인하여 더 많은 기능을 이용하세요</p>
+                <button onclick="googleLogin()" class="btn-primary btn-block">
+                    <i class="fab fa-google"></i> Google 로그인
+                </button>
+            </div>
+        `;
+    }
+}
+
+// 외부 클릭 시 드롭다운 닫기
+document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById("profileDropdown");
+    const profileBtn = document.getElementById("headerProfileBtn");
+    
+    if (dropdown && profileBtn) {
+        if (!profileBtn.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove("active");
+        }
+    }
+});
+
+// 닉네임 변경 (1회 제한)
+async function changeNickname() {
+    const user = auth.currentUser;
+    if(!user) return alert("로그인이 필요합니다!");
+    
+    const nicknameChangeSnapshot = await db.ref("users/" + user.uid + "/nicknameChanged").once("value");
+    const hasChangedNickname = nicknameChangeSnapshot.val() || false;
+    
+    if(hasChangedNickname) {
+        return alert("닉네임은 1번만 변경할 수 있습니다. 이미 변경 기회를 사용하셨습니다.");
+    }
+    
+    const currentNickname = getNickname();
+    const newNickname = prompt(`현재 닉네임: ${currentNickname}\n\n새로운 닉네임을 입력하세요 (2-20자):`);
+    
+    if(!newNickname) return;
+    
+    const trimmed = newNickname.trim();
+    if(trimmed.length < 2 || trimmed.length > 20) {
+        return alert("닉네임은 2자 이상 20자 이하여야 합니다!");
+    }
+    
+    if(trimmed === currentNickname) {
+        return alert("현재 닉네임과 동일합니다!");
+    }
+    
+    const foundWord = checkBannedWords(trimmed);
+    if (foundWord) {
+        alert("금지어가 포함된 닉네임은 사용할 수 없습니다.");
+        return;
+    }
+    
+    if(!confirm(`정말 닉네임을 "${trimmed}"로 변경하시겠습니까?\n\n⚠️ 닉네임은 1번만 변경할 수 있습니다!`)) {
+        return;
+    }
+    
+    try {
+        await user.updateProfile({
+            displayName: trimmed
+        });
+        
+        await db.ref("users/" + user.uid).update({
+            nicknameChanged: true,
+            newNickname: trimmed,
+            oldNickname: currentNickname,
+            changedAt: new Date().toLocaleString()
+        });
+        
+        await updateUserContentNickname(currentNickname, trimmed, user.email);
+        
+        alert("닉네임이 성공적으로 변경되었습니다!");
+        location.reload();
+    } catch(error) {
+        alert("닉네임 변경 실패: " + error.message);
+        console.error(error);
+    }
+}
+
+// 사용자 컨텐츠의 닉네임 업데이트
+async function updateUserContentNickname(oldNickname, newNickname, userEmail) {
+    const articlesSnapshot = await db.ref("articles").once("value");
+    const articlesData = articlesSnapshot.val() || {};
+    
+    const updates = {};
+    Object.entries(articlesData).forEach(([id, article]) => {
+        if(article.author === oldNickname && article.authorEmail === userEmail) {
+            updates[`articles/${id}/author`] = newNickname;
+        }
+    });
+    
+    const commentsSnapshot = await db.ref("comments").once("value");
+    const commentsData = commentsSnapshot.val() || {};
+    
+    Object.entries(commentsData).forEach(([articleId, articleComments]) => {
+        Object.entries(articleComments).forEach(([commentId, comment]) => {
+            if(comment.author === oldNickname && comment.authorEmail === userEmail) {
+                updates[`comments/${articleId}/${commentId}/author`] = newNickname;
+            }
+        });
+    });
+    
+    if(Object.keys(updates).length > 0) {
+        await db.ref().update(updates);
+    }
+}
+
+// ===== Part 4: 인증 상태 변경 및 알림 시스템 (개선됨) =====
+
+// 실시간 알림 리스너 (articleId 포함)
+function setupNotificationListener(uid) {
+    if (!uid) return;
+    
+    console.log("알림 리스너 설정 시작:", uid);
+    
+    // 이전 리스너 제거 (메모리 누수 방지)
+    db.ref("notifications/" + uid).off();
+    
+    // 새 알림 리스너
+    db.ref("notifications/" + uid).orderByChild("read").equalTo(false).on("child_added", async (snapshot) => {
+        const notification = snapshot.val();
+        const notifId = snapshot.key;
+        
+        console.log("새 알림 감지:", notification);
+        
+        if (!notification.read) {
+            // 토스트 알림 표시 (articleId 포함)
+            showToastNotification(
+                notification.type === 'article' ? '📰 새 기사' : 
+                notification.type === 'comment' ? '💬 새 댓글' : 
+                '🔔 알림',
+                notification.text,
+                notification.articleId
+            );
+            
+            // 자동으로 읽음 처리 (5초 후)
+            setTimeout(() => {
+                db.ref("notifications/" + uid + "/" + notifId).update({ read: true });
+            }, 5000);
+        }
+    });
+}
+
+// 토스트 알림 표시 (클릭하면 해당 기사로 이동)
+function showToastNotification(title, body, articleId = null) {
+    const existingToast = document.getElementById('toast-notification');
+    if (existingToast) existingToast.remove();
+    
+    const toast = document.createElement('div');
+    toast.id = 'toast-notification';
+    toast.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background: white;
+        border-left: 4px solid #c62828;
+        padding: 16px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        min-width: 300px;
+        max-width: 400px;
+        animation: slideIn 0.3s ease;
+        cursor: ${articleId ? 'pointer' : 'default'};
+    `;
+    
+    // 클릭 시 해당 기사로 이동
+    if (articleId) {
+        toast.onclick = () => {
+            showArticleDetail(articleId);
+            toast.remove();
+        };
+    }
+    
+    toast.innerHTML = `
+        <div style="display: flex; align-items: start; gap: 12px;">
+            <div style="font-size: 24px;">🔔</div>
+            <div style="flex: 1;">
+                <div style="font-weight: bold; color: #202124; margin-bottom: 4px;">${title}</div>
+                <div style="color: #5f6368; font-size: 14px; line-height: 1.4;">${body}</div>
+                ${articleId ? '<div style="color: #1a73e8; font-size: 12px; margin-top: 6px;">👉 클릭하여 기사 보기</div>' : ''}
+            </div>
+            <button onclick="event.stopPropagation(); this.parentElement.parentElement.remove()" style="background: none; border: none; color: #5f6368; cursor: pointer; font-size: 20px; padding: 0; line-height: 1;">&times;</button>
+        </div>
+    `;
+    
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(400px); opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(toast);
+    
+    // 5초 후 자동 제거
+    setTimeout(() => {
+        if (toast && toast.parentElement) {
+            toast.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, 5000);
+}
+
+// ===== Part 4 수정: FCM 초기화 개선 =====
+async function registerFCMToken(uid) {
+    if(!messaging) {
+        console.log("Messaging not available");
+        return;
+    }
+    
+    try {
+        const permission = await Notification.requestPermission();
+        console.log("알림 권한 상태:", permission);
+        
+        if(permission === 'granted') {
+            // GitHub Pages에서 Service Worker 파일 존재 여부 확인
+            try {
+                const swResponse = await fetch('/firebase-messaging-sw.js', { method: 'HEAD' });
+                if (!swResponse.ok) {
+                    console.warn("⚠️ Service Worker 파일이 없습니다. FCM 푸시 알림이 비활성화됩니다.");
+                    console.log("💡 GitHub Pages에서 FCM을 사용하려면 루트에 firebase-messaging-sw.js 파일을 추가하세요.");
+                    return;
+                }
+            } catch(e) {
+                console.warn("⚠️ Service Worker 파일 확인 실패. FCM 비활성화:", e.message);
+                return;
+            }
+
+            const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+            console.log('Service Worker 등록 요청됨...');
+
+            await navigator.serviceWorker.ready;
+            console.log('✅ Service Worker가 활성화(Active) 되었습니다.');
+            
+            let token;
+            try {
+                token = await messaging.getToken({
+                    serviceWorkerRegistration: registration
+                });
+            } catch(tokenError) {
+                console.error("토큰 발급 상세 오류:", tokenError);
+                return;
+            }
+            
+            if(token) {
+                console.log("FCM 토큰 발급 성공:", token);
+                
+                const tokenKey = btoa(token).substring(0, 20).replace(/[^a-zA-Z0-9]/g, '');
+                await db.ref("users/" + uid + "/fcmTokens/" + tokenKey).set({
+                    token: token,
+                    updatedAt: Date.now(),
+                    browser: navigator.userAgent.substring(0, 100)
+                });
+                console.log("토큰 DB 저장 완료");
+                
+                // 포그라운드 메시지 수신
+                messaging.onMessage((payload) => {
+                    console.log("포그라운드 메시지 수신:", payload);
+                    const { title, body } = payload.notification || {};
+                    if(title && body) {
+                        showToastNotification(title, body);
+                    }
+                });
+            }
+        } else {
+            console.log("알림 권한이 거부됨");
+        }
+        
+    } catch(error) {
+        console.warn("FCM 초기화 건너뜀:", error.message);
+    }
+}
+// 알림 전송 시스템
+async function sendNotification(type, data) {
+    try {
+        console.log("알림 전송 시작:", type, data);
+        
+        const usersSnapshot = await db.ref("users").once("value");
+        const usersData = usersSnapshot.val() || {};
+        
+        for(const [uid, userData] of Object.entries(usersData)) {
+            if(userData.notificationsEnabled === false) continue;
+            
+            let shouldNotify = false;
+            let notificationTitle = '';
+            let notificationBody = '';
+            
+            if(type === 'article' || type === 'comment') {
+                const following = userData.following || {};
+                const emailKey = btoa(data.authorEmail).replace(/=/g, '');
+                
+                if(following[emailKey]) {
+                    shouldNotify = true;
+                    
+                    if(type === 'article') {
+                        notificationTitle = '📰 새 기사 알림';
+                        let title = data.title || '제목 없음';
+                        if(title.length > 60) title = title.substring(0, 60) + '...';
+                        notificationBody = `${data.authorName}님이 새 기사를 작성했습니다:\n"${title}"`;
+                    } else {
+                        notificationTitle = '💬 새 댓글 알림';
+                        let content = data.content || '';
+                        if(content.length > 50) content = content.substring(0, 50) + '...';
+                        notificationBody = `${data.authorName}님이 댓글을 남겼습니다:\n"${content}"`;
+                    }
+                }
+            } else if(type === 'myArticleComment') {
+                if(userData.email === data.articleAuthorEmail && userData.email !== data.commenterEmail) {
+                    shouldNotify = true;
+                    notificationTitle = '💭 내 기사에 새 댓글';
+                    let content = data.content || '';
+                    if(content.length > 50) content = content.substring(0, 50) + '...';
+                    notificationBody = `${data.commenterName}님이 댓글을 남겼습니다:\n"${content}"`;
+                }
+            }
+            
+            if(shouldNotify) {
+                console.log("알림 전송 대상:", userData.email);
+                
+                const notificationId = Date.now().toString() + '_' + Math.random().toString(36).substr(2, 9);
+                await db.ref("notifications/" + uid + "/" + notificationId).set({
+                    title: notificationTitle,
+                    text: notificationBody,
+                    articleId: data.articleId,
+                    timestamp: Date.now(),
+                    read: false,
+                    type: type
+                });
+                
+                console.log("알림 저장 완료:", uid);
+            }
+        }
+    } catch(error) {
+        console.error("알림 전송 오류:", error);
+    }
+}
+
+// ===== Part 4 수정: 인증 상태 변경 (점검 모드 체크 추가) =====
+auth.onAuthStateChanged(async user => {
+    console.log("🔐 인증 상태 변경:", user ? user.email : "로그아웃");
+    
+    if (user) {
+        console.log("로그인 감지됨:", user.email);
+
+        const userRef = db.ref("users/" + user.uid);
+        const snap = await userRef.once("value");
+        let data = snap.val() || {};
+        
+        if(!data.email) {
+            await userRef.update({
+                email: user.email,
+                createdAt: Date.now()
+            });
+            data.email = user.email;
+        }
+        
+        if (data.isBanned) {
+            alert("🚫 차단된 계정입니다.");
+            auth.signOut();
+            return;
+        }
+
+        // 법적 동의 확인
+        checkLegalAgreement(user);
+        
+        // FCM 토큰 등록
+        await registerFCMToken(user.uid);
+        
+        // 알림 리스너 설정
+        setupNotificationListener(user.uid);
+    }
+
+    updateSettings();
+    
+ // 관리자/VIP 전용 탭 표시
+    const adminEventBtn = document.getElementById("adminEventBtn");
+    if(adminEventBtn) {
+        if(user) {
+            const snap = await db.ref("users/" + user.uid).once("value");
+            const userData = snap.val() || {};
+            const isVIP = userData.isVIP || false;
+            
+            if(isAdmin() || isVIP) {
+                adminEventBtn.style.display = "block";
+            } else {
+                adminEventBtn.style.display = "none";
+            }
+        } else {
+            adminEventBtn.style.display = "none";
+        }
+    }
+
+     // ⭐ 인증 상태 확정 후 점검 모드 체크
+    checkMaintenanceAfterAuth();
+    
+    if(document.getElementById("articlesSection").classList.contains("active")) {
+        filteredArticles = allArticles;
+        renderArticles();
+    }
+});
+
+// ===== Part 5: 팔로우 사용자 관리 및 설정 =====
+
+// 팔로우 가능한 사용자 목록 로드
+async function loadFollowUsers() {
+    if(!isLoggedIn()) return;
+    
+    const followSection = document.getElementById("followUsersSection");
+    followSection.innerHTML = '<p style="text-align:center;color:#868e96;">로딩 중...</p>';
+    
+    const currentEmail = getUserEmail();
+    const uid = getUserId();
+    
+    // 모든 사용자 정보 가져오기
+    const articlesSnapshot = await db.ref("articles").once("value");
+    const articlesData = articlesSnapshot.val() || {};
+    const articles = Object.values(articlesData);
+    
+    const usersMap = new Map();
+    
+    articles.forEach(article => {
+        if(article.author && article.author !== "익명" && article.authorEmail && article.authorEmail !== currentEmail) {
+            if(!usersMap.has(article.authorEmail)) {
+                usersMap.set(article.authorEmail, {
+                    nickname: article.author,
+                    email: article.authorEmail
+                });
+            }
+        }
+    });
+    
+    // 현재 팔로우 목록 가져오기
+    const followSnapshot = await db.ref("users/" + uid + "/following").once("value");
+    const followingData = followSnapshot.val() || {};
+    
+    if(usersMap.size === 0) {
+        followSection.innerHTML = '<p style="text-align:center;color:#868e96;font-size:13px;margin-top:15px;">팔로우 가능한 사용자가 없습니다.</p>';
+        return;
+    }
+    
+    const usersList = Array.from(usersMap.values());
+    
+    followSection.innerHTML = `
+        <div style="border-top:1px solid #eee;padding-top:15px;margin-top:15px;">
+            <h4 style="margin:0 0 12px 0;color:#202124;font-size:14px;">👥 알림 받을 사용자 선택</h4>
+            <div style="max-height:200px;overflow-y:auto;">
+                ${usersList.map(u => {
+                    const emailKey = btoa(u.email).replace(/=/g, '');
+                    const isFollowing = followingData[emailKey] ? true : false;
+                    return `
+                        <label style="display:flex;align-items:center;padding:8px;background:#f8f9fa;border-radius:4px;margin-bottom:6px;cursor:pointer;">
+                            <input type="checkbox" 
+                                   ${isFollowing ? 'checked' : ''} 
+                                   onchange="toggleFollowUser('${u.email}', this.checked)"
+                                   style="margin-right:10px;">
+                            <span style="flex:1;color:#333;">${u.nickname}</span>
+                            <small style="color:#868e96;">${u.email}</small>
+                        </label>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+}
+
+// 사용자 팔로우/언팔로우 토글
+async function toggleFollowUser(userEmail, isFollowing) {
+    if(!isLoggedIn()) return;
+    
+    const uid = getUserId();
+    const emailKey = btoa(userEmail).replace(/=/g, '');
+    
+    if(isFollowing) {
+        await db.ref("users/" + uid + "/following/" + emailKey).set(userEmail);
+    } else {
+        await db.ref("users/" + uid + "/following/" + emailKey).remove();
+    }
+}
+
+// 설정 업데이트
+async function updateSettings() {
+    // 1. 프로필 카드 업데이트
+    const el = document.getElementById("profileNickname");
+    if (el) {
+        const user = auth.currentUser;
+        if(user) {
+            const nicknameChangeSnapshot = await db.ref("users/" + user.uid + "/nicknameChanged").once("value");
+            const hasChangedNickname = nicknameChangeSnapshot.val() || false;
+            const userSnapshot = await db.ref("users/" + user.uid).once("value");
+            const userData = userSnapshot.val() || {};
+            const isVIP = userData.isVIP || false;
+            const warningCount = userData.warningCount || 0;
+            const isBanned = userData.isBanned || false;
+            const notificationsEnabled = userData.notificationsEnabled !== false;
+            
+            el.innerHTML = `
+                <div style="background:#fff; border:1px solid #dadce0; padding:20px; border-radius:8px; margin-bottom:20px;">
+                    <h4 style="margin:0 0 15px 0; color:#202124;">내 정보</h4>
+                    <p style="margin:8px 0; color:#5f6368;"><strong>이름:</strong> ${user.displayName || '미설정'}${isVIP ? ' <span class="vip-badge">⭐ VIP</span>' : ''}</p>
+                    <p style="margin:8px 0; color:#5f6368;"><strong>이메일:</strong> ${user.email}</p>
+                    ${warningCount > 0 ? `<p style="margin:8px 0; color:#d93025;"><strong>⚠ 경고:</strong> ${warningCount}회</p>` : ''}
+                    ${hasChangedNickname ? 
+                        '<p style="margin:8px 0; color:#9aa0a6; font-size:13px;">닉네임 변경 완료됨</p>' : 
+                        '<button onclick="changeNickname()" class="btn-block" style="margin-top:15px; background:#fff; border:1px solid #dadce0;">닉네임 변경 (1회)</button>'
+                    }
+                </div>
+            `;
+            
+            // 알림 토글 상태 업데이트
+            const notificationToggle = document.getElementById("notificationToggle");
+            if(notificationToggle) {
+                notificationToggle.checked = notificationsEnabled;
+                if(notificationsEnabled) {
+                    document.getElementById("notificationStatus").innerHTML = '<p style="color:var(--success-color);margin-top:10px;">✅ 알림이 활성화되었습니다.</p>';
+                    loadFollowUsers();
+                }
+            }
+        } else {
+            el.innerHTML = `<div style="background:#fff; border:1px solid #dadce0; padding:20px; border-radius:8px; text-align:center;">
+                <p style="color:#5f6368;">로그인이 필요합니다.</p>
+                <button onclick="googleLogin()" class="btn-primary" style="width:100%; margin-top:15px;">Google 로그인</button>
+            </div>`;
+        }
+    }
+
+    // 2. 관리자 모드 표시
+    const adminIndicator = document.getElementById("adminModeIndicator");
+    if(adminIndicator) {
+        if(isAdmin()) {
+            adminIndicator.innerHTML = `
+                <div style="background:#e8f0fe; border:1px solid #1967d2; padding:15px; border-radius:8px; margin:20px 0;">
+                    <h4 style="margin:0 0 10px 0; color:#1967d2;">🛡️ 관리자 모드 ON</h4>
+                    <button onclick="disableAdminMode()" class="btn-block" style="background:#fff; color:#1967d2; border:1px solid #1967d2;">모드 해제</button>
+                </div>
+            `;
+        } else {
+            adminIndicator.innerHTML = '';
+        }
+    }
+}
+
+// 알림 토글
+async function toggleNotifications() {
+    if(!isLoggedIn()) {
+        alert("로그인이 필요합니다!");
+        return;
+    }
+    
+    const isEnabled = document.getElementById("notificationToggle").checked;
+    const statusDiv = document.getElementById("notificationStatus");
+    const uid = getUserId();
+    
+    await db.ref("users/" + uid).update({
+        notificationsEnabled: isEnabled
+    });
+    
+    if(isEnabled) {
+        statusDiv.innerHTML = '<p style="color:var(--success-color);margin-top:10px;">✅ 알림이 활성화되었습니다.</p>';
+        loadFollowUsers();
+        
+        // 알림 리스너 다시 설정
+        setupNotificationListener(uid);
+    } else {
+        statusDiv.innerHTML = '<p style="color:var(--text-secondary);margin-top:10px;">알림이 비활성화되었습니다.</p>';
+        document.getElementById("followUsersSection").innerHTML = '';
+        
+        // 알림 리스너 제거
+        db.ref("notifications/" + uid).off();
+    }
+}
+
+// ===== Part 6: 네비게이션 및 UI 관리 =====
+
+// 모든 섹션 숨기기 및 네비게이션 초기화
+function hideAll() {
+    document.querySelectorAll(".page-section").forEach(sec => sec.classList.remove("active"));
+    document.querySelectorAll(".nav-btn").forEach(btn => btn.classList.remove("active"));
+    
+    // 프로필 드롭다운 닫기
+    const dropdown = document.getElementById("profileDropdown");
+    if(dropdown) dropdown.classList.remove("active");
+}
+
+// 홈(기사 목록) 표시
+function showArticles() {
+    hideAll();
+    document.getElementById("articlesSection").classList.add("active");
+    const navBtn = document.querySelector('[data-section="articles"]');
+    if(navBtn) navBtn.classList.add("active");
+    
+    currentArticlePage = 1;
+    document.getElementById("searchCategory").value = "";
+    document.getElementById("searchKeyword").value = "";
+    filteredArticles = allArticles;
+    renderArticles();
+    
+    // URL 업데이트
+    updateURL('home');
+}
+
+// 자유게시판 표시
+function showFreeboard() {
+    hideAll();
+    document.getElementById("freeboardSection").classList.add("active");
+    const navBtn = document.querySelector('[data-section="freeboard"]');
+    if(navBtn) navBtn.classList.add("active");
+    
+    currentFreeboardPage = 1;
+    document.getElementById("freeboardSearchKeyword").value = "";
+    filteredFreeboardArticles = allArticles.filter(a => a.category === "자유게시판");
+    renderFreeboardArticles();
+    
+    // URL 업데이트
+    updateURL('freeboard');
+}
+
+// 글쓰기 페이지 표시
+function showWritePage() {
+    if(!isLoggedIn()) {
+        alert("기사 작성은 로그인 후 가능합니다!");
+        googleLogin();
+        return;
+    }
+    hideAll();
+    document.getElementById("writeSection").classList.add("active");
+    const navBtn = document.querySelector('[data-section="write"]');
+    if(navBtn) navBtn.classList.add("active");
+    
+    // URL 업데이트
+    updateURL('write');
+}
+
+// 설정 페이지 표시
+function showSettings() {
+    hideAll();
+    const settingsSection = document.getElementById("settingsSection");
+    settingsSection.classList.add("active");
+    const navBtn = document.querySelector('[data-section="settings"]');
+    if(navBtn) navBtn.classList.add("active");
+    updateSettings();
+    
+    // URL 업데이트
+    updateURL('settings');
+}
+
+// QnA 페이지 표시
+function showQnA() {
+    hideAll();
+    document.getElementById("qnaSection").classList.add("active");
+    loadQnAFromFile();
+    
+    // URL 업데이트
+    updateURL('qna');
+}
+
+// QnA HTML 파일 로드
+function loadQnAFromFile() {
+    const listDiv = document.getElementById("qnaList");
+    fetch('QnA.html')
+        .then(response => {
+            if (!response.ok) throw new Error("QnA.html 파일을 찾을 수 없습니다.");
+            return response.text();
+        })
+        .then(html => {
+            listDiv.innerHTML = html;
+        })
+        .catch(err => {
+            console.error(err);
+            listDiv.innerHTML = `
+                <div style="text-align:center; padding:30px; color:#c62828; background:#fff0f0; border-radius:8px;">
+                    <p><b>⚠️ QnA를 불러오지 못했습니다.</b></p>
+                    <p style="font-size:13px; margin-top:10px;">QnA.html 파일이 있는지 확인해주세요.</p>
+                </div>
+            `;
+        });
+}
+
+// QnA 탭 표시
+function showQnATab() {
+    document.getElementById("qnaList").style.display = "block";
+    document.getElementById("patchNotesContainer").style.display = "none";
+    document.getElementById("qnaTabBtn").classList.add("active");
+    document.getElementById("patchTabBtn").classList.remove("active");
+}
+
+// 패치노트 탭 표시
+function showPatchNotesTab() {
+    document.getElementById("qnaList").style.display = "none";
+    document.getElementById("patchNotesContainer").style.display = "block";
+    document.getElementById("qnaTabBtn").classList.remove("active");
+    document.getElementById("patchTabBtn").classList.add("active");
+    
+    loadPatchNotesToContainer(document.getElementById("patchNotesContainer"));
+}
+
+// 자유게시판 전용 함수들
+function searchFreeboardArticles(resetPage = true) {
+    const keyword = document.getElementById("freeboardSearchKeyword").value.toLowerCase();
+    let articles = allArticles.filter(a => a.category === "자유게시판");
+    
+    if(keyword) {
+        articles = articles.filter(a => 
+            a.title.toLowerCase().includes(keyword) || 
+            a.content.toLowerCase().includes(keyword) ||
+            (a.summary && a.summary.toLowerCase().includes(keyword))
+        );
+    }
+    
+    filteredFreeboardArticles = articles;
+    if(resetPage) currentFreeboardPage = 1;
+    renderFreeboardArticles();
+}
+
+function sortFreeboardArticles(method, btn) {
+    currentFreeboardSortMethod = method;
+    currentFreeboardPage = 1;
+    document.querySelectorAll('#freeboardSection .chip').forEach(b => b.classList.remove('active'));
+    if (btn && btn.classList) btn.classList.add('active');
+    renderFreeboardArticles();
+}
+
+function getSortedFreeboardArticles() {
+    let articles = Array.isArray(filteredFreeboardArticles) ? [...filteredFreeboardArticles] : [];
+    
+    switch(currentFreeboardSortMethod) {
+        case 'latest':
+            articles.sort((a,b) => getArticleTimestamp(b) - getArticleTimestamp(a));
+            break;
+        case 'oldest':
+            articles.sort((a,b) => getArticleTimestamp(a) - getArticleTimestamp(b));
+            break;
+        case 'views':
+            articles.sort((a,b) => (b.views || 0) - (a.views || 0));
+            break;
+        case 'likes':
+            articles.sort((a,b) => (b.likeCount || 0) - (a.likeCount || 0));
+            break;
+        default:
+            articles.sort((a,b) => getArticleTimestamp(b) - getArticleTimestamp(a));
+            break;
+    }
+    return articles;
+}
+
+async function renderFreeboardArticles() {
+    const list = getSortedFreeboardArticles();
+    const grid = document.getElementById("freeboardGrid");
+    const loadMore = document.getElementById("freeboardLoadMoreContainer");
+    
+    if (list.length === 0) {
+        grid.innerHTML = `<div style="text-align:center;padding:60px 20px;background:#fff;border-radius:8px;">
+            <p style="color:#868e96;font-size:16px;">자유게시판에 등록된 기사가 없습니다.</p>
+        </div>`;
+        loadMore.innerHTML = "";
+        return;
+    }
+    
+    const endIdx = currentFreeboardPage * ARTICLES_PER_PAGE;
+    const displayArticles = list.slice(0, endIdx);
+    
+    grid.innerHTML = displayArticles.map(a => {
+        const views = getArticleViews(a);
+        const votes = getArticleVoteCounts(a);
+        return `<div class="article-card" onclick="showArticleDetail('${a.id}')" style="cursor:pointer;">
+            ${a.thumbnail ? `<img src="${a.thumbnail}" class="article-thumbnail" alt="썸네일">` : ''}
+            <div class="article-content">
+                <span class="category-badge">${a.category}</span>
+                <h3 class="article-title">${a.title}</h3>
+                <p class="article-summary">${a.summary||''}</p>
+                <div class="article-meta">
+                    <span>${a.author}</span>
+                    <div class="article-stats">
+                        <span class="stat-item">👁️ ${views}</span>
+                        <span class="stat-item">👍 ${votes.likes}</span>
+                    </div>
+                </div>
+            </div>
+        </div>`}).join('');
+    
+    if(endIdx < list.length) {
+        loadMore.innerHTML = `<button onclick="loadMoreFreeboardArticles()" class="btn-block" style="background:#fff; border:1px solid #ddd; color:#555;">
+            더 보기 (${list.length - endIdx})</button>`;
+    } else {
+        loadMore.innerHTML = "";
+    }
+}
+
+function loadMoreFreeboardArticles() {
+    currentFreeboardPage++;
+    renderFreeboardArticles();
+}
+
+// ===== Part 7: 기사 관리 및 렌더링 (최적화) =====
+
+// Firebase 실시간 리스너 설정
+function setupArticlesListener() {
+    db.ref("articles").on("value", snapshot => {
+        const val = snapshot.val() || {};
+        allArticles = Object.values(val);
+        
+        // 현재 활성화된 섹션에 따라 자동 업데이트
+        if(document.getElementById("articlesSection").classList.contains("active")) {
+            searchArticles(false);
+        }
+        if(document.getElementById("freeboardSection").classList.contains("active")) {
+            filteredFreeboardArticles = allArticles.filter(a => a.category === "자유게시판");
+            renderFreeboardArticles();
+        }
+    });
+}
+
+// 기사 저장
+function saveArticle(article, callback) {
+    if (!article.views) article.views = 0;
+    if (!article.likeCount) article.likeCount = 0;
+    if (!article.dislikeCount) article.dislikeCount = 0;
+    
+    db.ref("articles/" + article.id).set(article).then(() => {
+        if(callback) callback();
+    }).catch(error => {
+        alert("저장 실패: " + error.message);
+        console.error(error);
+    });
+}
+
+// 기사 삭제
+function deleteArticleFromDB(articleId, callback) {
+    db.ref("articles/" + articleId).remove().then(() => {
+        db.ref("votes/" + articleId).remove(); 
+        db.ref("comments/" + articleId).remove();
+        if(callback) callback();
+    }).catch(error => {
+        alert("삭제 실패: " + error.message);
+    });
+}
+
+// 조회수 증가
+function incrementView(id) {
+    const viewRef = db.ref(`articles/${id}/views`);
+    viewRef.transaction((currentViews) => {
+        return (currentViews || 0) + 1;
+    });
+}
+
+// 조회수 가져오기
+function getArticleViews(article) {
+    return article.views || 0;
+}
+
+// 타임스탬프 가져오기
+function getArticleTimestamp(a) {
+    if (!a) return 0;
+    if (a.createdAt) return Number(a.createdAt);
+    if (a.date) {
+        return new Date(a.date).getTime() || 0;
+    }
+    return 0;
+}
+
+// 투표 확인
+async function checkUserVote(articleId) {
+    if (!isLoggedIn()) return null;
+    const uid = getUserId();
+    const snap = await db.ref(`votes/${articleId}/${uid}`).once('value');
+    return snap.val(); 
+}
+
+// 투표 토글
+function toggleVote(articleId, voteType) {
+    if(!isLoggedIn()) {
+        alert("추천/비추천은 로그인 후 가능합니다!");
+        return;
+    }
+    
+    const uid = getUserId();
+    const voteRef = db.ref(`votes/${articleId}/${uid}`);
+    const articleRef = db.ref(`articles/${articleId}`);
+
+    voteRef.once('value').then(snapshot => {
+        const currentVote = snapshot.val();
+
+        articleRef.transaction(article => {
+            if (!article) return article;
+            if (!article.likeCount) article.likeCount = 0;
+            if (!article.dislikeCount) article.dislikeCount = 0;
+
+            if (currentVote === voteType) {
+                if (voteType === 'like') article.likeCount--;
+                if (voteType === 'dislike') article.dislikeCount--;
+                voteRef.remove(); 
+            } 
+            else {
+                if (currentVote === 'like') article.likeCount--;
+                if (currentVote === 'dislike') article.dislikeCount--;
+
+                if (voteType === 'like') article.likeCount++;
+                if (voteType === 'dislike') article.dislikeCount++;
+                voteRef.set(voteType); 
+            }
+            return article;
+        }).then(() => {
+            if (document.getElementById("articleDetailSection").classList.contains("active")) {
+                showArticleDetail(articleId);
+            }
+        });
+    });
+}
+
+// 투표 수 가져오기
+function getArticleVoteCounts(article) {
+    return {
+        likes: article.likeCount || 0,
+        dislikes: article.dislikeCount || 0
+    };
+}
+
+// 검색
+function searchArticles(resetPage = true) {
+    const category = document.getElementById("searchCategory").value;
+    const keyword = document.getElementById("searchKeyword").value.toLowerCase();
+    let articles = [...allArticles];
+    
+    if(category) {
+        articles = articles.filter(a => a.category === category);
+    }
+    if(keyword) {
+        articles = articles.filter(a => 
+            a.title.toLowerCase().includes(keyword) || 
+            a.content.toLowerCase().includes(keyword) ||
+            (a.summary && a.summary.toLowerCase().includes(keyword))
+        );
+    }
+    
+    filteredArticles = articles;
+    if(resetPage) currentArticlePage = 1;
+    renderArticles();
+}
+
+// 정렬
+function sortArticles(method, btn) {
+    currentSortMethod = method;
+    currentArticlePage = 1;
+    document.querySelectorAll('#articlesSection .chip').forEach(b => b.classList.remove('active'));
+    if (btn && btn.classList) btn.classList.add('active');
+    renderArticles();
+}
+
+// 정렬된 기사 가져오기
+function getSortedArticles() {
+    let articles = Array.isArray(filteredArticles) ? [...filteredArticles] : [];
+    
+    switch(currentSortMethod) {
+        case 'latest':
+            articles.sort((a,b) => getArticleTimestamp(b) - getArticleTimestamp(a));
+            break;
+        case 'oldest':
+            articles.sort((a,b) => getArticleTimestamp(a) - getArticleTimestamp(b));
+            break;
+        case 'views':
+            articles.sort((a,b) => (b.views || 0) - (a.views || 0));
+            break;
+        case 'likes':
+            articles.sort((a,b) => (b.likeCount || 0) - (a.likeCount || 0));
+            break;
+        default:
+            articles.sort((a,b) => getArticleTimestamp(b) - getArticleTimestamp(a));
+            break;
+    }
+    return articles;
+}
+
+// 기사 렌더링 (최적화)
+async function renderArticles() {
+    const list = getSortedArticles();
+    
+    const adSection = document.getElementById("adSection");
+    const pinnedSection = document.getElementById("pinnedSection"); 
+    const featured = document.getElementById("featuredArticle");    
+    const grid = document.getElementById("articlesGrid");           
+    const loadMore = document.getElementById("loadMoreContainer");
+    
+    // 광고 로드
+    const adsSnapshot = await db.ref("advertisements").once("value");
+    const adsData = adsSnapshot.val() || {};
+    const ads = Object.values(adsData).sort((a, b) => b.createdAt - a.createdAt);
+
+    // 고정 기사 로드
+    const pinsSnapshot = await db.ref("pinnedArticles").once("value");
+    const pinnedData = pinsSnapshot.val() || {};
+    const pinnedIds = Object.keys(pinnedData);
+
+    const pinnedArticles = [];
+    const unpinnedArticles = [];
+
+    list.forEach(article => {
+        if (pinnedIds.includes(article.id)) {
+            article.pinnedAt = pinnedData[article.id].pinnedAt;
+            pinnedArticles.push(article);
+        } else {
+            unpinnedArticles.push(article);
+        }
+    });
+
+    pinnedArticles.sort((a, b) => b.pinnedAt - a.pinnedAt);
+
+    // 광고 렌더링
+    if(ads.length > 0) {
+        adSection.innerHTML = ads.map(ad => `
+            <div class="ad-banner" style="background:${ad.color}; border:1px solid #ddd;">
+                <span class="ad-badge">광고</span>
+                <h3 style="margin:5px 0; font-size:18px;">${ad.title}</h3>
+                <p style="margin:5px 0; font-size:14px; color:#555;">${ad.content}</p>
+                ${ad.link ? `<a href="${ad.link}" target="_blank" style="font-size:12px; text-decoration:underline;">더보기 &gt;</a>` : ''}
+            </div>
+        `).join('');
+    } else {
+        adSection.innerHTML = '';
+    }
+
+    // 고정 기사 렌더링
+    if(pinnedArticles.length > 0) {
+        pinnedSection.innerHTML = pinnedArticles.map(a => {
+            const views = getArticleViews(a);
+            return `<div class="article-card" onclick="showArticleDetail('${a.id}')" style="border-left:4px solid #ffd700;cursor:pointer;">
+                <div class="article-content">
+                    <span class="category-badge">${a.category}</span>
+                    <span class="pinned-badge">📌 고정</span>
+                    <h3 class="article-title">${a.title}</h3>
+                    <div class="article-meta">
+                        <span>${a.author}</span>
+                        <span>👁️ ${views}</span>
+                    </div>
+                </div>
+            </div>`}).join('');
+    } else {
+        pinnedSection.innerHTML = '';
+    }
+
+    // 기사가 없을 때
+    if (list.length === 0) {
+        featured.innerHTML = `<div style="text-align:center;padding:60px 20px;background:#fff;border-radius:8px;">
+            <p style="color:#868e96;font-size:16px;">등록된 기사가 없습니다.</p>
+        </div>`;
+        grid.innerHTML = "";
+        loadMore.innerHTML = "";
+        return;
+    }
+
+    // 그리드 렌더링
+    const endIdx = currentArticlePage * ARTICLES_PER_PAGE;
+    const displayArticles = unpinnedArticles.slice(0, endIdx);
+    
+    featured.innerHTML = '';
+
+    grid.innerHTML = displayArticles.map(a => {
+        const views = getArticleViews(a);
+        const votes = getArticleVoteCounts(a);
+        return `<div class="article-card" onclick="showArticleDetail('${a.id}')" style="cursor:pointer;">
+            ${a.thumbnail ? `<img src="${a.thumbnail}" class="article-thumbnail" alt="썸네일">` : ''}
+            <div class="article-content">
+                <span class="category-badge">${a.category}</span>
+                <h3 class="article-title">${a.title}</h3>
+                <p class="article-summary">${a.summary||''}</p>
+                <div class="article-meta">
+                    <span>${a.author}</span>
+                    <div class="article-stats">
+                        <span class="stat-item">👁️ ${views}</span>
+                        <span class="stat-item">👍 ${votes.likes}</span>
+                    </div>
+                </div>
+            </div>
+        </div>`}).join('');
+    
+    // 더보기 버튼
+    if(endIdx < unpinnedArticles.length) {
+        loadMore.innerHTML = `<button onclick="loadMoreArticles()" class="btn-block" style="background:#fff; border:1px solid #ddd; color:#555;">
+            더 보기 (${unpinnedArticles.length - endIdx})</button>`;
+    } else {
+        loadMore.innerHTML = "";
+    }
+}
+
+// 기사 더보기
+function loadMoreArticles() {
+    currentArticlePage++;
+    renderArticles();
+}
+
+// ===== Part 8: 기사 상세, 작성, 수정 =====
+
+// 기사 상세 보기
+async function showArticleDetail(id) {
+    db.ref("articles/" + id).once("value").then(async snapshot => {
+        const A = snapshot.val();
+        if(!A) {
+            alert("존재하지 않는 기사입니다!");
+            showArticles();
+            return;
+        }
+        
+        if (currentArticleId !== id) {
+            incrementView(id);
+        }
+        currentArticleId = id;
+        currentCommentPage = 1;
+        hideAll();
+        document.getElementById("articleDetailSection").classList.add("active");
+        
+        const currentUser = getNickname();
+        const canEdit = isLoggedIn() && ((A.author === currentUser) || isAdmin());
+        const views = getArticleViews(A);
+        const votes = getArticleVoteCounts(A);
+        
+        const userVote = await checkUserVote(id);
+
+        const root = document.getElementById("articleDetail");
+        root.innerHTML = `<div style="background:#fff;padding:20px;border-radius:8px;">
+            <span class="category-badge">${A.category}</span>
+            <h1 style="font-size:22px;font-weight:700;margin:15px 0;line-height:1.4;">${A.title}</h1>
+            <div class="article-meta" style="border-bottom:1px solid #eee; padding-bottom:15px; margin-bottom:20px;">
+                <span>${A.author}</span>
+                <span style="color:#888;">${A.date}</span>
+                <span style="float:right;">👁️ ${views}</span>
+            </div>
+            
+            ${A.thumbnail ? `<img src="${A.thumbnail}" style="width:100%;border-radius:8px;margin-bottom:20px;" alt="이미지">` : ''}
+            
+            <div style="font-size:16px;line-height:1.8;color:#333;white-space:pre-wrap;">${A.content}</div>
+            
+            <div style="display:flex;gap:10px;padding-top:20px;margin-top:20px;border-top:1px solid #eee; justify-content:center;">
+                <button onclick="toggleVote('${A.id}', 'like')" class="vote-btn ${userVote === 'like' ? 'active' : ''}">
+                    👍 추천 ${votes.likes}
+                </button>
+                <button onclick="toggleVote('${A.id}', 'dislike')" class="vote-btn dislike ${userVote === 'dislike' ? 'active' : ''}">
+                    👎 비추천 ${votes.dislikes}
+                </button>
+            </div>
+            
+            ${canEdit ? `<div style="margin-top:20px;text-align:right;">
+                <button onclick="editArticle('${A.id}')" class="btn-secondary">수정</button>
+                <button onclick="deleteArticle('${A.id}')" class="btn-danger">삭제</button>
+            </div>` : ''}
+        </div>`;
+        loadComments(id);
+        
+        // URL 업데이트
+        updateURL('article', id);
+    });
+}
+
+// 기사 삭제
+function deleteArticle(id) {
+    db.ref("articles/" + id).once("value").then(snapshot => {
+        const A = snapshot.val();
+        if(!A) return alert("없는 기사!");
+        const currentUser = getNickname();
+        if(!isLoggedIn() || (A.author !== currentUser && !isAdmin())) {
+            return alert("삭제 권한이 없습니다!");
+        }
+        if(!confirm("정말 이 기사를 삭제하시겠습니까?")) return;
+        deleteArticleFromDB(id, () => {
+            alert("기사가 삭제되었습니다.");
+            showArticles();
+        });
+    });
+}
+
+// 기사 수정
+function editArticle(id) {
+    db.ref("articles/" + id).once("value").then(snapshot => {
+        const A = snapshot.val();
+        if(!A) return alert("없는 기사!");
+        const currentUser = getNickname();
+        if(!isLoggedIn() || (A.author !== currentUser && !isAdmin())) {
+            return alert("수정 권한이 없습니다!");
+        }
+        hideAll();
+        document.getElementById("writeSection").classList.add("active");
+        const navBtn = document.querySelector('[data-section="write"]');
+        if(navBtn) navBtn.classList.add("active");
+        
+        document.getElementById("category").value = A.category;
+        document.getElementById("title").value = A.title;
+        document.getElementById("summary").value = A.summary || '';
+        document.getElementById("content").value = A.content;
+        
+        if(A.thumbnail) {
+            const preview = document.getElementById('thumbnailPreview');
+            const uploadText = document.getElementById('uploadText');
+            preview.src = A.thumbnail;
+            preview.style.display = 'block';
+            uploadText.innerHTML = '<i class="fas fa-check"></i><p>기존 이미지 (클릭하여 변경)</p>';
+        }
+        
+        setupEditForm(A, id);
+    });
+}
+
+// 수정 폼 설정
+function setupEditForm(article, id) {
+    const form = document.getElementById("articleForm");
+    const newForm = form.cloneNode(true);
+    form.parentNode.replaceChild(newForm, form);
+    
+    const titleInput = newForm.querySelector("#title");
+    const summaryInput = newForm.querySelector("#summary");
+    const contentInput = newForm.querySelector("#content");
+    const warningEl = newForm.querySelector("#bannedWordWarning");
+    
+    function checkInputs() {
+        const combinedText = (titleInput.value + " " + summaryInput.value + " " + contentInput.value);
+        const foundWord = checkBannedWords(combinedText);
+        
+        if (foundWord) {
+            warningEl.textContent = `🚫 사용할 수 없는 단어가 포함되어 있습니다: "${foundWord}"`;
+            warningEl.style.display = "block";
+        } else {
+            warningEl.style.display = "none";
+        }
+    }
+    
+    titleInput.addEventListener("input", checkInputs);
+    summaryInput.addEventListener("input", checkInputs);
+    contentInput.addEventListener("input", checkInputs);
+    
+    const newFileInput = newForm.querySelector('#thumbnailInput');
+    newFileInput.addEventListener('change', previewThumbnail);
+    
+    newForm.addEventListener("submit", function(e) {
+        e.preventDefault();
+        
+        const title = titleInput.value;
+        const content = contentInput.value;
+        const summary = summaryInput.value;
+        
+        const foundWord = checkBannedWords(title + " " + content + " " + summary);
+        if (foundWord) {
+            alert(`⚠️ 금지어("${foundWord}")가 포함되어 있어 수정이 불가능하며, 경고 1회가 누적됩니다.`);
+            addWarningToCurrentUser();
+            return;
+        }
+        
+        const fileInput = newForm.querySelector('#thumbnailInput');
+        if(fileInput.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                article.thumbnail = e.target.result;
+                saveUpdatedArticle();
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        } else {
+            saveUpdatedArticle();
+        }
+        
+        function saveUpdatedArticle() {
+            article.category = newForm.querySelector("#category").value;
+            article.title = title;
+            article.summary = summary;
+            article.content = content;
+            article.date = new Date().toLocaleString() + " (수정됨)";
+            
+            saveArticle(article, () => {
+                newForm.reset();
+                document.getElementById('thumbnailPreview').style.display = 'none';
+                document.getElementById('uploadText').innerHTML = '<i class="fas fa-camera"></i><p>클릭하여 이미지 업로드</p>';
+                warningEl.style.display = "none";
+                alert("기사가 수정되었습니다!");
+                showArticleDetail(id);
+            });
+        }
+    });
+}
+
+// 썸네일 미리보기
+function previewThumbnail(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById('thumbnailPreview');
+            const uploadText = document.getElementById('uploadText');
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+            uploadText.innerHTML = '<i class="fas fa-check"></i><p>이미지 선택됨 (클릭하여 변경)</p>';
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+// 기사 작성 폼 설정
+function setupArticleForm() {
+    const form = document.getElementById("articleForm");
+    if(!form) return;
+    
+    const titleInput = form.querySelector("#title");
+    const summaryInput = form.querySelector("#summary");
+    const contentInput = form.querySelector("#content");
+    const warningEl = form.querySelector("#bannedWordWarning");
+    
+    function checkInputs() {
+        const combinedText = (titleInput.value + " " + summaryInput.value + " " + contentInput.value);
+        const foundWord = checkBannedWords(combinedText);
+        
+        if (foundWord) {
+            warningEl.textContent = `🚫 사용할 수 없는 단어가 포함되어 있습니다: "${foundWord}"`;
+            warningEl.style.display = "block";
+        } else {
+            warningEl.style.display = "none";
+        }
+    }
+    
+    titleInput.addEventListener("input", checkInputs);
+    summaryInput.addEventListener("input", checkInputs);
+    contentInput.addEventListener("input", checkInputs);
+    
+    const fileInput = form.querySelector('#thumbnailInput');
+    fileInput.addEventListener('change', previewThumbnail);
+    
+    form.addEventListener("submit", function(e) {
+        e.preventDefault();
+        if(!isLoggedIn()) {
+            alert("기사 작성은 로그인 후 가능합니다!");
+            return;
+        }
+
+        const title = titleInput.value;
+        const content = contentInput.value;
+        const summary = summaryInput.value;
+
+        const foundWord = checkBannedWords(title + " " + content + " " + summary);
+        if (foundWord) {
+            alert(`⚠️ 금지어("${foundWord}")가 포함된 기사를 업로드하려고 시도하여, 업로드가 차단되고 경고 1회가 누적됩니다.`);
+            addWarningToCurrentUser();
+            return;
+        }
+        
+        const A = {
+            id: Date.now().toString(),
+            category: form.querySelector("#category").value,
+            title: title,
+            summary: summary,
+            content: content,
+            author: getNickname(),
+            authorEmail: getUserEmail(),
+            date: new Date().toLocaleString(),
+            createdAt: Date.now(), 
+            views: 0,
+            likeCount: 0,
+            dislikeCount: 0,
+            thumbnail: null
+        };
+        
+        if(fileInput.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                A.thumbnail = e.target.result;
+                saveArticle(A, () => {
+                    form.reset();
+                    document.getElementById('thumbnailPreview').style.display = 'none';
+                    document.getElementById('uploadText').innerHTML = '<i class="fas fa-camera"></i><p>클릭하여 이미지 업로드</p>';
+                    warningEl.style.display = "none";
+                    alert("기사가 발행되었습니다!");
+                    
+                    // 알림 전송
+                    sendNotification('article', {
+                        authorEmail: A.authorEmail,
+                        authorName: A.author,
+                        title: A.title,
+                        articleId: A.id
+                    });
+                    
+                    showArticles();
+                });
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        } else {
+            saveArticle(A, () => {
+                form.reset();
+                document.getElementById('thumbnailPreview').style.display = 'none';
+                document.getElementById('uploadText').innerHTML = '<i class="fas fa-camera"></i><p>클릭하여 이미지 업로드</p>';
+                warningEl.style.display = "none";
+                alert("기사가 발행되었습니다!");
+                
+                // 알림 전송
+                sendNotification('article', {
+                    authorEmail: A.authorEmail,
+                    authorName: A.author,
+                    title: A.title,
+                    articleId: A.id
+                });
+                
+                showArticles();
+            });
+        }
+    });
+}
+
+// ===== Part 9: 댓글 관리 =====
+
+// 댓글 로드
+function loadComments(id) {
+    const currentUser = getNickname();
+    db.ref("comments/"+id).once("value").then(s=>{
+        const val=s.val()||{};
+        const commentsList = Object.entries(val).sort((a,b) => new Date(b[1].timestamp) - new Date(a[1].timestamp));
+        const root=document.getElementById("comments");
+        const countEl = document.getElementById("commentCount");
+        countEl.textContent = `(${commentsList.length})`;
+        if(!commentsList.length) {
+            root.innerHTML = "<p style='color:#868e96;text-align:center;padding:30px;'>댓글이 없습니다.</p>";
+            document.getElementById("loadMoreComments").innerHTML = "";
+            return;
+        }
+        const endIdx = currentCommentPage * COMMENTS_PER_PAGE;
+        const displayComments = commentsList.slice(0, endIdx);
+        root.innerHTML = displayComments.map(([k,v])=>{
+            const canEdit = isLoggedIn() && ((v.author === currentUser) || isAdmin());
+            return `<div class="comment-card">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <div>
+                        <span class="comment-author">${v.author}</span>
+                        <small style="color:#868e96;margin-left:10px;">${v.timestamp}</small>
+                    </div>
+                    ${canEdit ? `<div>
+                        <button onclick="editComment('${id}','${k}','${v.author}')" class="btn-secondary" style="height:32px;padding:0 12px;font-size:12px;">수정</button>
+                        <button onclick="deleteComment('${id}','${k}','${v.author}')" class="btn-secondary" style="height:32px;padding:0 12px;font-size:12px;margin-left:6px;background:#6c757d;color:white;border:none;">삭제</button>
+                    </div>` : ''}
+                </div>
+                <p style="margin:0;line-height:1.6;color:#495057;">${v.text}</p>
+            </div>`}).join('');
+        const loadMoreBtn = document.getElementById("loadMoreComments");
+        if(endIdx < commentsList.length) {
+            loadMoreBtn.innerHTML = `<button onclick="loadMoreComments()" class="btn-secondary" style="width:100%;">
+                댓글 더보기 (${commentsList.length - endIdx}개 남음)</button>`;
+        } else {
+            loadMoreBtn.innerHTML = "";
+        }
+    });
+}
+
+// 댓글 더보기
+function loadMoreComments() {
+    currentCommentPage++;
+    loadComments(currentArticleId);
+}
+
+// 댓글 제출 (상세 페이지에서)
+function submitCommentFromDetail() {
+    submitComment(currentArticleId);
+}
+
+// 댓글 제출
+function submitComment(id){
+    if(!isLoggedIn()) {
+        alert("댓글 작성은 로그인 후 가능합니다!");
+        return;
+    }
+    const txt=document.getElementById("commentInput").value.trim();
+    if(!txt) return alert("댓글 내용을 입력해주세요!");
+    
+    const foundWord = checkBannedWords(txt);
+    if (foundWord) {
+        alert(`⚠️ 금지어("${foundWord}")가 포함되어 등록할 수 없으며, 경고 1회가 누적됩니다.`);
+        addWarningToCurrentUser();
+        return;
+    }
+
+    const cid=Date.now().toString();
+    const C={
+        author:getNickname(),
+        authorEmail:getUserEmail(),
+        text:txt,
+        timestamp:new Date().toLocaleString()
+    };
+    
+    db.ref("comments/"+id+"/"+cid).set(C).then(() => {
+        // 기사 작성자 정보 가져오기
+        db.ref("articles/" + id).once("value").then(snapshot => {
+            const article = snapshot.val();
+            if(article) {
+                // 팔로워에게 알림
+                sendNotification('comment', {
+                    authorEmail: C.authorEmail,
+                    authorName: C.author,
+                    content: txt,
+                    articleId: id
+                });
+                
+                // 기사 작성자에게 알림 (자기 자신이 아닐 경우)
+                if(article.authorEmail !== C.authorEmail) {
+                    sendNotification('myArticleComment', {
+                        articleAuthorEmail: article.authorEmail,
+                        commenterEmail: C.authorEmail,
+                        commenterName: C.author,
+                        content: txt,
+                        articleId: id
+                    });
+                }
+            }
+        });
+    });
+    
+    document.getElementById("commentInput").value="";
+    currentCommentPage = 1;
+    loadComments(id);
+}
+
+// 댓글 수정
+function editComment(aid, cid, author){
+    const currentUser = getNickname();
+    if(!isLoggedIn() || (author !== currentUser && !isAdmin())) {
+        return alert("수정 권한이 없습니다!");
+    }
+    db.ref("comments/"+aid+"/"+cid).once("value").then(s=>{
+        const comment = s.val();
+        if(!comment) return;
+        const newText = prompt("댓글 수정", comment.text);
+        if(newText === null || newText.trim() === "") return;
+        
+        const foundWord = checkBannedWords(newText);
+        if(foundWord) {
+            alert(`⚠️ 금지어("${foundWord}")가 포함되어 수정할 수 없습니다.`);
+            return;
+        }
+
+        comment.text = newText.trim();
+        comment.timestamp = new Date().toLocaleString() + " (수정됨)";
+        db.ref("comments/"+aid+"/"+cid).set(comment);
+        loadComments(aid);
+    });
+}
+
+// 댓글 삭제
+function deleteComment(aid, cid, author){
+    const currentUser = getNickname();
+    if(!isLoggedIn() || (author !== currentUser && !isAdmin())) {
+        return alert("삭제 권한이 없습니다!");
+    }
+    if(!confirm("정말 이 댓글을 삭제하시겠습니까?")) return;
+    
+    db.ref("comments/" + aid + "/" + cid).remove().then(() => {
+        alert("댓글이 삭제되었습니다.");
+        loadComments(aid);
+    }).catch(error => {
+        alert("삭제 실패: " + error.message);
+    });
+}
+
+// ===== Part 10: 팝업 시스템 =====
+
+// 팝업 관리 UI 표시
+async function showPopupManager() {
+    if(!isAdmin()) return alert("관리자 권한이 필요합니다!");
+    
+    hideAll();
+    document.getElementById("userManagementSection").classList.add("active");
+    
+    const usersList = document.getElementById("usersList");
+    if(!usersList) return;
+    
+    usersList.innerHTML = '<p style="text-align:center;color:#868e96;">로딩 중...</p>';
+    
+    const popupsSnapshot = await db.ref("popups").once("value");
+    const popupsData = popupsSnapshot.val() || {};
+    const popups = Object.entries(popupsData)
+        .map(([id, data]) => ({id, ...data}))
+        .sort((a, b) => b.createdAt - a.createdAt);
+    
+    usersList.innerHTML = `
+        <div style="margin-bottom:30px;">
+            <h3 style="color:#c62828;margin-bottom:20px;">📢 팝업 관리</h3>
+            <button onclick="openPopupCreateModal()" class="btn btn-primary" style="width:100%;margin-bottom:20px;">
+                ➕ 새 팝업 만들기
+            </button>
+            
+            <div style="background:#fff3cd;padding:15px;border-radius:8px;margin-bottom:20px;border-left:4px solid #856404;">
+                <p style="margin:0;color:#856404;font-size:14px;">
+                    <strong>ℹ️ 안내:</strong> 팝업은 사용자가 사이트에 접속할 때 자동으로 표시됩니다. 
+                    중요한 공지사항이나 이벤트 알림에 활용하세요.
+                </p>
+            </div>
+        </div>
+        
+        <div>
+            <h4 style="margin-bottom:15px;">등록된 팝업 목록</h4>
+            ${popups.length === 0 ? 
+                '<p style="text-align:center;color:#868e96;padding:30px;">등록된 팝업이 없습니다.</p>' :
+                popups.map(popup => `
+                    <div style="background:#f8f9fa;padding:20px;border-radius:8px;margin-bottom:15px;border-left:4px solid ${popup.isActive ? '#28a745' : '#6c757d'};">
+                        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;">
+                            <div style="flex:1;">
+                                <h5 style="margin:0 0 8px 0;color:#212529;font-size:18px;">
+                                    ${popup.title}
+                                    ${popup.isActive ? 
+                                        '<span style="background:#28a745;color:#fff;padding:3px 10px;border-radius:12px;font-size:11px;margin-left:8px;">활성화</span>' :
+                                        '<span style="background:#6c757d;color:#fff;padding:3px 10px;border-radius:12px;font-size:11px;margin-left:8px;">비활성화</span>'
+                                    }
+                                </h5>
+                                <p style="margin:0;color:#6c757d;font-size:13px;">
+                                    작성: ${popup.createdBy} | ${new Date(popup.createdAt).toLocaleString()}
+                                </p>
+                            </div>
+                        </div>
+                        <div style="background:#fff;padding:15px;border-radius:6px;margin-bottom:15px;max-height:100px;overflow:auto;">
+                            <p style="margin:0;color:#495057;font-size:14px;white-space:pre-wrap;">${popup.content}</p>
+                        </div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button onclick="togglePopupStatus('${popup.id}', ${!popup.isActive})" class="btn ${popup.isActive ? 'btn-gray' : 'btn-green'}" style="font-size:12px;">
+                                ${popup.isActive ? '비활성화' : '활성화'}
+                            </button>
+                            <button onclick="editPopup('${popup.id}')" class="btn btn-blue" style="font-size:12px;">수정</button>
+                            <button onclick="deletePopup('${popup.id}')" class="btn btn-dark" style="font-size:12px;">삭제</button>
+                        </div>
+                    </div>
+                `).join('')
+            }
+        </div>
+    `;
+}
+
+// 팝업 생성 모달 열기
+function openPopupCreateModal() {
+    const modalHTML = `
+        <div id="popupCreateModal" class="modal active">
+            <div class="modal-content" style="max-width:700px;">
+                <h3 style="margin-bottom:20px;color:#c62828;">📢 팝업 만들기</h3>
+                <form id="popupCreateForm">
+                    <div class="form-group">
+                        <label class="form-label" for="popupTitle">팝업 제목</label>
+                        <input id="popupTitle" class="form-control" required placeholder="예: 중요 공지사항">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="popupContent">팝업 내용</label>
+                        <textarea id="popupContent" class="form-control" required placeholder="사용자에게 표시할 내용을 입력하세요" style="min-height:200px;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label style="display:flex;align-items:center;cursor:pointer;">
+                            <input type="checkbox" id="popupActive" checked style="width:20px;height:20px;margin-right:10px;">
+                            <span style="font-weight:600;color:#212529;">즉시 활성화</span>
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%;margin-bottom:10px;">팝업 생성</button>
+                    <button type="button" onclick="closePopupCreateModal()" class="btn btn-gray" style="width:100%;">취소</button>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    document.getElementById("popupCreateForm").addEventListener("submit", async function(e) {
+        e.preventDefault();
+        await createPopup();
+    });
+}
+
+function closePopupCreateModal() {
+    const modal = document.getElementById("popupCreateModal");
+    if(modal) modal.remove();
+}
+
+// 팝업 생성
+async function createPopup() {
+    const title = document.getElementById("popupTitle").value.trim();
+    const content = document.getElementById("popupContent").value.trim();
+    const isActive = document.getElementById("popupActive").checked;
+    
+    if(!title || !content) {
+        return alert("제목과 내용을 모두 입력해주세요!");
+    }
+    
+    const popup = {
+        id: Date.now().toString(),
+        title: title,
+        content: content,
+        isActive: isActive,
+        createdAt: Date.now(),
+        createdBy: getNickname()
+    };
+    
+    try {
+        await db.ref("popups/" + popup.id).set(popup);
+        alert("팝업이 생성되었습니다!");
+        closePopupCreateModal();
+        showPopupManager();
+    } catch(error) {
+        alert("생성 실패: " + error.message);
+    }
+}
+
+// 팝업 활성화/비활성화
+async function togglePopupStatus(popupId, newStatus) {
+    if(!isAdmin()) return;
+    
+    try {
+        await db.ref("popups/" + popupId + "/isActive").set(newStatus);
+        alert(newStatus ? "팝업이 활성화되었습니다!" : "팝업이 비활성화되었습니다!");
+        showPopupManager();
+    } catch(error) {
+        alert("상태 변경 실패: " + error.message);
+    }
+}
+
+// 팝업 수정
+async function editPopup(popupId) {
+    const snapshot = await db.ref("popups/" + popupId).once("value");
+    const popup = snapshot.val();
+    if(!popup) return;
+    
+    const modalHTML = `
+        <div id="popupEditModal" class="modal active">
+            <div class="modal-content" style="max-width:700px;">
+                <h3 style="margin-bottom:20px;color:#c62828;">✏️ 팝업 수정</h3>
+                <form id="popupEditForm">
+                    <div class="form-group">
+                        <label class="form-label" for="editPopupTitle">팝업 제목</label>
+                        <input id="editPopupTitle" class="form-control" required value="${popup.title}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="editPopupContent">팝업 내용</label>
+                        <textarea id="editPopupContent" class="form-control" required style="min-height:200px;">${popup.content}</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%;margin-bottom:10px;">수정 완료</button>
+                    <button type="button" onclick="closePopupEditModal()" class="btn btn-gray" style="width:100%;">취소</button>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    document.getElementById("popupEditForm").addEventListener("submit", async function(e) {
+        e.preventDefault();
+        
+        const newTitle = document.getElementById("editPopupTitle").value.trim();
+        const newContent = document.getElementById("editPopupContent").value.trim();
+        
+        if(!newTitle || !newContent) {
+            return alert("제목과 내용을 모두 입력해주세요!");
+        }
+        
+        try {
+            await db.ref("popups/" + popupId).update({
+                title: newTitle,
+                content: newContent
+            });
+            alert("팝업이 수정되었습니다!");
+            closePopupEditModal();
+            showPopupManager();
+        } catch(error) {
+            alert("수정 실패: " + error.message);
+        }
+    });
+}
+
+function closePopupEditModal() {
+    const modal = document.getElementById("popupEditModal");
+    if(modal) modal.remove();
+}
+
+// 팝업 삭제
+async function deletePopup(popupId) {
+    if(!confirm("이 팝업을 삭제하시겠습니까?")) return;
+    
+    try {
+        await db.ref("popups/" + popupId).remove();
+        alert("팝업이 삭제되었습니다!");
+        showPopupManager();
+    } catch(error) {
+        alert("삭제 실패: " + error.message);
+    }
+}
+
+// 사용자용: 활성화된 팝업 표시
+async function showActivePopupsToUser() {
+    const popupsSnapshot = await db.ref("popups").once("value");
+    const popupsData = popupsSnapshot.val() || {};
+    
+    const activePopups = Object.values(popupsData)
+        .filter(popup => popup.isActive)
+        .sort((a, b) => b.createdAt - a.createdAt);
+    
+    if(activePopups.length === 0) return;
+    
+    const popup = activePopups[0];
+    
+    const seenPopups = getCookie("seen_popups");
+    if(seenPopups && seenPopups.includes(popup.id)) return;
+    
+    const modalHTML = `
+        <div id="userPopupModal" class="modal active" style="z-index:10000;">
+            <div class="modal-content" style="max-width:600px;animation:slideDown 0.3s ease;">
+                <div style="background:linear-gradient(135deg, #c62828 0%, #b71c1c 100%);color:#fff;padding:20px;border-radius:8px 8px 0 0;margin:-30px -30px 20px -30px;">
+                    <h3 style="margin:0;font-size:24px;">📢 ${popup.title}</h3>
+                </div>
+                <div style="padding:0 10px;max-height:400px;overflow-y:auto;">
+                    <p style="white-space:pre-wrap;line-height:1.8;color:#212529;font-size:15px;">${popup.content}</p>
+                </div>
+                <div style="margin-top:30px;display:flex;gap:10px;">
+                    <button onclick="closeUserPopup('${popup.id}', true)" class="btn btn-gray" style="flex:1;">다시 보지 않기</button>
+                    <button onclick="closeUserPopup('${popup.id}', false)" class="btn btn-primary" style="flex:1;">확인</button>
+                </div>
+            </div>
+        </div>
+        <style>
+            @keyframes slideDown {
+                from { transform: translateY(-50px); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+            }
+        </style>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+function closeUserPopup(popupId, neverShowAgain) {
+    const modal = document.getElementById("userPopupModal");
+    if(modal) modal.remove();
+    
+    if(neverShowAgain) {
+        const seenPopups = getCookie("seen_popups") || "";
+        const newSeen = seenPopups ? seenPopups + "," + popupId : popupId;
+        
+        const expires = new Date();
+        expires.setFullYear(expires.getFullYear() + 10);
+        document.cookie = `seen_popups=${newSeen};expires=${expires.toUTCString()};path=/`;
+    }
+}
+
+// ===== Part 10: 패치노트 시스템 =====
+
+// 패치노트 페이지 표시
+function showPatchNotesPage() {
+    hideAll();
+    document.getElementById("patchnotesSection").classList.add("active");
+    loadPatchNotesToContainer(document.getElementById("patchNotesList"));
+    
+    updateURL('patchnotes');
+}
+
+// 패치노트 로드 및 렌더링
+function loadPatchNotesToContainer(container) {
+    container.innerHTML = '<div style="text-align:center; padding:20px;">로딩 중...</div>';
+
+    db.ref('patchNotes').orderByChild('date').once('value').then(snapshot => {
+        container.innerHTML = '';
+        
+        // 관리자용 작성 버튼
+        if (isAdmin()) {
+            const addBtn = document.createElement('div');
+            addBtn.className = 'admin-patch-controls';
+            addBtn.style.marginBottom = '20px';
+            addBtn.innerHTML = `<button onclick="openPatchNoteModal()" class="btn-primary btn-block"><i class="fas fa-plus"></i> 새 패치노트 작성</button>`;
+            container.appendChild(addBtn);
+        }
+
+        const notes = [];
+        snapshot.forEach(child => {
+            notes.push({ id: child.key, ...child.val() });
+        });
+
+        if (notes.length === 0) {
+            container.innerHTML += '<p style="text-align:center; color:#888;">등록된 패치노트가 없습니다.</p>';
+        }
+
+        notes.reverse().forEach(note => {
+            const card = document.createElement('div');
+            card.className = 'qna-card'; 
+            
+            let adminBtns = '';
+            if (isAdmin()) {
+                adminBtns = `
+                    <div style="margin-top:10px; border-top:1px solid #eee; padding-top:10px; text-align:right;">
+                        <button onclick="openPatchNoteModal('${note.id}')" class="btn-secondary" style="padding:4px 8px; font-size:11px;">수정</button>
+                        <button onclick="deletePatchNote('${note.id}')" class="btn-danger" style="padding:4px 8px; font-size:11px;">삭제</button>
+                    </div>
+                `;
+            }
+
+            card.innerHTML = `
+                <div class="qna-header">
+                    <i class="fas fa-tag"></i> ${note.version} <span style="font-size:12px; margin-left:auto; opacity:0.8;">${note.date}</span>
+                </div>
+                <div class="qna-body">
+                    <div class="a-part" style="white-space: pre-wrap;">${note.content}</div>
+                    ${adminBtns}
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    });
+}
+
+// 패치노트 작성/수정 모달 열기
+window.openPatchNoteModal = function(id = null) {
+    const modal = document.getElementById('patchNoteModal');
+    const form = document.getElementById('patchNoteForm');
+    form.reset();
+    document.getElementById('editPatchId').value = '';
+
+    if (id) {
+        db.ref('patchNotes/' + id).once('value').then(snap => {
+            const data = snap.val();
+            document.getElementById('editPatchId').value = id;
+            document.getElementById('patchVersion').value = data.version;
+            document.getElementById('patchDate').value = data.date;
+            document.getElementById('patchContent').value = data.content;
+            modal.classList.add('active');
+        });
+    } else {
+        document.getElementById('patchDate').value = new Date().toISOString().split('T')[0];
+        modal.classList.add('active');
+    }
+}
+
+window.closePatchNoteModal = function() {
+    document.getElementById('patchNoteModal').classList.remove('active');
+}
+
+// 패치노트 저장
+window.savePatchNote = function(e) {
+    e.preventDefault();
+    if (!isAdmin()) return alert("관리자만 가능합니다.");
+
+    const id = document.getElementById('editPatchId').value;
+    const data = {
+        version: document.getElementById('patchVersion').value,
+        date: document.getElementById('patchDate').value,
+        content: document.getElementById('patchContent').value
+    };
+
+    if (id) {
+        db.ref('patchNotes/' + id).update(data);
+    } else {
+        db.ref('patchNotes').push(data);
+    }
+    
+    closePatchNoteModal();
+    if(document.getElementById("patchnotesSection").classList.contains("active")) {
+        showPatchNotesPage();
+    } else if(document.getElementById("qnaSection").classList.contains("active")) {
+        showPatchNotesTab();
+    }
+}
+
+// 패치노트 삭제
+window.deletePatchNote = function(id) {
+    if(!isAdmin()) return;
+    if(confirm('정말 삭제하시겠습니까?')) {
+        db.ref('patchNotes/' + id).remove().then(() => {
+            if(document.getElementById("patchnotesSection").classList.contains("active")) {
+                showPatchNotesPage();
+            } else if(document.getElementById("qnaSection").classList.contains("active")) {
+                showPatchNotesTab();
+            }
+        });
+    }
+}
+
+// ===== Part 11: 관리자 이벤트 및 기능 관리 =====
+
+// 관리자 이벤트 페이지
+async function showAdminEvent() {
+    const user = auth.currentUser;
+    if(!user) return alert("로그인이 필요합니다!");
+
+    const vipSnapshot = await db.ref("users/" + user.uid + "/isVIP").once("value");
+    const isVIP = vipSnapshot.val() || false;
+
+    if(!isAdmin() && !isVIP) {
+        return alert("권한이 없습니다 (VIP 또는 관리자 전용).");
+    }
+    
+    hideAll();
+    document.getElementById("adminEventSection").classList.add("active");
+    const navBtn = document.querySelector('[data-section="admin"]');
+    if(navBtn) navBtn.classList.add("active");
+
+    document.getElementById("eventContent").innerHTML = `
+        <div style="text-align:center;padding:60px 20px;color:#868e96;">
+            <p style="font-size:18px;margin-bottom:10px;">관리할 항목을 위에서 선택해주세요</p>
+        </div>
+    `;
+    
+    updateURL('admin');
+}
+
+// 기사 고정 관리
+window.showPinManager = async function() {
+    const eventContent = document.getElementById("eventContent");
+    eventContent.innerHTML = "<p style='text-align:center;color:#868e96;padding:40px;'>로딩 중...</p>";
+    
+    const articlesSnapshot = await db.ref("articles").once("value");
+    const articlesData = articlesSnapshot.val() || {};
+    const articles = Object.values(articlesData);
+    
+    const pinsSnapshot = await db.ref("pinnedArticles").once("value");
+    const pinnedData = pinsSnapshot.val() || {};
+    const pinnedIds = Object.keys(pinnedData);
+    
+    if(articles.length === 0) {
+        eventContent.innerHTML = "<p style='text-align:center;color:#868e96;padding:40px;'>기사가 없습니다.</p>";
+        return;
+    }
+    
+    eventContent.innerHTML = `
+        <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+            <h3 style="margin-top:0;color:#c62828;">📌 기사 고정 관리</h3>
+            <p style="color:#6c757d;margin-bottom:20px;">고정할 기사를 선택하세요. 고정된 기사는 목록 상단에 표시됩니다.</p>
+            ${articles.map(a => {
+                const isPinned = pinnedIds.includes(a.id);
+                return `
+                    <div style="background:#f8f9fa;padding:15px;margin-bottom:12px;border-left:4px solid ${isPinned ? '#ffd700' : '#dee2e6'};border-radius:4px;display:flex;justify-content:space-between;align-items:center;">
+                        <div style="flex:1;">
+                            <strong style="color:#212529;">${a.title}</strong>
+                            <div style="font-size:12px;color:#6c757d;margin-top:4px;">
+                                ${a.category} | ${a.author} | ${a.date}
+                            </div>
+                        </div>
+                        ${isPinned ? 
+                            `<button onclick="unpinArticle('${a.id}')" class="btn-secondary" style="white-space:nowrap;">고정 해제</button>` :
+                            `<button onclick="pinArticle('${a.id}')" class="btn-warning" style="white-space:nowrap;">고정하기</button>`
+                        }
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+// 기사 고정
+window.pinArticle = async function(articleId) {
+    if(!confirm("이 기사를 상단에 고정하시겠습니까?")) return;
+    
+    await db.ref("pinnedArticles/" + articleId).set({
+        pinnedAt: Date.now(),
+        pinnedBy: getNickname()
+    });
+    
+    alert("기사가 고정되었습니다.");
+    showPinManager();
+}
+
+// 기사 고정 해제
+window.unpinArticle = async function(articleId) {
+    if(!confirm("이 기사의 고정을 해제하시겠습니까?")) return;
+    
+    await db.ref("pinnedArticles/" + articleId).remove();
+    
+    alert("고정이 해제되었습니다.");
+    showPinManager();
+}
+
+// 광고 관리
+window.showAdManager = async function() {
+    const eventContent = document.getElementById("eventContent");
+    eventContent.innerHTML = "<p style='text-align:center;color:#868e96;padding:40px;'>로딩 중...</p>";
+    
+    const adsSnapshot = await db.ref("advertisements").once("value");
+    const adsData = adsSnapshot.val() || {};
+    const ads = Object.values(adsData).sort((a, b) => b.createdAt - a.createdAt);
+    
+    eventContent.innerHTML = `
+        <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <h3 style="margin:0;color:#c62828;">📢 광고 관리</h3>
+                <button onclick="openAdCreateModal()" class="btn-primary">새 광고 만들기</button>
+            </div>
+            
+            ${ads.length === 0 ? 
+                '<p style="text-align:center;color:#868e96;padding:40px;">등록된 광고가 없습니다.</p>' :
+                ads.map(ad => `
+                    <div style="background:${ad.color};border:2px solid #856404;padding:20px;border-radius:8px;margin-bottom:15px;">
+                        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
+                            <div style="flex:1;">
+                                <h4 style="margin:0 0 8px 0;color:#212529;">${ad.title}</h4>
+                                <p style="margin:0;color:#495057;white-space:pre-wrap;">${ad.content}</p>
+                                ${ad.link ? `<p style="margin:8px 0 0 0;"><a href="${ad.link}" target="_blank" style="color:#1976d2;">🔗 ${ad.link}</a></p>` : ''}
+                            </div>
+                            <button onclick="deleteAd('${ad.id}')" class="btn-danger" style="margin-left:12px;">삭제</button>
+                        </div>
+                        <div style="font-size:11px;color:#6c757d;">
+                            생성: ${new Date(ad.createdAt).toLocaleString()} | 생성자: ${ad.createdBy}
+                        </div>
+                    </div>
+                `).join('')
+            }
+        </div>
+    `;
+}
+
+// 광고 생성 모달 열기
+window.openAdCreateModal = function() {
+    document.getElementById("adCreateModal").classList.add("active");
+}
+
+// 광고 생성 모달 닫기
+window.closeAdCreateModal = function() {
+    document.getElementById("adCreateModal").classList.remove("active");
+    document.getElementById("adCreateForm").reset();
+}
+
+// 광고 생성 폼 제출 처리
+const adCreateForm = document.getElementById("adCreateForm");
+if(adCreateForm) {
+    adCreateForm.addEventListener("submit", async function(e) {
+        e.preventDefault();
+        
+        const ad = {
+            id: Date.now().toString(),
+            title: document.getElementById("adTitle").value,
+            content: document.getElementById("adContent").value,
+            link: document.getElementById("adLink").value,
+            color: document.getElementById("adColor").value,
+            createdAt: Date.now(),
+            createdBy: getNickname()
+        };
+        
+        await db.ref("advertisements/" + ad.id).set(ad);
+        
+        alert("광고가 생성되었습니다!");
+        closeAdCreateModal();
+        showAdManager();
+    });
+}
+
+// 광고 삭제
+window.deleteAd = async function(adId) {
+    if(!confirm("이 광고를 삭제하시겠습니까?")) return;
+    
+    await db.ref("advertisements/" + adId).remove();
+    
+    alert("광고가 삭제되었습니다.");
+    showAdManager();
+}
+
+// ===== Part 12: 사용자 관리 시스템 =====
+
+// 사용자 관리 페이지
+window.showUserManagement = async function(){
+    if(!isAdmin()) return alert("관리자 권한 필요!");
+    hideAll();
+    document.getElementById("userManagementSection").classList.add("active");
+    const root = document.getElementById("usersList");
+    root.innerHTML = "<p style='text-align:center;color:#868e96;'>사용자 정보 로딩 중...</p>";
+    
+    updateURL('users');
+    
+    try {
+        const articlesSnapshot = await db.ref("articles").once("value");
+        const articlesData = articlesSnapshot.val() || {};
+        const articles = Object.values(articlesData);
+        
+        const commentsSnapshot = await db.ref("comments").once("value");
+        const commentsData = commentsSnapshot.val() || {};
+        const usersMap = new Map();
+        
+        articles.forEach(article => {
+            if(article.author && article.author !== "익명" && article.authorEmail) {
+                if(!usersMap.has(article.authorEmail)) {
+                    usersMap.set(article.authorEmail, {
+                        nickname: article.author,
+                        email: article.authorEmail,
+                        articles: [],
+                        comments: [],
+                        lastActivity: article.date
+                    });
+                }
+                usersMap.get(article.authorEmail).articles.push(article);
+            }
+        });
+        
+        Object.entries(commentsData).forEach(([articleId, articleComments]) => {
+            Object.entries(articleComments).forEach(([commentId, comment]) => {
+                if(comment.author && comment.author !== "익명" && comment.authorEmail) {
+                    if(!usersMap.has(comment.authorEmail)) {
+                        usersMap.set(comment.authorEmail, {
+                            nickname: comment.author,
+                            email: comment.authorEmail,
+                            articles: [],
+                            comments: [],
+                            lastActivity: comment.timestamp
+                        });
+                    }
+                    usersMap.get(comment.authorEmail).comments.push({...comment,articleId,commentId});
+                    usersMap.get(comment.authorEmail).lastActivity = comment.timestamp;
+                }
+            });
+        });
+        
+        const currentUserEmail = getUserEmail();
+        const currentNickname = getNickname();
+        if(currentUserEmail && currentNickname !== "익명" && !usersMap.has(currentUserEmail)) {
+            usersMap.set(currentUserEmail, {
+                nickname: currentNickname,
+                email: currentUserEmail,
+                articles: [],
+                comments: [],
+                lastActivity: new Date().toLocaleString()
+            });
+        }
+        
+        const usersSnapshot = await db.ref("users").once("value");
+        const usersData = usersSnapshot.val() || {};
+        
+        if(usersMap.size === 0) {
+            root.innerHTML = "<p style='text-align:center;color:#868e96;'>등록된 사용자가 없습니다.</p>";
+            return;
+        }
+        
+        const usersList = Array.from(usersMap.values());
+        
+        root.innerHTML = usersList.map(u => {
+            let userData = null;
+            let uid = null;
+            for (const [key, val] of Object.entries(usersData)) {
+                if (val.email === u.email) {
+                    userData = val;
+                    uid = key;
+                    break;
+                }
+            }
+            const isVIP = userData ? (userData.isVIP || false) : false;
+            const warningCount = userData ? (userData.warningCount || 0) : 0;
+            const isBanned = userData ? (userData.isBanned || false) : false;
+            const safeUid = uid || 'email_' + btoa(u.email).replace(/=/g, '');
+            
+            const isCurrentUser = (u.email === getUserEmail());
+            const nameColor = isCurrentUser ? '#000000' : (isBanned ? '#343a40' : (isVIP ? '#ffd700' : '#c62828'));
+
+            return `
+            <div class="user-card" style="opacity: ${isBanned ? '0.7' : '1'}; border-left-color: ${isBanned ? '#343a40' : (isVIP ? '#ffd700' : '#c62828')};">
+                <h4 style="color:${nameColor};">
+                    ${u.nickname}${isCurrentUser ? ' <span style="background:#000;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;">👤 나</span>' : ''}${isVIP ? ' <span class="vip-badge">⭐ VIP</span>' : ''}
+                    ${isBanned ? ' <span style="background:#343a40;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;">🚫 차단됨</span>' : ''}
+                </h4>
+                <div class="user-info">
+                    📧 이메일: <strong>${u.email}</strong><br>
+                    📰 기사: <strong>${u.articles.length}</strong> | 💬 댓글: <strong>${u.comments.length}</strong><br>
+                    ⚠️ 누적 경고: <strong>${warningCount}회</strong><br>
+                    🕐 마지막 활동: ${u.lastActivity}
+                </div>
+                <div class="user-actions">
+                    <button onclick="showUserDetail('${u.nickname}')" class="btn-info">상세</button>
+                    
+                    ${isVIP ? 
+                        `<button onclick="toggleVIPStatus('${u.email}', false)" class="btn-secondary">VIP해제</button>` :
+                        `<button onclick="toggleVIPStatus('${u.email}', true)" class="btn-warning">VIP승급</button>`
+                    }
+                    
+                    <button onclick="changeWarning('${safeUid}', '${u.email}', 1)" class="btn-warning">경고 +1</button>
+                    <button onclick="changeWarning('${safeUid}', '${u.email}', -1)" class="btn-secondary">경고 -1</button>
+
+                    ${isBanned ?
+                        `<button onclick="toggleBan('${safeUid}', '${u.email}', false)" class="btn-success">차단해제</button>` :
+                        `<button onclick="toggleBan('${safeUid}', '${u.email}', true)" class="btn-dark">차단하기</button>`
+                    }
+
+                    <button onclick="deleteUserCompletely('${u.nickname}')" class="btn-danger">삭제</button>
+                </div>
+            </div>
+        `}).join('');
+    } catch(error) {
+        root.innerHTML = `<p style="color:#dc3545;text-align:center;">오류: ${error.message}</p>`;
+    }
+}
+
+// 경고 변경 (전역 함수)
+window.changeWarning = async function(uid, email, amount) {
+    if(!isAdmin()) return;
+    
+    if(uid.startsWith('email_')) {
+        await db.ref("users/" + uid).update({ email: email });
+    }
+
+    const snap = await db.ref("users/" + uid).once("value");
+    const data = snap.val() || {};
+    let current = data.warningCount || 0;
+    
+    let nextVal = current + amount;
+    if (nextVal < 0) nextVal = 0;
+    
+    let updates = { warningCount: nextVal, email: email }; 
+    if (nextVal >= 3 && !data.isBanned) {
+        updates.isBanned = true;
+        alert("🚨 누적 경고 3회 도달로 인해 차단됩니다.");
+    }
+
+    await db.ref("users/" + uid).update(updates);
+    showUserManagement();
+}
+
+// 차단/차단 해제
+window.toggleBan = async function(uid, email, shouldBan) {
+    if(!isAdmin()) return;
+    const action = shouldBan ? "차단" : "차단 해제";
+    if(!confirm(`정말 이 사용자를 ${action}하시겠습니까?`)) return;
+
+    if(uid.startsWith('email_')) {
+        await db.ref("users/" + uid).update({ email: email });
+    }
+
+    await db.ref("users/" + uid).update({
+        isBanned: shouldBan,
+        email: email
+    });
+    
+    alert(`${action} 완료되었습니다.`);
+    showUserManagement();
+}
+
+// VIP 상태 변경
+window.toggleVIPStatus = async function(userEmail, makeVIP) {
+    if(!isAdmin()) return alert("관리자 권한이 필요합니다!");
+    const action = makeVIP ? "VIP로 승급" : "VIP 취소";
+    if(!confirm(`"${userEmail}" 사용자를 ${action}하시겠습니까?`)) return;
+    
+    try {
+        const usersSnapshot = await db.ref("users").once("value");
+        const usersData = usersSnapshot.val() || {};
+        let targetUid = null;
+        
+        for (const [uid, userData] of Object.entries(usersData)) {
+            if(userData && userData.email === userEmail) {
+                targetUid = uid;
+                break;
+            }
+        }
+        
+        if(!targetUid) {
+            const currentUser = auth.currentUser;
+            if(currentUser && currentUser.email === userEmail) {
+                targetUid = currentUser.uid;
+            } else {
+                targetUid = 'vip_' + Date.now() + '_' + btoa(userEmail).replace(/=/g, '').substring(0, 10);
+            }
+        }
+        
+        console.log("VIP 업데이트:", { targetUid, userEmail, makeVIP });
+        
+        await db.ref("users/" + targetUid).update({
+            email: userEmail,
+            isVIP: makeVIP,
+            vipUpdatedAt: Date.now(),
+            vipUpdatedBy: getNickname()
+        });
+        
+        const verifySnapshot = await db.ref("users/" + targetUid).once("value");
+        const verifyData = verifySnapshot.val();
+        console.log("업데이트 확인:", verifyData);
+        
+        if(verifyData && verifyData.isVIP === makeVIP) {
+            alert(`✅ ${action}이 완료되었습니다!`);
+        } else {
+            throw new Error("VIP 상태 업데이트 검증 실패");
+        }
+        
+        await showUserManagement();
+        
+    } catch(error) {
+        console.error("VIP 상태 변경 오류:", error);
+        alert("❌ 오류: " + error.message);
+    }
+}
+
+// 사용자 상세 정보 모달
+window.showUserDetail = async function(nickname) {
+    const articlesSnapshot = await db.ref("articles").once("value");
+    const articlesData = articlesSnapshot.val() || {};
+    const articles = Object.values(articlesData).filter(a => a.author === nickname);
+    
+    const commentsSnapshot = await db.ref("comments").once("value");
+    const commentsData = commentsSnapshot.val() || {};
+    const userComments = [];
+    
+    Object.entries(commentsData).forEach(([articleId, articleComments]) => {
+        Object.entries(articleComments).forEach(([commentId, comment]) => {
+            if(comment.author === nickname) {
+                userComments.push({...comment,articleId,commentId});
+            }
+        });
+    });
+    
+    let userEmail = "미확인";
+    if(articles.length > 0 && articles[0].authorEmail) userEmail = articles[0].authorEmail;
+    else if(userComments.length > 0 && userComments[0].authorEmail) userEmail = userComments[0].authorEmail;
+    
+    const modal = document.getElementById("userDetailModal");
+    const content = document.getElementById("userDetailContent");
+    content.innerHTML = `
+        <div style="padding:20px;">
+            <h3 style="margin-top:0;color:#c62828;font-size:22px;">👤 ${nickname}</h3>
+            <p style="margin-bottom:20px;color:#6c757d;">Email: ${userEmail}</p>
+            <div style="margin-top:25px;">
+                <h4 style="color:#1976d2;margin-bottom:15px;">📰 작성 기사 (${articles.length}개)</h4>
+                ${articles.length > 0 ? articles.map(a => `
+                    <div style="background:#f8f9fa;padding:12px;margin-bottom:8px;border-left:3px solid #c62828;border-radius:4px;display:flex;justify-content:space-between;align-items:center;">
+                        <span style="flex:1;">${a.title}</span>
+                        <button onclick="deleteArticleFromAdmin('${a.id}', '${nickname}')" class="btn-secondary" style="padding:6px 12px;font-size:11px;">삭제</button>
+                    </div>`).join('') : '<p style="color:#868e96;text-align:center;padding:20px;">작성한 기사가 없습니다.</p>'}
+            </div>
+            <div style="margin-top:20px;">
+                <h4 style="color:#1976d2;margin-bottom:15px;">💬 작성 댓글 (${userComments.length}개)</h4>
+                ${userComments.length > 0 ? userComments.map(c => `
+                    <div style="background:#f8f9fa;padding:12px;margin-bottom:8px;border-left:3px solid #6c757d;border-radius:4px;display:flex;justify-content:space-between;align-items:center;">
+                        <span style="flex:1;">${c.text}</span>
+                        <button onclick="deleteCommentFromAdmin('${c.articleId}', '${c.commentId}', '${nickname}')" class="btn-secondary" style="padding:6px 12px;font-size:11px;">삭제</button>
+                    </div>`).join('') : '<p style="color:#868e96;text-align:center;padding:20px;">작성한 댓글이 없습니다.</p>'}
+            </div>
+        </div>
+    `;
+    modal.classList.add("active");
+}
+
+// 사용자 상세 모달 닫기
+window.closeUserDetail = function() {
+    document.getElementById("userDetailModal").classList.remove("active");
+}
+
+// 관리자 권한으로 기사 삭제
+window.deleteArticleFromAdmin = function(id, nickname) {
+    if(!confirm("이 기사를 삭제하시겠습니까?")) return;
+    deleteArticleFromDB(id, () => {
+        db.ref("comments/" + id).remove();
+        alert("삭제되었습니다.");
+        closeUserDetail();
+        showUserDetail(nickname);
+    });
+}
+
+// 관리자 권한으로 댓글 삭제
+window.deleteCommentFromAdmin = function(articleId, commentId, nickname) {
+    if(!confirm("이 댓글을 삭제하시겠습니까?")) return;
+    db.ref("comments/" + articleId + "/" + commentId).remove().then(() => {
+        alert("삭제되었습니다.");
+        closeUserDetail();
+        showUserDetail(nickname);
+    });
+}
+
+// 사용자 완전 삭제
+window.deleteUserCompletely = function(nick){
+    if(!confirm(`"${nick}" 사용자를 정말 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 해당 사용자의 모든 기사와 댓글이 삭제됩니다.`)) return;
+    
+    db.ref("articles").once("value").then(snapshot => {
+        const articlesData = snapshot.val() || {};
+        Object.entries(articlesData).forEach(([id, article]) => {
+            if(article.author === nick) {
+                db.ref("articles/" + id).remove();
+            }
+        });
+    });
+    
+    db.ref("comments").once("value").then(s=>{
+        const val=s.val()||{};
+        Object.entries(val).forEach(([aid,group])=>{
+            Object.entries(group).forEach(([cid,c])=>{
+                if(c.author===nick)
+                    db.ref("comments/"+aid+"/"+cid).remove();
+            });
+        });
+    });
+    
+    alert(`"${nick}" 사용자가 삭제되었습니다.`);
+    showUserManagement();
+}
+
+// ===== Part 13: 금지어 관리 및 법적 동의 시스템 =====
+
+// 금지어 관리 모달 열기
+window.showBannedWordManager = function() {
+    const modal = document.getElementById("bannedWordsModal");
+    const input = document.getElementById("bannedWordsInput");
+    
+    input.value = bannedWordsList.join(', ');
+    modal.classList.add("active");
+}
+
+// 금지어 관리 모달 닫기
+window.closeBannedWordsModal = function() {
+    document.getElementById("bannedWordsModal").classList.remove("active");
+}
+
+// 금지어 저장
+window.saveBannedWords = function() {
+    const input = document.getElementById("bannedWordsInput").value;
+    const newList = input.split(',').map(s => s.trim()).filter(s => s !== "");
+    
+    db.ref("adminSettings/bannedWords").set(newList.join(',')).then(() => {
+        alert("금지어 목록이 저장되었습니다.");
+        closeBannedWordsModal();
+    }).catch(err => alert("저장 실패: " + err.message));
+}
+
+// ===== 법적 책임 및 이용 동의 모달 시스템 =====
+
+// 영구 쿠키 설정 (10년)
+function setPermanentCookie(name, value) {
+    const date = new Date();
+    date.setFullYear(date.getFullYear() + 10);
+    document.cookie = `${name}=${value};expires=${date.toUTCString()};path=/`;
+}
+
+// 법적 동의 확인 함수
+async function checkLegalAgreement(user) {
+    if (!user) return;
+
+    console.log("법적 동의 체크 시작...");
+
+    const cookieName = "legal_agreed_" + user.uid;
+    const agreedCookie = getCookie(cookieName);
+
+    if (agreedCookie) {
+        console.log("쿠키에 동의 기록 있음. 패스.");
+        return;
+    }
+
+    const snapshot = await db.ref("users/" + user.uid + "/legalAgreement").once("value");
+    const dbRecord = snapshot.val();
+
+    if (dbRecord && dbRecord.agreed) {
+        console.log("DB에 동의 기록 있음. 쿠키 재생성.");
+        setPermanentCookie(cookieName, "true");
+    } else {
+        console.log("동의 기록 없음. 모달 표시!");
+        showLegalModal(user);
+    }
+}
+
+// 법적 동의 모달 표시
+function showLegalModal(user) {
+    if (document.getElementById("legalModal")) return;
+
+    const modalHTML = `
+        <div id="legalModal" class="modal active" style="display: flex !important; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 99999; background: rgba(0,0,0,0.9); justify-content: center; align-items: center;">
+            <div class="modal-content" style="background: white; width: 90%; max-width: 600px; max-height: 90vh; border: 2px solid #c62828; border-radius: 8px; padding: 20px; display: flex; flex-direction: column;">
+                
+                <div style="text-align:center; border-bottom:1px solid #eee; padding-bottom:15px; margin-bottom:15px;">
+                    <h2 style="color:#c62828; margin:0; font-size: 24px;">🚨 서비스 이용 및 법적 책임 동의</h2>
+                    <p style="color:#666; font-size:13px; margin-top:5px;">사이트 이용을 위해 아래 내용에 대한 확인 및 동의가 <strong>필수</strong>입니다.</p>
+                </div>
+
+                <div style="flex: 1; overflow-y: auto; text-align: left; padding-right: 5px;">
+                    
+                    <div class="legal-item" style="background:#fff5f5; padding:15px; border-radius:8px; margin-bottom:15px;">
+                        <h4 style="margin-top:0; margin-bottom: 8px; color:#b71c1c;">1. 콘텐츠의 허구성과 과장성 인지</h4>
+                        <p style="font-size:13px; color:#333; line-height:1.6; margin:0;">
+                            본 사이트(해정뉴스)에 게시되는 모든 기사, 댓글, 게시물은 유머와 풍자를 목적으로 작성될 수 있으며, 
+                            <strong>사실이 아닌 허구, 과장, 왜곡된 정보</strong>가 포함될 수 있음을 인지합니다. 
+                            이를 실제 사실로 오인하여 발생하는 모든 문제에 대해 본인은 이의를 제기하지 않습니다.
+                        </p>
+                        <label style="display:flex; align-items:center; margin-top:10px; cursor:pointer; background: #fff; padding: 5px; border-radius: 4px;">
+                            <input type="checkbox" class="legal-check" style="width:18px; height:18px; margin-right:8px;">
+                            <span style="font-size:14px; font-weight:bold; color: #b71c1c;">[필수] 위 내용을 이해하고 동의합니다.</span>
+                        </label>
+                    </div>
+
+                    <div class="legal-item" style="background:#fff5f5; padding:15px; border-radius:8px; margin-bottom:15px;">
+                        <h4 style="margin-top:0; margin-bottom: 8px; color:#b71c1c;">2. 명예훼손 및 모욕에 대한 책임</h4>
+                        <p style="font-size:13px; color:#333; line-height:1.6; margin:0;">
+                            본 사이트 내에서 발생하는 <strong>비난, 조롱, 사실적시, 욕설, 저격</strong> 등 타인의 명예를 훼손할 수 있는 
+                            모든 콘텐츠에 대한 법적 책임은 전적으로 게시물을 작성한 <strong>사용자 본인</strong>에게 있습니다.
+                            해당 행위로 인한 형법상 고소/고발 조치 시 사이트 운영자는 어떠한 보호도 제공하지 않습니다.
+                        </p>
+                        <label style="display:flex; align-items:center; margin-top:10px; cursor:pointer; background: #fff; padding: 5px; border-radius: 4px;">
+                            <input type="checkbox" class="legal-check" style="width:18px; height:18px; margin-right:8px;">
+                            <span style="font-size:14px; font-weight:bold; color: #b71c1c;">[필수] 법적 책임을 본인이 직접 동의합니다.</span>
+                        </label>
+                    </div>
+
+                    <div class="legal-item" style="background:#fff5f5; padding:15px; border-radius:8px; margin-bottom:15px;">
+                        <h4 style="margin-top:0; margin-bottom: 8px; color:#b71c1c;">3. 관리자 및 운영자 면책 동의</h4>
+                        <p style="font-size:13px; color:#333; line-height:1.6; margin:0;">
+                            사이트 운영자 및 관리자는 사용자가 게시한 콘텐츠의 내용에 대해 
+                            <strong>어떠한 민·형사상 법적 책임도 지지 않습니다.</strong>
+                            또한, 운영자는 임의로 게시물을 삭제하거나 사용자를 차단할 권리를 가지며 이에 대해 이의를 제기할 수 없습니다.
+                        </p>
+                        <label style="display:flex; align-items:center; margin-top:10px; cursor:pointer; background: #fff; padding: 5px; border-radius: 4px;">
+                            <input type="checkbox" class="legal-check" style="width:18px; height:18px; margin-right:8px;">
+                            <span style="font-size:14px; font-weight:bold; color: #b71c1c;">[필수] 운영자의 법적 책임 면책에 동의합니다.</span>
+                        </label>
+                    </div>
+
+                    <div class="legal-item" style="background:#f8f9fa; padding:15px; border-radius:8px; margin-bottom:15px;">
+                        <h4 style="margin-top:0; margin-bottom: 8px; color:#212529;">4. 동의 내역 영구 저장 안내</h4>
+                        <p style="font-size:13px; color:#333; line-height:1.6; margin:0;">
+                            본 동의 절차는 법적 효력을 위해 사용자의 <strong>닉네임, 이메일, 접속 IP(식별정보), 동의 일시</strong>가 
+                            서버 및 귀하의 브라우저 쿠키에 <strong>영구적으로 저장</strong>됨을 안내드립니다.
+                        </p>
+                        <label style="display:flex; align-items:center; margin-top:10px; cursor:pointer;">
+                            <input type="checkbox" class="legal-check" style="width:18px; height:18px; margin-right:8px;">
+                            <span style="font-size:14px; font-weight:bold;">[필수] 정보 저장 및 영구 쿠키 생성에 동의합니다.</span>
+                        </label>
+                    </div>
+
+                </div>
+
+                <div style="margin-top:20px; border-top: 1px solid #eee; padding-top: 20px;">
+                    <button onclick="submitLegalAgreement()" style="width: 100%; background:#c62828; color: white; border: none; padding: 15px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer;">
+                        <i class="fas fa-check-circle"></i> 모든 약관에 동의하고 입장하기
+                    </button>
+                    <p style="text-align:center; color:#868e96; font-size:12px; margin-top:10px;">
+                        동의하지 않을 경우 사이트를 이용하실 수 없습니다.
+                    </p>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+// 동의 버튼 클릭 처리
+async function submitLegalAgreement() {
+    const checks = document.querySelectorAll('.legal-check');
+    let allChecked = true;
+    
+    checks.forEach(chk => {
+        if (!chk.checked) allChecked = false;
+    });
+
+    if (!allChecked) {
+        alert("🚨 모든 항목에 필수로 동의해야만 입장할 수 있습니다.\n체크박스를 모두 확인해주세요.");
+        return;
+    }
+
+    const user = auth.currentUser;
+    if (!user) return alert("로그인 정보가 없습니다.");
+
+    if (!confirm("정말로 동의하십니까?\n이 정보는 법적 근거로 활용될 수 있으며 영구 저장됩니다.")) return;
+
+    try {
+        const timestamp = Date.now();
+        const dateStr = new Date().toLocaleString();
+
+        await db.ref("users/" + user.uid + "/legalAgreement").set({
+            agreed: true,
+            agreedAt: timestamp,
+            agreedDate: dateStr,
+            nickname: getNickname(),
+            email: user.email,
+            agreementVersion: "1.0"
+        });
+
+        setPermanentCookie("legal_agreed_" + user.uid, "true");
+
+        const modal = document.getElementById("legalModal");
+        if (modal) modal.remove();
+
+        alert(`✅ 동의가 완료되었습니다.\n환영합니다, ${getNickname()}님.`);
+
+    } catch (error) {
+        alert("동의 처리 중 오류가 발생했습니다: " + error.message);
+        console.error(error);
+    }
+}
+
+// ===== Part 14 수정: 점검 모드 시스템 개선 =====
+
+// 1. 점검 상태 실시간 체크 (초기화 시에는 리스너만 등록)
+function initMaintenanceCheck() {
+    db.ref("adminSettings/maintenance").on("value", snapshot => {
+        const settings = snapshot.val();
+        
+        if (!settings) return;
+        
+        // 인증 상태가 확정된 경우에만 체크
+        if (auth.currentUser !== null || auth.currentUser === null) {
+            checkAndShowMaintenance(settings);
+        }
+    });
+}
+
+// 2. 인증 후 점검 모드 체크 (새로운 함수)
+function checkMaintenanceAfterAuth() {
+    db.ref("adminSettings/maintenance").once("value").then(snapshot => {
+        const settings = snapshot.val();
+        if (settings) {
+            checkAndShowMaintenance(settings);
+        }
+    });
+}
+
+// 3. 점검 화면 표시 여부 결정 로직 (수정됨)
+function checkAndShowMaintenance(settings) {
+    const overlay = document.getElementById("maintenanceOverlay");
+    
+    if (!settings.isActive) {
+        overlay.style.display = "none";
+        return;
+    }
+
+    // 관리자 체크
+    if (isAdmin()) {
+        console.log("✅ 관리자 권한으로 점검 모드 우회");
+        showToastNotification("🛠️ 점검 모드 활성", "관리자 권한으로 접속 중입니다.");
+        overlay.style.display = "none";
+        return;
+    }
+
+    // 현재 로그인한 사용자 정보
+    const currentUser = auth.currentUser;
+    const userEmail = currentUser ? currentUser.email : "";
+
+    // 허용된 사용자 목록
+    const allowedList = settings.allowedUsers ? 
+        settings.allowedUsers.split(',').map(e => e.trim()).filter(e => e) : [];
+
+    console.log("🔍 점검 모드 체크:", {
+        isLoggedIn: !!currentUser,
+        userEmail: userEmail,
+        allowedList: allowedList,
+        isAllowed: userEmail && allowedList.includes(userEmail)
+    });
+
+    // 로그인된 사용자가 허용 목록에 있는지 체크
+    if (currentUser && userEmail && allowedList.includes(userEmail)) {
+        console.log("✅ 점검 제외 사용자 확인:", userEmail);
+        showToastNotification("🔓 접속 허용", "점검 중 접속이 허용된 계정입니다.");
+        overlay.style.display = "none";
+        return;
+    }
+
+    // 점검 화면 표시
+    console.log("🚧 점검 모드 활성화 - 화면 표시");
+    renderMaintenanceScreen(settings);
+}
+
+// 4. 점검 화면 렌더링 (동일)
+function renderMaintenanceScreen(settings) {
+    const overlay = document.getElementById("maintenanceOverlay");
+    const titleEl = document.getElementById("mtTitle");
+    const msgEl = document.getElementById("mtMessage");
+    const imgContainer = document.getElementById("mtImageContainer");
+    
+    titleEl.textContent = settings.title || "시스템 점검 중입니다";
+    msgEl.textContent = settings.message || "더 나은 서비스를 위해 점검을 진행하고 있습니다.";
+    
+    if (settings.imageUrl) {
+        imgContainer.innerHTML = `<img src="${settings.imageUrl}" alt="점검 이미지">`;
+    } else {
+        imgContainer.innerHTML = "";
+    }
+
+    overlay.style.display = "flex";
+}
+
+// 5. 관리자용: 점검 설정 모달 열기 (동일)
+window.showMaintenanceManager = function() {
+    if(!isAdmin()) return alert("관리자만 접근 가능합니다.");
+
+    const modal = document.getElementById("maintenanceModal");
+    
+    db.ref("adminSettings/maintenance").once("value").then(snapshot => {
+        const settings = snapshot.val() || {};
+        
+        document.getElementById("mtActiveToggle").checked = settings.isActive || false;
+        document.getElementById("mtTitleInput").value = settings.title || "";
+        document.getElementById("mtMessageInput").value = settings.message || "";
+        document.getElementById("mtImgInput").value = settings.imageUrl || "";
+        document.getElementById("mtAllowedUsers").value = settings.allowedUsers || "";
+        
+        modal.classList.add("active");
+    });
+}
+
+// 6. 관리자용: 점검 설정 저장 (동일)
+window.saveMaintenanceSettings = function(e) {
+    e.preventDefault();
+    
+    const isActive = document.getElementById("mtActiveToggle").checked;
+    const title = document.getElementById("mtTitleInput").value;
+    const message = document.getElementById("mtMessageInput").value;
+    const imageUrl = document.getElementById("mtImgInput").value;
+    const allowedUsers = document.getElementById("mtAllowedUsers").value;
+
+    const updates = {
+        isActive: isActive,
+        title: title,
+        message: message,
+        imageUrl: imageUrl,
+        allowedUsers: allowedUsers,
+        updatedAt: Date.now(),
+        updatedBy: getNickname()
+    };
+
+    db.ref("adminSettings/maintenance").set(updates).then(() => {
+        alert(isActive ? "🚨 점검 모드가 시작되었습니다." : "✅ 점검 모드가 해제되었습니다.");
+        closeMaintenanceModal();
+    }).catch(err => alert("저장 실패: " + err.message));
+}
+
+// 7. 모달 닫기 (동일)
+window.closeMaintenanceModal = function() {
+    document.getElementById("maintenanceModal").classList.remove("active");
+}
+
+// ===== 전체 시스템 초기화 (수정됨) =====
+window.addEventListener("load", () => {
+    console.log("🚀 시스템 초기화 시작...");
+    
+    // 1. Firebase 리스너 설정
+    setupArticlesListener();
+    loadBannedWords();
+    setupArticleForm();
+    
+    // 2. 브라우저 알림 권한 요청
+    if('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+    
+    // 3. 팝업 표시 (1초 지연)
+    setTimeout(() => {
+        showActivePopupsToUser();
+    }, 1000);
+
+    // 4. 점검 모드 리스너 등록 (체크는 인증 후 수행)
+    initMaintenanceCheck();
+    
+    // 5. URL 기반 라우팅 실행
+    initialRoute();
+    
+    console.log("✅ 시스템 초기화 완료!");
+});
+
+// ===== 전역 에러 핸들러 =====
+window.addEventListener('error', function(e) {
+    console.error('전역 에러:', e.error);
+});
+
+window.addEventListener('unhandledrejection', function(e) {
+    console.error('처리되지 않은 Promise 거부:', e.reason);
+});
+
+console.log("📄 script.js 로드 완료 - 모든 파트 준비됨");
