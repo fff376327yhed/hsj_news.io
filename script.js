@@ -665,9 +665,8 @@ async function registerFCMToken(uid) {
         console.log("알림 권한 상태:", permission);
         
         if(permission === 'granted') {
-            // GitHub Pages 경로 자동 감지
-            const basePath = window.location.pathname.split('/').filter(Boolean)[0] || '';
-            const swPath = basePath ? `/${basePath}/firebase-messaging-sw.js` : '/firebase-messaging-sw.js';
+            // Service Worker 경로 수정 (index.html 제거)
+            const swPath = '/firebase-messaging-sw.js';e-messaging-sw.js;
             
             console.log("🔍 Service Worker 경로:", swPath);
             
