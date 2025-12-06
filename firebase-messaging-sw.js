@@ -28,10 +28,14 @@ messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.data?.title || payload.notification?.title || '📰 해정뉴스';
   const notificationBody = payload.data?.body || payload.data?.text || payload.notification?.body || '새로운 알림이 있습니다';
   
+  // 베이스 경로 감지 (Service Worker 스코프에서)
+  const basePath = self.registration.scope.match(/\/([^\/]+)\/$/);
+  const basePrefix = basePath && basePath[1] ? `/${basePath[1]}` : '';
+  
   const notificationOptions = {
     body: notificationBody,
-    icon: '/favicon/android-icon-192x192.png', // 알림 아이콘
-    badge: '/favicon/favicon-16x16.png', // 뱃지 아이콘
+    icon: `${basePrefix}/favicon/android-icon-192x192.png`, // 상대 경로
+    badge: `${basePrefix}/favicon/favicon-16x16.png`, // 상대 경로
     tag: payload.data?.notificationId || 'notification-' + Date.now(),
     data: {
       articleId: payload.data?.articleId || '',
@@ -56,6 +60,7 @@ messaging.onBackgroundMessage((payload) => {
   };
 
   console.log('[Service Worker] 알림 표시:', notificationTitle);
+  console.log('[Service Worker] 아이콘 경로:', notificationOptions.icon);
   
   return self.registration.showNotification(notificationTitle, notificationOptions);
 });
