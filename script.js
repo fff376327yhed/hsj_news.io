@@ -242,6 +242,12 @@ function routeToPage(page, articleId = null, section = null) {
             break;
         default:
             showArticles();
+        case 'more':
+            showMoreMenu();
+            break;
+        case 'messenger':
+            showMessenger();
+            break;
     }
 }
 
@@ -758,6 +764,9 @@ auth.onAuthStateChanged(async user => {
         
         // 알림 리스너 설정
         setupNotificationListener(user.uid);
+
+        // 메신저 뱃지 리스너 설정
+        setupMessengerBadgeListener();
     }
 
     updateSettings();
@@ -975,8 +984,7 @@ function hideAll() {
 function showArticles() {
     hideAll();
     document.getElementById("articlesSection").classList.add("active");
-    const navBtn = document.querySelector('[data-section="articles"]');
-    if(navBtn) navBtn.classList.add("active");
+    
     
     currentArticlePage = 1;
     document.getElementById("searchCategory").value = "";
@@ -992,8 +1000,7 @@ function showArticles() {
 function showFreeboard() {
     hideAll();
     document.getElementById("freeboardSection").classList.add("active");
-    const navBtn = document.querySelector('[data-section="freeboard"]');
-    if(navBtn) navBtn.classList.add("active");
+    
     
     currentFreeboardPage = 1;
     document.getElementById("freeboardSearchKeyword").value = "";
@@ -1013,8 +1020,8 @@ function showWritePage() {
     }
     hideAll();
     document.getElementById("writeSection").classList.add("active");
-    const navBtn = document.querySelector('[data-section="write"]');
-    if(navBtn) navBtn.classList.add("active");
+    ('[data-section="write"]');
+    
     
     // URL 업데이트
     updateURL('write');
@@ -1025,8 +1032,8 @@ function showSettings() {
     hideAll();
     const settingsSection = document.getElementById("settingsSection");
     settingsSection.classList.add("active");
-    const navBtn = document.querySelector('[data-section="settings"]');
-    if(navBtn) navBtn.classList.add("active");
+    ('[data-section="settings"]');
+    
     updateSettings();
     
     // URL 업데이트
@@ -1566,8 +1573,8 @@ function editArticle(id) {
         }
         hideAll();
         document.getElementById("writeSection").classList.add("active");
-        const navBtn = document.querySelector('[data-section="write"]');
-        if(navBtn) navBtn.classList.add("active");
+        ('[data-section="write"]');
+        
         
         document.getElementById("category").value = A.category;
         document.getElementById("title").value = A.title;
@@ -2363,8 +2370,8 @@ async function showAdminEvent() {
     
     hideAll();
     document.getElementById("adminEventSection").classList.add("active");
-    const navBtn = document.querySelector('[data-section="admin"]');
-    if(navBtn) navBtn.classList.add("active");
+    ('[data-section="admin"]');
+    
 
     document.getElementById("eventContent").innerHTML = `
         <div style="text-align:center;padding:60px 20px;color:#868e96;">
@@ -3225,6 +3232,204 @@ window.saveMaintenanceSettings = function(e) {
 // 10. 모달 닫기
 window.closeMaintenanceModal = function() {
     document.getElementById("maintenanceModal").classList.remove("active");
+}
+
+// ===== 더보기 메뉴 및 메신저 기능 추가 =====
+
+// 더보기 메뉴 표시
+function showMoreMenu() {
+    hideAll();
+    document.getElementById("moreMenuSection").classList.add("active");
+    
+    
+    // 이벤트 버튼 표시 여부 체크
+    checkEventAccess();
+    
+    updateURL('more');
+}
+
+// 메신저 표시
+async function showMessenger() {
+    if(!isLoggedIn()) {
+        alert("로그인이 필요합니다!");
+        return;
+    }
+    
+    hideAll();
+    document.getElementById("messengerSection").classList.add("active");
+    
+    await loadNotifications();
+    updateURL('messenger');
+}
+
+// 알림 로드
+async function loadNotifications(filterType = 'all') {
+    const uid = getUserId();
+    if(!uid || uid === 'anonymous') {
+        document.getElementById("notificationsList").innerHTML = `
+            <div style="text-align:center;padding:60px 20px;color:#868e96;">
+                <i class="fas fa-inbox" style="font-size:48px;margin-bottom:16px;opacity:0.5;"></i>
+                <p>로그인 후 알림을 확인하세요</p>
+            </div>
+        `;
+        return;
+    }
+    
+    try {
+        const snapshot = await db.ref("notifications/" + uid).once("value");
+        const notificationsData = snapshot.val() || {};
+        
+        let notifications = Object.entries(notificationsData)
+            .map(([id, data]) => ({id, ...data}))
+            .sort((a, b) => b.timestamp - a.timestamp);
+        
+        // 필터 적용
+        if(filterType !== 'all') {
+            notifications = notifications.filter(n => n.type === filterType);
+        }
+        
+        const listDiv = document.getElementById("notificationsList");
+        
+        if(notifications.length === 0) {
+            listDiv.innerHTML = `
+                <div style="text-align:center;padding:60px 20px;color:#868e96;">
+                    <i class="fas fa-inbox" style="font-size:48px;margin-bottom:16px;opacity:0.5;"></i>
+                    <p>알림이 없습니다</p>
+                </div>
+            `;
+            updateMessengerBadge(0);
+            return;
+        }
+        
+        const unreadCount = notifications.filter(n => !n.read).length;
+        updateMessengerBadge(unreadCount);
+        
+        listDiv.innerHTML = notifications.map(notif => {
+            const icon = notif.type === 'article' ? '📰' : 
+                        notif.type === 'comment' ? '💬' : 
+                        notif.type === 'myArticleComment' ? '💭' : '🔔';
+            
+            const date = new Date(notif.timestamp).toLocaleString();
+            const isUnread = !notif.read;
+            
+            return `
+                <div class="notification-card ${isUnread ? 'unread' : ''}" 
+                     onclick="handleNotificationClick('${notif.id}', '${notif.articleId || ''}')"
+                     style="cursor:pointer;">
+                    <div class="notification-icon">${icon}</div>
+                    <div class="notification-content">
+                        <h4 class="notification-title">${notif.title || '알림'}</h4>
+                        <p class="notification-text">${notif.text}</p>
+                        <span class="notification-time">${date}</span>
+                    </div>
+                    ${isUnread ? '<div class="unread-dot"></div>' : ''}
+                </div>
+            `;
+        }).join('');
+        
+    } catch(error) {
+        console.error("알림 로드 오류:", error);
+        document.getElementById("notificationsList").innerHTML = `
+            <div style="text-align:center;padding:40px 20px;color:#dc3545;">
+                <p>알림을 불러오는데 실패했습니다</p>
+            </div>
+        `;
+    }
+}
+
+// 알림 필터링
+function filterNotifications(type) {
+    document.querySelectorAll('.filter-chip').forEach(chip => {
+        chip.classList.remove('active');
+    });
+    document.querySelector(`[data-filter="${type}"]`).classList.add('active');
+    loadNotifications(type);
+}
+
+// 알림 클릭 처리
+async function handleNotificationClick(notifId, articleId) {
+    const uid = getUserId();
+    
+    // 읽음 처리
+    await db.ref("notifications/" + uid + "/" + notifId).update({ read: true });
+    
+    // 기사로 이동
+    if(articleId) {
+        showArticleDetail(articleId);
+    }
+}
+
+// 모두 읽음 처리
+async function markAllAsRead() {
+    const uid = getUserId();
+    if(!uid || uid === 'anonymous') return;
+    
+    if(!confirm("모든 알림을 읽음 처리하시겠습니까?")) return;
+    
+    try {
+        const snapshot = await db.ref("notifications/" + uid).once("value");
+        const notificationsData = snapshot.val() || {};
+        
+        const updates = {};
+        Object.keys(notificationsData).forEach(notifId => {
+            updates[`notifications/${uid}/${notifId}/read`] = true;
+        });
+        
+        await db.ref().update(updates);
+        alert("모든 알림이 읽음 처리되었습니다.");
+        loadNotifications();
+        
+    } catch(error) {
+        alert("오류: " + error.message);
+    }
+}
+
+// 메신저 뱃지 업데이트
+function updateMessengerBadge(count) {
+    const badge = document.getElementById("messengerBadge");
+    if(badge) {
+        if(count > 0) {
+            badge.textContent = count > 99 ? '99+' : count;
+            badge.style.display = 'block';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+}
+
+// 실시간 알림 개수 체크
+function setupMessengerBadgeListener() {
+    const uid = getUserId();
+    if(!uid || uid === 'anonymous') return;
+    
+    db.ref("notifications/" + uid).on("value", snapshot => {
+        const notificationsData = snapshot.val() || {};
+        const unreadCount = Object.values(notificationsData).filter(n => !n.read).length;
+        updateMessengerBadge(unreadCount);
+    });
+}
+
+// 이벤트 접근 권한 체크
+async function checkEventAccess() {
+    const eventBtn = document.getElementById("moreEventBtn");
+    if(!eventBtn) return;
+    
+    if(!isLoggedIn()) {
+        eventBtn.style.display = "none";
+        return;
+    }
+    
+    const user = auth.currentUser;
+    if(isAdmin()) {
+        eventBtn.style.display = "block";
+        return;
+    }
+    
+    const snap = await db.ref("users/" + user.uid).once("value");
+    const userData = snap.val() || {};
+    const isVIP = userData.isVIP || false;
+    
+    eventBtn.style.display = isVIP ? "block" : "none";
 }
 
 window.addEventListener("load", () => {
