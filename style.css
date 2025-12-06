@@ -1182,3 +1182,166 @@ textarea.form-control {
     gap: 12px;
     margin-bottom: 20px;
 }
+
+/* 더보기 메뉴 그리드 */
+.more-menu-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.more-card {
+    background: white;
+    border: none;
+    border-radius: 12px;
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.more-card:active {
+    transform: scale(0.95);
+    box-shadow: var(--shadow-hover);
+}
+
+.more-card i {
+    font-size: 32px;
+    color: var(--primary-color);
+}
+
+.more-card span {
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* 알림 뱃지 */
+.notification-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: #dc3545;
+    color: white;
+    border-radius: 12px;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 18px;
+    text-align: center;
+}
+
+/* 메신저 필터 */
+.messenger-filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    padding: 4px 0;
+    -webkit-overflow-scrolling: touch;
+}
+
+.messenger-filters::-webkit-scrollbar {
+    display: none;
+}
+
+.filter-chip {
+    padding: 8px 16px;
+    border: 1px solid var(--border-color);
+    background: white;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.filter-chip.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.filter-chip:active {
+    transform: scale(0.95);
+}
+
+/* 알림 카드 */
+.notification-card {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow);
+    display: flex;
+    gap: 12px;
+    align-items: start;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.notification-card.unread {
+    background: #f0f7ff;
+    border-left: 4px solid var(--primary-color);
+}
+
+.notification-card:active {
+    transform: scale(0.98);
+}
+
+.notification-icon {
+    font-size: 28px;
+    flex-shrink: 0;
+}
+
+.notification-content {
+    flex: 1;
+}
+
+.notification-title {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0 0 6px 0;
+    color: var(--text-primary);
+}
+
+.notification-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0 0 8px 0;
+    line-height: 1.5;
+}
+
+.notification-time {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.unread-dot {
+    width: 10px;
+    height: 10px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    position: absolute;
+    top: 20px;
+    right: 16px;
+}
+
+.btn-text {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.btn-text:active {
+    opacity: 0.7;
+}
