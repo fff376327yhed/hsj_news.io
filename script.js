@@ -1369,18 +1369,19 @@ function showFreeboard() {
 
 // 글쓰기 페이지 표시
 function showWritePage() {
-    if(!isLoggedIn()) {
-        alert("기사 작성은 로그인 후 가능합니다!");
-        googleLogin();
-        return;
+    if(!isLoggedIn()) { 
+        alert("기사 작성은 로그인 후 가능합니다!"); 
+        googleLogin(); 
+        return; 
     }
     hideAll();
-    document.getElementById("writeSection").classList.add("active");
-    ('[data-section="write"]');
+    document.getElementById("writeSection").classList.add("active"); 
     
-    
-    // URL 업데이트
-    updateURL('write');
+    // ⭐ [수정] 기존 기사 수정 오류 해결: 글쓰기 페이지 진입 시 항상 새 기사 작성을 위한 폼으로 초기화
+    setupArticleForm(); 
+
+    // URL 업데이트 
+    updateURL('write'); 
 }
 
 // 설정 페이지 표시
@@ -1896,8 +1897,6 @@ async function showArticleDetail(id) {
         </div>`;
         loadComments(id);
         
-        // URL 업데이트
-        updateURL('article', id);
     });
 }
 
