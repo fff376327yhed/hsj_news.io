@@ -39,6 +39,8 @@ let bannedWordsList = [];
 let currentFreeboardPage = 1;
 let currentFreeboardSortMethod = 'latest';
 let filteredFreeboardArticles = [];
+// 1. 점검 상태 체크 변수
+let maintenanceChecked = false;
 
 // 쿠키 관리
 function setCookie(n, v, days = 365) { 
@@ -778,8 +780,8 @@ auth.onAuthStateChanged(async user => {
         }
     }
 
-     // ⭐ 인증 상태 확정 후 점검 모드 체크
-    checkMaintenanceAfterAuth();
+     // ⭐⭐⭐ 여기에 점검 모드 체크 추가 ⭐⭐⭐
+    await checkMaintenanceMode();
     
     if(document.getElementById("articlesSection").classList.contains("active")) {
         filteredArticles = allArticles;
@@ -3043,97 +3045,137 @@ async function submitLegalAgreement() {
     }
 }
 
-// ===== Part 14 수정: 점검 모드 시스템 개선 =====
+// ===== Part 14: 점검 모드 시스템 (완전 수정) =====
 
-// 1. 점검 상태 실시간 체크 (초기화 시에는 리스너만 등록)
-function initMaintenanceCheck() {
-    db.ref("adminSettings/maintenance").on("value", snapshot => {
-        const settings = snapshot.val();
-        
-        if (!settings) return;
-        
-        // 인증 상태가 확정된 경우에만 체크
-        if (auth.currentUser !== null || auth.currentUser === null) {
-            checkAndShowMaintenance(settings);
-        }
-    });
-}
-
-// 2. 인증 후 점검 모드 체크 (새로운 함수)
-function checkMaintenanceAfterAuth() {
-    db.ref("adminSettings/maintenance").once("value").then(snapshot => {
-        const settings = snapshot.val();
-        if (settings) {
-            checkAndShowMaintenance(settings);
-        }
-    });
-}
-
-// 3. 점검 화면 표시 여부 결정 로직 (수정됨)
-function checkAndShowMaintenance(settings) {
-    const overlay = document.getElementById("maintenanceOverlay");
+// 3. 점검 모드 체크 함수 (로그인 후 실행)
+async function checkMaintenanceMode() {
+    console.log("🔍 점검 모드 체크 시작...");
     
-    if (!settings.isActive) {
-        overlay.style.display = "none";
-        return;
+    try {
+        const snapshot = await db.ref("adminSettings/maintenance").once("value");
+        const settings = snapshot.val();
+        
+        if (!settings || !settings.isActive) {
+            console.log("✅ 점검 모드 비활성화 상태");
+            hideMaintenanceScreen();
+            return;
+        }
+        
+        console.log("🚧 점검 모드 활성화 상태 감지");
+        
+        // 관리자 체크
+        if (isAdmin()) {
+            console.log("✅ 관리자 권한으로 점검 모드 우회");
+            hideMaintenanceScreen();
+            showToastNotification("🛠️ 점검 모드 활성", "관리자 권한으로 접속 중입니다.");
+            return;
+        }
+        
+        // 현재 로그인한 사용자 이메일
+        const user = auth.currentUser;
+        const userEmail = user ? user.email : "";
+        
+        console.log("👤 현재 사용자 이메일:", userEmail);
+        
+        // 허용된 사용자 목록 파싱
+        const allowedUsers = settings.allowedUsers || "";
+        const allowedList = allowedUsers
+            .split(',')
+            .map(email => email.trim().toLowerCase())
+            .filter(email => email.length > 0);
+        
+        console.log("📋 허용된 사용자 목록:", allowedList);
+        
+        // 이메일 비교 (대소문자 구분 없이)
+        const isAllowed = userEmail && allowedList.includes(userEmail.toLowerCase());
+        
+        console.log("🔍 접속 허용 여부:", isAllowed);
+        
+        if (isAllowed) {
+            console.log("✅ 점검 제외 사용자 확인:", userEmail);
+            hideMaintenanceScreen();
+            showToastNotification("🔓 접속 허용", "점검 중 접속이 허용된 계정입니다.");
+            return;
+        }
+        
+        // 점검 화면 표시
+        console.log("🚨 점검 화면 표시");
+        showMaintenanceScreen(settings);
+        
+    } catch (error) {
+        console.error("❌ 점검 모드 체크 오류:", error);
     }
-
-    // 관리자 체크
-    if (isAdmin()) {
-        console.log("✅ 관리자 권한으로 점검 모드 우회");
-        showToastNotification("🛠️ 점검 모드 활성", "관리자 권한으로 접속 중입니다.");
-        overlay.style.display = "none";
-        return;
-    }
-
-    // 현재 로그인한 사용자 정보
-    const currentUser = auth.currentUser;
-    const userEmail = currentUser ? currentUser.email : "";
-
-    // 허용된 사용자 목록
-    const allowedList = settings.allowedUsers ? 
-        settings.allowedUsers.split(',').map(e => e.trim()).filter(e => e) : [];
-
-    console.log("🔍 점검 모드 체크:", {
-        isLoggedIn: !!currentUser,
-        userEmail: userEmail,
-        allowedList: allowedList,
-        isAllowed: userEmail && allowedList.includes(userEmail)
-    });
-
-    // 로그인된 사용자가 허용 목록에 있는지 체크
-    if (currentUser && userEmail && allowedList.includes(userEmail)) {
-        console.log("✅ 점검 제외 사용자 확인:", userEmail);
-        showToastNotification("🔓 접속 허용", "점검 중 접속이 허용된 계정입니다.");
-        overlay.style.display = "none";
-        return;
-    }
-
-    // 점검 화면 표시
-    console.log("🚧 점검 모드 활성화 - 화면 표시");
-    renderMaintenanceScreen(settings);
 }
 
-// 4. 점검 화면 렌더링 (동일)
-function renderMaintenanceScreen(settings) {
+// 4. 점검 화면 표시
+function showMaintenanceScreen(settings) {
     const overlay = document.getElementById("maintenanceOverlay");
     const titleEl = document.getElementById("mtTitle");
     const msgEl = document.getElementById("mtMessage");
     const imgContainer = document.getElementById("mtImageContainer");
     
+    if (!overlay) {
+        console.error("❌ maintenanceOverlay 요소를 찾을 수 없습니다!");
+        return;
+    }
+    
     titleEl.textContent = settings.title || "시스템 점검 중입니다";
     msgEl.textContent = settings.message || "더 나은 서비스를 위해 점검을 진행하고 있습니다.";
     
     if (settings.imageUrl) {
-        imgContainer.innerHTML = `<img src="${settings.imageUrl}" alt="점검 이미지">`;
+        imgContainer.innerHTML = `<img src="${settings.imageUrl}" alt="점검 이미지" style="max-width:100%; border-radius:8px;">`;
     } else {
         imgContainer.innerHTML = "";
     }
-
+    
     overlay.style.display = "flex";
+    overlay.style.zIndex = "99999";
 }
 
-// 5. 관리자용: 점검 설정 모달 열기 (동일)
+// 5. 점검 화면 숨기기
+function hideMaintenanceScreen() {
+    const overlay = document.getElementById("maintenanceOverlay");
+    if (overlay) {
+        overlay.style.display = "none";
+    }
+}
+
+// 6. 나가기 버튼 함수 (전역으로 등록)
+window.closeMaintenanceScreen = function() {
+    console.log("🚪 사용자가 점검 화면 나가기 클릭");
+    
+    // 로그아웃 처리
+    if (auth.currentUser) {
+        if (confirm("점검 중에는 접속할 수 없습니다.\n로그아웃하시겠습니까?")) {
+            auth.signOut().then(() => {
+                alert("로그아웃되었습니다.");
+                hideMaintenanceScreen();
+                location.reload();
+            });
+        }
+    } else {
+        // 비로그인 상태면 그냥 닫기
+        hideMaintenanceScreen();
+    }
+}
+
+// 7. 점검 모드 실시간 감지 (관리자가 설정 변경 시)
+function initMaintenanceListener() {
+    db.ref("adminSettings/maintenance").on("value", async snapshot => {
+        const settings = snapshot.val();
+        
+        // 초기 로딩 중이면 무시
+        if (!maintenanceChecked) {
+            maintenanceChecked = true;
+            return;
+        }
+        
+        console.log("🔄 점검 설정 변경 감지");
+        await checkMaintenanceMode();
+    });
+}
+
+// 8. 관리자용: 점검 설정 모달 열기
 window.showMaintenanceManager = function() {
     if(!isAdmin()) return alert("관리자만 접근 가능합니다.");
 
@@ -3152,7 +3194,7 @@ window.showMaintenanceManager = function() {
     });
 }
 
-// 6. 관리자용: 점검 설정 저장 (동일)
+// 9. 관리자용: 점검 설정 저장
 window.saveMaintenanceSettings = function(e) {
     e.preventDefault();
     
@@ -3172,40 +3214,37 @@ window.saveMaintenanceSettings = function(e) {
         updatedBy: getNickname()
     };
 
+    console.log("💾 점검 설정 저장:", updates);
+
     db.ref("adminSettings/maintenance").set(updates).then(() => {
         alert(isActive ? "🚨 점검 모드가 시작되었습니다." : "✅ 점검 모드가 해제되었습니다.");
         closeMaintenanceModal();
     }).catch(err => alert("저장 실패: " + err.message));
 }
 
-// 7. 모달 닫기 (동일)
+// 10. 모달 닫기
 window.closeMaintenanceModal = function() {
     document.getElementById("maintenanceModal").classList.remove("active");
 }
 
-// ===== 전체 시스템 초기화 (수정됨) =====
 window.addEventListener("load", () => {
     console.log("🚀 시스템 초기화 시작...");
     
-    // 1. Firebase 리스너 설정
     setupArticlesListener();
     loadBannedWords();
     setupArticleForm();
     
-    // 2. 브라우저 알림 권한 요청
     if('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
     }
     
-    // 3. 팝업 표시 (1초 지연)
     setTimeout(() => {
         showActivePopupsToUser();
     }, 1000);
 
-    // 4. 점검 모드 리스너 등록 (체크는 인증 후 수행)
-    initMaintenanceCheck();
+    // ⭐ 점검 모드 실시간 리스너 등록 추가
+    initMaintenanceListener();
     
-    // 5. URL 기반 라우팅 실행
     initialRoute();
     
     console.log("✅ 시스템 초기화 완료!");
