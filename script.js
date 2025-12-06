@@ -285,6 +285,70 @@ function logoutAdmin(){
     location.reload();
 }
 
+// Google 로그인
+function googleLogin() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({
+        prompt: 'select_account'
+    });
+    
+    auth.signInWithPopup(provider)
+        .then((result) => {
+            console.log("Google 로그인 성공:", result.user.email);
+            alert(`환영합니다, ${result.user.displayName || result.user.email}님!`);
+        })
+        .catch((error) => {
+            console.error("Google 로그인 오류:", error);
+            
+            // 에러 메시지 한글화
+            let errorMessage = "로그인 중 오류가 발생했습니다.";
+            
+            switch(error.code) {
+                case 'auth/popup-closed-by-user':
+                    errorMessage = "로그인 창이 닫혔습니다.";
+                    break;
+                case 'auth/popup-blocked':
+                    errorMessage = "팝업이 차단되었습니다. 팝업 차단을 해제해주세요.";
+                    break;
+                case 'auth/cancelled-popup-request':
+                    errorMessage = "이미 로그인 진행 중입니다.";
+                    break;
+                case 'auth/network-request-failed':
+                    errorMessage = "네트워크 연결을 확인해주세요.";
+                    break;
+                default:
+                    errorMessage = `로그인 실패: ${error.message}`;
+            }
+            
+            alert(errorMessage);
+        });
+}
+
+// 팝업 차단 시 리디렉션 방식으로 로그인 (대체 방법)
+function googleLoginRedirect() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({
+        prompt: 'select_account'
+    });
+    
+    auth.signInWithRedirect(provider);
+}
+
+// 리디렉션 결과 처리
+auth.getRedirectResult()
+    .then((result) => {
+        if (result.user) {
+            console.log("Google 로그인 성공 (리디렉션):", result.user.email);
+            alert(`환영합니다, ${result.user.displayName || result.user.email}님!`);
+        }
+    })
+    .catch((error) => {
+        console.error("Google 로그인 오류 (리디렉션):", error);
+        if(error.code !== 'auth/popup-closed-by-user') {
+            alert("로그인 실패: " + error.message);
+        }
+    });
+
 // 관리자 모드 해제
 function disableAdminMode() {
     if(!confirm("관리자 모드를 해제하시겠습니까?\n\n일반 사용자 모드로 전환됩니다.")) return;
