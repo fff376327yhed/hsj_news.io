@@ -43,10 +43,6 @@
         <i class="fas fa-home"></i>
         <span>홈</span>
     </button>
-    <button class="nav-btn" onclick="showFreeboard()" data-section="freeboard">
-        <i class="fas fa-comments"></i>
-        <span>자유</span>
-    </button>
     <button class="nav-btn" onclick="showWritePage()" data-section="write">
         <i class="fas fa-pen"></i>
         <span>작성</span>
@@ -55,9 +51,9 @@
         <i class="fas fa-cog"></i>
         <span>설정</span>
     </button>
-    <button class="nav-btn" id="adminEventBtn" style="display:none;" onclick="showAdminEvent()" data-section="admin">
-        <i class="fas fa-star"></i>
-        <span>이벤트</span>
+    <button class="nav-btn" onclick="showMoreMenu()" data-section="more">
+        <i class="fas fa-ellipsis-h"></i>
+        <span>더보기</span>
     </button>
 </nav>
 
@@ -102,6 +98,9 @@
 <!-- 자유게시판 섹션 -->
 <section class="page-section" id="freeboardSection">
     <div class="section-header">
+        <button onclick="showMoreMenu()" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+        </button>
         <h2>💬 자유게시판</h2>
     </div>
     
@@ -123,6 +122,59 @@
 
     <div id="freeboardGrid"></div>
     <div id="freeboardLoadMoreContainer" class="load-more"></div>
+</section>
+
+<!-- 더보기 섹션 -->
+<section class="page-section" id="moreMenuSection">
+    <div class="section-header">
+        <h2>📋 더보기</h2>
+    </div>
+    
+    <div class="more-menu-grid">
+        <button onclick="showFreeboard()" class="more-card">
+            <i class="fas fa-comments"></i>
+            <span>자유게시판</span>
+        </button>
+        <button onclick="showMessenger()" class="more-card">
+            <i class="fas fa-envelope"></i>
+            <span>메신저</span>
+            <span class="notification-badge" id="messengerBadge" style="display:none;"></span>
+        </button>
+        <button onclick="showAdminEvent()" class="more-card" id="moreEventBtn" style="display:none;">
+            <i class="fas fa-star"></i>
+            <span>이벤트 관리</span>
+        </button>
+        <button onclick="showPatchNotesPage()" class="more-card">
+            <i class="fas fa-file-alt"></i>
+            <span>패치노트</span>
+        </button>
+        <button onclick="showQnA()" class="more-card">
+            <i class="fas fa-question-circle"></i>
+            <span>QnA</span>
+        </button>
+    </div>
+</section>
+
+<!-- 메신저 섹션 -->
+<section class="page-section" id="messengerSection">
+    <div class="section-header">
+        <button onclick="showMoreMenu()" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h2>📨 메신저</h2>
+        <button onclick="markAllAsRead()" class="btn-text" style="margin-left:auto;font-size:13px;color:var(--primary-color);">
+            모두 읽음
+        </button>
+    </div>
+    
+    <div class="messenger-filters">
+        <button onclick="filterNotifications('all')" class="filter-chip active" data-filter="all">전체</button>
+        <button onclick="filterNotifications('article')" class="filter-chip" data-filter="article">새 기사</button>
+        <button onclick="filterNotifications('comment')" class="filter-chip" data-filter="comment">댓글</button>
+        <button onclick="filterNotifications('myArticleComment')" class="filter-chip" data-filter="myArticleComment">내 기사</button>
+    </div>
+    
+    <div id="notificationsList"></div>
 </section>
 
 <!-- 작성 섹션 -->
@@ -323,6 +375,9 @@
 <!-- 관리자 이벤트 섹션 -->
 <section class="page-section" id="adminEventSection">
     <div class="section-header">
+        <button onclick="showMoreMenu()" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+        </button>
         <h2>🎯 관리자 이벤트</h2>
     </div>
     
@@ -531,7 +586,7 @@
                     <input type="checkbox" id="mtActiveToggle">
                     <span class="toggle-slider"></span>
                     <div class="toggle-text">
-                        <strong style="color:#856404;">off on</strong>
+                        <strong style="color:#856404;">점검 모드</strong>
                         <small>켜면 관리자와 허용된 유저 외에는 접속이 차단됩니다.</small>
                     </div>
                 </label>
