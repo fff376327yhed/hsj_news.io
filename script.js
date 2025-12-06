@@ -672,7 +672,6 @@ async function requestNotificationPermission() {
     return false;
 }
 
-// ===== FCM 초기화 개선 (GitHub Pages 호환) =====
 async function registerFCMToken(uid) {
     if(!messaging) {
         console.log("Messaging not available");
@@ -684,8 +683,8 @@ async function registerFCMToken(uid) {
         console.log("알림 권한 상태:", permission);
         
         if(permission === 'granted') {
-            // Service Worker 경로 수정 (index.html 제거)
-            const swPath = '/firebase-messaging-sw.js';e-messaging-sw.js;
+            // Service Worker 경로 수정 (상대 경로 사용)
+            const swPath = './firebase-messaging-sw.js';
             
             console.log("🔍 Service Worker 경로:", swPath);
             
@@ -714,7 +713,7 @@ async function registerFCMToken(uid) {
             try {
               token = await messaging.getToken({
               serviceWorkerRegistration: registration,
-            vapidKey: "BFJBBAv_qOw_aklFbE89r_cuCArMJkMK56Ryj9M1l1a3qv8CuHCJ-fKALtOn4taF7Pjwo2bjfoOuewEKBqRBtCo" // ⬅️ Firebase Console에서 복사한 키 붙여넣기
+            vapidKey: "BFJBBAv_qOw_aklFbE89r_cuCArMJkMK56Ryj9M1l1a3qv8CuHCJ-fKALtOn4taF7Pjwo2bjfoOuewEKBqRBtCo"
             });
             } catch(tokenError) {
                 console.error("토큰 발급 상세 오류:", tokenError);
