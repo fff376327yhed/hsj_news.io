@@ -672,9 +672,17 @@ async function requestNotificationPermission() {
     return false;
 }
 
-// ===== FCM 토큰 등록 개선 (script.js에 추가/교체) =====
+// ===== FCM 토큰 등록 (GitHub Pages용 수정) =====
 
-// FCM 토큰 등록 함수 (완전 개선)
+// GitHub Pages 베이스 경로 자동 감지
+function getBasePath() {
+    const path = window.location.pathname;
+    // GitHub Pages 서브디렉토리 감지: /hsj_news.io/
+    const match = path.match(/^(\/[^\/]+)/);
+    return match ? match[1] : '';
+}
+
+// FCM 토큰 등록 함수 (GitHub Pages 대응)
 async function registerFCMToken(uid) {
     if(!messaging) {
         console.log("⚠️ Messaging not available - 브라우저가 FCM을 지원하지 않습니다.");
@@ -684,44 +692,69 @@ async function registerFCMToken(uid) {
     try {
         console.log("📱 FCM 토큰 등록 시작...");
         
+        // 베이스 경로 확인
+        const basePath = getBasePath();
+        console.log("🌐 베이스 경로:", basePath || '/' );
+        
         // 1. 알림 권한 요청
         const permission = await Notification.requestPermission();
         console.log("🔔 알림 권한 상태:", permission);
         
         if(permission !== 'granted') {
             console.log("❌ 알림 권한 거부됨");
-            
-            // UI에 알림 권한 필요성 표시
             showNotificationPermissionPrompt();
             return;
         }
         
-        // 2. Service Worker 등록 (중요: 재등록 로직 개선)
-        console.log("🔧 Service Worker 등록 시작...");
+        // 2. Service Worker 경로 설정
+        const swPath = basePath ? `${basePath}/firebase-messaging-sw.js` : '/firebase-messaging-sw.js';
+        const swScope = basePath ? `${basePath}/` : '/';
         
-        // 기존 등록 확인
-        let registration = await navigator.serviceWorker.getRegistration('/');
+        console.log("📄 Service Worker 경로:", swPath);
+        console.log("📂 Service Worker 스코프:", swScope);
         
-        if (registration) {
-            console.log("✅ 기존 Service Worker 발견");
-            
-            // 업데이트 확인
-            await registration.update();
-            console.log("🔄 Service Worker 업데이트 확인 완료");
-        } else {
-            console.log("🆕 새 Service Worker 등록...");
-            registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js', {
-                scope: '/',
-                updateViaCache: 'none'
-            });
+        // 3. Service Worker 파일 존재 확인
+        try {
+            const swResponse = await fetch(swPath, { method: 'HEAD' });
+            if (!swResponse.ok) {
+                throw new Error(`Service Worker 파일을 찾을 수 없습니다: ${swPath}`);
+            }
+            console.log("✅ Service Worker 파일 확인됨");
+        } catch(e) {
+            console.error("❌ Service Worker 파일 확인 실패:", e);
+            alert("⚠️ 알림 시스템 파일이 없습니다. 관리자에게 문의하세요.");
+            return;
         }
         
-        // 3. Service Worker 활성화 대기
+        // 4. 기존 Service Worker 정리
+        console.log("🔧 기존 Service Worker 확인 중...");
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        
+        for (const reg of registrations) {
+            // 잘못된 스코프의 Service Worker 제거
+            if (!reg.scope.includes(basePath) && basePath) {
+                console.log("🗑️ 잘못된 스코프 제거:", reg.scope);
+                await reg.unregister();
+            }
+        }
+        
+        // 5. Service Worker 등록
+        console.log("🆕 Service Worker 등록 시작...");
+        let registration = await navigator.serviceWorker.register(swPath, {
+            scope: swScope,
+            updateViaCache: 'none'
+        });
+        
+        console.log("✅ Service Worker 등록 완료");
+        console.log("   - Scope:", registration.scope);
+        console.log("   - Script URL:", registration.active?.scriptURL || 'pending');
+        
+        // 6. Service Worker 활성화 대기
         console.log("⏳ Service Worker 활성화 대기 중...");
         await navigator.serviceWorker.ready;
         
-        // 4. 활성 상태 재확인
-        registration = await navigator.serviceWorker.getRegistration('/');
+        // 7. 활성 상태 재확인
+        registration = await navigator.serviceWorker.getRegistration(swScope);
         
         if (!registration || !registration.active) {
             throw new Error("Service Worker가 활성화되지 않았습니다");
@@ -729,7 +762,7 @@ async function registerFCMToken(uid) {
         
         console.log("✅ Service Worker 활성 상태:", registration.active.state);
         
-        // 5. FCM 토큰 발급 (재시도 로직 추가)
+        // 8. FCM 토큰 발급 (재시도 로직)
         console.log("🔑 FCM 토큰 발급 시도...");
         let token = null;
         let retryCount = 0;
@@ -751,7 +784,6 @@ async function registerFCMToken(uid) {
                 console.warn(`⚠️ 토큰 발급 실패 (시도 ${retryCount}/${maxRetries}):`, tokenError.message);
                 
                 if (retryCount < maxRetries) {
-                    // 1초 대기 후 재시도
                     await new Promise(resolve => setTimeout(resolve, 1000));
                 } else {
                     throw tokenError;
@@ -765,7 +797,7 @@ async function registerFCMToken(uid) {
         
         console.log("📝 토큰:", token.substring(0, 20) + "...");
         
-        // 6. 토큰을 Firebase DB에 저장
+        // 9. 토큰을 Firebase DB에 저장
         const tokenKey = btoa(token).substring(0, 20).replace(/[^a-zA-Z0-9]/g, '');
         await db.ref("users/" + uid + "/fcmTokens/" + tokenKey).set({
             token: token,
@@ -773,11 +805,12 @@ async function registerFCMToken(uid) {
             browser: navigator.userAgent.substring(0, 100),
             platform: navigator.platform,
             deviceType: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop',
-            lastUsed: Date.now()
+            lastUsed: Date.now(),
+            basePath: basePath || '/'
         });
         console.log("✅ 토큰 DB 저장 완료");
         
-        // 7. 포그라운드 메시지 리스너
+        // 10. 포그라운드 메시지 리스너
         messaging.onMessage((payload) => {
             console.log("📨 포그라운드 메시지 수신:", payload);
             
@@ -788,10 +821,10 @@ async function registerFCMToken(uid) {
             showToastNotification(title, body, articleId);
         });
         
-        // 8. Service Worker 메시지 리스너
+        // 11. Service Worker 메시지 리스너
         navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
         
-        // 9. 성공 알림
+        // 12. 성공 알림
         console.log("🎉 알림 설정 완료!");
         showToastNotification(
             "✅ 알림 설정 완료!", 
@@ -799,9 +832,10 @@ async function registerFCMToken(uid) {
             null
         );
         
-        // 10. 로컬 스토리지에 토큰 등록 완료 표시
+        // 13. 로컬 스토리지에 토큰 등록 완료 표시
         localStorage.setItem('fcm_token_registered', 'true');
         localStorage.setItem('fcm_token_time', Date.now().toString());
+        localStorage.setItem('fcm_base_path', basePath);
         
     } catch(error) {
         console.error("❌ FCM 초기화 오류:", error);
@@ -814,6 +848,8 @@ async function registerFCMToken(uid) {
             errorMsg = "🚫 알림 권한이 차단되었습니다.\n\n브라우저 설정에서 해정뉴스의 알림 권한을 허용해주세요.";
         } else if (error.message.includes('Service Worker')) {
             errorMsg = "⚠️ Service Worker 등록에 실패했습니다.\n\n페이지를 새로고침하거나 브라우저를 다시 시작해보세요.";
+        } else if (error.message.includes('scope')) {
+            errorMsg = "⚠️ 경로 설정 오류가 발생했습니다.\n\n페이지를 새로고침해주세요.";
         }
         
         alert(errorMsg);
@@ -828,11 +864,9 @@ function handleServiceWorkerMessage(event) {
         const articleId = event.data.articleId;
         const url = event.data.url;
         
-        // 페이지가 이미 열려있으면 해당 기사로 이동
         if (articleId) {
             showArticleDetail(articleId);
         } else if (url) {
-            // URL 파라미터 파싱하여 페이지 이동
             const urlParams = new URL(url, window.location.origin);
             const params = new URLSearchParams(urlParams.search);
             const page = params.get('page');
@@ -844,6 +878,112 @@ function handleServiceWorkerMessage(event) {
         }
     }
 }
+
+// 알림 권한 요청 프롬프트
+function showNotificationPermissionPrompt() {
+    const promptHTML = `
+        <div id="notificationPrompt" style="
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            border: 2px solid #c62828;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            z-index: 10000;
+            max-width: 350px;
+            animation: slideIn 0.3s ease;
+        ">
+            <div style="display: flex; align-items: start; gap: 12px;">
+                <div style="font-size: 32px;">🔔</div>
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 8px 0; color: #c62828;">알림 권한 필요</h3>
+                    <p style="margin: 0 0 12px 0; color: #5f6368; font-size: 14px; line-height: 1.4;">
+                        새 기사와 댓글 알림을 받으려면 알림 권한을 허용해주세요.
+                    </p>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="retryNotificationPermission()" style="
+                            flex: 1;
+                            background: #c62828;
+                            color: white;
+                            border: none;
+                            padding: 8px 16px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            font-weight: bold;
+                        ">허용하기</button>
+                        <button onclick="closeNotificationPrompt()" style="
+                            background: #f1f3f4;
+                            color: #5f6368;
+                            border: none;
+                            padding: 8px 16px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                        ">나중에</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    const existing = document.getElementById('notificationPrompt');
+    if (existing) existing.remove();
+    
+    document.body.insertAdjacentHTML('beforeend', promptHTML);
+}
+
+// 알림 권한 재요청
+window.retryNotificationPermission = async function() {
+    closeNotificationPrompt();
+    
+    const user = auth.currentUser;
+    if (user) {
+        await registerFCMToken(user.uid);
+    }
+}
+
+// 프롬프트 닫기
+window.closeNotificationPrompt = function() {
+    const prompt = document.getElementById('notificationPrompt');
+    if (prompt) prompt.remove();
+}
+
+// 토큰 갱신 함수
+async function refreshFCMToken() {
+    const user = auth.currentUser;
+    if (!user) return;
+    
+    const lastRegistered = localStorage.getItem('fcm_token_time');
+    const savedBasePath = localStorage.getItem('fcm_base_path');
+    const currentBasePath = getBasePath();
+    
+    const now = Date.now();
+    
+    // 경로가 변경되었거나 7일이 지난 경우 토큰 갱신
+    if (savedBasePath !== currentBasePath || 
+        !lastRegistered || 
+        (now - parseInt(lastRegistered)) > 7 * 24 * 60 * 60 * 1000) {
+        console.log("🔄 FCM 토큰 갱신 시작...");
+        await registerFCMToken(user.uid);
+    }
+}
+
+// 페이지 로드 시 토큰 갱신 체크
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        refreshFCMToken();
+    }, 5000);
+});
+
+// Visibility API
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        setTimeout(() => {
+            refreshFCMToken();
+        }, 2000);
+    }
+});
 
 // 알림 권한 요청 프롬프트 표시
 function showNotificationPermissionPrompt() {
