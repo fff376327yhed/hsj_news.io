@@ -653,6 +653,25 @@ function showToastNotification(title, body, articleId = null) {
     }, 5000);
 }
 
+// 알림 권한 체크 및 요청
+async function requestNotificationPermission() {
+    if (!('Notification' in window)) {
+        console.log('이 브라우저는 알림을 지원하지 않습니다.');
+        return false;
+    }
+    
+    if (Notification.permission === 'granted') {
+        return true;
+    }
+    
+    if (Notification.permission !== 'denied') {
+        const permission = await Notification.requestPermission();
+        return permission === 'granted';
+    }
+    
+    return false;
+}
+
 // ===== FCM 초기화 개선 (GitHub Pages 호환) =====
 async function registerFCMToken(uid) {
     if(!messaging) {
@@ -693,9 +712,10 @@ async function registerFCMToken(uid) {
             
             let token;
             try {
-                token = await messaging.getToken({
-                    serviceWorkerRegistration: registration
-                });
+              token = await messaging.getToken({
+              serviceWorkerRegistration: registration,
+            vapidKey: "BFJBBAv_qOw_aklFbE89r_cuCArMJkMK56Ryj9M1l1a3qv8CuHCJ-fKALtOn4taF7Pjwo2bjfoOuewEKBqRBtCo" // ⬅️ Firebase Console에서 복사한 키 붙여넣기
+            });
             } catch(tokenError) {
                 console.error("토큰 발급 상세 오류:", tokenError);
                 return;
@@ -3516,6 +3536,30 @@ window.addEventListener("load", () => {
     initialRoute();
     
     console.log("✅ 시스템 초기화 완료!");
+
+    // PWA 설치 유도
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    
+    // 설치 안내 표시 (한 번만)
+    if(!getCookie('pwa_install_prompted')) {
+        setTimeout(() => {
+            if(confirm('📱 해정뉴스를 홈 화면에 추가하시겠어요?\n\n푸시 알림을 받으려면 홈 화면 추가가 필요합니다.')) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('PWA 설치됨');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+            setCookie('pwa_install_prompted', 'true', 30);
+        }, 3000);
+    }
+});
 });
 
 // ===== 전역 에러 핸들러 =====
