@@ -73,8 +73,16 @@ self.addEventListener('notificationclick', (event) => {
   }
   
   // 기본 클릭 또는 "기사 보기" 클릭
-  const urlToOpen = event.notification.data?.url || '/';
+  let urlToOpen = event.notification.data?.url || '/';
   const articleId = event.notification.data?.articleId;
+  
+  // GitHub Pages 서브디렉토리 대응
+  const basePath = self.registration.scope.match(/\/([^\/]+)\/$/);
+  if (basePath && basePath[1] && !urlToOpen.includes(basePath[1])) {
+    urlToOpen = `/${basePath[1]}${urlToOpen}`;
+  }
+  
+  console.log('[Service Worker] 열 URL:', urlToOpen);
   
   event.waitUntil(
     clients.matchAll({ 
