@@ -2139,22 +2139,33 @@ function previewThumbnail(event) {
     }
 }
 
-// 기사 작성 폼 설정
+// 기사 작성 폼 설정 (수정된 버전)
 function setupArticleForm() {
     const form = document.getElementById("articleForm");
     if(!form) return;
     
-    const titleInput = form.querySelector("#title");
-    const summaryInput = form.querySelector("#summary");
-    const contentInput = form.querySelector("#content");
-    const warningEl = form.querySelector("#bannedWordWarning");
+    // 기존 이벤트 리스너 제거를 위한 새 폼으로 교체
+    const newForm = form.cloneNode(true);
+    form.parentNode.replaceChild(newForm, form);
+    
+    const titleInput = newForm.querySelector("#title");
+    const summaryInput = newForm.querySelector("#summary");
+    const contentInput = newForm.querySelector("#content");
+    const warningEl = newForm.querySelector("#bannedWordWarning");
+    
+    // 폼 초기화
+    newForm.reset();
+    const preview = document.getElementById('thumbnailPreview');
+    const uploadText = document.getElementById('uploadText');
+    if(preview) preview.style.display = 'none';
+    if(uploadText) uploadText.innerHTML = '<i class="fas fa-camera"></i><p>클릭하여 이미지 업로드</p>';
     
     function checkInputs() {
         const combinedText = (titleInput.value + " " + summaryInput.value + " " + contentInput.value);
         const foundWord = checkBannedWords(combinedText);
         
         if (foundWord) {
-            warningEl.textContent = `🚫 사용할 수 없는 단어가 포함되어 있습니다: "${foundWord}"`;
+            warningEl.textContent = `금지어가 포함되어 있습니다: "${foundWord}"`;
             warningEl.style.display = "block";
         } else {
             warningEl.style.display = "none";
@@ -2165,10 +2176,10 @@ function setupArticleForm() {
     summaryInput.addEventListener("input", checkInputs);
     contentInput.addEventListener("input", checkInputs);
     
-    const fileInput = form.querySelector('#thumbnailInput');
+    const fileInput = newForm.querySelector('#thumbnailInput');
     fileInput.addEventListener('change', previewThumbnail);
     
-    form.addEventListener("submit", function(e) {
+    newForm.addEventListener("submit", function(e) {
         e.preventDefault();
         if(!isLoggedIn()) {
             alert("기사 작성은 로그인 후 가능합니다!");
@@ -2181,14 +2192,14 @@ function setupArticleForm() {
 
         const foundWord = checkBannedWords(title + " " + content + " " + summary);
         if (foundWord) {
-            alert(`⚠️ 금지어("${foundWord}")가 포함된 기사를 업로드하려고 시도하여, 업로드가 차단되고 경고 1회가 누적됩니다.`);
+            alert(`금지어("${foundWord}")가 포함되어 업로드가 차단되고 경고 1회가 누적됩니다.`);
             addWarningToCurrentUser();
             return;
         }
         
         const A = {
             id: Date.now().toString(),
-            category: form.querySelector("#category").value,
+            category: newForm.querySelector("#category").value,
             title: title,
             summary: summary,
             content: content,
@@ -2207,7 +2218,7 @@ function setupArticleForm() {
             reader.onload = function(e) {
                 A.thumbnail = e.target.result;
                 saveArticle(A, () => {
-                    form.reset();
+                    newForm.reset();
                     document.getElementById('thumbnailPreview').style.display = 'none';
                     document.getElementById('uploadText').innerHTML = '<i class="fas fa-camera"></i><p>클릭하여 이미지 업로드</p>';
                     warningEl.style.display = "none";
@@ -2227,11 +2238,25 @@ function setupArticleForm() {
             reader.readAsDataURL(fileInput.files[0]);
         } else {
             saveArticle(A, () => {
-                form.reset();
+                newForm.reset();
                 document.getElementById('thumbnailPreview').style.display = 'none';
                 document.getElementById('uploadText').innerHTML = '<i class="fas fa-camera"></i><p>클릭하여 이미지 업로드</p>';
                 warningEl.style.display = "none";
                 alert("기사가 발행되었습니다!");
+                
+                // 알림 전송
+                sendNotification('article', {
+                    authorEmail: A.authorEmail,
+                    authorName: A.author,
+                    title: A.title,
+                    articleId: A.id
+                });
+                
+                showArticles();
+            });
+        }
+    });
+}
                 
                 // 알림 전송
                 sendNotification('article', {
