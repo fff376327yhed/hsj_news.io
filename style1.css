@@ -1,0 +1,1215 @@
+/* 
+====================================
+🎄 PREMIUM CHRISTMAS THEME - PART 1
+프리미엄 크리스마스 테마 (가독성 최적화)
+====================================
+*/
+
+:root {
+    /* 크리스마스 컬러 팔레트 */
+    --christmas-red: #c41e3a;
+    --christmas-green: #165b33;
+    --christmas-gold: #d4af37;
+    --christmas-snow: #ffffff;
+    --christmas-dark: #0f2027;
+    --christmas-accent: #8b0000;
+    --christmas-light-bg: #f8f9fa;
+    
+    /* 그라데이션 */
+    --gradient-christmas: linear-gradient(135deg, #165b33 0%, #c41e3a 100%);
+    --gradient-snow: linear-gradient(180deg, #ffffff 0%, #f0f4f8 100%);
+    --gradient-gold: linear-gradient(135deg, #d4af37 0%, #ffd700 100%);
+}
+
+/* =====================
+   크리스마스 애니메이션
+===================== */
+
+@keyframes snowfall {
+    0% { 
+        transform: translateY(-10px) translateX(0) rotate(0deg); 
+        opacity: 0; 
+    }
+    10% {
+        opacity: 1;
+    }
+    90% {
+        opacity: 1;
+    }
+    100% { 
+        transform: translateY(100vh) translateX(50px) rotate(360deg); 
+        opacity: 0; 
+    }
+}
+
+@keyframes glow {
+    0%, 100% { 
+        box-shadow: 0 0 5px rgba(212, 175, 55, 0.3); 
+    }
+    50% { 
+        box-shadow: 0 0 15px rgba(212, 175, 55, 0.6), 0 0 25px rgba(255, 215, 0, 0.4); 
+    }
+}
+
+@keyframes slideInFromTop {
+    from { 
+        transform: translateY(-30px); 
+        opacity: 0; 
+    }
+    to { 
+        transform: translateY(0); 
+        opacity: 1; 
+    }
+}
+
+@keyframes fadeInWithSnow {
+    0% { 
+        opacity: 0; 
+        transform: translateY(20px);
+    }
+    100% { 
+        opacity: 1; 
+        transform: translateY(0);
+    }
+}
+
+@keyframes shimmer {
+    0% { 
+        background-position: -1000px 0; 
+    }
+    100% { 
+        background-position: 1000px 0; 
+    }
+}
+
+/* =====================
+   눈 내리는 효과 (더 많은 눈송이)
+===================== */
+
+body::before,
+body::after,
+header::before,
+header::after,
+.main-content::before,
+.main-content::after {
+    content: '❄️';
+    position: fixed;
+    font-size: 20px;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+body::before {
+    top: -10px;
+    left: 5%;
+    animation: snowfall 8s linear infinite;
+}
+
+body::after {
+    top: -10px;
+    left: 15%;
+    font-size: 16px;
+    animation: snowfall 10s linear infinite 1s;
+}
+
+header::before {
+    top: -10px;
+    left: 25%;
+    font-size: 22px;
+    animation: snowfall 12s linear infinite 2s;
+}
+
+header::after {
+    top: -10px;
+    left: 35%;
+    font-size: 18px;
+    animation: snowfall 9s linear infinite 3s;
+}
+
+.main-content::before {
+    top: -10px;
+    left: 45%;
+    font-size: 24px;
+    animation: snowfall 11s linear infinite 1.5s;
+}
+
+.main-content::after {
+    top: -10px;
+    left: 55%;
+    font-size: 17px;
+    animation: snowfall 13s linear infinite 2.5s;
+}
+
+/* 추가 눈송이들 */
+.bottom-nav::before,
+.bottom-nav::after {
+    content: '❄️';
+    position: fixed;
+    font-size: 20px;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+.bottom-nav::before {
+    top: -10px;
+    left: 65%;
+    animation: snowfall 10s linear infinite 4s;
+}
+
+.bottom-nav::after {
+    top: -10px;
+    left: 75%;
+    font-size: 19px;
+    animation: snowfall 14s linear infinite 0.5s;
+}
+
+/* 마지막 눈송이들 */
+nav::before,
+nav::after {
+    content: '❄️';
+    position: fixed;
+    font-size: 21px;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+nav::before {
+    top: -10px;
+    left: 85%;
+    animation: snowfall 9s linear infinite 3.5s;
+}
+
+nav::after {
+    top: -10px;
+    left: 95%;
+    font-size: 23px;
+    animation: snowfall 11s linear infinite 1.8s;
+}
+
+/* =====================
+   배경 디자인 (부드럽고 깔끔하게)
+===================== */
+
+body {
+    background: linear-gradient(180deg, 
+        #0f2027 0%, 
+        #1a3a42 30%, 
+        #2c5364 70%, 
+        #1a3a42 100%
+    );
+    position: relative;
+    overflow-x: hidden;
+}
+
+/* =====================
+   헤더 디자인
+===================== */
+
+header {
+    background: var(--gradient-christmas);
+    box-shadow: 0 4px 20px rgba(196, 30, 58, 0.3);
+    border-bottom: 2px solid var(--christmas-gold);
+    animation: slideInFromTop 0.6s ease;
+}
+
+.logo {
+    color: white;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+.logo::before {
+    content: '🎅 ';
+    animation: none;
+}
+
+.logo-sub {
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* =====================
+   버튼 디자인
+===================== */
+
+.btn-primary {
+    background: var(--gradient-christmas);
+    box-shadow: 0 4px 15px rgba(196, 30, 58, 0.3);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.btn-primary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.2),
+        transparent
+    );
+    transition: left 0.5s ease;
+}
+
+.btn-primary:hover::before {
+    left: 100%;
+}
+
+.btn-primary:active {
+    transform: scale(0.97);
+    box-shadow: 0 2px 8px rgba(196, 30, 58, 0.5);
+}
+
+/* 머니 디스플레이 */
+.money-display {
+    background: var(--gradient-gold);
+    color: var(--christmas-dark);
+    font-weight: 900;
+    box-shadow: 0 2px 10px rgba(212, 175, 55, 0.4);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    animation: glow 3s ease-in-out infinite;
+}
+
+.money-display i {
+    color: var(--christmas-accent);
+}
+
+/* =====================
+   카드 디자인 (가독성 최우선)
+===================== */
+
+.article-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.article-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(196, 30, 58, 0.15);
+    border-color: var(--christmas-gold);
+}
+
+.article-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--gradient-christmas);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.article-card:hover::after {
+    opacity: 1;
+}
+
+/* 카테고리 배지 */
+.category-badge {
+    background: var(--gradient-christmas);
+    box-shadow: 0 2px 6px rgba(196, 30, 58, 0.2);
+    font-weight: 700;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.category-badge::before {
+    content: '🎄 ';
+    font-size: 10px;
+}
+
+/* VIP 배지 */
+.vip-badge {
+    background: var(--gradient-gold);
+    box-shadow: 0 2px 6px rgba(212, 175, 55, 0.3);
+    animation: glow 3s ease-in-out infinite;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.vip-badge::before {
+    content: '👑 ';
+}
+
+/* =====================
+   네비게이션 바
+===================== */
+
+.bottom-nav {
+    background: linear-gradient(180deg, white 0%, #f8f9fa 100%);
+    border-top: 2px solid var(--christmas-gold);
+    box-shadow: 0 -2px 15px rgba(0, 0, 0, 0.1);
+}
+
+.nav-btn {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.nav-btn::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 3px;
+    background: var(--gradient-christmas);
+    transition: width 0.3s ease;
+    border-radius: 3px 3px 0 0;
+}
+
+.nav-btn.active::before {
+    width: 50%;
+}
+
+.nav-btn.active {
+    color: var(--christmas-red);
+}
+
+/* =====================
+   댓글 섹션
+===================== */
+
+.comment-card {
+    background: white;
+    border-left: 3px solid var(--christmas-green);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.comment-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-left-color: var(--christmas-red);
+}
+
+/* =====================
+   모달 디자인
+===================== */
+
+.modal {
+    backdrop-filter: blur(10px);
+}
+
+.modal-content {
+    border: 2px solid var(--christmas-gold);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    border-radius: 16px;
+}
+
+.modal-header {
+    background: var(--gradient-christmas);
+    color: white;
+    border-radius: 14px 14px 0 0;
+}
+
+.modal-header h3::before {
+    content: '🎄 ';
+}
+
+/* =====================
+   투표 버튼 (별 효과 제거)
+===================== */
+
+.vote-btn {
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    border: 2px solid #e0e0e0;
+}
+
+.vote-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.vote-btn.active {
+    background: var(--gradient-christmas);
+    color: white;
+    border-color: var(--christmas-red);
+    box-shadow: 0 4px 15px rgba(196, 30, 58, 0.3);
+}
+
+/* 별 효과 제거 */
+.vote-btn::before {
+    display: none;
+}
+
+.vote-btn.active::before {
+    display: none;
+}
+
+/* =====================
+   검색바
+===================== */
+
+.search-bar {
+    background: white;
+    border: 2px solid var(--christmas-gold);
+    box-shadow: 0 2px 12px rgba(212, 175, 55, 0.15);
+    border-radius: 12px;
+}
+
+.search-btn {
+    background: var(--gradient-christmas);
+    transition: all 0.3s ease;
+}
+
+.search-btn:hover {
+    box-shadow: 0 4px 12px rgba(196, 30, 58, 0.4);
+    transform: scale(1.05);
+}
+
+/* =====================
+   칩 버튼
+===================== */
+
+.chip {
+    border: 2px solid #e0e0e0;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.chip:hover {
+    border-color: var(--christmas-green);
+    transform: translateY(-2px);
+}
+
+.chip.active {
+    background: var(--gradient-christmas);
+    border-color: var(--christmas-red);
+    box-shadow: 0 4px 12px rgba(196, 30, 58, 0.3);
+    color: white;
+}
+
+/* 
+====================================
+🎄 PREMIUM CHRISTMAS THEME - PART 2
+프리미엄 크리스마스 테마 (가독성 최적화)
+====================================
+*/
+
+/* =====================
+   알림 카드
+===================== */
+
+.notification-card {
+    border-left: 4px solid var(--christmas-green);
+    transition: all 0.3s ease;
+    background: white;
+    border-radius: 8px;
+}
+
+.notification-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.notification-card.unread {
+    background: linear-gradient(135deg, #fff5f5 0%, #ffe9e9 100%);
+    border-left-color: var(--christmas-red);
+    box-shadow: 0 2px 12px rgba(196, 30, 58, 0.15);
+}
+
+.notification-card.unread .unread-dot {
+    background: var(--christmas-red);
+    box-shadow: 0 0 10px rgba(196, 30, 58, 0.5);
+}
+
+/* =====================
+   프로필 카드
+===================== */
+
+.profile-card {
+    background: white;
+    border: 2px solid var(--christmas-gold);
+    box-shadow: 0 2px 15px rgba(212, 175, 55, 0.15);
+    border-radius: 12px;
+}
+
+/* =====================
+   폼 입력
+===================== */
+
+.form-control {
+    transition: all 0.3s ease;
+    border: 2px solid #e0e0e0;
+}
+
+.form-control:focus {
+    border-color: var(--christmas-red);
+    box-shadow: 0 0 0 4px rgba(196, 30, 58, 0.1);
+    outline: none;
+}
+
+/* =====================
+   게임 결과 화면
+===================== */
+
+.game-result-screen {
+    background: white;
+    border: 2px solid var(--christmas-gold);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    border-radius: 16px;
+}
+
+.reward-display {
+    color: var(--christmas-gold);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    animation: glow 3s ease-in-out infinite;
+}
+
+.reward-display::before {
+    content: '🎁 ';
+}
+
+/* =====================
+   점검 모드
+===================== */
+
+.maintenance-overlay {
+    background: rgba(15, 32, 39, 0.95);
+    backdrop-filter: blur(15px);
+}
+
+.maintenance-box {
+    border: 3px solid var(--christmas-gold);
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4);
+    border-radius: 16px;
+    background: white;
+}
+
+.maintenance-icon {
+    background: var(--gradient-christmas);
+    animation: glow 3s ease-in-out infinite;
+    border-radius: 50%;
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+}
+
+.maintenance-icon i {
+    color: white;
+    font-size: 40px;
+}
+
+/* =====================
+   스크롤바
+===================== */
+
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--gradient-christmas);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--christmas-accent);
+}
+
+/* =====================
+   섹션 전환 애니메이션
+===================== */
+
+.page-section.active {
+    animation: fadeInWithSnow 0.5s ease;
+}
+
+/* =====================
+   로딩 인디케이터
+===================== */
+
+#loadingIndicator {
+    backdrop-filter: blur(10px);
+}
+
+#loadingIndicator > div {
+    border: 3px solid var(--christmas-gold);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    border-radius: 16px;
+}
+
+/* =====================
+   캐치마인드 게임 화면
+===================== */
+
+.catchmind-game-screen {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.catchmind-image {
+    border: 3px solid var(--christmas-gold);
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.timer-display {
+    background: var(--gradient-christmas);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 900;
+    box-shadow: 0 2px 10px rgba(196, 30, 58, 0.3);
+}
+
+.timer-display.warning {
+    animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+/* =====================
+   힌트 리스트
+===================== */
+
+.hint-list {
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 12px;
+    border: 2px solid #e0e0e0;
+}
+
+.hint-item {
+    background: white;
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    border-left: 3px solid var(--christmas-green);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+/* =====================
+   난이도 버튼
+===================== */
+
+.difficulty-btn {
+    padding: 12px 24px;
+    border-radius: 8px;
+    border: 2px solid #e0e0e0;
+    background: white;
+    transition: all 0.3s ease;
+    font-weight: 600;
+}
+
+.difficulty-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.difficulty-btn.easy {
+    border-color: #4caf50;
+}
+
+.difficulty-btn.medium {
+    border-color: #ff9800;
+}
+
+.difficulty-btn.hard {
+    border-color: #f44336;
+}
+
+.difficulty-btn.active.easy {
+    background: #4caf50;
+    color: white;
+}
+
+.difficulty-btn.active.medium {
+    background: #ff9800;
+    color: white;
+}
+
+.difficulty-btn.active.hard {
+    background: #f44336;
+    color: white;
+}
+
+/* =====================
+   더보기 카드
+===================== */
+
+.more-card {
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.more-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(212, 175, 55, 0.2),
+        transparent
+    );
+    transition: left 0.5s ease;
+}
+
+.more-card:hover::before {
+    left: 100%;
+}
+
+.more-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    border-color: var(--christmas-gold);
+}
+
+/* =====================
+   이벤트 카드
+===================== */
+
+.event-card {
+    background: white;
+    border: 2px solid var(--christmas-gold);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 12px rgba(212, 175, 55, 0.2);
+}
+
+.event-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(196, 30, 58, 0.2);
+}
+
+/* =====================
+   유저 카드
+===================== */
+
+.user-card {
+    background: white;
+    border-left: 4px solid var(--christmas-red);
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+}
+
+.user-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+/* =====================
+   쿠폰 입력 카드
+===================== */
+
+.coupon-input-card {
+    background: white;
+    border: 2px solid var(--christmas-gold);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(212, 175, 55, 0.2);
+}
+
+/* =====================
+   QnA 카드
+===================== */
+
+.qna-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e0e0e0;
+    transition: all 0.3s ease;
+}
+
+.qna-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.qna-header {
+    background: var(--gradient-christmas);
+    color: white;
+    border-radius: 12px 12px 0 0;
+    padding: 12px 16px;
+}
+
+/* =====================
+   메신저 필터
+===================== */
+
+.messenger-filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.filter-chip {
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 2px solid #e0e0e0;
+    background: white;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.filter-chip:hover {
+    border-color: var(--christmas-green);
+}
+
+.filter-chip.active {
+    background: var(--gradient-christmas);
+    border-color: var(--christmas-red);
+    color: white;
+}
+
+/* =====================
+   답변 입력 영역
+===================== */
+
+.answer-input-wrapper {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.answer-input-wrapper .form-control {
+    flex: 1;
+}
+
+/* =====================
+   반응형 조정
+===================== */
+
+@media (max-width: 768px) {
+    .difficulty-buttons {
+        flex-direction: column;
+    }
+    
+    .difficulty-btn {
+        width: 100%;
+    }
+    
+    .answer-input-wrapper {
+        flex-direction: column;
+    }
+    
+    .answer-input-wrapper .btn-primary {
+        width: 100%;
+    }
+}
+
+/* =====================
+   고정 요소 제거 (산타, 트리)
+===================== */
+
+/* 기존 고정 장식 제거 */
+.main-content::before,
+.main-content::after {
+    content: '❄️' !important;
+    position: fixed !important;
+    font-size: 24px !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    z-index: 9999 !important;
+}
+
+/* =====================
+   텍스트 가독성 향상
+===================== */
+
+.article-title {
+    color: #212529;
+    line-height: 1.5;
+}
+
+.article-summary {
+    color: #495057;
+    line-height: 1.6;
+}
+
+.article-meta {
+    color: #6c757d;
+}
+
+.comment-author {
+    color: var(--christmas-red);
+    font-weight: 600;
+}
+
+/* =====================
+   버튼 스타일 통일
+===================== */
+
+.btn-secondary {
+    background: #6c757d;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.btn-success {
+    background: var(--christmas-green);
+    border: none;
+}
+
+.btn-success:hover {
+    background: #0d4626;
+}
+
+.btn-danger {
+    background: var(--christmas-red);
+    border: none;
+}
+
+.btn-danger:hover {
+    background: var(--christmas-accent);
+}
+
+.btn-info {
+    background: #17a2b8;
+    border: none;
+}
+
+.btn-info:hover {
+    background: #138496;
+}
+
+.btn-warning {
+    background: #ffc107;
+    border: none;
+    color: #212529;
+}
+
+.btn-warning:hover {
+    background: #e0a800;
+}
+
+/* =====================
+   통합 그림자 효과
+===================== */
+
+.card,
+.modal-content,
+.more-card,
+.event-card,
+.user-card,
+.article-card {
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* =====================
+   호버 효과 통일
+===================== */
+
+.card:hover,
+.more-card:hover,
+.event-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* =====================
+   최종 마무리
+===================== */
+
+/* 깔끔한 테두리 */
+.border-christmas {
+    border-color: var(--christmas-gold) !important;
+}
+
+/* 크리스마스 배경색 */
+.bg-christmas {
+    background: var(--gradient-christmas) !important;
+    color: white !important;
+}
+
+/* 텍스트 크리스마스 색상 */
+.text-christmas {
+    color: var(--christmas-red) !important;
+}
+
+/* =====================
+   🔥 설정 페이지 강제 가독성 개선 (최우선)
+===================== */
+
+/* 설정 섹션 전체 배경 */
+#settingsSection {
+    background: #f1f3f4 !important;
+}
+
+/* 모든 설정 카드 흰색 배경 */
+#settingsSection .settings-card,
+#settingsSection #profileNickname > div,
+#settingsSection #designSettingsCard {
+    background: white !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12) !important;
+}
+
+/* 모든 텍스트 검은색 강제 */
+#settingsSection h3,
+#settingsSection h4,
+#settingsSection p,
+#settingsSection label,
+#settingsSection span,
+#settingsSection strong,
+#settingsSection small,
+#settingsSection div {
+    color: #202124 !important;
+    text-shadow: none !important;
+}
+
+/* 토글 라벨 */
+#settingsSection .toggle-label {
+    background: #f8f9fa !important;
+}
+
+#settingsSection .toggle-text strong {
+    color: #202124 !important;
+}
+
+#settingsSection .toggle-text small {
+    color: #5f6368 !important;
+}
+
+/* 버튼 */
+#settingsSection .btn-block,
+#settingsSection button {
+    background: white !important;
+    color: #202124 !important;
+    border: 1px solid #dadce0 !important;
+}
+
+#settingsSection .btn-primary {
+    background: var(--christmas-red) !important;
+    color: white !important;
+    border: none !important;
+}
+
+#settingsSection .btn-secondary {
+    background: #6c757d !important;
+    color: white !important;
+}
+
+/* 아이콘만 빨간색 */
+#settingsSection .btn-block i {
+    color: var(--christmas-red) !important;
+}
+
+/* 테마 선택 버튼 */
+#settingsSection .theme-btn {
+    background: white !important;
+    color: #202124 !important;
+}
+
+#settingsSection .theme-btn div {
+    color: #202124 !important;
+}
+
+/* 입력 필드 */
+#settingsSection .form-control,
+#settingsSection input,
+#settingsSection textarea,
+#settingsSection select {
+    background: white !important;
+    color: #202124 !important;
+    border: 1px solid #dadce0 !important;
+}
+
+/* VIP 배지 */
+#settingsSection .vip-badge {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%) !important;
+    color: #000 !important;
+}
+
+/* 관리자 모드 */
+#settingsSection #adminModeIndicator div {
+    background: #e8f0fe !important;
+}
+
+#settingsSection #adminModeIndicator h4 {
+    color: #1967d2 !important;
+}
+
+#settingsSection #adminModeIndicator button {
+    color: #1967d2 !important;
+    background: white !important;
+}
+
+/* 경고 텍스트 빨간색 유지 */
+#settingsSection p[style*="color:#d93025"] {
+    color: #d93025 !important;
+}
+
+/* 정보 박스 */
+#settingsSection [style*="background:#fff3cd"],
+#settingsSection .info-text {
+    background: #fff3cd !important;
+    color: #856404 !important;
+}
+
+#settingsSection [style*="background:#f8f9fa"] {
+    background: #f8f9fa !important;
+    color: #6c757d !important;
+}
+
+/* 팔로우 섹션 */
+#settingsSection #followUsersSection label {
+    background: #f8f9fa !important;
+    color: #333 !important;
+}
+
+#settingsSection #followUsersSection small {
+    color: #868e96 !important;
+}
+
+/* 체크박스 */
+#settingsSection input[type="checkbox"] {
+    opacity: 1 !important;
+}
+
+/* 알림 상태 */
+#settingsSection .notification-status {
+    color: #202124 !important;
+}
+
+/* 섹션 헤더 */
+#settingsSection .section-header h2 {
+    color: #202124 !important;
+}
+
+/* 설정 구분선 */
+#settingsSection .settings-divider {
+    background: #dadce0 !important;
+}
