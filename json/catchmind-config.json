@@ -1,0 +1,717 @@
+{
+  "hintPenalty": 500,
+  "games": [
+    {
+      "id": "가위",
+      "difficulty": "easy",
+      "subject": "물건",
+      "imageUrl": "./catchmind/가위.png",
+      "answer": "가위",
+      "hints": ["2글자이다", "날카롭다", "자르는 용도이다"],
+      "timeLimit": 30,
+      "rewards": {
+        "10sec": 30,
+        "20sec": 10,
+        "30sec": 5
+      }
+    },
+    {
+      "id": "돈",
+      "difficulty": "easy",
+      "subject": "지폐",
+      "imageUrl": "./catchmind/돈.png",
+      "answer": "돈",
+      "hints": ["1글자이다", "미친놈아 주제를 봐", "? 힌트 없음 ㅋㅋ"],
+      "timeLimit": 30,
+      "rewards": {
+         "10sec": 30,
+        "20sec": 10,
+        "30sec": 5
+      }
+    },
+    {
+      "id": "당근",
+      "difficulty": "easy",
+      "subject": "음식",
+      "imageUrl": "./catchmind/당근.png",
+      "answer": "당근",
+      "hints": ["2글자이다", "채소이다", "맛없다"],
+      "timeLimit": 30,
+      "rewards": {
+         "10sec": 30,
+        "20sec": 10,
+        "30sec": 5
+      }
+    },
+    {
+      "id": "동전",
+      "difficulty": "easy",
+      "subject": "동전",
+      "imageUrl": "./catchmind/동전.png",
+      "answer": "동전",
+      "hints": ["? 주제를 봐", "주제가 정답임;;", "넌 ㄹㅈㄷ다 쿠폰코드 : 동전도 못 맞춘 허접"],
+      "timeLimit": 30,
+       "rewards": {
+      "10sec": 30,
+        "20sec": 10,
+        "30sec": 5
+      }
+    },
+        {
+      "id": "해",
+      "difficulty": "easy",
+      "subject": "자연",
+      "imageUrl": "./catchmind/해.png",
+      "answer": "해",
+      "hints": ["1글자이다", "뜨겁다", "심각하군.."],
+      "timeLimit": 30,
+      "rewards": {
+         "10sec": 30,
+        "20sec": 10,
+        "30sec": 5
+      }
+    },
+        {
+      "id": "사과",
+      "difficulty": "easy",
+      "subject": "과일",
+      "imageUrl": "./catchmind/사과.png",
+      "answer": "사과",
+      "hints": ["2글자이다", "달다", "건강에 좋다"],
+      "timeLimit": 30,
+      "rewards": {
+         "10sec": 30,
+        "20sec": 10,
+        "30sec": 5
+      }
+    },
+    {
+      "id": "차",
+      "difficulty": "easy",
+      "subject": "교통수단",
+      "imageUrl": "./catchmind/차.png",
+      "answer": "차",
+      "hints": ["1글자이다", "바퀴가 달려있다", "창문과 문이 있다"],
+      "timeLimit": 30,
+       "rewards": {
+      "10sec": 30,
+        "20sec": 10,
+        "30sec": 5
+      }
+    },
+    {
+      "id": "삼각형",
+      "difficulty": "easy",
+      "subject": "도형",
+      "imageUrl": "./catchmind/삼각형.png",
+      "answer": "삼각형",
+      "hints": ["3글자이다", "????", "힌트없어;;"],
+      "timeLimit": 30,
+      "rewards": {
+        "10sec": 30,
+        "20sec": 10,
+        "30sec": 5
+      }
+    },
+        {
+      "id": "원",
+      "difficulty": "easy",
+      "subject": "도형",
+      "imageUrl": "./catchmind/원.png",
+      "answer": "원",
+      "hints": ["1글자이다", "???????", "안과가보셈;;"],
+      "timeLimit": 30,
+      "rewards": {
+        "10sec": 30,
+        "20sec": 10,
+        "30sec": 5
+      }
+    },
+        {
+      "id": "사각형",
+      "difficulty": "easy",
+      "subject": "도형",
+      "imageUrl": "./catchmind/사각형.png",
+      "answer": "사각형",
+      "hints": ["3글자이다", "왜 그러는거야..", "저리가"],
+      "timeLimit": 30,
+      "rewards": {
+        "10sec": 30,
+        "20sec": 10,
+        "30sec": 5
+      }
+    },
+        {
+      "id": "별",
+      "difficulty": "easy",
+      "subject": "도형",
+      "imageUrl": "./catchmind/별.png",
+      "answer": "별",
+      "hints": ["1글자이다", "네?", "심각하시네요.."],
+      "timeLimit": 30,
+     "rewards": {
+        "10sec": 30,
+        "20sec": 10,
+        "30sec": 5
+      }
+    },
+        {
+      "id": "유튜브",
+      "difficulty": "easy",
+      "subject": "매체",
+      "imageUrl": "./catchmind/유튜브.png",
+      "answer": "유튜브",
+      "hints": ["3글자이다", "동영상을 볼 수 있다", "해정이가 힌트를 가져가버렸다"],
+      "timeLimit": 30,
+    "rewards": {
+        "10sec": 30,
+        "20sec": 10,
+        "30sec": 5
+      }
+    },
+        {
+      "id": "하트",
+      "difficulty": "easy",
+      "subject": "도형",
+      "imageUrl": "./catchmind/하트.png",
+      "answer": "하트",
+      "hints": ["2글자이다", "사랑", "정답은 하트이다;;"],
+      "timeLimit": 30,
+      "rewards": {
+        "10sec": 30,
+        "20sec": 10,
+        "30sec": 5
+      }
+    },
+        {
+      "id": "집",
+      "difficulty": "easy",
+      "subject": "건물",
+      "imageUrl": "./catchmind/집.png",
+      "answer": "집",
+      "hints": ["1글자이다", "아늑하다", "창문과 문이 있다"],
+      "timeLimit": 30,
+      "rewards": {
+        "10sec": 30,
+        "20sec": 10,
+        "30sec": 5
+      }
+    },
+        {
+      "id": "나무",
+      "difficulty": "easy",
+      "subject": "식물",
+      "imageUrl": "./catchmind/나무.png",
+      "answer": "나무",
+      "hints": ["2글자이다", "아니 이걸 못 맞춰?", "?? 정답은 나무"],
+      "timeLimit": 30,
+      "rewards": {
+        "10sec": 30,
+        "20sec": 10,
+        "30sec": 5
+      }
+    },
+        {
+      "id": "꽃",
+      "difficulty": "easy",
+      "subject": "식물",
+      "imageUrl": "./catchmind/꽃.png",
+      "answer": "꽃",
+      "hints": ["1글자이다", "이쁘다", "해정이 닮은거다"],
+      "timeLimit": 30,
+      "rewards": {
+        "10sec": 30,
+        "20sec": 10,
+        "30sec": 5
+      }
+    },
+        {
+      "id": "고양이",
+      "difficulty": "medium",
+      "subject": "동물",
+      "imageUrl": "./catchmind/고양이.png",
+      "answer": "고양이",
+      "hints": ["3글자이다", "털이 많이 빠진다", "귀엽다 고XX"],
+      "timeLimit": 20,
+      "rewards": {
+        "5sec": 100,
+        "10sec": 50,
+        "15sec": 40
+      }
+    },
+        {
+      "id": "구름",
+      "difficulty": "medium",
+      "subject": "자연",
+      "imageUrl": "./catchmind/구름.png",
+      "answer": "구름",
+      "hints": ["2글자이다", "구X", "구름이다 정답;;"],
+     "timeLimit": 20,
+      "rewards": {
+        "5sec": 100,
+        "10sec": 50,
+        "15sec": 40
+      }
+    },
+        {
+      "id": "네이버",
+      "difficulty": "medium",
+      "subject": "웹사이트",
+      "imageUrl": "./catchmind/네이버.png",
+      "answer": "네이버",
+      "hints": ["3글자이다", "초록창", "검색엔진"],
+     "timeLimit": 20,
+      "rewards": {
+        "5sec": 100,
+        "10sec": 50,
+        "15sec": 40
+      }
+    },
+        {
+      "id": "도라에몽",
+      "difficulty": "medium",
+      "subject": "캐릭터",
+      "imageUrl": "./catchmind/도라에몽.png",
+      "answer": "도라에몽",
+      "hints": ["4글자이다", "노진구 ㅗ", "대나무 헬리콥터"],
+     "timeLimit": 20,
+      "rewards": {
+        "5sec": 100,
+        "10sec": 50,
+        "15sec": 40
+      }
+    },
+        {
+      "id": "마인크래프트",
+      "difficulty": "medium",
+      "subject": "게임",
+      "imageUrl": "./catchmind/마인크래프트.png",
+      "answer": "마인크래프트",
+      "hints": ["6글자이다", "네모네모네모네모네모네모", "마인xxxx"],
+      "timeLimit": 20,
+      "rewards": {
+        "5sec": 100,
+        "10sec": 50,
+        "15sec": 40
+      }
+    },
+        {
+      "id": "메타몽",
+      "difficulty": "medium",
+      "subject": "캐릭터",
+      "imageUrl": "./catchmind/메타몽.png",
+      "answer": "메타몽",
+      "hints": ["3글자이다", "포켓몬", "능력 : 변신"],
+      "timeLimit": 20,
+      "rewards": {
+        "5sec": 100,
+        "10sec": 50,
+        "15sec": 40
+      }
+    },
+        {
+      "id": "사람",
+      "difficulty": "medium",
+      "subject": "생물",
+      "imageUrl": "./catchmind/사람.png",
+      "answer": "사람",
+      "hints": ["2글자이다", "사x", "너, 나, 우리"],
+      "timeLimit": 20,
+      "rewards": {
+        "5sec": 100,
+        "10sec": 50,
+        "15sec": 40
+      }
+    },
+        {
+      "id": "스마트폰",
+      "difficulty": "medium",
+      "subject": "전자기기",
+      "imageUrl": "./catchmind/스마트폰.png",
+      "answer": "스마트폰",
+      "hints": ["4글자이다", "편리하다", "스마xx"],
+      "timeLimit": 20,
+      "rewards": {
+        "5sec": 100,
+        "10sec": 50,
+        "15sec": 40
+      }
+    },
+        {
+      "id": "시계",
+      "difficulty": "medium",
+      "subject": "기계",
+      "imageUrl": "./catchmind/시계.png",
+      "answer": "시계",
+      "hints": ["2글자이다", "움직인다", "째각째각"],
+      "timeLimit": 20,
+      "rewards": {
+        "5sec": 100,
+        "10sec": 50,
+        "15sec": 40
+      }
+    },
+        {
+      "id": "안경",
+      "difficulty": "medium",
+      "subject": "소품",
+      "imageUrl": "./catchmind/안경.png",
+      "answer": "안경",
+      "hints": ["2글자이다", "안과가봐라", "시력이 안 좋다"],
+      "timeLimit": 20,
+      "rewards": {
+        "5sec": 100,
+        "10sec": 50,
+        "15sec": 40
+      }
+    },
+        {
+      "id": "연필",
+      "difficulty": "medium",
+      "subject": "문구",
+      "imageUrl": "./catchmind/연필.png",
+      "answer": "연필",
+      "hints": ["2글자이다", "끝 부분으로 무언갈 한다", "글씨를 쓴다"],
+      "timeLimit": 20,
+      "rewards": {
+        "5sec": 100,
+        "10sec": 50,
+        "15sec": 40
+      }
+    },
+        {
+      "id": "총",
+      "difficulty": "medium",
+      "subject": "무기",
+      "imageUrl": "./catchmind/총.png",
+      "answer": "총",
+      "hints": ["1글자이다", "무섭다", "탕!"],
+      "timeLimit": 20,
+      "rewards": {
+        "5sec": 100,
+        "10sec": 50,
+        "15sec": 40
+      }
+    },
+        {
+      "id": "카카오톡",
+      "difficulty": "medium",
+      "subject": "메신저",
+      "imageUrl": "./catchmind/카카오톡.png",
+      "answer": "카카오톡",
+      "hints": ["4글자이다", "대화를 한다", "카톡!"],
+      "timeLimit": 20,
+      "rewards": {
+        "5sec": 100,
+        "10sec": 50,
+        "15sec": 40
+      }
+    },
+        {
+      "id": "커플",
+      "difficulty": "medium",
+      "subject": "관계",
+      "imageUrl": "./catchmind/커플.png",
+      "answer": "커플",
+      "hints": ["2글자이다", "꼴 보기 싫다", "커x"],
+      "timeLimit": 20,
+      "rewards": {
+        "5sec": 100,
+        "10sec": 50,
+        "15sec": 40
+      }
+    },
+        {
+      "id": "노트북",
+      "difficulty": "medium",
+      "subject": "전자기기",
+      "imageUrl": "./catchmind/노트북.png",
+      "answer": "노트북",
+      "hints": ["3글자이다", "편리하다", "마우스가 있다"],
+      "timeLimit": 20,
+      "rewards": {
+        "5sec": 100,
+        "10sec": 50,
+        "15sec": 40
+      }
+    },
+        {
+      "id": "코끼리",
+      "difficulty": "medium",
+      "subject": "동물",
+      "imageUrl": "./catchmind/코끼리.png",
+      "answer": "코끼리",
+      "hints": ["3글자이다", "크다", "코가 손이다"],
+      "timeLimit": 20,
+      "rewards": {
+        "5sec": 100,
+        "10sec": 50,
+        "15sec": 40
+      }
+    },
+        {
+      "id": "태극기",
+      "difficulty": "medium",
+      "subject": "국기",
+      "imageUrl": "./catchmind/태극기.png",
+      "answer": "태극기",
+      "hints": ["3글자이다", "동해물과", "백두산이"],
+      "timeLimit": 20,
+      "rewards": {
+        "5sec": 100,
+        "10sec": 50,
+        "15sec": 40
+      }
+    },
+        {
+      "id": "과학자",
+      "difficulty": "hard",
+      "subject": "??",
+      "imageUrl": "./catchmind/과학자.png",
+      "answer": "과학자",
+      "hints": ["손을 자세히 보자", "논문이 있다", "직업이다"],
+      "timeLimit": 15,
+      "rewards": {
+        "1sec": 1500,
+        "2sec": 1450,
+        "3sec": 1300,
+        "4sec": 1250,
+        "5sec": 1100,
+        "6sec": 1000,
+        "7sec": 900,
+        "8sec": 800,
+        "9sec": 700,
+        "10sec": 600,
+        "11sec": 500,
+        "12sec": 400,
+        "13sec": 300,
+        "14sec": 200
+      }
+    },
+        {
+      "id": "눈사람",
+      "difficulty": "hard",
+      "subject": "??",
+      "imageUrl": "./catchmind/눈사람.png",
+      "answer": "눈사람",
+      "hints": ["하늘에서 뭐가 떨어진다", "코에 무언가 달려있다", "눈, 당근"],
+      "timeLimit": 15,
+      "rewards": {
+        "1sec": 1500,
+        "2sec": 1450,
+        "3sec": 1300,
+        "4sec": 1250,
+        "5sec": 1100,
+        "6sec": 1000,
+        "7sec": 900,
+        "8sec": 800,
+        "9sec": 700,
+        "10sec": 600,
+        "11sec": 500,
+        "12sec": 400,
+        "13sec": 300,
+        "14sec": 200
+      }
+    },
+        {
+      "id": "스파이더맨",
+      "difficulty": "hard",
+      "subject": "??",
+      "imageUrl": "./catchmind/스파이더맨.png",
+      "answer": "스파이더맨",
+      "hints": ["손을 주목해보자", "영웅이다", "거미와 연관되어있다"],
+      "timeLimit": 15,
+      "rewards": {
+        "1sec": 1500,
+        "2sec": 1450,
+        "3sec": 1300,
+        "4sec": 1250,
+        "5sec": 1100,
+        "6sec": 1000,
+        "7sec": 900,
+        "8sec": 800,
+        "9sec": 700,
+        "10sec": 600,
+        "11sec": 500,
+        "12sec": 400,
+        "13sec": 300,
+        "14sec": 200
+      }
+    },
+        {
+      "id": "스폰지밥",
+      "difficulty": "hard",
+      "subject": "??",
+      "imageUrl": "./catchmind/스폰지밥.png",
+      "answer": "스폰지밥",
+      "hints": ["노란색", "네모바지", "핑핑이"],
+      "timeLimit": 15,
+      "rewards": {
+        "1sec": 1500,
+        "2sec": 1450,
+        "3sec": 1300,
+        "4sec": 1250,
+        "5sec": 1100,
+        "6sec": 1000,
+        "7sec": 900,
+        "8sec": 800,
+        "9sec": 700,
+        "10sec": 600,
+        "11sec": 500,
+        "12sec": 400,
+        "13sec": 300,
+        "14sec": 200
+      }
+    },
+        {
+      "id": "정아영",
+      "difficulty": "hard",
+      "subject": "??",
+      "imageUrl": "./catchmind/정아영.png",
+      "answer": "정아영",
+      "hints": ["키가 너무너무 작다", "개허접이다", "ㅈㄴ 성격이 파탄난 인물이다"],
+      "timeLimit": 15,
+      "rewards": {
+        "1sec": 1500,
+        "2sec": 1450,
+        "3sec": 1300,
+        "4sec": 1250,
+        "5sec": 1100,
+        "6sec": 1000,
+        "7sec": 900,
+        "8sec": 800,
+        "9sec": 700,
+        "10sec": 600,
+        "11sec": 500,
+        "12sec": 400,
+        "13sec": 300,
+        "14sec": 200
+      }
+    },
+        {
+      "id": "정혜성",
+      "difficulty": "hard",
+      "subject": "??",
+      "imageUrl": "./catchmind/정혜성.png",
+      "answer": "정혜성",
+      "hints": ["ㅈㄴ 착하다", "ㅈㄴ 잘생겼다", "ㅈㄴ 똑똑한 인물이다"],
+      "timeLimit": 15,
+      "rewards": {
+        "1sec": 1500,
+        "2sec": 1450,
+        "3sec": 1300,
+        "4sec": 1250,
+        "5sec": 1100,
+        "6sec": 1000,
+        "7sec": 900,
+        "8sec": 800,
+        "9sec": 700,
+        "10sec": 600,
+        "11sec": 500,
+        "12sec": 400,
+        "13sec": 300,
+        "14sec": 200
+      }
+    },
+        {
+      "id": "짱구",
+      "difficulty": "hard",
+      "subject": "??",
+      "imageUrl": "./catchmind/짱구.png",
+      "answer": "짱구",
+      "hints": ["감자머리", "옷과 바지 색깔", "봉미선"],
+      "timeLimit": 15,
+      "rewards": {
+        "1sec": 1500,
+        "2sec": 1450,
+        "3sec": 1300,
+        "4sec": 1250,
+        "5sec": 1100,
+        "6sec": 1000,
+        "7sec": 900,
+        "8sec": 800,
+        "9sec": 700,
+        "10sec": 600,
+        "11sec": 500,
+        "12sec": 400,
+        "13sec": 300,
+        "14sec": 200
+      }
+    },
+        {
+      "id": "코난",
+      "difficulty": "hard",
+      "subject": "??",
+      "imageUrl": "./catchmind/코난.png",
+      "answer": "코난",
+      "hints": ["나비넥타이", "마취총", "탐정"],
+      "timeLimit": 15,
+      "rewards": {
+        "1sec": 1500,
+        "2sec": 1450,
+        "3sec": 1300,
+        "4sec": 1250,
+        "5sec": 1100,
+        "6sec": 1000,
+        "7sec": 900,
+        "8sec": 800,
+        "9sec": 700,
+        "10sec": 600,
+        "11sec": 500,
+        "12sec": 400,
+        "13sec": 300,
+        "14sec": 200
+      }
+    },
+        {
+      "id": "피카츄",
+      "difficulty": "hard",
+      "subject": "??",
+      "imageUrl": "./catchmind/피카츄.png",
+      "answer": "피카츄",
+      "hints": ["노란색이다", "전기!", "포켓몬이다"],
+      "timeLimit": 15,
+      "rewards": {
+        "1sec": 1500,
+        "2sec": 1450,
+        "3sec": 1300,
+        "4sec": 1250,
+        "5sec": 1100,
+        "6sec": 1000,
+        "7sec": 900,
+        "8sec": 800,
+        "9sec": 700,
+        "10sec": 600,
+        "11sec": 500,
+        "12sec": 400,
+        "13sec": 300,
+        "14sec": 200
+      }
+    },
+        {
+      "id": "도둑",
+      "difficulty": "hard",
+      "subject": "??",
+      "imageUrl": "./catchmind/도둑.png",
+      "answer": "도둑",
+      "hints": ["복면을 썼다", "양손에 현금이 가득하다", "범죄를 저지른다"],
+      "timeLimit": 15,
+      "rewards": {
+        "1sec": 1500,
+        "2sec": 1450,
+        "3sec": 1300,
+        "4sec": 1250,
+        "5sec": 1100,
+        "6sec": 1000,
+        "7sec": 900,
+        "8sec": 800,
+        "9sec": 700,
+        "10sec": 600,
+        "11sec": 500,
+        "12sec": 400,
+        "13sec": 300,
+        "14sec": 200
+      }
+    }
+  ]
+}
