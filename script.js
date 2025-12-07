@@ -2139,7 +2139,9 @@ function previewThumbnail(event) {
     }
 }
 
-// 기사 작성 폼 설정 (수정된 버전)
+// ===== 이 함수를 script.js의 기존 setupArticleForm() 함수와 교체하세요 =====
+
+// 기사 작성 폼 설정
 function setupArticleForm() {
     const form = document.getElementById("articleForm");
     if(!form) return;
@@ -2224,7 +2226,6 @@ function setupArticleForm() {
                     warningEl.style.display = "none";
                     alert("기사가 발행되었습니다!");
                     
-                    // 알림 전송
                     sendNotification('article', {
                         authorEmail: A.authorEmail,
                         authorName: A.author,
@@ -2244,7 +2245,6 @@ function setupArticleForm() {
                 warningEl.style.display = "none";
                 alert("기사가 발행되었습니다!");
                 
-                // 알림 전송
                 sendNotification('article', {
                     authorEmail: A.authorEmail,
                     authorName: A.author,
@@ -2257,20 +2257,8 @@ function setupArticleForm() {
         }
     });
 }
-                
-                // 알림 전송
-                sendNotification('article', {
-                    authorEmail: A.authorEmail,
-                    authorName: A.author,
-                    title: A.title,
-                    articleId: A.id
-                });
-                
-                showArticles();
-            });
-        }
-    });
-}
+
+// ===== 여기까지가 setupArticleForm() 함수입니다 =====
 
 // ===== Part 9: 댓글 관리 =====
 
