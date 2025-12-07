@@ -273,20 +273,8 @@ async function updateSettingsWithDesign() {
                     </div>
                 </label>
             </div>
-            
-            <button onclick="testSound()" class="btn-secondary btn-block" style="margin-top:15px;" ${currentTheme !== 'christmas' ? 'disabled' : ''}>
-                <i class="fas fa-volume-up"></i> 효과음 테스트
-            </button>
-            
-            ${currentTheme === 'christmas' ? `
-                <div style="margin-top:15px; padding:10px; background:#f8f9fa; border-radius:6px; font-size:12px; color:#6c757d;">
-                    ℹ️ <strong>사운드 파일 경로:</strong><br>
-                    • BGM: <code>sounds/christmas-bgm.mp3</code><br>
-                    • 효과음: <code>sounds/click.mp3, success.mp3, notification.mp3, error.mp3</code>
-                </div>
-            ` : ''}
         `;
-        
+           
         const designSettingsHTML = `
     <div id="designSettingsCard" class="settings-card" style="margin-top:20px; background:white !important;">
         
@@ -430,11 +418,6 @@ window.toggleBGM = function() {
         stopBGM();
         showToastNotification("🎵 배경음악 비활성화", "배경음악이 꺼졌습니다.", null);
     }
-}
-
-// 효과음 테스트
-window.testSound = function() {
-    playSound('notification');
 }
 
 // 버튼 클릭 시 효과음 (이벤트 위임)
