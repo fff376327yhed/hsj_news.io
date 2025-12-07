@@ -1090,6 +1090,104 @@ document.addEventListener('visibilitychange', () => {
 // ===== Part 4 수정: 인증 상태 변경 (점검 모드 체크 추가) =====
 auth.onAuthStateChanged(async user => {
     console.log("🔐 인증 상태 변경:", user ? user.email : "로그아웃");
+
+    // ===== sendNotification 함수 추가 위치 =====
+// Part 4의 시작 부분에 이 함수를 추가하세요
+
+// 알림 전송 함수
+async function sendNotification(type, data) {
+    console.log("📤 알림 전송 시작:", type, data);
+    
+    try {
+        // 1. 알림 받을 대상 찾기
+        let targetUsers = [];
+        
+        if (type === 'article') {
+            // 새 기사 - 팔로우한 사람들에게 알림
+            const usersSnapshot = await db.ref("users").once("value");
+            const usersData = usersSnapshot.val() || {};
+            
+            const authorEmailKey = btoa(data.authorEmail).replace(/=/g, '');
+            
+            Object.entries(usersData).forEach(([uid, userData]) => {
+                if(userData.notificationsEnabled !== false) {
+                    const following = userData.following || {};
+                    if(following[authorEmailKey]) {
+                        targetUsers.push(uid);
+                    }
+                }
+            });
+        } 
+        else if (type === 'comment') {
+            // 댓글 - 팔로우한 사람들에게 알림
+            const usersSnapshot = await db.ref("users").once("value");
+            const usersData = usersSnapshot.val() || {};
+            
+            const commenterEmailKey = btoa(data.authorEmail).replace(/=/g, '');
+            
+            Object.entries(usersData).forEach(([uid, userData]) => {
+                if(userData.notificationsEnabled !== false) {
+                    const following = userData.following || {};
+                    if(following[commenterEmailKey]) {
+                        targetUsers.push(uid);
+                    }
+                }
+            });
+        }
+        else if (type === 'myArticleComment') {
+            // 내 기사에 댓글 - 기사 작성자에게 알림
+            const usersSnapshot = await db.ref("users").once("value");
+            const usersData = usersSnapshot.val() || {};
+            
+            Object.entries(usersData).forEach(([uid, userData]) => {
+                if(userData.email === data.articleAuthorEmail && userData.notificationsEnabled !== false) {
+                    targetUsers.push(uid);
+                }
+            });
+        }
+        
+        // 2. 각 대상에게 알림 저장
+        const timestamp = Date.now();
+        const updates = {};
+        
+        targetUsers.forEach(uid => {
+            const notifId = `notif_${timestamp}_${Math.random().toString(36).substr(2, 9)}`;
+            
+            let title, text;
+            
+            if(type === 'article') {
+                title = '📰 새 기사';
+                text = `${data.authorName}님이 새 기사를 작성했습니다: "${data.title}"`;
+            } else if(type === 'comment') {
+                title = '💬 새 댓글';
+                text = `${data.authorName}님이 새 댓글을 작성했습니다: "${data.content.substring(0, 50)}..."`;
+            } else if(type === 'myArticleComment') {
+                title = '💭 내 기사에 새 댓글';
+                text = `${data.commenterName}님이 당신의 기사에 댓글을 남겼습니다: "${data.content.substring(0, 50)}..."`;
+            }
+            
+            updates[`notifications/${uid}/${notifId}`] = {
+                type: type,
+                title: title,
+                text: text,
+                articleId: data.articleId,
+                timestamp: timestamp,
+                read: false
+            };
+        });
+        
+        // 3. Firebase에 저장
+        if(Object.keys(updates).length > 0) {
+            await db.ref().update(updates);
+            console.log(`✅ ${Object.keys(updates).length}개의 알림 전송 완료`);
+        } else {
+            console.log("📭 알림 받을 대상이 없습니다");
+        }
+        
+    } catch(error) {
+        console.error("❌ 알림 전송 실패:", error);
+    }
+}
     
     if (user) {
         console.log("로그인 감지됨:", user.email);
