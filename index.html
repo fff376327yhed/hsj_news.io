@@ -32,21 +32,26 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="./style.css">
+    <!-- Custom CSS 경로 수정 -->
+<link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
 
-<!-- 모바일 헤더 -->
-<header class="mobile-header">
+
     <div class="header-content">
         <div class="logo-section">
             <h1 class="logo">📰 해정뉴스</h1>
             <p class="logo-sub">해정이의 개 쩌는 뉴스사이트</p>
         </div>
-        <button class="profile-btn" id="headerProfileBtn" onclick="toggleProfileMenu()">
-            <i class="fas fa-user-circle"></i>
-        </button>
+        <div class="header-right">
+            <div class="money-display" id="headerMoney" onclick="showMoneyDetail()">
+                <i class="fas fa-coins"></i>
+                <span id="moneyAmount">0</span>원
+            </div>
+            <button class="profile-btn" id="headerProfileBtn" onclick="toggleProfileMenu()">
+                <i class="fas fa-user-circle"></i>
+            </button>
+        </div>
     </div>
     
     <!-- 프로필 드롭다운 메뉴 -->
@@ -142,13 +147,41 @@
     <div id="freeboardLoadMoreContainer" class="load-more"></div>
 </section>
 
-<!-- 더보기 섹션 -->
-<section class="page-section" id="moreMenuSection">
+<!-- 상점 섹션 -->
+<section class="page-section" id="shopSection">
     <div class="section-header">
-        <h2>📋 더보기</h2>
+        <button onclick="showMoreMenu()" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h2>🛍️ 상점</h2>
     </div>
     
+    <div id="shopContent"></div>
+</section>
+
+<!-- 인벤토리 섹션 -->
+<section class="page-section" id="inventorySection">
+    <div class="section-header">
+        <button onclick="showMoreMenu()" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h2>🎁 인벤토리</h2>
+    </div>
+    
+    <div id="inventoryContent"></div>
+</section>
+
+<!-- index.html에서 더보기 섹션을 찾아 이 코드로 교체하세요 -->
+
+<!-- 더보기 섹션 -->
+<section class="page-section" id="moreMenuSection">
     <div class="more-menu-grid">
+        <!-- ⭐ 프로필 사진 설정 버튼 추가 -->
+        <button onclick="openProfilePhotoModal()" class="more-card">
+            <i class="fas fa-user-circle"></i>
+            <span>프로필 사진</span>
+        </button>
+        
         <button onclick="showFreeboard()" class="more-card">
             <i class="fas fa-comments"></i>
             <span>자유게시판</span>
@@ -158,9 +191,26 @@
             <span>메신저</span>
             <span class="notification-badge" id="messengerBadge" style="display:none;"></span>
         </button>
+        <!-- 더보기 섹션에 추가 -->
+<button onclick="showInventoryPage()" class="more-card">
+    <i class="fas fa-box-open"></i>
+    <span>인벤토리</span>
+</button>
+        <button onclick="showShop()" class="more-card">
+    <i class="fas fa-shopping-bag"></i>
+    <span>상점</span>
+</button>
         <button onclick="showAdminEvent()" class="more-card" id="moreEventBtn" style="display:none;">
-            <i class="fas fa-star"></i>
-            <span>이벤트 관리</span>
+            <i class="fas fa-crown"></i>
+            <span>VIP 전용 관리</span>
+        </button>
+        <button onclick="showEventMenu()" class="more-card">
+            <i class="fas fa-gift"></i>
+            <span>이벤트</span>
+        </button>
+        <button onclick="showCouponPage()" class="more-card">
+            <i class="fas fa-ticket-alt"></i>
+            <span>쿠폰</span>
         </button>
         <button onclick="showPatchNotesPage()" class="more-card">
             <i class="fas fa-file-alt"></i>
@@ -250,13 +300,16 @@
     </form>
 </section>
 
-<!-- 설정 섹션 -->
+<!-- 설정 섹션 - 이 전체를 교체하세요 -->
 <section class="page-section" id="settingsSection">
     <div class="section-header">
         <h2>⚙️ 설정</h2>
     </div>
     
-    <div id="profileNickname" class="profile-card"></div>
+    <!-- ⭐ 프로필 카드 (프로필 사진 버튼 포함) -->
+    <div id="profileNickname" class="profile-card">
+        <!-- 여기에 동적으로 내용이 로드됩니다 -->
+    </div>
     
     <!-- 알림 설정 -->
     <div class="settings-card">
@@ -396,7 +449,7 @@
         <button onclick="showMoreMenu()" class="btn-back">
             <i class="fas fa-arrow-left"></i>
         </button>
-        <h2>🎯 관리자 이벤트</h2>
+        <h2>👑 VIP 전용 관리</h2>
     </div>
     
     <div class="admin-event-grid">
@@ -411,6 +464,55 @@
     </div>
     
     <div id="eventContent"></div>
+</section>
+
+<!-- 이벤트 메뉴 섹션 -->
+<section class="page-section" id="eventMenuSection">
+    <div class="section-header">
+        <button onclick="showMoreMenu()" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h2>🎮 이벤트</h2>
+    </div>
+    
+    <div class="event-menu-grid">
+        <button onclick="showCatchMind()" class="event-card">
+            <i class="fas fa-gamepad"></i>
+            <span>캐치마인드</span>
+        </button>
+    </div>
+</section>
+
+<!-- 캐치마인드 게임 섹션 -->
+<section class="page-section" id="catchMindSection">
+    <div class="section-header">
+        <button onclick="showEventMenu()" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h2>🎨 캐치마인드</h2>
+    </div>
+    
+    <div id="catchMindContent"></div>
+</section>
+
+<!-- 쿠폰 섹션 -->
+<section class="page-section" id="couponSection">
+    <div class="section-header">
+        <button onclick="showMoreMenu()" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h2>🎟️ 쿠폰</h2>
+    </div>
+    
+    <div class="coupon-input-card">
+        <h3>쿠폰 입력</h3>
+        <div class="coupon-input-wrapper">
+            <input id="couponCodeInput" placeholder="쿠폰 코드를 입력하세요" class="form-control">
+            <button onclick="redeemCoupon()" class="btn-primary">사용하기</button>
+        </div>
+    </div>
+    
+    <div id="couponHistory"></div>
 </section>
 
 <!-- 팝업 -->
@@ -638,6 +740,16 @@
 
 </main>
 
-<script src="script.js"></script>
+<!-- 쿠폰 페이지 -->
+<div id="couponSection" class="page-section">
+    <div id="couponContent"></div>
+</div>
+
+<!-- 하단의 스크립트 경로들 수정 -->
+<script src="./js/profile-photo-system.js"></script>
+<script src="./js/shop-system.js"></script>
+<script src="./js/script.js"></script>
+<script src="./js/christmas-sound-system.js"></script>
+
 </body>
 </html>
