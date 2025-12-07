@@ -131,31 +131,6 @@
       "icon": "🎁",
       "decorationType": "badge",
       "featured": false
-    },
-    {
-      "id": "vip_christmas_bundle",
-      "category": "themes",
-      "name": "🌟 VIP 크리스마스 패키지",
-      "description": "모든 크리스마스 아이템이 포함된 프리미엄 번들! (30% 할인)",
-      "price": 700000,
-      "imageUrl": "./shop-images/vip-bundle.jpg",
-      "maxPurchases": 1,
-      "unlocks": "all_christmas_items",
-      "icon": "🌟",
-      "featured": true,
-      "isBundle": true,
-      "bundleItems": [
-        "christmas_theme",
-        "christmas_sounds",
-        "christmas_bgm",
-        "santa_hat",
-        "snowflake_border",
-        "christmas_frame",
-        "reindeer_antlers",
-        "christmas_lights",
-        "snowman_buddy",
-        "gift_badge"
-      ]
     }
   ],
   "shopSettings": {
