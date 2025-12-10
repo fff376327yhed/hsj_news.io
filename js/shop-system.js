@@ -3,26 +3,42 @@
 let shopConfig = null;
 let userInventory = [];
 
-// 상점 설정 로드
 async function loadShopConfig() {
     try {
-        const response = await fetch('./json/shop-config.json')  // 경로 수정
+        const response = await fetch('./json/shop-config.json')
         shopConfig = await response.json();
         console.log("✅ 상점 설정 로드 완료:", shopConfig.items.length + "개 아이템");
         
-        // 신규 유저 환영 보너스
-        checkWelcomeBonus();
+        // ✅ 1초 후에 실행 (script.js 완전 로드 대기)
+        setTimeout(() => {
+            checkWelcomeBonus();
+        }, 1000);
+        
     } catch(err) {
         console.error("❌ 상점 설정 로드 실패:", err);
         shopConfig = { categories: [], items: [], shopSettings: {} };
     }
 }
 
-// 신규 유저 환영 보너스
+// shop-system.js에서 checkWelcomeBonus 함수만 수정
+
+// ✅ 수정된 버전 - isLoggedIn 체크 강화
 async function checkWelcomeBonus() {
-    if(!isLoggedIn()) return;
+    // ⭐ window 객체에서 isLoggedIn 함수 찾기
+    if(typeof window.isLoggedIn !== 'function') {
+        console.warn("⚠️ isLoggedIn 함수가 아직 로드되지 않았습니다. 건너뜁니다.");
+        return;
+    }
     
-    const uid = getUserId();
+    if(!window.isLoggedIn()) return;
+    
+    // ⭐ getUserId도 동일하게 체크
+    if(typeof window.getUserId !== 'function') {
+        console.warn("⚠️ getUserId 함수가 아직 로드되지 않았습니다.");
+        return;
+    }
+    
+    const uid = window.getUserId();
     const snapshot = await db.ref("users/" + uid + "/receivedWelcomeBonus").once("value");
     
     if(!snapshot.exists() && shopConfig.shopSettings.welcomeBonus) {
@@ -33,6 +49,23 @@ async function checkWelcomeBonus() {
     }
 }
 
+// 또는 더 안전한 방법: setTimeout으로 지연 실행
+async function checkWelcomeBonusSafe() {
+    // ✅ 1초 후에 실행하여 script.js가 완전히 로드되도록 대기
+    setTimeout(async () => {
+        if(!isLoggedIn()) return;
+        
+        const uid = getUserId();
+        const snapshot = await db.ref("users/" + uid + "/receivedWelcomeBonus").once("value");
+        
+        if(!snapshot.exists() && shopConfig.shopSettings.welcomeBonus) {
+            await updateUserMoney(shopConfig.shopSettings.welcomeBonus, "신규 가입 환영 보너스");
+            await db.ref("users/" + uid + "/receivedWelcomeBonus").set(true);
+            
+            alert(shopConfig.shopSettings.welcomeMessage || "환영합니다!");
+        }
+    }, 1000); // 1초 지연
+}
 // 상점 페이지 표시
 window.showShop = async function() {
     if(!isLoggedIn()) {
@@ -201,14 +234,12 @@ async function loadUserInventory() {
     userInventory = snapshot.val() || [];
 }
 
-// 상품 구매 함수 수정 (shop-system.js 내부)
 window.purchaseItem = async function(itemId) {
     if(!isLoggedIn()) {
         alert("로그인이 필요합니다!");
         return;
     }
     
-    // [수정 1] shopItems 변수 오류 수정 -> shopConfig.items 사용
     if (!shopConfig || !shopConfig.items) {
         alert("상점 데이터를 로딩 중입니다. 잠시 후 다시 시도해주세요.");
         return;
@@ -218,10 +249,10 @@ window.purchaseItem = async function(itemId) {
     if(!item) return;
     
     const uid = getUserId();
+    const unlockValue = item.unlocks || itemId; // unlocks 값 미리 가져오기
     
     try {
         // 현재 보유 포인트 확인
-        // [수정 2] 문자열 비교 오류 방지를 위해 Number()로 강제 형변환
         let currentMoney = await getUserMoney();
         currentMoney = Number(currentMoney); 
         const itemPrice = Number(item.price);
@@ -233,14 +264,13 @@ window.purchaseItem = async function(itemId) {
         });
         
         // 포인트 부족 체크
-        // [수정 3] 형변환된 숫자로 비교하여 정확도 보장
         if(currentMoney < itemPrice) {
             alert(`💸 포인트가 부족합니다!\n\n필요: ${itemPrice.toLocaleString()}원\n보유: ${currentMoney.toLocaleString()}원`);
             return;
         }
         
-        // 이미 구매했는지 확인
-        const purchaseSnapshot = await db.ref("users/" + uid + "/purchases/" + itemId).once("value");
+        // 이미 구매했는지 확인 (unlocks 값으로 체크)
+        const purchaseSnapshot = await db.ref("users/" + uid + "/purchases/" + unlockValue).once("value");
         if(purchaseSnapshot.exists()) {
             alert("이미 구매한 상품입니다!");
             return;
@@ -254,11 +284,12 @@ window.purchaseItem = async function(itemId) {
         // 포인트 차감
         await updateUserMoney(-itemPrice, `상점 구매: ${item.name}`);
         
-        // 구매 기록
-        await db.ref("users/" + uid + "/purchases/" + itemId).set({
+        // 구매 기록 (unlocks 값으로 저장)
+        await db.ref("users/" + uid + "/purchases/" + unlockValue).set({
             itemId: itemId,
             itemName: item.name,
             price: itemPrice,
+            unlocks: unlockValue,
             purchasedAt: Date.now()
         });
         
@@ -275,9 +306,9 @@ window.purchaseItem = async function(itemId) {
                 }
             });
         } else {
-            // 단일 아이템 추가
-            if(!inventory.includes(itemId)) {
-                inventory.push(itemId);
+            // 단일 아이템 추가 - unlocks 값을 저장
+            if(!inventory.includes(unlockValue)) {
+                inventory.push(unlockValue);
             }
         }
         
@@ -334,11 +365,17 @@ window.showInventoryPage = async function() {
         decorations: ownedItems.filter(i => i.category === 'decorations')
     };
     
-    // 구매 이력 로드
-    const purchaseSnapshot = await db.ref("users/" + uid + "/purchaseHistory").once("value");
+// 구매 이력 로드 (수정됨)
+    const purchaseSnapshot = await db.ref("users/" + uid + "/purchases").once("value");
     const purchaseHistory = [];
     purchaseSnapshot.forEach(child => {
-        purchaseHistory.unshift({id: child.key, ...child.val()});
+        const data = child.val();
+        purchaseHistory.unshift({
+            id: child.key,
+            itemName: data.itemName || '알 수 없음',
+            price: data.price || 0,
+            purchasedAt: data.purchasedAt || Date.now()
+        });
     });
     
     hideLoadingIndicator();
@@ -430,39 +467,107 @@ window.showInventoryPage = async function() {
     `;
 }
 
-// 인벤토리 아이템 렌더링
+// shop-system.js에서 renderInventoryItem 함수의 사운드 부분만 교체
 function renderInventoryItem(item, activeDecorations) {
     const isActive = activeDecorations.includes(item.unlocks);
+    
+    // 아이템별 액션 버튼 생성
+    let actionButton = '';
+    
+    if(item.category === 'decorations') {
+        // 장식 아이템
+        actionButton = `
+            <button onclick="toggleDecoration('${item.unlocks}')" class="btn-${isActive ? 'secondary' : 'primary'} btn-block" style="font-size:13px;">
+                <i class="fas fa-${isActive ? 'times' : 'check'}"></i> ${isActive ? '제거하기' : '적용하기'}
+            </button>
+        `;
+// shop-system.js 내부 - renderInventoryItem 함수에서 테마 부분만 교체
+
+} else if(item.category === 'themes') {
+    // 테마 아이템 - 효과음/BGM과 동일한 ON/OFF 방식
+    if(item.unlocks === 'christmas_theme') {
+        // 현재 테마 상태 확인 (동기 처리)
+        let currentTheme = 'default';
+        if(isLoggedIn()) {
+            const uid = getUserId();
+            // 동기 방식으로 현재 테마 가져오기
+            db.ref("users/" + uid + "/activeTheme").once("value").then(snapshot => {
+                currentTheme = snapshot.val() || 'default';
+            });
+        }
+        
+        const isThemeActive = (typeof activeTheme !== 'undefined' && activeTheme === 'christmas');
+        
+        actionButton = `
+            <button onclick="toggleThemeFromInventory(); setTimeout(() => { if(document.getElementById('inventorySection')?.classList.contains('active')) showInventoryPage(); }, 200);" 
+                    class="btn-${isThemeActive ? 'success' : 'primary'} btn-block" 
+                    style="font-size:13px; margin-bottom:8px;">
+                <i class="fas fa-${isThemeActive ? 'check-circle' : 'paint-brush'}"></i> 
+                ${isThemeActive ? '테마 ON' : '테마 OFF'}
+            </button>
+        `;
+    }
+
+    } else if(item.category === 'sounds') {
+        // 사운드 아이템 - 직접 토글 가능
+        if(item.unlocks === 'christmas_sounds') {
+            const isSoundsActive = typeof soundEnabled !== 'undefined' ? soundEnabled : false;
+            actionButton = `
+                <button onclick="toggleSounds(!soundEnabled); setTimeout(() => { if(document.getElementById('inventorySection')?.classList.contains('active')) showInventoryPage(); }, 100);" class="btn-${isSoundsActive ? 'success' : 'primary'} btn-block" style="font-size:13px; margin-bottom:8px;">
+                    <i class="fas fa-${isSoundsActive ? 'volume-up' : 'volume-mute'}"></i> ${isSoundsActive ? '효과음 ON' : '효과음 OFF'}
+                </button>
+            `;
+        } else if(item.unlocks === 'christmas_bgm') {
+            const isBGMActive = typeof bgmEnabled !== 'undefined' ? bgmEnabled : false;
+            actionButton = `
+                <button onclick="toggleBGM(!bgmEnabled); setTimeout(() => { if(document.getElementById('inventorySection')?.classList.contains('active')) showInventoryPage(); }, 100);" class="btn-${isBGMActive ? 'success' : 'primary'} btn-block" style="font-size:13px; margin-bottom:8px;">
+                    <i class="fas fa-${isBGMActive ? 'music' : 'play'}"></i> ${isBGMActive ? 'BGM ON' : 'BGM OFF'}
+                </button>
+            `;
+        }
+    }
+    
+    if(!actionButton) {
+        actionButton = `
+            <div style="color:#4caf50; font-size:13px; font-weight:600; padding:10px; background:#f1f8f4; border-radius:6px;">
+                ✅ 보유중
+            </div>
+        `;
+    }
+    
+// 아이템 활성 상태 표시 부분 수정 (기존 코드 교체)
+
+// 아이템 활성 상태 표시
+let isActiveStatus = false;
+if(item.unlocks === 'christmas_sounds') {
+    isActiveStatus = typeof soundEnabled !== 'undefined' ? soundEnabled : false;
+} else if(item.unlocks === 'christmas_bgm') {
+    isActiveStatus = typeof bgmEnabled !== 'undefined' ? bgmEnabled : false;
+} else if(item.unlocks === 'christmas_theme') {
+    // ⭐ 수정: 전역 activeTheme 변수 사용
+    isActiveStatus = typeof activeTheme !== 'undefined' ? activeTheme === 'christmas' : false;
+} else if(item.category === 'decorations') {
+    isActiveStatus = isActive;
+}
     
     return `
         <div class="inventory-item-card" style="
             background:white;
-            border:2px solid ${isActive ? '#4caf50' : '#e0e0e0'};
+            border:3px solid ${isActiveStatus ? '#4caf50' : '#e0e0e0'};
             border-radius:12px;
             padding:20px;
             text-align:center;
             transition:all 0.3s ease;
             position:relative;
+            box-shadow:${isActiveStatus ? '0 4px 12px rgba(76,175,80,0.2)' : '0 2px 8px rgba(0,0,0,0.1)'};
         ">
-            ${isActive ? '<div style="position:absolute; top:10px; right:10px; background:#4caf50; color:white; padding:4px 8px; border-radius:12px; font-size:10px; font-weight:900;">적용중</div>' : ''}
+            ${isActiveStatus ? '<div style="position:absolute; top:10px; right:10px; background:#4caf50; color:white; padding:4px 10px; border-radius:12px; font-size:11px; font-weight:900;">✔ 사용중</div>' : ''}
             
             <div style="font-size:64px; margin-bottom:15px;">${item.icon}</div>
             <h4 style="font-size:16px; margin-bottom:8px; color:#212529; font-weight:700;">${item.name}</h4>
-            <p style="font-size:13px; color:#5f6368; margin-bottom:15px; line-height:1.4;">${item.description}</p>
+            <p style="font-size:13px; color:#5f6368; margin-bottom:15px; line-height:1.4; min-height:40px;">${item.description}</p>
             
-            ${item.category === 'decorations' ? `
-                <button onclick="toggleDecoration('${item.unlocks}')" class="btn-${isActive ? 'secondary' : 'primary'} btn-block" style="font-size:13px;">
-                    <i class="fas fa-${isActive ? 'times' : 'check'}"></i> ${isActive ? '제거하기' : '적용하기'}
-                </button>
-            ` : item.category === 'themes' && item.unlocks === 'christmas_theme' ? `
-                <button onclick="showSettings(); setTimeout(() => selectTheme('christmas'), 500);" class="btn-primary btn-block" style="font-size:13px;">
-                    <i class="fas fa-palette"></i> 테마 적용
-                </button>
-            ` : `
-                <div style="color:#4caf50; font-size:13px; font-weight:600; padding:10px; background:#f1f8f4; border-radius:6px;">
-                    ✅ 보유중
-                </div>
-            `}
+            ${actionButton}
         </div>
     `;
 }
