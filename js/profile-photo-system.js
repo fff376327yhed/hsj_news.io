@@ -382,11 +382,10 @@ function createProfilePhotoHTML(photoUrl, size = 32, alt = "프로필") {
     }
 }
 
-// ===== 댓글에 프로필 사진 추가 =====
-
-// 댓글 로드 (프로필 사진 포함)
+// ===== 프로필 사진이 포함된 댓글 로드 (대댓글 + 수정 기능 포함) =====
 async function loadCommentsWithProfile(id) {
     const currentUser = getNickname();
+    const currentEmail = getUserEmail();
     
     try {
         const snapshot = await db.ref("comments/" + id).once("value");
@@ -396,57 +395,381 @@ async function loadCommentsWithProfile(id) {
         const root = document.getElementById("comments");
         const countEl = document.getElementById("commentCount");
         
-        countEl.textContent = `(${commentsList.length})`;
+        // 총 댓글 수 계산 (댓글 + 대댓글)
+        let totalCount = commentsList.length;
+        commentsList.forEach(([_, comment]) => {
+            if(comment.replies) {
+                totalCount += Object.keys(comment.replies).length;
+            }
+        });
         
-        if(!commentsList.length) {
-            root.innerHTML = "<p style='color:#868e96;text-align:center;padding:30px;'>댓글이 없습니다.</p>";
+        if(countEl) countEl.textContent = `(${totalCount})`;
+
+        if (!commentsList.length) {
+            root.innerHTML = "<p style='color:#868e96;text-align:center;padding:30px;'>첫 댓글을 남겨보세요!</p>";
             document.getElementById("loadMoreComments").innerHTML = "";
             return;
         }
-        
+
         const endIdx = currentCommentPage * COMMENTS_PER_PAGE;
         const displayComments = commentsList.slice(0, endIdx);
         
-        // 각 댓글 작성자의 프로필 사진 가져오기
-        const profilePhotos = await Promise.all(
-            displayComments.map(([k, v]) => getUserProfilePhoto(v.authorEmail))
+        // 프로필 사진 미리 로드
+        const commentPhotos = await Promise.all(
+            displayComments.map(([_, comment]) => getUserProfilePhoto(comment.authorEmail))
         );
-        
-        root.innerHTML = displayComments.map(([k, v], idx) => {
-            const canEdit = isLoggedIn() && ((v.author === currentUser) || isAdmin());
-            const photoHTML = createProfilePhotoHTML(profilePhotos[idx], 32, v.author);
+
+        root.innerHTML = await Promise.all(displayComments.map(async ([commentId, comment], idx) => {
+            const isMyComment = isLoggedIn() && ((comment.authorEmail === currentEmail) || isAdmin());
+            const commentPhotoHTML = createProfilePhotoHTML(commentPhotos[idx], 32, comment.author);
             
-            return `<div class="comment-card">
-                <div style="display:flex; gap:12px; margin-bottom:10px;">
-                    ${photoHTML}
-                    <div style="flex:1;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                            <div>
-                                <span class="comment-author">${v.author}</span>
-                                <small style="color:#868e96; margin-left:10px;">${v.timestamp}</small>
+            // 대댓글 렌더링
+            let repliesHTML = '';
+            if (comment.replies) {
+                const replies = Object.entries(comment.replies).sort((a, b) => 
+                    new Date(a[1].timestamp) - new Date(b[1].timestamp)
+                );
+                
+                // 대댓글 프로필 사진 로드
+                const replyPhotos = await Promise.all(
+                    replies.map(([_, reply]) => getUserProfilePhoto(reply.authorEmail))
+                );
+                
+                repliesHTML = replies.map(([replyId, reply], replyIdx) => {
+                    const isMyReply = isLoggedIn() && ((reply.authorEmail === currentEmail) || isAdmin());
+                    const replyPhotoHTML = createProfilePhotoHTML(replyPhotos[replyIdx], 24, reply.author);
+                    
+                    return `
+                        <div class="reply-item" id="reply-${replyId}">
+                            <div style="display:flex; align-items:start; gap:8px;">
+                                ${replyPhotoHTML}
+                                <div style="flex:1;">
+                                    <div class="reply-header">
+                                        <span class="reply-author">↳ ${reply.author}</span>
+                                        <span class="reply-time">${reply.timestamp}</span>
+                                    </div>
+                                    
+                                    <!-- 대댓글 내용 표시 -->
+                                    <div class="reply-content" id="replyContent-${replyId}">${reply.text}</div>
+                                    
+                                    <!-- 대댓글 수정 폼 (숨김) -->
+                                    <div id="replyEditForm-${replyId}" style="display:none; margin-top:8px;">
+                                        <input type="text" id="replyEditInput-${replyId}" class="reply-input" value="${reply.text}" 
+                                               onkeypress="if(event.key==='Enter') saveReplyEdit('${id}', '${commentId}', '${replyId}')">
+                                        <div style="display:flex; gap:8px; margin-top:8px;">
+                                            <button onclick="saveReplyEdit('${id}', '${commentId}', '${replyId}')" class="btn-primary" style="font-size:12px; padding:4px 12px;">저장</button>
+                                            <button onclick="cancelReplyEdit('${replyId}')" class="btn-secondary" style="font-size:12px; padding:4px 12px;">취소</button>
+                                        </div>
+                                    </div>
+                                    
+                                    ${isMyReply ? `
+                                        <div class="reply-actions">
+                                            <button onclick="startReplyEdit('${replyId}')" class="btn-text">수정</button>
+                                            <button onclick="deleteReply('${id}', '${commentId}', '${replyId}')" class="btn-text-danger">삭제</button>
+                                        </div>
+                                    ` : ''}
+                                </div>
                             </div>
-                            ${canEdit ? `<div>
-                                <button onclick="editComment('${id}','${k}','${v.author}')" class="btn-secondary" style="height:32px; padding:0 12px; font-size:12px;">수정</button>
-                                <button onclick="deleteComment('${id}','${k}','${v.author}')" class="btn-secondary" style="height:32px; padding:0 12px; font-size:12px; margin-left:6px; background:#6c757d; color:white; border:none;">삭제</button>
-                            </div>` : ''}
                         </div>
-                        <p style="margin:0; line-height:1.6; color:#495057;">${v.text}</p>
+                    `;
+                }).join('');
+            }
+
+            return `
+                <div class="comment-card" id="comment-${commentId}">
+                    <div style="display:flex; align-items:start; gap:12px; margin-bottom:12px;">
+                        ${commentPhotoHTML}
+                        <div style="flex:1;">
+                            <div class="comment-header">
+                                <span class="comment-author">${comment.author}</span>
+                                <span class="comment-time">${comment.timestamp}</span>
+                            </div>
+                            
+                            <!-- 댓글 내용 표시 -->
+                            <div class="comment-body" id="commentContent-${commentId}">${comment.text}</div>
+                            
+                            <!-- 댓글 수정 폼 (숨김) -->
+                            <div id="commentEditForm-${commentId}" style="display:none; margin-top:12px;">
+                                <textarea id="commentEditInput-${commentId}" class="form-control" style="min-height:80px; resize:vertical;">${comment.text}</textarea>
+                                <div style="display:flex; gap:8px; margin-top:10px;">
+                                    <button onclick="saveCommentEdit('${id}', '${commentId}')" class="btn-primary" style="font-size:13px; padding:6px 16px;">저장</button>
+                                    <button onclick="cancelCommentEdit('${commentId}')" class="btn-secondary" style="font-size:13px; padding:6px 16px;">취소</button>
+                                </div>
+                            </div>
+                            
+                            <div class="comment-footer">
+                                <button onclick="toggleReplyForm('${commentId}')" class="btn-text">💬 답글${comment.replies ? ` (${Object.keys(comment.replies).length})` : ''}</button>
+                                ${isMyComment ? `
+                                    <button onclick="startCommentEdit('${commentId}')" class="btn-text">수정</button>
+                                    <button onclick="deleteComment('${id}', '${commentId}', '${comment.author}')" class="btn-text text-danger">삭제</button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+
+                    ${repliesHTML ? `<div class="replies-container">${repliesHTML}</div>` : ''}
+
+                    <div id="replyForm-${commentId}" class="reply-input-area" style="display:none;">
+                        <input type="text" id="replyInput-${commentId}" class="reply-input" placeholder="답글을 입력하세요..." onkeypress="if(event.key==='Enter') submitReply('${id}', '${commentId}')">
+                        <button onclick="submitReply('${id}', '${commentId}')" class="btn-reply-submit"><i class="fas fa-paper-plane"></i></button>
                     </div>
                 </div>
-            </div>`;
-        }).join('');
-        
+            `;
+        })).then(results => results.join(''));
+
         const loadMoreBtn = document.getElementById("loadMoreComments");
-        if(endIdx < commentsList.length) {
-            loadMoreBtn.innerHTML = `<button onclick="loadMoreComments()" class="btn-secondary" style="width:100%;">
-                댓글 더보기 (${commentsList.length - endIdx}개 남음)</button>`;
+        if (endIdx < commentsList.length) {
+            loadMoreBtn.innerHTML = `<button onclick="loadMoreComments()" class="btn-secondary btn-block">댓글 더보기 (${commentsList.length - endIdx}+)</button>`;
         } else {
             loadMoreBtn.innerHTML = "";
         }
         
     } catch(error) {
-        console.error("댓글 로드 실패:", error);
-        document.getElementById("comments").innerHTML = "<p style='color:#dc3545;text-align:center;'>댓글을 불러오는데 실패했습니다.</p>";
+        console.error("❌ 댓글 로드 오류:", error);
+        document.getElementById("comments").innerHTML = `
+            <p style='color:#dc3545;text-align:center;padding:30px;'>댓글을 불러오는데 실패했습니다.</p>
+        `;
+    }
+}
+
+// ===== 댓글 수정 시작 =====
+window.startCommentEdit = function(commentId) {
+    // 내용 숨기고 수정 폼 표시
+    const contentEl = document.getElementById(`commentContent-${commentId}`);
+    const formEl = document.getElementById(`commentEditForm-${commentId}`);
+    
+    if(contentEl) contentEl.style.display = 'none';
+    if(formEl) {
+        formEl.style.display = 'block';
+        const input = document.getElementById(`commentEditInput-${commentId}`);
+        if(input) {
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+        }
+    }
+}
+
+// ===== 댓글 수정 취소 =====
+window.cancelCommentEdit = function(commentId) {
+    const contentEl = document.getElementById(`commentContent-${commentId}`);
+    const formEl = document.getElementById(`commentEditForm-${commentId}`);
+    
+    if(contentEl) contentEl.style.display = 'block';
+    if(formEl) formEl.style.display = 'none';
+}
+
+// ===== 댓글 수정 저장 =====
+window.saveCommentEdit = async function(articleId, commentId) {
+    const input = document.getElementById(`commentEditInput-${commentId}`);
+    if(!input) return;
+    
+    const newText = input.value.trim();
+    
+    if(!newText) {
+        alert("댓글 내용을 입력해주세요!");
+        return;
+    }
+    
+    // 금지어 체크
+    const foundWord = checkBannedWords(newText);
+    if(foundWord) {
+        alert(`⚠️ 금지어("${foundWord}")가 포함되어 수정할 수 없습니다.`);
+        addWarningToCurrentUser();
+        return;
+    }
+    
+    try {
+        // Firebase 업데이트
+        await db.ref(`comments/${articleId}/${commentId}`).update({
+            text: newText,
+            timestamp: new Date().toLocaleString() + " (수정됨)"
+        });
+        
+        showToastNotification("✅ 수정 완료", "댓글이 수정되었습니다!", null);
+        
+        // 댓글 목록 새로고침
+        await loadCommentsWithProfile(articleId);
+        
+    } catch(error) {
+        console.error("❌ 댓글 수정 실패:", error);
+        alert("수정 중 오류가 발생했습니다: " + error.message);
+    }
+}
+
+// ===== 대댓글 수정 시작 =====
+window.startReplyEdit = function(replyId) {
+    const contentEl = document.getElementById(`replyContent-${replyId}`);
+    const formEl = document.getElementById(`replyEditForm-${replyId}`);
+    
+    if(contentEl) contentEl.style.display = 'none';
+    if(formEl) {
+        formEl.style.display = 'block';
+        const input = document.getElementById(`replyEditInput-${replyId}`);
+        if(input) {
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+        }
+    }
+}
+
+// ===== 대댓글 수정 취소 =====
+window.cancelReplyEdit = function(replyId) {
+    const contentEl = document.getElementById(`replyContent-${replyId}`);
+    const formEl = document.getElementById(`replyEditForm-${replyId}`);
+    
+    if(contentEl) contentEl.style.display = 'block';
+    if(formEl) formEl.style.display = 'none';
+}
+
+// ===== 대댓글 수정 저장 =====
+window.saveReplyEdit = async function(articleId, commentId, replyId) {
+    const input = document.getElementById(`replyEditInput-${replyId}`);
+    if(!input) return;
+    
+    const newText = input.value.trim();
+    
+    if(!newText) {
+        alert("답글 내용을 입력해주세요!");
+        return;
+    }
+    
+    // 금지어 체크
+    const foundWord = checkBannedWords(newText);
+    if(foundWord) {
+        alert(`⚠️ 금지어("${foundWord}")가 포함되어 수정할 수 없습니다.`);
+        addWarningToCurrentUser();
+        return;
+    }
+    
+    try {
+        // Firebase 업데이트
+        await db.ref(`comments/${articleId}/${commentId}/replies/${replyId}`).update({
+            text: newText,
+            timestamp: new Date().toLocaleString() + " (수정됨)"
+        });
+        
+        showToastNotification("✅ 수정 완료", "답글이 수정되었습니다!", null);
+        
+        // 댓글 목록 새로고침
+        await loadCommentsWithProfile(articleId);
+        
+    } catch(error) {
+        console.error("❌ 답글 수정 실패:", error);
+        alert("수정 중 오류가 발생했습니다: " + error.message);
+    }
+}
+
+// ===== 댓글 더보기 =====
+function loadMoreComments() {
+    currentCommentPage++;
+    loadCommentsWithProfile(currentArticleId);
+}
+
+// ===== 답글 입력창 토글 =====
+window.toggleReplyForm = function(commentId) {
+    if(!isLoggedIn()) {
+        alert("로그인이 필요합니다.");
+        return;
+    }
+    
+    const form = document.getElementById(`replyForm-${commentId}`);
+    if(form) {
+        const isHidden = form.style.display === 'none';
+        form.style.display = isHidden ? 'flex' : 'none';
+        
+        if(isHidden) {
+            const input = document.getElementById(`replyInput-${commentId}`);
+            if(input) {
+                setTimeout(() => input.focus(), 100);
+            }
+        }
+    }
+}
+
+// ===== 답글 등록 =====
+window.submitReply = async function(articleId, commentId) {
+    if(!isLoggedIn()) {
+        alert("로그인이 필요합니다.");
+        return;
+    }
+    
+    const input = document.getElementById(`replyInput-${commentId}`);
+    if(!input) return;
+    
+    const text = input.value.trim();
+    
+    if(!text) {
+        alert("답글 내용을 입력해주세요!");
+        return;
+    }
+    
+    // 금지어 체크
+    const foundWord = checkBannedWords(text);
+    if(foundWord) {
+        alert(`⚠️ 금지어("${foundWord}")가 포함되어 있습니다.`);
+        addWarningToCurrentUser();
+        return;
+    }
+
+    const reply = {
+        author: getNickname(),
+        authorEmail: getUserEmail(),
+        text: text,
+        timestamp: new Date().toLocaleString()
+    };
+
+    try {
+        // Firebase에 답글 저장
+        await db.ref(`comments/${articleId}/${commentId}/replies`).push(reply);
+        
+        // 원댓글 작성자에게 알림
+        const parentCommentSnap = await db.ref(`comments/${articleId}/${commentId}`).once('value');
+        const parentComment = parentCommentSnap.val();
+        
+        if(parentComment && parentComment.authorEmail !== reply.authorEmail) {
+            sendNotification('comment', {
+                authorEmail: reply.authorEmail,
+                authorName: reply.author,
+                content: `회원님의 댓글에 답글: "${text}"`,
+                articleId: articleId
+            });
+        }
+        
+        // 포인트 지급
+        await updateUserMoney(1, "답글 작성");
+        
+        // 입력창 초기화 및 숨김
+        input.value = "";
+        document.getElementById(`replyForm-${commentId}`).style.display = 'none';
+        
+        // 댓글 목록 새로고침
+        currentCommentPage = 1;
+        await loadCommentsWithProfile(articleId);
+        
+        showToastNotification("✅ 답글 등록", "답글이 성공적으로 등록되었습니다!", null);
+        
+    } catch(error) {
+        console.error("❌ 답글 등록 실패:", error);
+        alert("답글 등록 중 오류가 발생했습니다: " + error.message);
+    }
+}
+
+// ===== 답글 삭제 =====
+window.deleteReply = async function(articleId, commentId, replyId) {
+    if(!confirm("이 답글을 삭제하시겠습니까?")) return;
+    
+    try {
+        await db.ref(`comments/${articleId}/${commentId}/replies/${replyId}`).remove();
+        
+        showToastNotification("✅ 삭제 완료", "답글이 삭제되었습니다.", null);
+        
+        // 댓글 목록 새로고침
+        currentCommentPage = 1;
+        await loadCommentsWithProfile(articleId);
+        
+    } catch(error) {
+        console.error("❌ 답글 삭제 실패:", error);
+        alert("삭제 실패: " + error.message);
     }
 }
 
