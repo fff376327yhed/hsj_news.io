@@ -65,6 +65,85 @@ let couponsConfig = [];
 // 1. 점검 상태 체크 변수
 let maintenanceChecked = false;
 
+// ===== 로딩 인디케이터 (최우선 정의) =====
+function showLoadingIndicator(message = "로딩 중...") {
+    const existing = document.getElementById("loadingIndicator");
+    if(existing) return;
+    
+    const html = `
+        <div id="loadingIndicator" style="
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 99999;
+        ">
+            <div style="
+                background: white;
+                padding: 30px 40px;
+                border-radius: 12px;
+                text-align: center;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            ">
+                <div style="
+                    width: 50px;
+                    height: 50px;
+                    border: 4px solid #f3f3f3;
+                    border-top: 4px solid #c62828;
+                    border-radius: 50%;
+                    animation: spin 1s linear infinite;
+                    margin: 0 auto 20px;
+                "></div>
+                <div style="color: #333; font-weight: 600; font-size: 16px;">
+                    ${message}
+                </div>
+            </div>
+        </div>
+        <style>
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        </style>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function hideLoadingIndicator() {
+    const indicator = document.getElementById("loadingIndicator");
+    if(indicator) indicator.remove();
+}
+
+// 사용자 정보
+function getNickname() {
+    const user = auth.currentUser;
+    return user ? user.displayName || user.email.split('@')[0] : "익명";
+}
+
+function getUserEmail() {
+    const user = auth.currentUser;
+    return user ? user.email : null;
+}
+
+function getUserId() {
+    const user = auth.currentUser;
+    return user ? user.uid : 'anonymous';
+}
+
+function isLoggedIn() {
+    return auth.currentUser !== null;
+}
+
+function isAdmin(){
+    return getCookie("is_admin") === "true";
+}
+
 // 쿠키 관리
 function setCookie(n, v, days = 365) { 
     const expires = new Date();
@@ -411,6 +490,9 @@ function copyArticleLink(articleId) {
 
 // 수정된 코드
 function goBack() {
+    // ⭐ 기사에서 나갈 때 원래 테마로 복원
+    restoreUserTheme();
+    
     // 이전 페이지가 있으면 브라우저 히스토리 사용
     if (window.history.length > 1) {
         window.history.back();
@@ -827,9 +909,9 @@ window.closeMoneyDetail = function() {
     if(modal) modal.remove();
 }
 
-// ===== Part 4: 인증 상태 변경 및 알림 시스템 (개선됨) =====
+// ===== 2. 알림 중복 방지 - setupNotificationListener 수정 =====
+// script.js의 기존 setupNotificationListener 함수를 찾아서 이 코드로 교체하세요
 
-// 실시간 알림 리스너 (articleId 포함)
 function setupNotificationListener(uid) {
     if (!uid) return;
     
@@ -838,19 +920,46 @@ function setupNotificationListener(uid) {
     // 이전 리스너 제거 (메모리 누수 방지)
     db.ref("notifications/" + uid).off();
     
+    // ⭐ 이미 표시된 알림 ID 추적 (중복 방지)
+    const shownNotifications = new Set();
+    
+    // ⭐ 페이지 로드 시점의 타임스탬프
+    const pageLoadTime = Date.now();
+    
     // 새 알림 리스너
     db.ref("notifications/" + uid).orderByChild("read").equalTo(false).on("child_added", async (snapshot) => {
         const notification = snapshot.val();
         const notifId = snapshot.key;
         
-        console.log("새 알림 감지:", notification);
+        // ⭐ 중복 체크 1: 이미 표시한 알림인지 확인
+        if (shownNotifications.has(notifId)) {
+            console.log("⏭️ 이미 표시한 알림:", notifId);
+            return;
+        }
+        
+        // ⭐ 중복 체크 2: 페이지 로드 이전 알림은 무시 (새로고침 시 중복 방지)
+        if (notification.timestamp < pageLoadTime) {
+            console.log("⏭️ 이전 알림 무시:", notifId);
+            return;
+        }
+        
+        // ⭐ 중복 체크 3: 이미 pushed된 알림은 무시 (백그라운드 서비스와 중복 방지)
+        if (notification.pushed) {
+            console.log("⏭️ 이미 푸시된 알림:", notifId);
+            return;
+        }
+        
+        console.log("🆕 새 알림 감지:", notification);
         
         if (!notification.read) {
+            // 표시된 알림으로 추가
+            shownNotifications.add(notifId);
+            
             // 토스트 알림 표시 (articleId 포함)
             showToastNotification(
                 notification.type === 'article' ? '📰 새 기사' : 
                 notification.type === 'comment' ? '💬 새 댓글' : 
-                '🔔 알림',
+                '📢 알림',
                 notification.text,
                 notification.articleId
             );
@@ -863,72 +972,6 @@ function setupNotificationListener(uid) {
     });
 }
 
-// 토스트 알림 표시 (클릭하면 해당 기사로 이동)
-function showToastNotification(title, body, articleId = null) {
-    const existingToast = document.getElementById('toast-notification');
-    if (existingToast) existingToast.remove();
-    
-    const toast = document.createElement('div');
-    toast.id = 'toast-notification';
-    toast.style.cssText = `
-        position: fixed;
-        top: 80px;
-        right: 20px;
-        background: white;
-        border-left: 4px solid #c62828;
-        padding: 16px 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        z-index: 10000;
-        min-width: 300px;
-        max-width: 400px;
-        animation: slideIn 0.3s ease;
-        cursor: ${articleId ? 'pointer' : 'default'};
-    `;
-    
-    // 클릭 시 해당 기사로 이동
-    if (articleId) {
-        toast.onclick = () => {
-            showArticleDetail(articleId);
-            toast.remove();
-        };
-    }
-    
-    toast.innerHTML = `
-        <div style="display: flex; align-items: start; gap: 12px;">
-            <div style="font-size: 24px;">🔔</div>
-            <div style="flex: 1;">
-                <div style="font-weight: bold; color: #202124; margin-bottom: 4px;">${title}</div>
-                <div style="color: #5f6368; font-size: 14px; line-height: 1.4;">${body}</div>
-                ${articleId ? '<div style="color: #1a73e8; font-size: 12px; margin-top: 6px;">👉 클릭하여 기사 보기</div>' : ''}
-            </div>
-            <button onclick="event.stopPropagation(); this.parentElement.parentElement.remove()" style="background: none; border: none; color: #5f6368; cursor: pointer; font-size: 20px; padding: 0; line-height: 1;">&times;</button>
-        </div>
-    `;
-    
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes slideIn {
-            from { transform: translateX(400px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        @keyframes slideOut {
-            from { transform: translateX(0); opacity: 1; }
-            to { transform: translateX(400px); opacity: 0; }
-        }
-    `;
-    document.head.appendChild(style);
-    
-    document.body.appendChild(toast);
-    
-    // 5초 후 자동 제거
-    setTimeout(() => {
-        if (toast && toast.parentElement) {
-            toast.style.animation = 'slideOut 0.3s ease';
-            setTimeout(() => toast.remove(), 300);
-        }
-    }, 5000);
-}
 
 // 알림 권한 체크 및 요청
 async function requestNotificationPermission() {
@@ -1381,17 +1424,26 @@ async function updateHeaderProfileButton(user) {
 
 // ===== Part 4 수정: 인증 상태 변경 (점검 모드 체크 추가) =====
 auth.onAuthStateChanged(async user => {
-    console.log("🔍 인증 상태 변경:", user ? user.email : "로그아웃");
+    console.log("🔐 인증 상태 변경:", user ? user.email : "로그아웃");
     
     if (user) {
         console.log("✅ 자동 로그인 성공:", user.email);
 
-        // 수정된 코드
-updateHeaderProfileButton(user);
+        // ✅ 함수 존재 여부 확인 후 호출
+        if (typeof loadAndApplyUserTheme === 'function') {
+            await loadAndApplyUserTheme();
+        }
+        
+        if (typeof loadAndApplyUserSounds === 'function') {
+            await loadAndApplyUserSounds();
+        }
 
-
-        await loadAndApplyUserTheme();
-        await loadAndApplyUserSounds();
+        // ⭐ 여기서 호출해야 Firebase 데이터를 불러옵니다.
+        if (typeof initSoundSystem === 'function') {
+            await initSoundSystem(); 
+        }
+        
+        updateHeaderProfileButton(user);
         
         // 로딩 표시
         showLoadingIndicator("로그인 중...");
@@ -1557,74 +1609,84 @@ async function toggleFollowUser(userEmail, isFollowing) {
     }
 }
 
+// ===== 1. updateSettings 함수 수정 (undefined 해결) =====
+// script.js의 기존 updateSettings 함수를 찾아서 이 코드로 교체하세요
+
 async function updateSettings() {
     // 1. 프로필 카드 업데이트
     const el = document.getElementById("profileNickname");
     if (el) {
         const user = auth.currentUser;
         if(user) {
-            const nicknameChangeSnapshot = await db.ref("users/" + user.uid + "/nicknameChanged").once("value");
-            const hasChangedNickname = nicknameChangeSnapshot.val() || false;
-            const userSnapshot = await db.ref("users/" + user.uid).once("value");
-            const userData = userSnapshot.val() || {};
-            const isVIP = userData.isVIP || false;
-            const warningCount = userData.warningCount || 0;
-            const isBanned = userData.isBanned || false;
-            const notificationsEnabled = userData.notificationsEnabled !== false;
-            
-            // ⭐ 테마/사운드 설정 렌더링
-            const themeSoundSettings = await renderThemeSoundSettings();
-            
-            // ⭐ 프로필 사진 버튼 추가!
-            el.innerHTML = `
-                ${themeSoundSettings}
+            try {
+                const nicknameChangeSnapshot = await db.ref("users/" + user.uid + "/nicknameChanged").once("value");
+                const hasChangedNickname = nicknameChangeSnapshot.val() || false;
+                const userSnapshot = await db.ref("users/" + user.uid).once("value");
+                const userData = userSnapshot.val() || {};
+                const isVIP = userData.isVIP || false;
+                const warningCount = userData.warningCount || 0;
+                const isBanned = userData.isBanned || false;
+                const notificationsEnabled = userData.notificationsEnabled !== false;
                 
-                <div style="background:#fff; border:1px solid #dadce0; padding:20px; border-radius:8px; margin-bottom:20px;">
-                    <h4 style="margin:0 0 15px 0; color:#202124;">내 정보</h4>
+                // ⭐ 테마/사운드 설정 렌더링
+                const themeSoundSettings = await renderThemeSoundSettings();
+                
+                // ⭐ 프로필 사진 버튼 추가
+                el.innerHTML = `
+                    ${themeSoundSettings}
                     
-                    <!-- 프로필 사진 표시 -->
-                    <div style="text-align:center; margin-bottom:20px;">
-                        <div id="userProfilePhotoPreview" style="margin-bottom:15px;">
-                            <!-- 프로필 사진이 여기에 로드됩니다 -->
+                    <div style="background:#fff; border:1px solid #dadce0; padding:20px; border-radius:8px; margin-bottom:20px;">
+                        <h4 style="margin:0 0 15px 0; color:#202124;">내 정보</h4>
+                        
+                        <!-- 프로필 사진 표시 -->
+                        <div style="text-align:center; margin-bottom:20px;">
+                            <div id="userProfilePhotoPreview" style="margin-bottom:15px;">
+                                <!-- 프로필 사진이 여기에 로드됩니다 -->
+                            </div>
+                            <button onclick="openProfilePhotoModal()" class="btn-secondary" style="font-size:13px;">
+                                <i class="fas fa-camera"></i> 프로필 사진 변경
+                            </button>
                         </div>
-                        <button onclick="openProfilePhotoModal()" class="btn-secondary" style="font-size:13px;">
-                            <i class="fas fa-camera"></i> 프로필 사진 변경
-                        </button>
+                        
+                        <p style="margin:8px 0; color:#5f6368;"><strong>이름:</strong> ${user.displayName || getNickname() || '미설정'}${isVIP ? ' <span class="vip-badge">⭐ VIP</span>' : ''}</p>
+                        <p style="margin:8px 0; color:#5f6368;"><strong>이메일:</strong> ${user.email || '미설정'}</p>
+                        ${warningCount > 0 ? `<p style="margin:8px 0; color:#d93025;"><strong>⚠️ 경고:</strong> ${warningCount}회</p>` : ''}
+                        ${hasChangedNickname ? 
+                            '<p style="margin:8px 0; color:#9aa0a6; font-size:13px;">닉네임 변경 완료됨</p>' : 
+                            '<button onclick="changeNickname()" class="btn-block" style="margin-top:15px; background:#fff; border:1px solid #dadce0;">닉네임 변경 (1회)</button>'
+                        }
                     </div>
-                    
-                    <p style="margin:8px 0; color:#5f6368;"><strong>이름:</strong> ${user.displayName || '미설정'}${isVIP ? ' <span class="vip-badge">⭐ VIP</span>' : ''}</p>
-                    <p style="margin:8px 0; color:#5f6368;"><strong>이메일:</strong> ${user.email}</p>
-                    ${warningCount > 0 ? `<p style="margin:8px 0; color:#d93025;"><strong>⚠️ 경고:</strong> ${warningCount}회</p>` : ''}
-                    ${hasChangedNickname ? 
-                        '<p style="margin:8px 0; color:#9aa0a6; font-size:13px;">닉네임 변경 완료됨</p>' : 
-                        '<button onclick="changeNickname()" class="btn-block" style="margin-top:15px; background:#fff; border:1px solid #dadce0;">닉네임 변경 (1회)</button>'
-                    }
-                </div>
-            `;
+                `;
 
-            // 프로필 사진 로드
-            db.ref("users/" + user.uid + "/profilePhoto").once("value").then(snapshot => {
-                const photoUrl = snapshot.val();
-                const preview = document.getElementById("userProfilePhotoPreview");
-                if(preview) {
-                    if(photoUrl) {
-                        preview.innerHTML = `<img src="${photoUrl}" style="width:120px; height:120px; border-radius:50%; object-fit:cover; border:3px solid #dadce0;">`;
-                    } else {
-                        preview.innerHTML = `<div style="width:120px; height:120px; border-radius:50%; background:#f1f3f4; display:inline-flex; align-items:center; justify-content:center; border:3px solid #dadce0; margin:0 auto;">
-                            <i class="fas fa-user" style="font-size:50px; color:#9aa0a6;"></i>
-                        </div>`;
+                // 프로필 사진 로드
+                db.ref("users/" + user.uid + "/profilePhoto").once("value").then(snapshot => {
+                    const photoUrl = snapshot.val();
+                    const preview = document.getElementById("userProfilePhotoPreview");
+                    if(preview) {
+                        if(photoUrl) {
+                            preview.innerHTML = `<img src="${photoUrl}" style="width:120px; height:120px; border-radius:50%; object-fit:cover; border:3px solid #dadce0;">`;
+                        } else {
+                            preview.innerHTML = `<div style="width:120px; height:120px; border-radius:50%; background:#f1f3f4; display:inline-flex; align-items:center; justify-content:center; border:3px solid #dadce0; margin:0 auto;">
+                                <i class="fas fa-user" style="font-size:50px; color:#9aa0a6;"></i>
+                            </div>`;
+                        }
+                    }
+                });
+                
+                // 알림 토글 상태 업데이트
+                const notificationToggle = document.getElementById("notificationToggle");
+                if(notificationToggle) {
+                    notificationToggle.checked = notificationsEnabled;
+                    if(notificationsEnabled) {
+                        document.getElementById("notificationStatus").innerHTML = '<p style="color:var(--success-color);margin-top:10px;">✅ 알림이 활성화되었습니다.</p>';
+                        loadFollowUsers();
                     }
                 }
-            });
-            
-            // 알림 토글 상태 업데이트
-            const notificationToggle = document.getElementById("notificationToggle");
-            if(notificationToggle) {
-                notificationToggle.checked = notificationsEnabled;
-                if(notificationsEnabled) {
-                    document.getElementById("notificationStatus").innerHTML = '<p style="color:var(--success-color);margin-top:10px;">✅ 알림이 활성화되었습니다.</p>';
-                    loadFollowUsers();
-                }
+            } catch(error) {
+                console.error("설정 로드 오류:", error);
+                el.innerHTML = `<div style="background:#fff; border:1px solid #dadce0; padding:20px; border-radius:8px; text-align:center;">
+                    <p style="color:#f44336;">설정을 불러오는 중 오류가 발생했습니다.</p>
+                </div>`;
             }
         } else {
             el.innerHTML = `<div style="background:#fff; border:1px solid #dadce0; padding:20px; border-radius:8px; text-align:center;">
@@ -1694,6 +1756,9 @@ function hideAll() {
 
 // 홈(기사 목록) 표시
 function showArticles() {
+    // ⭐ 기사 목록으로 돌아갈 때 원래 테마 복원
+    restoreUserTheme();
+    
     hideAll();
     document.getElementById("articlesSection").classList.add("active");
     
@@ -2214,9 +2279,19 @@ function loadMoreArticles() {
     renderArticles();
 }
 
-// ===== 기사 작성자의 테마 로드 및 적용 =====
+// ===== 기사 작성자의 테마 로드 및 적용 (임시) =====
+let originalUserTheme = null; // 사용자의 원래 테마 저장
+
 async function loadArticleAuthorTheme(authorEmail) {
     if(!authorEmail) return;
+    
+    // ⭐ 현재 로그인한 사용자의 원래 테마 저장
+    if(isLoggedIn() && !originalUserTheme) {
+        const uid = getUserId();
+        const userThemeSnapshot = await db.ref("users/" + uid + "/activeTheme").once("value");
+        originalUserTheme = userThemeSnapshot.val() || 'default';
+        console.log("📌 사용자의 원래 테마 저장:", originalUserTheme);
+    }
     
     try {
         // 작성자의 UID 찾기
@@ -2224,26 +2299,62 @@ async function loadArticleAuthorTheme(authorEmail) {
         const usersData = usersSnapshot.val() || {};
         
         let authorUid = null;
+        let authorInventory = [];
+        
         for (const [uid, userData] of Object.entries(usersData)) {
             if(userData && userData.email === authorEmail) {
                 authorUid = uid;
+                authorInventory = userData.inventory || [];
                 break;
             }
         }
         
         if(!authorUid) return;
         
+        // 작성자가 크리스마스 테마를 보유하고 있는지 확인
+        const hasChristmasTheme = authorInventory.includes('christmas_theme');
+        
+        if(!hasChristmasTheme) {
+            console.log("📰 작성자가 크리스마스 테마를 보유하지 않음");
+            return;
+        }
+        
         // 작성자의 테마 설정 가져오기
         const themeSnapshot = await db.ref("users/" + authorUid + "/activeTheme").once("value");
         const authorTheme = themeSnapshot.val();
         
-        if(authorTheme) {
-            console.log(`🎨 작성자(${authorEmail})의 테마 적용:`, authorTheme);
-            applyTheme(authorTheme);
+        // ⭐ 작성자가 크리스마스 테마를 사용 중이고, 보유한 경우에만 적용
+        if(authorTheme === 'christmas') {
+            console.log(`🎄 작성자(${authorEmail})의 크리스마스 테마 임시 적용`);
+            
+            // ⭐ 현재 사용자도 크리스마스 테마를 보유했는지 확인
+            let viewerHasTheme = false;
+            if(isLoggedIn()) {
+                const viewerUid = getUserId();
+                const viewerSnapshot = await db.ref("users/" + viewerUid + "/inventory").once("value");
+                const viewerInventory = viewerSnapshot.val() || [];
+                viewerHasTheme = viewerInventory.includes('christmas_theme');
+            }
+            
+            // 뷰어가 테마를 보유하지 않았으면 일시적으로만 적용
+            if(!viewerHasTheme) {
+                console.log("⚠️ 뷰어는 크리스마스 테마 미보유 - 임시 적용");
+            }
+            
+            applyTheme('christmas', false);
         }
         
     } catch(error) {
         console.error("작성자 테마 로드 실패:", error);
+    }
+}
+
+// ⭐ 기사에서 나갈 때 원래 테마로 복원
+function restoreUserTheme() {
+    if(originalUserTheme) {
+        console.log("🔄 사용자의 원래 테마로 복원:", originalUserTheme);
+        applyTheme(originalUserTheme, false);
+        originalUserTheme = null; // 초기화
     }
 }
 
@@ -4208,11 +4319,17 @@ function updateMessengerBadge(count) {
     }
 }
 
-// 실시간 알림 개수 체크
+// ===== 4. 알림 배지 업데이트 중복 방지 =====
+// script.js의 setupMessengerBadgeListener 함수를 찾아서 이 코드로 교체하세요
+
 function setupMessengerBadgeListener() {
     const uid = getUserId();
     if(!uid || uid === 'anonymous') return;
     
+    // ⭐ 이전 리스너 제거
+    db.ref("notifications/" + uid).off('value');
+    
+    // ⭐ 한 번만 리스너 등록
     db.ref("notifications/" + uid).on("value", snapshot => {
         const notificationsData = snapshot.val() || {};
         const unreadCount = Object.values(notificationsData).filter(n => !n.read).length;
@@ -4243,6 +4360,24 @@ async function checkEventAccess() {
     eventBtn.style.display = isVIP ? "block" : "none";
 }
 
+// script.js 내부 - renderThemeSoundSettings 함수 전체 교체
+async function renderThemeSoundSettings() {
+    if(!isLoggedIn()) return '';
+    
+    const uid = getUserId();
+    
+    // 현재 설정 로드
+    const themeSnapshot = await db.ref("users/" + uid + "/activeTheme").once("value");
+    const soundsSnapshot = await db.ref("users/" + uid + "/activeSounds").once("value");
+    const bgmSnapshot = await db.ref("users/" + uid + "/activeBGM").once("value");
+    const inventorySnapshot = await db.ref("users/" + uid + "/inventory").once("value");
+    
+    const activeTheme = themeSnapshot.val() || 'default';
+    const activeSounds = soundsSnapshot.val() || false;
+    const activeBGM = bgmSnapshot.val() || false;
+    const inventory = inventorySnapshot.val() || [];
+}
+
 window.addEventListener("load", () => {
     console.log("🚀 시스템 초기화 시작...");
     
@@ -4253,18 +4388,16 @@ window.addEventListener("load", () => {
     // 캐치마인드 설정 로드
     loadCatchMindConfig();
     
-    // 🆕 Firebase에서 힌트 페널티 로드
+    // 🆕 힌트 페널티 로드
     loadHintPenaltyFromFirebase();
     
-    if('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission();
-    }
+
     
     setTimeout(() => {
         showActivePopupsToUser();
     }, 1000);
 
-    // ⭐ 점검 모드 실시간 리스너 등록 추가
+    // ✅ 점검 모드 실시간 리스너 등록
     initMaintenanceListener();
     
     // 캐치마인드 설정 로드
@@ -4276,37 +4409,50 @@ window.addEventListener("load", () => {
     initialRoute();
     
     console.log("✅ 시스템 초기화 완료!");
+});
 
-    // PWA 설치 유도 (수정됨)
+    // ===== 3. PWA 설치 배너 경고 해결 =====
+// script.js의 PWA 관련 코드를 찾아서 이 코드로 교체하세요
+
 let deferredPrompt;
+let installPromptShown = false; // ⭐ 중복 방지 플래그
 
 window.addEventListener('beforeinstallprompt', (e) => {
     console.log('📱 PWA 설치 프롬프트 감지');
     
-    // 프롬프트 저장
+    // ⭐ preventDefault는 즉시 호출
+    e.preventDefault();
     deferredPrompt = e;
     
-    // 이미 프롬프트를 본 적이 있으면 차단
+    // 이미 프롬프트를 본 적이 있으면 리턴
     if(getCookie('pwa_install_prompted')) {
-        e.preventDefault();
         console.log('이미 설치 프롬프트를 본 사용자');
         return;
     }
     
-    // 첫 방문자에게는 자동 표시하지 않고 수동 버튼만 준비
-    e.preventDefault();
+    // ⭐ 이미 이번 세션에서 표시했으면 리턴
+    if(installPromptShown) {
+        console.log('이미 이번 세션에서 프롬프트 표시됨');
+        return;
+    }
     
-    // 3초 후 설치 안내 (선택 사항)
+    // ⭐ 3초 후 자동으로 프롬프트 표시
     setTimeout(() => {
-        showPWAInstallPrompt();
+        if(deferredPrompt && !getCookie('pwa_install_prompted') && !installPromptShown) {
+            showPWAInstallPrompt();
+        }
     }, 3000);
 });
 
-// PWA 설치 프롬프트 표시
+// PWA 설치 프롬프트 표시 (수정됨)
 function showPWAInstallPrompt() {
-    if(!deferredPrompt) return;
+    if(!deferredPrompt || installPromptShown) return;
     
+    installPromptShown = true; // ⭐ 플래그 설정
+    
+    // ⭐ 커스텀 UI로 물어본 후, 동의하면 prompt() 호출
     if(confirm('📱 해정뉴스를 홈 화면에 추가하시겠어요?\n\n푸시 알림을 받으려면 홈 화면 추가가 필요합니다.')) {
+        // ⭐ 중요: 사용자가 동의한 경우에만 prompt() 호출
         deferredPrompt.prompt();
         
         deferredPrompt.userChoice.then((choiceResult) => {
@@ -4317,11 +4463,15 @@ function showPWAInstallPrompt() {
             }
             deferredPrompt = null;
         });
+        
+        // 30일 동안 다시 표시하지 않음
+        setCookie('pwa_install_prompted', 'true', 30);
+    } else {
+        // 사용자가 거부한 경우, 7일 후 다시 표시
+        setCookie('pwa_install_prompted', 'true', 7);
+        deferredPrompt = null;
     }
-    
-    // 30일 동안 다시 표시하지 않음
-    setCookie('pwa_install_prompted', 'true', 30);
-}});
+}
 
 // ===== 전역 에러 핸들러 =====
 window.addEventListener('error', function(e) {
@@ -5206,202 +5356,208 @@ function hideLoadingIndicator() {
     if(indicator) indicator.remove();
 }
 
-// ===== 테마/사운드 시스템 =====
 
-// 테마 적용
-async function applyTheme(themeName) {
-    const head = document.head;
-    
-    // 기존 테마 제거
-    const existingTheme = document.getElementById('activeThemeStyle');
-    if(existingTheme) existingTheme.remove();
-    
-    if(themeName === 'christmas') {
-        // 크리스마스 테마 적용
-        const link = document.createElement('link');
-        link.id = 'activeThemeStyle';
-        link.rel = 'stylesheet';
-        link.href = 'style1.css';
-        head.appendChild(link);
-        
-        console.log("🎄 크리스마스 테마 적용됨");
-    } else {
-        console.log("✅ 기본 테마로 복귀");
-    }
-}
 
-// 사용자 테마 로드 및 적용
-async function loadAndApplyUserTheme() {
-    if(!isLoggedIn()) return;
+
+
+console.log("✅ script.js 로드 완료");
+
+// ===== 대댓글(답글) 시스템 =====
+
+// 1. 댓글 로드 함수 (대댓글 렌더링 포함) - 기존 loadComments 교체
+function loadComments(id) {
+    const currentUser = getNickname();
+    const currentEmail = getUserEmail();
     
-    const uid = getUserId();
-    
-    try {
-        const snapshot = await db.ref("users/" + uid + "/activeTheme").once("value");
-        const activeTheme = snapshot.val();
+    db.ref("comments/" + id).once("value").then(snapshot => {
+        const val = snapshot.val() || {};
+        const commentsList = Object.entries(val).sort((a,b) => new Date(b[1].timestamp) - new Date(a[1].timestamp));
         
-        if(activeTheme) {
-            applyTheme(activeTheme);
+        const root = document.getElementById("comments");
+        const countEl = document.getElementById("commentCount");
+        if(countEl) countEl.textContent = `(${commentsList.length})`;
+
+        if (!commentsList.length) {
+            root.innerHTML = "<p style='color:#868e96;text-align:center;padding:30px;'>첫 댓글을 남겨보세요!</p>";
+            document.getElementById("loadMoreComments").innerHTML = "";
+            return;
         }
-    } catch(error) {
-        console.error("테마 로드 실패:", error);
-    }
-}
 
+        const endIdx = currentCommentPage * COMMENTS_PER_PAGE;
+        const displayComments = commentsList.slice(0, endIdx);
 
-
-async function loadAndApplyUserSounds() {
-    if(!isLoggedIn()) return;
-    
-    const uid = getUserId();
-    
-    try {
-        const soundsSnapshot = await db.ref("users/" + uid + "/activeSounds").once("value");
-        const bgmSnapshot = await db.ref("users/" + uid + "/activeBGM").once("value");
-        
-        soundsEnabled = soundsSnapshot.val() || false;
-        bgmEnabled = bgmSnapshot.val() || false;
-        
-        if(bgmEnabled) {
-            // BGM 재생 (사용자가 직접 클릭 후 재생되도록)
-            console.log("🎵 BGM 활성화됨 (클릭 시 재생)");
-        }
-        
-        if(soundsEnabled) {
-            console.log("🔊 효과음 활성화됨");
-        }
-    } catch(error) {
-        console.error("사운드 로드 실패:", error);
-    }
-}
-
-// 설정에서 테마/사운드 관리
-async function renderThemeSoundSettings() {
-    if(!isLoggedIn()) return '';
-    
-    const uid = getUserId();
-    
-    // 현재 설정 로드
-    const themeSnapshot = await db.ref("users/" + uid + "/activeTheme").once("value");
-    const soundsSnapshot = await db.ref("users/" + uid + "/activeSounds").once("value");
-    const bgmSnapshot = await db.ref("users/" + uid + "/activeBGM").once("value");
-    const inventorySnapshot = await db.ref("users/" + uid + "/inventory").once("value");
-    
-    const activeTheme = themeSnapshot.val() || 'default';
-    const activeSounds = soundsSnapshot.val() || false;
-    const activeBGM = bgmSnapshot.val() || false;
-    const inventory = inventorySnapshot.val() || [];
-    
-    // 보유 여부 확인
-    const hasChristmasTheme = inventory.includes('christmas_theme');
-    const hasChristmasSounds = inventory.includes('christmas_sounds');
-    const hasChristmasBGM = inventory.includes('christmas_bgm');
-    
-    return `
-        <div style="background:#fff; border:1px solid #dadce0; padding:20px; border-radius:8px; margin-bottom:20px;">
-            <h4 style="margin:0 0 15px 0; color:#202124;">🎨 테마 & 사운드 설정</h4>
+        root.innerHTML = displayComments.map(([commentId, comment]) => {
+            const isMyComment = isLoggedIn() && ((comment.authorEmail === currentEmail) || isAdmin());
             
-            <!-- 테마 설정 -->
-            <div style="margin-bottom:20px;">
-                <label style="font-weight:600; margin-bottom:10px; display:block;">테마 선택</label>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                    <button onclick="selectTheme('default')" class="theme-btn ${activeTheme === 'default' ? 'active' : ''}" 
-                            style="padding:15px; border:2px solid ${activeTheme === 'default' ? '#c62828' : '#dadce0'}; border-radius:8px; background:white; cursor:pointer;">
-                        <div style="font-size:24px; margin-bottom:5px;">🏠</div>
-                        <div style="font-weight:600;">기본 테마</div>
-                    </button>
-                    
-                    <button onclick="${hasChristmasTheme ? "selectTheme('christmas')" : "alert('상점에서 크리스마스 테마를 구매해주세요!')"}" 
-                            class="theme-btn ${activeTheme === 'christmas' ? 'active' : ''}" 
-                            style="padding:15px; border:2px solid ${activeTheme === 'christmas' ? '#c62828' : '#dadce0'}; border-radius:8px; background:white; cursor:pointer; ${!hasChristmasTheme ? 'opacity:0.5;' : ''}">
-                        <div style="font-size:24px; margin-bottom:5px;">🎄</div>
-                        <div style="font-weight:600;">크리스마스</div>
-                        ${!hasChristmasTheme ? '<div style="font-size:10px; color:#868e96;">미보유</div>' : ''}
-                    </button>
-                </div>
-            </div>
-            
-            <!-- 사운드 설정 -->
-            <div style="margin-bottom:15px;">
-                <label style="display:flex; align-items:center; gap:10px; cursor:${hasChristmasSounds ? 'pointer' : 'not-allowed'}; opacity:${hasChristmasSounds ? '1' : '0.5'};">
-                    <input type="checkbox" ${activeSounds ? 'checked' : ''} ${!hasChristmasSounds ? 'disabled' : ''} 
-                           onchange="toggleSounds(this.checked)" style="width:20px; height:20px;">
-                    <span style="font-weight:600;">🔊 크리스마스 효과음 ${!hasChristmasSounds ? '(미보유)' : ''}</span>
-                </label>
-            </div>
-            
-            <div style="margin-bottom:15px;">
-                <label style="display:flex; align-items:center; gap:10px; cursor:${hasChristmasBGM ? 'pointer' : 'not-allowed'}; opacity:${hasChristmasBGM ? '1' : '0.5'};">
-                    <input type="checkbox" ${activeBGM ? 'checked' : ''} ${!hasChristmasBGM ? 'disabled' : ''} 
-                           onchange="toggleBGM(this.checked)" style="width:20px; height:20px;">
-                    <span style="font-weight:600;">🎵 크리스마스 배경음악 ${!hasChristmasBGM ? '(미보유)' : ''}</span>
-                </label>
-            </div>
-            
-            <div style="background:#f8f9fa; padding:12px; border-radius:6px; font-size:12px; color:#5f6368;">
-                💡 테마와 사운드는 상점에서 구매 후 여기서 적용할 수 있습니다
-            </div>
-        </div>
-    `;
-}
-
-// 테마 선택
-window.selectTheme = async function(themeName) {
-    if(!isLoggedIn()) return;
-    
-    const uid = getUserId();
-    
-    try {
-        await db.ref("users/" + uid + "/activeTheme").set(themeName);
-        applyTheme(themeName);
-        
-        alert(`✅ ${themeName === 'christmas' ? '크리스마스' : '기본'} 테마가 적용되었습니다!`);
-        updateSettings();
-        
-    } catch(error) {
-        alert("테마 적용 실패: " + error.message);
-    }
-}
-
-// 효과음 토글
-window.toggleSounds = async function(enabled) {
-    if(!isLoggedIn()) return;
-    
-    const uid = getUserId();
-    
-    try {
-        await db.ref("users/" + uid + "/activeSounds").set(enabled);
-        soundsEnabled = enabled;
-        
-        alert(enabled ? "✅ 효과음이 켜졌습니다!" : "🔇 효과음이 꺼졌습니다!");
-        
-    } catch(error) {
-        alert("설정 실패: " + error.message);
-    }
-}
-
-// BGM 토글
-window.toggleBGM = async function(enabled) {
-    if(!isLoggedIn()) return;
-    
-    const uid = getUserId();
-    
-    try {
-        await db.ref("users/" + uid + "/activeBGM").set(enabled);
-        bgmEnabled = enabled;
-        
-        if(enabled) {
-            alert("✅ 배경음악이 켜졌습니다!\n💡 페이지를 클릭하면 재생됩니다.");
-            // 여기에 실제 BGM 재생 코드 추가 가능
-        } else {
-            alert("🔇 배경음악이 꺼졌습니다!");
-            if(bgmAudio) {
-                bgmAudio.pause();
-                bgmAudio = null;
+            let repliesHTML = '';
+            if (comment.replies) {
+                const replies = Object.entries(comment.replies).sort((a, b) => new Date(a[1].timestamp) - new Date(b[1].timestamp));
+                
+                repliesHTML = replies.map(([replyId, reply]) => {
+                    const isMyReply = isLoggedIn() && ((reply.authorEmail === currentEmail) || isAdmin());
+                    return `
+                        <div class="reply-item" id="reply-${replyId}">
+                            <div class="reply-header">
+                                <span class="reply-author">↳ ${reply.author}</span>
+                                <span class="reply-time">${reply.timestamp}</span>
+                            </div>
+                            <div class="reply-content">${reply.text}</div>
+                            ${isMyReply ? `
+                                <div class="reply-actions">
+                                    <button onclick="deleteReply('${id}', '${commentId}', '${replyId}')" class="btn-text-danger">삭제</button>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('');
             }
+
+            return `
+                <div class="comment-card" id="comment-${commentId}">
+                    <div class="comment-header">
+                        <span class="comment-author">${comment.author}</span>
+                        <span class="comment-time">${comment.timestamp}</span>
+                    </div>
+                    <div class="comment-body">${comment.text}</div>
+                    
+                    <div class="comment-footer">
+                        <button onclick="toggleReplyForm('${commentId}')" class="btn-text">💬 답글</button>
+                        ${isMyComment ? `
+                            <button onclick="deleteComment('${id}', '${commentId}', '${comment.author}')" class="btn-text text-danger">삭제</button>
+                        ` : ''}
+                    </div>
+
+                    <div class="replies-container">
+                        ${repliesHTML}
+                    </div>
+
+                    <div id="replyForm-${commentId}" class="reply-input-area" style="display:none;">
+                        <input type="text" id="replyInput-${commentId}" class="reply-input" placeholder="답글을 입력하세요..." onkeypress="if(event.key==='Enter') submitReply('${id}', '${commentId}')">
+                        <button onclick="submitReply('${id}', '${commentId}')" class="btn-reply-submit"><i class="fas fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        const loadMoreBtn = document.getElementById("loadMoreComments");
+        if (endIdx < commentsList.length) {
+            loadMoreBtn.innerHTML = `<button onclick="loadMoreComments()" class="btn-secondary btn-block">댓글 더보기 (${commentsList.length - endIdx}+)</button>`;
+        } else {
+            loadMoreBtn.innerHTML = "";
+        }
+    });
+}
+
+// 2. 답글 입력창 토글
+window.toggleReplyForm = function(commentId) {
+    if(!isLoggedIn()) return alert("로그인이 필요합니다.");
+    const form = document.getElementById(`replyForm-${commentId}`);
+    if(form) {
+        form.style.display = form.style.display === 'none' ? 'flex' : 'none';
+        if(form.style.display === 'flex') {
+            document.getElementById(`replyInput-${commentId}`).focus();
+        }
+    }
+}
+
+// 3. 답글 등록
+window.submitReply = async function(articleId, commentId) {
+    if(!isLoggedIn()) return alert("로그인이 필요합니다.");
+    
+    const input = document.getElementById(`replyInput-${commentId}`);
+    const text = input.value.trim();
+    
+    if(!text) return;
+    
+    const foundWord = checkBannedWords(text);
+    if(foundWord) {
+        alert(`금지어("${foundWord}")가 포함되어 있습니다.`);
+        return;
+    }
+
+    const reply = {
+        author: getNickname(),
+        authorEmail: getUserEmail(),
+        text: text,
+        timestamp: new Date().toLocaleString()
+    };
+
+    try {
+        await db.ref(`comments/${articleId}/${commentId}/replies`).push(reply);
+        
+        const parentCommentSnap = await db.ref(`comments/${articleId}/${commentId}`).once('value');
+        const parentComment = parentCommentSnap.val();
+        
+        if(parentComment && parentComment.authorEmail !== reply.authorEmail) {
+             sendNotification('comment', {
+                authorEmail: reply.authorEmail,
+                authorName: reply.author,
+                content: `회원님의 댓글에 답글: "${text}"`,
+                articleId: articleId
+            });
+        }
+        
+        input.value = "";
+        document.getElementById(`replyForm-${commentId}`).style.display = 'none';
+        loadComments(articleId);
+        
+    } catch(error) {
+        console.error("답글 등록 실패:", error);
+        alert("답글 등록 중 오류가 발생했습니다.");
+    }
+}
+
+// 4. 답글 삭제
+window.deleteReply = async function(articleId, commentId, replyId) {
+    if(!confirm("이 답글을 삭제하시겠습니까?")) return;
+    
+    try {
+        await db.ref(`comments/${articleId}/${commentId}/replies/${replyId}`).remove();
+        loadComments(articleId);
+    } catch(error) {
+        alert("삭제 실패: " + error.message);
+    }
+}
+
+// shop-system.js 맨 하단에 추가
+
+// 인벤토리에서 테마 토글 (ON/OFF)
+window.toggleThemeFromInventory = async function() {
+    if(!isLoggedIn()) {
+        alert("로그인이 필요합니다!");
+        return;
+    }
+    
+    const uid = getUserId();
+    
+    try {
+        // 현재 테마 상태 확인
+        const snapshot = await db.ref("users/" + uid + "/activeTheme").once("value");
+        const currentTheme = snapshot.val() || 'default';
+        
+        // 토글: 크리스마스 ↔ 기본
+        const newTheme = (currentTheme === 'christmas') ? 'default' : 'christmas';
+        
+        // Firebase에 저장
+        await db.ref("users/" + uid + "/activeTheme").set(newTheme);
+        
+        // 즉시 적용
+        applyTheme(newTheme, true);
+        
+        // 알림
+        if(newTheme === 'christmas') {
+            showToastNotification("🎄 테마 ON", "크리스마스 테마가 적용되었습니다!", null);
+        } else {
+            showToastNotification("✅ 테마 OFF", "기본 테마로 복원되었습니다.", null);
+        }
+        
+        // 인벤토리 페이지 새로고침
+        if(document.getElementById("inventorySection")?.classList.contains("active")) {
+            await showInventoryPage();
         }
         
     } catch(error) {
-        alert("설정 실패: " + error.message);
+        console.error("❌ 테마 토글 오류:", error);
+        alert("테마 변경 중 오류가 발생했습니다.");
     }
 }
