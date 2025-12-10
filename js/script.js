@@ -1770,12 +1770,11 @@ async function updateSettings() {
                 const isBanned = userData.isBanned || false;
                 const notificationsEnabled = userData.notificationsEnabled !== false;
                 
-                // ⭐ 테마/사운드 설정 렌더링
-                const themeSoundSettings = await renderThemeSoundSettings();
+
                 
                 // ⭐ 프로필 사진 버튼 추가
                 el.innerHTML = `
-                    ${themeSoundSettings}
+                    
                     
                     <div style="background:#fff; border:1px solid #dadce0; padding:20px; border-radius:8px; margin-bottom:20px;">
                         <h4 style="margin:0 0 15px 0; color:#202124;">내 정보</h4>
@@ -4523,34 +4522,6 @@ async function renderThemeSoundSettings() {
         // 크리스마스 테마 보유 여부 확인
         const hasChristmasTheme = inventory.includes('christmas_theme');
 
-        // HTML 생성 및 반환
-        return `
-            <div style="background:#fff; border:1px solid #dadce0; padding:20px; border-radius:8px; margin-bottom:20px;">
-                <h4 style="margin:0 0 15px 0; color:#202124;">🎨 테마 및 사운드 설정</h4>
-                
-                ${hasChristmasTheme ? `
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding-bottom:15px; border-bottom:1px solid #eee;">
-                    <div>
-                        <span style="font-weight:600;">🎄 크리스마스 테마</span>
-                        <div style="font-size:12px; color:#666;">전용 배경음악과 눈 내리는 효과</div>
-                    </div>
-                    <label class="switch" style="position:relative; display:inline-block; width:40px; height:24px;">
-                        <input type="checkbox" onchange="toggleThemeFromInventory()" ${activeTheme === 'christmas' ? 'checked' : ''} style="opacity:0; width:0; height:0;">
-                        <span class="slider round" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#ccc; transition:.4s; border-radius:34px;"></span>
-                        <style>
-                            input:checked + .slider { background-color: #c62828; }
-                            input:checked + .slider:before { transform: translateX(16px); }
-                            .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
-                        </style>
-                    </label>
-                </div>
-                ` : ''}
-
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="color:#666; font-size:14px;">🔊 효과음/BGM 설정은 준비 중입니다.</span>
-                </div>
-            </div>
-        `;
     } catch(error) {
         console.error("설정 렌더링 오류:", error);
         return '';
