@@ -13,6 +13,148 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const auth = firebase.auth();
 
+// ===== Toast 알림 시스템 =====
+
+// Toast 알림 표시 함수
+function showToastNotification(title, message, articleId = null) {
+    // 기존 토스트 제거
+    const existingToast = document.getElementById('toastNotification');
+    if(existingToast) existingToast.remove();
+    
+    // 토스트 HTML 생성
+    const toastHTML = `
+        <div id="toastNotification" class="toast-notification" onclick="${articleId ? `showArticleDetail('${articleId}')` : 'closeToast()'}">
+            <div class="toast-icon">🔔</div>
+            <div class="toast-content">
+                <div class="toast-title">${title}</div>
+                <div class="toast-message">${message}</div>
+            </div>
+            <button class="toast-close" onclick="event.stopPropagation(); closeToast();">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <style>
+            .toast-notification {
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                background: white;
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                padding: 16px;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                min-width: 320px;
+                max-width: 400px;
+                z-index: 9999;
+                animation: slideInRight 0.3s ease, fadeOut 0.3s ease 4.7s;
+                cursor: ${articleId ? 'pointer' : 'default'};
+                border-left: 4px solid #c62828;
+            }
+            
+            @keyframes slideInRight {
+                from {
+                    transform: translateX(400px);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            
+            @keyframes fadeOut {
+                to {
+                    opacity: 0;
+                    transform: translateX(400px);
+                }
+            }
+            
+            .toast-notification:hover {
+                box-shadow: 0 6px 24px rgba(0,0,0,0.2);
+                transform: translateY(-2px);
+                transition: all 0.2s ease;
+            }
+            
+            .toast-icon {
+                font-size: 28px;
+                flex-shrink: 0;
+            }
+            
+            .toast-content {
+                flex: 1;
+                min-width: 0;
+            }
+            
+            .toast-title {
+                font-weight: 700;
+                color: #202124;
+                font-size: 14px;
+                margin-bottom: 4px;
+            }
+            
+            .toast-message {
+                color: #5f6368;
+                font-size: 13px;
+                line-height: 1.4;
+                word-wrap: break-word;
+            }
+            
+            .toast-close {
+                background: none;
+                border: none;
+                color: #5f6368;
+                cursor: pointer;
+                padding: 4px;
+                border-radius: 50%;
+                width: 24px;
+                height: 24px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+                transition: all 0.2s ease;
+            }
+            
+            .toast-close:hover {
+                background: #f1f3f4;
+                color: #202124;
+            }
+            
+            @media (max-width: 768px) {
+                .toast-notification {
+                    top: 70px;
+                    right: 10px;
+                    left: 10px;
+                    min-width: auto;
+                    max-width: none;
+                }
+            }
+        </style>
+    `;
+    
+    // body에 추가
+    document.body.insertAdjacentHTML('beforeend', toastHTML);
+    
+    // 5초 후 자동 제거
+    setTimeout(() => {
+        closeToast();
+    }, 5000);
+}
+
+// Toast 닫기
+function closeToast() {
+    const toast = document.getElementById('toastNotification');
+    if(toast) {
+        toast.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }
+}
+
+console.log("✅ Toast 알림 시스템 로드 완료");
+
 // ⭐ 인증 상태 지속성 설정 (로컬 스토리지 사용)
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
     .then(() => {
@@ -4366,16 +4508,53 @@ async function renderThemeSoundSettings() {
     
     const uid = getUserId();
     
-    // 현재 설정 로드
-    const themeSnapshot = await db.ref("users/" + uid + "/activeTheme").once("value");
-    const soundsSnapshot = await db.ref("users/" + uid + "/activeSounds").once("value");
-    const bgmSnapshot = await db.ref("users/" + uid + "/activeBGM").once("value");
-    const inventorySnapshot = await db.ref("users/" + uid + "/inventory").once("value");
-    
-    const activeTheme = themeSnapshot.val() || 'default';
-    const activeSounds = soundsSnapshot.val() || false;
-    const activeBGM = bgmSnapshot.val() || false;
-    const inventory = inventorySnapshot.val() || [];
+    try {
+        // 현재 설정 로드
+        const themeSnapshot = await db.ref("users/" + uid + "/activeTheme").once("value");
+        const soundsSnapshot = await db.ref("users/" + uid + "/activeSounds").once("value");
+        const bgmSnapshot = await db.ref("users/" + uid + "/activeBGM").once("value");
+        const inventorySnapshot = await db.ref("users/" + uid + "/inventory").once("value");
+        
+        const activeTheme = themeSnapshot.val() || 'default';
+        const activeSounds = soundsSnapshot.val() || false;
+        const activeBGM = bgmSnapshot.val() || false;
+        const inventory = inventorySnapshot.val() || [];
+        
+        // 크리스마스 테마 보유 여부 확인
+        const hasChristmasTheme = inventory.includes('christmas_theme');
+
+        // HTML 생성 및 반환
+        return `
+            <div style="background:#fff; border:1px solid #dadce0; padding:20px; border-radius:8px; margin-bottom:20px;">
+                <h4 style="margin:0 0 15px 0; color:#202124;">🎨 테마 및 사운드 설정</h4>
+                
+                ${hasChristmasTheme ? `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding-bottom:15px; border-bottom:1px solid #eee;">
+                    <div>
+                        <span style="font-weight:600;">🎄 크리스마스 테마</span>
+                        <div style="font-size:12px; color:#666;">전용 배경음악과 눈 내리는 효과</div>
+                    </div>
+                    <label class="switch" style="position:relative; display:inline-block; width:40px; height:24px;">
+                        <input type="checkbox" onchange="toggleThemeFromInventory()" ${activeTheme === 'christmas' ? 'checked' : ''} style="opacity:0; width:0; height:0;">
+                        <span class="slider round" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#ccc; transition:.4s; border-radius:34px;"></span>
+                        <style>
+                            input:checked + .slider { background-color: #c62828; }
+                            input:checked + .slider:before { transform: translateX(16px); }
+                            .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+                        </style>
+                    </label>
+                </div>
+                ` : ''}
+
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:#666; font-size:14px;">🔊 효과음/BGM 설정은 준비 중입니다.</span>
+                </div>
+            </div>
+        `;
+    } catch(error) {
+        console.error("설정 렌더링 오류:", error);
+        return '';
+    }
 }
 
 window.addEventListener("load", () => {
@@ -5519,8 +5698,6 @@ window.deleteReply = async function(articleId, commentId, replyId) {
     }
 }
 
-// shop-system.js 맨 하단에 추가
-
 // 인벤토리에서 테마 토글 (ON/OFF)
 window.toggleThemeFromInventory = async function() {
     if(!isLoggedIn()) {
@@ -5542,7 +5719,12 @@ window.toggleThemeFromInventory = async function() {
         await db.ref("users/" + uid + "/activeTheme").set(newTheme);
         
         // 즉시 적용
-        applyTheme(newTheme, true);
+        if (typeof applyTheme === 'function') {
+            applyTheme(newTheme, true);
+        } else {
+             // applyTheme 함수가 없을 경우를 대비한 새로고침
+             location.reload();
+        }
         
         // 알림
         if(newTheme === 'christmas') {
@@ -5553,11 +5735,15 @@ window.toggleThemeFromInventory = async function() {
         
         // 인벤토리 페이지 새로고침
         if(document.getElementById("inventorySection")?.classList.contains("active")) {
-            await showInventoryPage();
+             // showInventoryPage가 존재할 경우에만 호출
+             if(typeof showInventoryPage === 'function') await showInventoryPage();
         }
+        
+        // 프로필 설정창 업데이트 (테마 스위치 반영)
+        updateSettings();
         
     } catch(error) {
         console.error("❌ 테마 토글 오류:", error);
         alert("테마 변경 중 오류가 발생했습니다.");
     }
-}
+}; // 기존에 여기에 있던 불필요한 } 를 제거하고 ; 로 마무리
