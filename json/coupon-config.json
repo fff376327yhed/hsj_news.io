@@ -27,6 +27,17 @@
       "currentUses": 0,
       "active": true,
       "vipOnly": true
+    },
+     {
+  "coupons": [
+    {
+      "code": "은채은채 여친",
+      "reward": 300000,
+      "description": "커플 쿠폰",
+      "expiryDate": "3000-12-31",
+      "maxUses": 100,
+      "currentUses": 0,
+      "active": true
     }
   ]
 }
