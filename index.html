@@ -5,11 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>해정뉴스</title>
     
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
+    <!-- Firebase SDK (먼저 로드) -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js"></script>
+
+<!-- 하단의 스크립트 경로들 수정 -->
+<script src="./js/script.js"></script>
+<script src="./js/shop-system.js"></script>
+<script src="./js/profile-photo-system.js"></script>
+<script src="./js/christmas-sound-system.js"></script>
     
     <!-- Font -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -82,6 +88,20 @@
 
 <!-- 메인 컨텐츠 영역 -->
 <main class="main-content">
+
+<div id="articlesSection" class="page-section active">
+    
+    <div id="adSection"></div>
+
+    <div id="pinnedArticlesSection"></div>
+
+    <div id="featuredSection"></div>
+
+    <div id="articlesGrid" class="articles-grid"></div>
+
+    <div id="loadMoreContainer"></div>
+
+</div>
 
 <!-- 홈 섹션 -->
 <section class="page-section active" id="articlesSection">
@@ -220,6 +240,9 @@
             <i class="fas fa-question-circle"></i>
             <span>QnA</span>
         </button>
+        <button onclick="showBugReportPage()" class="more-card" style="margin-top:10px; background:#607d8b; color:white;">
+         <i class="fas fa-bug"></i> 버그 제보
+     </button>
     </div>
 </section>
 
@@ -438,6 +461,11 @@
     <button onclick="showMaintenanceManager()" class="btn-warning" style="grid-column: span 2;">
         <i class="fas fa-tools"></i> 점검 모드 설정
     </button>
+<!-- 기존 버튼들 아래에 추가 -->
+<button onclick="showSubmissionManager()" class="event-card">
+    <i class="fas fa-inbox"></i>
+    <span>제출물 관리</span>
+</button>
 </div>
     
     <div id="usersList"></div>
@@ -482,6 +510,8 @@
         </button>
     </div>
 </section>
+
+
 
 <!-- 캐치마인드 게임 섹션 -->
 <section class="page-section" id="catchMindSection">
@@ -745,11 +775,10 @@
     <div id="couponContent"></div>
 </div>
 
-<!-- 하단의 스크립트 경로들 수정 -->
-<script src="./js/profile-photo-system.js"></script>
-<script src="./js/shop-system.js"></script>
-<script src="./js/script.js"></script>
-<script src="./js/christmas-sound-system.js"></script>
+
+
+
+
 
 </body>
 </html>
