@@ -1,4 +1,12 @@
-// ===== 크리스마스 사운드 & 테마 시스템 (완전 수정) =====
+// 맨 위에 추가
+window.currentTheme = 'default'; // ✅ 전역으로 노출
+
+// applyTheme 함수 내부 수정
+function applyTheme(theme, showNotification = true) {
+    currentTheme = theme;
+    window.currentTheme = theme; // ✅ 추가
+    // ...
+}
 
 // 전역 오디오 객체 및 설정 변수
 let bgmAudio = null;
