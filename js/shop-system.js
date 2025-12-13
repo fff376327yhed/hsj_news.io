@@ -3,20 +3,22 @@
 let shopConfig = null;
 let userInventory = [];
 
+// shop-system.js 수정
 async function loadShopConfig() {
     try {
         const response = await fetch('./json/shop-config.json')
         shopConfig = await response.json();
         console.log("✅ 상점 설정 로드 완료:", shopConfig.items.length + "개 아이템");
         
-        // ✅ 1초 후에 실행 (script.js 완전 로드 대기)
+        // ✅ 3초로 늘림 (안전한 대기)
         setTimeout(() => {
-            checkWelcomeBonus();
-        }, 1000);
+            if(typeof window.isLoggedIn === 'function' && window.isLoggedIn()) {
+                checkWelcomeBonus();
+            }
+        }, 3000); // 1000 → 3000
         
     } catch(err) {
         console.error("❌ 상점 설정 로드 실패:", err);
-        shopConfig = { categories: [], items: [], shopSettings: {} };
     }
 }
 
@@ -419,6 +421,7 @@ window.showInventoryPage = async function() {
                 </button>
             </div>
             
+ // ✅ 1. showInventoryPage 함수 내부 (약 430줄)
             <!-- 내 아이템 탭 -->
             <div id="itemsTab" style="display:block;">
                 ${ownedItems.length === 0 ? `
@@ -431,26 +434,33 @@ window.showInventoryPage = async function() {
                         </button>
                     </div>
                 ` : `
-                    ${Object.entries(itemsByCategory).map(([category, items]) => {
-                        if(items.length === 0) return '';
-                        
-                        const categoryNames = {
-                            themes: '🎄 테마',
-                            sounds: '🔊 사운드',
-                            decorations: '✨ 장식'
-                        };
-                        
-                        return `
-                            <div style="margin-bottom:40px;">
-                                <h2 style="font-size:24px; margin-bottom:20px; color:#c62828;">
-                                    ${categoryNames[category]}
-                                </h2>
-                                <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:20px;">
-                                    ${items.map(item => renderInventoryItem(item, activeDecorations)).join('')}
+                    ${await Promise.all(
+                        Object.entries(itemsByCategory).map(async ([category, items]) => {
+                            if(items.length === 0) return '';
+                            
+                            const categoryNames = {
+                                themes: '🎄 테마',
+                                sounds: '🔊 사운드',
+                                decorations: '✨ 장식'
+                            };
+                            
+                            // ✅ 여기서 각 아이템 렌더링
+                            const renderedItems = await Promise.all(
+                                items.map(item => renderInventoryItem(item, activeDecorations))
+                            );
+                            
+                            return `
+                                <div style="margin-bottom:40px;">
+                                    <h2 style="font-size:24px; margin-bottom:20px; color:#c62828;">
+                                        ${categoryNames[category]}
+                                    </h2>
+                                    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:20px;">
+                                        ${renderedItems.join('')}
+                                    </div>
                                 </div>
-                            </div>
-                        `;
-                    }).join('')}
+                            `;
+                        })
+                    ).then(results => results.join(''))}
                 `}
             </div>
             
@@ -467,60 +477,58 @@ window.showInventoryPage = async function() {
     `;
 }
 
-// shop-system.js에서 renderInventoryItem 함수의 사운드 부분만 교체
-function renderInventoryItem(item, activeDecorations) {
+// 기존의 renderInventoryItem 함수를 완전히 교체
+async function renderInventoryItem(item, activeDecorations) {
     const isActive = activeDecorations.includes(item.unlocks);
     
-    // 아이템별 액션 버튼 생성
     let actionButton = '';
     
     if(item.category === 'decorations') {
-        // 장식 아이템
         actionButton = `
             <button onclick="toggleDecoration('${item.unlocks}')" class="btn-${isActive ? 'secondary' : 'primary'} btn-block" style="font-size:13px;">
                 <i class="fas fa-${isActive ? 'times' : 'check'}"></i> ${isActive ? '제거하기' : '적용하기'}
             </button>
         `;
-// shop-system.js 내부 - renderInventoryItem 함수에서 테마 부분만 교체
-
-} else if(item.category === 'themes') {
-    // 테마 아이템 - 효과음/BGM과 동일한 ON/OFF 방식
-    if(item.unlocks === 'christmas_theme') {
-        // 현재 테마 상태 확인 (동기 처리)
-        let currentTheme = 'default';
-        if(isLoggedIn()) {
-            const uid = getUserId();
-            // 동기 방식으로 현재 테마 가져오기
-            db.ref("users/" + uid + "/activeTheme").once("value").then(snapshot => {
-                currentTheme = snapshot.val() || 'default';
-            });
+    } else if(item.category === 'themes') {
+        if(item.unlocks === 'christmas_theme') {
+            let isThemeActive = false;
+            
+            if(typeof isLoggedIn === 'function' && isLoggedIn()) {
+                const uid = getUserId();
+                try {
+                    const themeSnapshot = await db.ref("users/" + uid + "/activeTheme").once("value");
+                    const currentTheme = themeSnapshot.val() || 'default';
+                    isThemeActive = (currentTheme === 'christmas');
+                } catch(error) {
+                    console.error("테마 상태 확인 실패:", error);
+                }
+            }
+            
+            actionButton = `
+                <button onclick="toggleThemeFromInventory(); setTimeout(() => { if(document.getElementById('inventorySection')?.classList.contains('active')) showInventoryPage(); }, 200);" 
+                        class="btn-${isThemeActive ? 'success' : 'primary'} btn-block" 
+                        style="font-size:13px; margin-bottom:8px;">
+                    <i class="fas fa-${isThemeActive ? 'check-circle' : 'paint-brush'}"></i> 
+                    ${isThemeActive ? '테마 ON' : '테마 OFF'}
+                </button>
+            `;
         }
-        
-        const isThemeActive = (typeof activeTheme !== 'undefined' && activeTheme === 'christmas');
-        
-        actionButton = `
-            <button onclick="toggleThemeFromInventory(); setTimeout(() => { if(document.getElementById('inventorySection')?.classList.contains('active')) showInventoryPage(); }, 200);" 
-                    class="btn-${isThemeActive ? 'success' : 'primary'} btn-block" 
-                    style="font-size:13px; margin-bottom:8px;">
-                <i class="fas fa-${isThemeActive ? 'check-circle' : 'paint-brush'}"></i> 
-                ${isThemeActive ? '테마 ON' : '테마 OFF'}
-            </button>
-        `;
-    }
-
     } else if(item.category === 'sounds') {
-        // 사운드 아이템 - 직접 토글 가능
         if(item.unlocks === 'christmas_sounds') {
             const isSoundsActive = typeof soundEnabled !== 'undefined' ? soundEnabled : false;
             actionButton = `
-                <button onclick="toggleSounds(!soundEnabled); setTimeout(() => { if(document.getElementById('inventorySection')?.classList.contains('active')) showInventoryPage(); }, 100);" class="btn-${isSoundsActive ? 'success' : 'primary'} btn-block" style="font-size:13px; margin-bottom:8px;">
+                <button onclick="toggleSounds(!soundEnabled); setTimeout(() => { if(document.getElementById('inventorySection')?.classList.contains('active')) showInventoryPage(); }, 100);" 
+                        class="btn-${isSoundsActive ? 'success' : 'primary'} btn-block" 
+                        style="font-size:13px; margin-bottom:8px;">
                     <i class="fas fa-${isSoundsActive ? 'volume-up' : 'volume-mute'}"></i> ${isSoundsActive ? '효과음 ON' : '효과음 OFF'}
                 </button>
             `;
         } else if(item.unlocks === 'christmas_bgm') {
             const isBGMActive = typeof bgmEnabled !== 'undefined' ? bgmEnabled : false;
             actionButton = `
-                <button onclick="toggleBGM(!bgmEnabled); setTimeout(() => { if(document.getElementById('inventorySection')?.classList.contains('active')) showInventoryPage(); }, 100);" class="btn-${isBGMActive ? 'success' : 'primary'} btn-block" style="font-size:13px; margin-bottom:8px;">
+                <button onclick="toggleBGM(!bgmEnabled); setTimeout(() => { if(document.getElementById('inventorySection')?.classList.contains('active')) showInventoryPage(); }, 100);" 
+                        class="btn-${isBGMActive ? 'success' : 'primary'} btn-block" 
+                        style="font-size:13px; margin-bottom:8px;">
                     <i class="fas fa-${isBGMActive ? 'music' : 'play'}"></i> ${isBGMActive ? 'BGM ON' : 'BGM OFF'}
                 </button>
             `;
@@ -535,20 +543,26 @@ function renderInventoryItem(item, activeDecorations) {
         `;
     }
     
-// 아이템 활성 상태 표시 부분 수정 (기존 코드 교체)
-
-// 아이템 활성 상태 표시
-let isActiveStatus = false;
-if(item.unlocks === 'christmas_sounds') {
-    isActiveStatus = typeof soundEnabled !== 'undefined' ? soundEnabled : false;
-} else if(item.unlocks === 'christmas_bgm') {
-    isActiveStatus = typeof bgmEnabled !== 'undefined' ? bgmEnabled : false;
-} else if(item.unlocks === 'christmas_theme') {
-    // ⭐ 수정: 전역 activeTheme 변수 사용
-    isActiveStatus = typeof activeTheme !== 'undefined' ? activeTheme === 'christmas' : false;
-} else if(item.category === 'decorations') {
-    isActiveStatus = isActive;
-}
+    // 아이템 활성 상태 표시
+    let isActiveStatus = false;
+    if(item.unlocks === 'christmas_theme') {
+        if(typeof isLoggedIn === 'function' && isLoggedIn()) {
+            const uid = getUserId();
+            try {
+                const themeSnapshot = await db.ref("users/" + uid + "/activeTheme").once("value");
+                const currentTheme = themeSnapshot.val() || 'default';
+                isActiveStatus = (currentTheme === 'christmas');
+            } catch(error) {
+                isActiveStatus = false;
+            }
+        }
+    } else if(item.unlocks === 'christmas_bgm') {
+        isActiveStatus = typeof bgmEnabled !== 'undefined' ? bgmEnabled : false;
+    } else if(item.unlocks === 'christmas_sounds') {
+        isActiveStatus = typeof soundEnabled !== 'undefined' ? soundEnabled : false;
+    } else if(item.category === 'decorations') {
+        isActiveStatus = isActive;
+    }
     
     return `
         <div class="inventory-item-card" style="
@@ -572,8 +586,9 @@ if(item.unlocks === 'christmas_sounds') {
     `;
 }
 
+
 // 장식 관리 탭 렌더링
-function renderDecorationManagement(decorations, activeDecorations) {
+async function renderDecorationManagement(decorations, activeDecorations) {
     if(decorations.length === 0) {
         return `
             <div style="text-align:center; padding:80px 20px; background:white; border-radius:12px;">
