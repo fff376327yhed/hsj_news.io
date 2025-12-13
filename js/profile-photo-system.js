@@ -343,27 +343,41 @@ window.deleteProfilePhoto = async function() {
     }
 }
 
-// ===== 프로필 사진 가져오기 및 표시 함수 =====
 
-// 사용자 이메일로 프로필 사진 가져오기
 async function getUserProfilePhoto(email) {
     if(!email) return null;
     
+    // ✅ window 객체를 통해 접근
+    if(!window.profilePhotoCache) {
+        window.profilePhotoCache = new Map();
+    }
+    
+    // 캐시 확인
+    if(window.profilePhotoCache.has(email)) {
+        return window.profilePhotoCache.get(email);
+    }
+    
     try {
-        // 모든 사용자 검색
         const usersSnapshot = await db.ref("users").once("value");
         const usersData = usersSnapshot.val() || {};
         
-        // 이메일로 사용자 찾기
-        for(const [uid, userData] of Object.entries(usersData)) {
-            if(userData.email === email && userData.profilePhoto) {
-                return userData.profilePhoto;
+        for(const userData of Object.values(usersData)) {
+            if(userData && userData.email === email) {
+                const photo = userData.profilePhoto || null;
+                window.profilePhotoCache.set(email, photo);
+                console.log("✅ 프로필 사진 로드:", email, photo ? "있음" : "없음"); // 디버깅
+                return photo;
             }
         }
         
+        // 찾지 못한 경우
+        console.log("⚠️ 사용자를 찾을 수 없음:", email);
+        window.profilePhotoCache.set(email, null);
         return null;
+        
     } catch(error) {
-        console.error("프로필 사진 조회 실패:", error);
+        console.error("프로필 사진 로드 실패:", error);
+        window.profilePhotoCache.set(email, null);
         return null;
     }
 }
@@ -382,7 +396,7 @@ function createProfilePhotoHTML(photoUrl, size = 32, alt = "프로필") {
     }
 }
 
-// ===== 프로필 사진이 포함된 댓글 로드 (대댓글 + 수정 기능 포함) =====
+// ===== 프로필 사진이 포함된 댓글 로드 (대댓글 + 수정 기능 포함 + 버그 수정됨) =====
 async function loadCommentsWithProfile(id) {
     const currentUser = getNickname();
     const currentEmail = getUserEmail();
@@ -395,7 +409,7 @@ async function loadCommentsWithProfile(id) {
         const root = document.getElementById("comments");
         const countEl = document.getElementById("commentCount");
         
-        // 총 댓글 수 계산 (댓글 + 대댓글)
+        // 총 댓글 수 계산
         let totalCount = commentsList.length;
         commentsList.forEach(([_, comment]) => {
             if(comment.replies) {
@@ -414,30 +428,32 @@ async function loadCommentsWithProfile(id) {
         const endIdx = currentCommentPage * COMMENTS_PER_PAGE;
         const displayComments = commentsList.slice(0, endIdx);
         
-        // 프로필 사진 미리 로드
-        const commentPhotos = await Promise.all(
-            displayComments.map(([_, comment]) => getUserProfilePhoto(comment.authorEmail))
-        );
-
-        root.innerHTML = await Promise.all(displayComments.map(async ([commentId, comment], idx) => {
+        // 1. 댓글 작성자들의 프로필 사진 미리 로드 (병렬 처리)
+        // 캐시 활용을 위해 getUserProfilePhoto 사용
+        
+        // HTML 생성을 비동기로 처리
+        const commentsHTML = await Promise.all(displayComments.map(async ([commentId, comment]) => {
             const isMyComment = isLoggedIn() && ((comment.authorEmail === currentEmail) || isAdmin());
-            const commentPhotoHTML = createProfilePhotoHTML(commentPhotos[idx], 32, comment.author);
             
-            // 대댓글 렌더링
+            // ✅ [수정] 댓글 프로필 사진 + 장식 생성
+            // photoUrl을 미리 가져오지 않고 createProfilePhotoWithDecorations 내부 로직에 맡기거나
+            // 여기서 미리 가져와서 넘겨줍니다. 효율을 위해 여기서 url만 가져옵니다.
+            const photoUrl = await getUserProfilePhoto(comment.authorEmail);
+            const commentPhotoHTML = await createProfilePhotoWithDecorations(photoUrl, 32, comment.authorEmail);
+            
+            // 대댓글 처리
             let repliesHTML = '';
             if (comment.replies) {
                 const replies = Object.entries(comment.replies).sort((a, b) => 
                     new Date(a[1].timestamp) - new Date(b[1].timestamp)
                 );
                 
-                // 대댓글 프로필 사진 로드
-                const replyPhotos = await Promise.all(
-                    replies.map(([_, reply]) => getUserProfilePhoto(reply.authorEmail))
-                );
-                
-                repliesHTML = replies.map(([replyId, reply], replyIdx) => {
+                // ✅ [수정] 대댓글도 비동기로 장식 적용 (Promise.all 사용)
+                const repliesPromises = replies.map(async ([replyId, reply]) => {
                     const isMyReply = isLoggedIn() && ((reply.authorEmail === currentEmail) || isAdmin());
-                    const replyPhotoHTML = createProfilePhotoHTML(replyPhotos[replyIdx], 24, reply.author);
+                    const replyPhotoUrl = await getUserProfilePhoto(reply.authorEmail);
+                    // 대댓글에도 장식 적용 (크기 24)
+                    const replyPhotoHTML = await createProfilePhotoWithDecorations(replyPhotoUrl, 24, reply.authorEmail);
                     
                     return `
                         <div class="reply-item" id="reply-${replyId}">
@@ -448,11 +464,8 @@ async function loadCommentsWithProfile(id) {
                                         <span class="reply-author">↳ ${reply.author}</span>
                                         <span class="reply-time">${reply.timestamp}</span>
                                     </div>
-                                    
-                                    <!-- 대댓글 내용 표시 -->
                                     <div class="reply-content" id="replyContent-${replyId}">${reply.text}</div>
                                     
-                                    <!-- 대댓글 수정 폼 (숨김) -->
                                     <div id="replyEditForm-${replyId}" style="display:none; margin-top:8px;">
                                         <input type="text" id="replyEditInput-${replyId}" class="reply-input" value="${reply.text}" 
                                                onkeypress="if(event.key==='Enter') saveReplyEdit('${id}', '${commentId}', '${replyId}')">
@@ -472,7 +485,10 @@ async function loadCommentsWithProfile(id) {
                             </div>
                         </div>
                     `;
-                }).join('');
+                });
+                
+                const repliesResult = await Promise.all(repliesPromises);
+                repliesHTML = `<div class="replies-container">${repliesResult.join('')}</div>`;
             }
 
             return `
@@ -484,11 +500,8 @@ async function loadCommentsWithProfile(id) {
                                 <span class="comment-author">${comment.author}</span>
                                 <span class="comment-time">${comment.timestamp}</span>
                             </div>
-                            
-                            <!-- 댓글 내용 표시 -->
                             <div class="comment-body" id="commentContent-${commentId}">${comment.text}</div>
                             
-                            <!-- 댓글 수정 폼 (숨김) -->
                             <div id="commentEditForm-${commentId}" style="display:none; margin-top:12px;">
                                 <textarea id="commentEditInput-${commentId}" class="form-control" style="min-height:80px; resize:vertical;">${comment.text}</textarea>
                                 <div style="display:flex; gap:8px; margin-top:10px;">
@@ -507,7 +520,7 @@ async function loadCommentsWithProfile(id) {
                         </div>
                     </div>
 
-                    ${repliesHTML ? `<div class="replies-container">${repliesHTML}</div>` : ''}
+                    ${repliesHTML}
 
                     <div id="replyForm-${commentId}" class="reply-input-area" style="display:none;">
                         <input type="text" id="replyInput-${commentId}" class="reply-input" placeholder="답글을 입력하세요..." onkeypress="if(event.key==='Enter') submitReply('${id}', '${commentId}')">
@@ -515,7 +528,9 @@ async function loadCommentsWithProfile(id) {
                     </div>
                 </div>
             `;
-        })).then(results => results.join(''));
+        }));
+
+        root.innerHTML = commentsHTML.join('');
 
         const loadMoreBtn = document.getElementById("loadMoreComments");
         if (endIdx < commentsList.length) {
@@ -526,9 +541,9 @@ async function loadCommentsWithProfile(id) {
         
     } catch(error) {
         console.error("❌ 댓글 로드 오류:", error);
-        document.getElementById("comments").innerHTML = `
-            <p style='color:#dc3545;text-align:center;padding:30px;'>댓글을 불러오는데 실패했습니다.</p>
-        `;
+        // 오류가 나도 사용자에게는 친절하게 표시
+        const root = document.getElementById("comments");
+        if(root) root.innerHTML = `<p style='color:#dc3545;text-align:center;padding:30px;'>댓글을 불러오는 중 문제가 발생했습니다.<br><small>${error.message}</small></p>`;
     }
 }
 
@@ -773,4 +788,252 @@ window.deleteReply = async function(articleId, commentId, replyId) {
     }
 }
 
-console.log("✅ 프로필 사진 시스템 로드 완료");
+async function createProfilePhotoWithDecorations(photoUrl, size, email) {
+    // 1. 기본값 처리 (undefined 방지)
+    const safePhotoUrl = photoUrl || ''; 
+    
+    // 이메일이 없으면 기본 사진 반환
+    if(!email) return createProfilePhotoHTML(safePhotoUrl, size);
+    
+    try {
+        // 사용자 UID 찾기
+        const usersSnapshot = await db.ref("users").orderByChild("email").equalTo(email).limitToFirst(1).once("value");
+        const usersData = usersSnapshot.val();
+        
+        let uid = null;
+        if (usersData) {
+            uid = Object.keys(usersData)[0];
+        }
+        
+        if(!uid) {
+            return createProfilePhotoHTML(safePhotoUrl, size);
+        }
+        
+        // 활성화된 장식 로드
+        const snapshot = await db.ref("users/" + uid + "/activeDecorations").once("value");
+        const activeDecorations = snapshot.val() || [];
+        
+        if(activeDecorations.length === 0) {
+            return createProfilePhotoHTML(safePhotoUrl, size);
+        }
+
+        // --- 장식 HTML 생성 로직 ---
+        let decorationHTML = "";
+        
+        // (예시) 산타 모자
+        if(activeDecorations.includes('santa_hat')) {
+            decorationHTML += `
+                <div style="position:absolute; top:-${size/3}px; left:50%; transform:translateX(-50%); width:${size}px; pointer-events:none; z-index:10;">
+                    <img src="./assets/items/santa_hat.png" style="width:100%; height:auto; filter:drop-shadow(0 2px 3px rgba(0,0,0,0.3));" onerror="this.style.display='none'">
+                </div>
+            `;
+        }
+        
+        // (예시) 크리스마스 프레임
+        let borderStyle = "";
+        if(activeDecorations.includes('christmas_wreath')) {
+            decorationHTML += `
+                <div style="position:absolute; top:-10%; left:-10%; width:120%; height:120%; pointer-events:none; z-index:11;">
+                    <img src="./assets/items/wreath_frame.png" style="width:100%; height:100%;" onerror="this.style.display='none'">
+                </div>
+            `;
+        } else if(activeDecorations.includes('rudolph_nose')) {
+            // 루돌프 코 (중앙)
+            decorationHTML += `
+                <div style="position:absolute; top:40%; left:50%; transform:translate(-50%, -50%); width:${size/3}px; height:${size/3}px; background:red; border-radius:50%; box-shadow:inset -2px -2px 5px rgba(0,0,0,0.3); z-index:12;"></div>
+            `;
+        }
+
+        // 기본 프로필 HTML 생성
+        const baseHTML = createProfilePhotoHTML(safePhotoUrl, size);
+
+        // 장식과 함께 반환 (wrapper로 감쌈)
+        return `
+            <div style="position:relative; display:inline-block; width:${size}px; height:${size}px;">
+                ${decorationHTML}
+                ${baseHTML}
+            </div>
+        `;
+
+    } catch(error) {
+        console.error("프로필 장식 로드 실패:", error);
+        return createProfilePhotoHTML(safePhotoUrl, size);
+    }
+}
+
+// ===== profile-photo-system.js (전면 개편됨) =====
+
+// 1. 데이터 캐시 저장소 (중복 DB 조회 방지)
+const userDecorationCache = {};
+
+/**
+ * [동기 함수] 화면에 즉시 보여질 '임시' 프로필 HTML 생성
+ * 이 함수는 await 없이 즉시 HTML 문자열을 반환하므로 화면이 밀리지 않습니다.
+ */
+function getProfilePlaceholder(photoUrl, size, email) {
+    const safePhoto = photoUrl || '';
+    const safeEmail = email || '';
+    
+    // 기본 이미지를 먼저 만듭니다.
+    const baseHTML = createProfilePhotoHTML(safePhoto, size);
+    
+    // 식별자 클래스(needs-decoration)와 데이터를 심어둡니다.
+    return `
+        <div class="needs-decoration" 
+             data-photo="${safePhoto}" 
+             data-size="${size}" 
+             data-email="${safeEmail}" 
+             style="display:inline-block; vertical-align:middle; position:relative; width:${size}px; height:${size}px;">
+            ${baseHTML}
+        </div>
+    `;
+}
+
+/**
+ * [핵심 함수] 화면에 있는 모든 'needs-decoration' 요소를 찾아 장식을 입힙니다.
+ * 뉴스 피드 렌더링 직후에 반드시 호출해야 합니다.
+ */
+window.loadAllProfileDecorations = async function() {
+    const elements = document.querySelectorAll('.needs-decoration');
+    
+    // 1. 화면에 있는 모든 이메일 수집
+    const emailsToFetch = new Set();
+    elements.forEach(el => {
+        if(el.dataset.processed === "true") return;
+        const email = el.dataset.email;
+        if(email && email !== 'undefined' && email !== 'null' && !userDecorationCache[email]) {
+            emailsToFetch.add(email);
+        }
+    });
+
+    // 2. 캐시에 없는 데이터 일괄 로드 (병렬 처리 최적화)
+    if(emailsToFetch.size > 0) {
+        // 원래는 한 번에 가져오는 게 좋지만, Firebase 구조상 개별 쿼리 병렬 실행
+        const promises = Array.from(emailsToFetch).map(async (email) => {
+            try {
+                // 이메일로 UID 찾기
+                const userSnap = await db.ref("users").orderByChild("email").equalTo(email).limitToFirst(1).once("value");
+                const userData = userSnap.val();
+                
+                if (userData) {
+                    const uid = Object.keys(userData)[0];
+                    const decorations = userData[uid].activeDecorations || [];
+                    // 캐시에 저장: { uid: "...", decorations: [...] }
+                    userDecorationCache[email] = { uid: uid, decorations: decorations };
+                } else {
+                    userDecorationCache[email] = { uid: null, decorations: [] }; // 유저 없음
+                }
+            } catch (e) {
+                console.warn(`유저 정보 로드 실패 (${email}):`, e);
+                userDecorationCache[email] = { uid: null, decorations: [] };
+            }
+        });
+        await Promise.all(promises);
+    }
+
+    // 3. 각 요소에 장식 적용
+    elements.forEach(el => {
+        if(el.dataset.processed === "true") return;
+        
+        const email = el.dataset.email;
+        const size = parseInt(el.dataset.size);
+        const photo = el.dataset.photo;
+        
+        // 캐시 데이터 확인
+        const cachedData = userDecorationCache[email];
+        
+        // 장식이 있으면 HTML 교체
+        if (cachedData && cachedData.decorations && cachedData.decorations.length > 0) {
+            const decoratedHTML = generateDecorationHTML(photo, size, cachedData.decorations);
+            el.innerHTML = decoratedHTML;
+        }
+        
+        // 처리 완료 표시 (중복 실행 방지)
+        el.dataset.processed = "true";
+    });
+};
+
+/**
+ * [내부 함수] 실제 장식 HTML 조립 로직
+ */
+function generateDecorationHTML(photoUrl, size, decorations) {
+    let decorationHTML = "";
+    
+    // --- 장식 아이템 정의 ---
+    
+    // 1. 산타 모자
+    if(decorations.includes('santa_hat')) {
+        decorationHTML += `
+            <div style="position:absolute; top:-${size*0.4}px; left:50%; transform:translateX(-50%); width:${size}px; pointer-events:none; z-index:10;">
+                <img src="./assets/items/santa_hat.png" style="width:100%; height:auto; filter:drop-shadow(0 2px 2px rgba(0,0,0,0.3));" onerror="this.style.display='none'">
+            </div>
+        `;
+    }
+    
+    // 2. 크리스마스 리스 (프레임)
+    if(decorations.includes('christmas_wreath')) {
+        decorationHTML += `
+            <div style="position:absolute; top:-12%; left:-12%; width:124%; height:124%; pointer-events:none; z-index:11;">
+                <img src="./assets/items/wreath_frame.png" style="width:100%; height:100%;" onerror="this.style.display='none'">
+            </div>
+        `;
+    }
+
+    // 3. 루돌프 코
+    if(decorations.includes('rudolph_nose')) {
+        decorationHTML += `
+            <div style="position:absolute; top:45%; left:50%; transform:translate(-50%, -50%); width:${size*0.25}px; height:${size*0.25}px; background:red; border-radius:50%; box-shadow:inset -1px -1px 2px rgba(0,0,0,0.5); z-index:12;"></div>
+        `;
+    }
+
+    // 기본 사진
+    const baseHTML = createProfilePhotoHTML(photoUrl, size);
+
+    // 합쳐서 반환
+    return `
+        <div style="position:relative; width:${size}px; height:${size}px;">
+            ${decorationHTML}
+            ${baseHTML}
+        </div>
+    `;
+}
+
+// [기본 함수] 단순 이미지 태그 생성
+function createProfilePhotoHTML(photoUrl, size = 32) {
+    if(photoUrl && photoUrl !== 'null' && photoUrl !== 'undefined') {
+        return `<img src="${photoUrl}" 
+                     style="width:${size}px; height:${size}px; border-radius:50%; object-fit:cover; border:1px solid #ddd;"
+                     onerror="this.src='https://via.placeholder.com/${size}?text=User'">`;
+    } else {
+        return `<div style="width:${size}px; height:${size}px; border-radius:50%; background:#f1f3f4; display:flex; align-items:center; justify-content:center; border:1px solid #ddd;">
+                    <i class="fas fa-user" style="font-size:${size*0.6}px; color:#9aa0a6;"></i>
+                </div>`;
+    }
+}
+
+// 4. [핵심 함수] 화면에 렌더링된 요소들을 찾아 장식을 입히는 함수
+// ⭐ 사용자님이 질문하신 이 함수는 여기에 위치합니다.
+window.loadAllProfileDecorations = function() {
+    const elements = document.querySelectorAll('.needs-decoration');
+    
+    elements.forEach(async (el) => {
+        if(el.dataset.processed === "true") return; // 이미 처리했으면 패스
+        
+        const photo = el.dataset.photo;
+        const size = parseInt(el.dataset.size);
+        const email = el.dataset.email;
+        
+        if(email && email !== 'undefined' && email !== 'null') {
+            try {
+                // 비동기로 진짜 HTML(장식 포함) 가져오기
+                const decoratedHTML = await createProfilePhotoWithDecorations(photo, size, email);
+                el.innerHTML = decoratedHTML; // 교체
+                el.dataset.processed = "true"; // 처리 완료 표시
+            } catch(e) {
+                console.warn("장식 로드 실패:", e);
+            }
+        }
+    });
+};
+
+console.log("✅ 프로필 사진 시스템 로드 완료 (수정됨)");
