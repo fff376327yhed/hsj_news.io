@@ -178,6 +178,7 @@ try {
   console.warn("⚠️ Firebase Messaging 초기화 실패:", err.message);
 }
 
+
 // 전역 변수
 let currentArticlePage = 1;
 const ARTICLES_PER_PAGE = 5;
@@ -191,6 +192,14 @@ let bannedWordsList = [];
 let currentFreeboardPage = 1;
 let currentFreeboardSortMethod = 'latest';
 let filteredFreeboardArticles = [];
+
+// ✅ [추가] 테마 복원용 변수 선언 (이 줄을 추가하세요)
+let originalUserTheme = null;
+
+// 기존 전역 변수들 아래에 추가
+let profilePhotoCache = new Map(); // ✅ 이 줄 추가
+
+
 // 캐치마인드 게임 변수
 let catchMindGames = [];
 let currentGame = null;
@@ -630,18 +639,15 @@ function copyArticleLink(articleId) {
     });
 }
 
-// 수정된 코드
+// script.js 약 520줄 근처
 function goBack() {
-    // ⭐ 기사에서 나갈 때 원래 테마로 복원
-    restoreUserTheme();
-    
-    // 이전 페이지가 있으면 브라우저 히스토리 사용
-    if (window.history.length > 1) {
-        window.history.back();
-    } else {
-        // 히스토리가 없으면 홈으로
-        showArticles();
+    // ✅ 기사에서 나갈 때 원래 테마로 복원
+    if(typeof restoreUserTheme === 'function') {
+        restoreUserTheme();
     }
+    
+    // ✅ 수정: 항상 홈으로 이동하도록 변경
+    showArticles();
 }
 
 // ===== Part 3: 관리자 인증 및 프로필 관리 =====
@@ -1585,7 +1591,7 @@ auth.onAuthStateChanged(async user => {
             await initSoundSystem(); 
         }
         
-        updateHeaderProfileButton(user);
+        await updateHeaderProfileButton(user);
         
         // 로딩 표시
         showLoadingIndicator("로그인 중...");
@@ -2076,24 +2082,37 @@ async function renderFreeboardArticles() {
     const endIdx = currentFreeboardPage * ARTICLES_PER_PAGE;
     const displayArticles = list.slice(0, endIdx);
     
-    grid.innerHTML = displayArticles.map(a => {
-        const views = getArticleViews(a);
-        const votes = getArticleVoteCounts(a);
-        return `<div class="article-card" onclick="showArticleDetail('${a.id}')" style="cursor:pointer;">
-            ${a.thumbnail ? `<img src="${a.thumbnail}" class="article-thumbnail" alt="썸네일">` : ''}
-            <div class="article-content">
-                <span class="category-badge">${a.category}</span>
-                <h3 class="article-title">${a.title}</h3>
-                <p class="article-summary">${a.summary||''}</p>
-                <div class="article-meta">
-    <span>${a.author}</span>
-    <div class="article-stats">
-        <span class="stat-item">👁️ ${views}</span>
-        <span class="stat-item">👍 ${votes.likes}</span>
-    </div>
-</div>
+    // 댓글 수 계산 로직 추가
+const commentCount = a.comments ? Object.keys(a.comments).length : 0;
+
+// 카드 HTML 생성 부분 (수정됨)
+articlesHTML.push(`
+    <article class="news-card" onclick="showArticleDetail('${id}')">
+        ${a.thumbnail ? `<div class="card-thumbnail"><img src="${a.thumbnail}"></div>` : ''}
+        
+        <div class="card-content">
+            <h3 class="card-title">${a.title}</h3>
+            <p class="card-excerpt">${a.content.substring(0, 60)}...</p>
+            
+            <div class="card-meta">
+                <div class="author-info">
+                    ${authorPhotoHTML} <span>${a.author}</span>
+                </div>
+                
+                <div class="meta-stats">
+                    <span><i class="fas fa-eye"></i> ${a.views || 0}</span>
+                    
+                    <span><i class="far fa-heart"></i> ${a.likes ? Object.keys(a.likes).length : 0}</span>
+                    
+                    <span style="margin-left:8px; color:#555;">
+                        <i class="far fa-comment-dots"></i> ${commentCount}
+                    </span>
+                </div>
             </div>
-        </div>`}).join('');
+            <div class="card-date">${dateStr}</div>
+        </div>
+    </article>
+`);
     
     if(endIdx < list.length) {
         loadMore.innerHTML = `<button onclick="loadMoreFreeboardArticles()" class="btn-block" style="background:#fff; border:1px solid #ddd; color:#555;">
@@ -2287,22 +2306,36 @@ function getSortedArticles() {
     return articles;
 }
 
-// 기사 렌더링 (최적화 + 프로필 사진)
+// script.js 약 2350줄 근처 - renderArticles 함수 시작 부분
 async function renderArticles() {
     const list = getSortedArticles();
-    
+    const grid = document.getElementById("articlesGrid");
+    const featured = document.getElementById("featuredSection");
+    const pinnedSection = document.getElementById("pinnedArticlesSection");
     const adSection = document.getElementById("adSection");
-    const pinnedSection = document.getElementById("pinnedSection"); 
-    const featured = document.getElementById("featuredArticle");    
-    const grid = document.getElementById("articlesGrid");           
     const loadMore = document.getElementById("loadMoreContainer");
-    
-    // 광고 로드
-    const adsSnapshot = await db.ref("advertisements").once("value");
-    const adsData = adsSnapshot.val() || {};
-    const ads = Object.values(adsData).sort((a, b) => b.createdAt - a.createdAt);
 
-    // 고정 기사 로드
+    // ✅ 모든 console.log 제거 (DEBUG_MODE 관련 코드 삭제)
+    
+    if(!grid || !featured || !pinnedSection || !adSection || !loadMore) {
+        console.error("필수 요소를 찾을 수 없습니다.");
+        return;
+    }
+    
+    // ✅ 프로필 사진 캐싱 최적화
+    if(!window.profilePhotoCache) {
+        window.profilePhotoCache = new Map();
+    }
+    
+    // ✅ 2. 광고는 한 번만 로드 (캐싱)
+    if(!window.cachedAds) {
+        const adsSnapshot = await db.ref("advertisements").once("value");
+        const adsData = adsSnapshot.val() || {};
+        window.cachedAds = Object.values(adsData).sort((a, b) => b.createdAt - a.createdAt);
+    }
+    const ads = window.cachedAds;
+
+    // ✅ 3. 고정 기사와 일반 기사 분리
     const pinsSnapshot = await db.ref("pinnedArticles").once("value");
     const pinnedData = pinsSnapshot.val() || {};
     const pinnedIds = Object.keys(pinnedData);
@@ -2321,7 +2354,7 @@ async function renderArticles() {
 
     pinnedArticles.sort((a, b) => b.pinnedAt - a.pinnedAt);
 
-    // 광고 렌더링
+    // ✅ 4. 광고 렌더링
     if(ads.length > 0) {
         adSection.innerHTML = ads.map(ad => `
             <div class="ad-banner" style="background:${ad.color}; border:1px solid #ddd;">
@@ -2335,7 +2368,18 @@ async function renderArticles() {
         adSection.innerHTML = '';
     }
 
-    // 고정 기사 렌더링 (프로필 사진 포함)
+    // ✅ 5. 기사가 없을 때
+    if (list.length === 0) {
+        featured.innerHTML = `<div style="text-align:center;padding:60px 20px;background:#fff;border-radius:8px;">
+            <p style="color:#868e96;font-size:16px;">등록된 기사가 없습니다.</p>
+        </div>`;
+        grid.innerHTML = "";
+        loadMore.innerHTML = "";
+        pinnedSection.innerHTML = "";
+        return;
+    }
+
+    // ✅ 6. 고정 기사 렌더링 (프로필 사진 포함)
     if(pinnedArticles.length > 0) {
         const pinnedPhotos = await Promise.all(
             pinnedArticles.map(a => getUserProfilePhoto(a.authorEmail))
@@ -2355,57 +2399,69 @@ async function renderArticles() {
                         <span style="flex:1;">${a.author}</span>
                     </div>
                 </div>
-            </div>`}).join('');
+            </div>`;
+        }).join('');
     } else {
         pinnedSection.innerHTML = '';
     }
 
-    // 기사가 없을 때
-    if (list.length === 0) {
-        featured.innerHTML = `<div style="text-align:center;padding:60px 20px;background:#fff;border-radius:8px;">
-            <p style="color:#868e96;font-size:16px;">등록된 기사가 없습니다.</p>
-        </div>`;
-        grid.innerHTML = "";
-        loadMore.innerHTML = "";
-        return;
-    }
-
-    // 그리드 렌더링 (프로필 사진 포함)
+    // ✅ 7. 일반 기사 렌더링 (페이징)
+    featured.innerHTML = '';
     const endIdx = currentArticlePage * ARTICLES_PER_PAGE;
     const displayArticles = unpinnedArticles.slice(0, endIdx);
     
-    // 프로필 사진 미리 로드
-    const displayPhotos = await Promise.all(
-        displayArticles.map(a => getUserProfilePhoto(a.authorEmail))
-    );
-    
-    featured.innerHTML = '';
+ // ✅ 2. 이메일 중복 제거 후 한 번에 로드
+const emails = [...new Set(displayArticles.map(a => a.authorEmail).filter(Boolean))];
+const uncachedEmails = emails.filter(email => !window.profilePhotoCache.has(email));
 
-    grid.innerHTML = displayArticles.map((a, idx) => {
+if(uncachedEmails.length > 0) {
+    const usersSnapshot = await db.ref("users").once("value");
+    const usersData = usersSnapshot.val() || {};
+    
+    Object.values(usersData).forEach(userData => {
+        if(userData && userData.email && uncachedEmails.includes(userData.email)) {
+            window.profilePhotoCache.set(userData.email, userData.profilePhoto || null);
+        }
+    });
+}
+    
+    // ✅ 8. HTML 생성 (장식 포함)
+    const articlesHTML = await Promise.all(displayArticles.map(async (a) => {
         const views = getArticleViews(a);
         const votes = getArticleVoteCounts(a);
-        const authorPhotoHTML = createProfilePhotoHTML(displayPhotos[idx], 24, a.author);
-        
-        return `<div class="article-card" onclick="showArticleDetail('${a.id}')" style="cursor:pointer;">
-            ${a.thumbnail ? `<img src="${a.thumbnail}" class="article-thumbnail" alt="인네일">` : ''}
-            <div class="article-content">
-                <span class="category-badge">${a.category}</span>
-                <h3 class="article-title">${a.title}</h3>
-                <p class="article-summary">${a.summary||''}</p>
-                <div class="article-meta" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                    <div style="display:flex; align-items:center; gap:8px; flex:1;">
-                        ${authorPhotoHTML}
-                        <span>${a.author}</span>
-                    </div>
-                    <div class="article-stats" style="display:flex; gap:12px;">
-                        <span class="stat-item">👁️ ${views}</span>
-                        <span class="stat-item">👍 ${votes.likes}</span>
-                    </div>
+        const photoUrl = window.profilePhotoCache.get(a.authorEmail) || null;
+
+        // 1. await를 쓰지 않고, 동기 함수인 getProfilePlaceholder를 사용합니다.
+const authorPhotoHTML = getProfilePlaceholder(photoUrl, 48, a.authorEmail);
+    
+    return `<div class="article-card" onclick="showArticleDetail('${a.id}')" style="cursor:pointer;">
+        ${a.thumbnail ? `<img src="${a.thumbnail}" class="article-thumbnail" alt="썸네일">` : ''}
+        <div class="article-content">
+            <span class="category-badge">${a.category}</span>
+            <h3 class="article-title">${a.title}</h3>
+            <p class="article-summary">${a.summary||''}</p>
+            <div class="article-meta" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <div style="display:flex; align-items:center; gap:8px; flex:1;">
+                    ${authorPhotoHTML}
+                    <span>${a.author}</span>
+                </div>
+                <div class="article-stats" style="display:flex; gap:12px;">
+                    <span class="stat-item">👁️ ${views}</span>
+                    <span class="stat-item">👍 ${votes.likes}</span>
                 </div>
             </div>
-        </div>`}).join('');
+        </div>
+    </div>`;
+}));
     
-    // 더보기 버튼
+    grid.innerHTML = articlesHTML.join('');
+
+    // [추가] 렌더링이 끝난 후 장식을 불러옵니다!
+    if(typeof loadAllProfileDecorations === 'function') {
+        loadAllProfileDecorations();
+    }
+    
+    // ✅ 9. 더보기 버튼
     if(endIdx < unpinnedArticles.length) {
         loadMore.innerHTML = `<button onclick="loadMoreArticles()" class="btn-block" style="background:#fff; border:1px solid #ddd; color:#555;">
             더 보기 (${unpinnedArticles.length - endIdx})</button>`;
@@ -2420,96 +2476,150 @@ function loadMoreArticles() {
     renderArticles();
 }
 
-// ===== 기사 작성자의 테마 로드 및 적용 (임시) =====
-let originalUserTheme = null; // 사용자의 원래 테마 저장
-
+// script.js 약 2780줄 근처
 async function loadArticleAuthorTheme(authorEmail) {
     if(!authorEmail) return;
     
-    // ⭐ 현재 로그인한 사용자의 원래 테마 저장
+    // 현재 사용자의 원래 테마/사운드 저장
     if(isLoggedIn() && !originalUserTheme) {
         const uid = getUserId();
         const userThemeSnapshot = await db.ref("users/" + uid + "/activeTheme").once("value");
+        const userSoundsSnapshot = await db.ref("users/" + uid + "/activeSounds").once("value");
+        const userBGMSnapshot = await db.ref("users/" + uid + "/activeBGM").once("value");
+        
         originalUserTheme = userThemeSnapshot.val() || 'default';
-        console.log("📌 사용자의 원래 테마 저장:", originalUserTheme);
+        window.originalUserSounds = userSoundsSnapshot.val() || false;
+        window.originalUserBGM = userBGMSnapshot.val() || false;
     }
     
     try {
-        // 작성자의 UID 찾기
         const usersSnapshot = await db.ref("users").once("value");
         const usersData = usersSnapshot.val() || {};
         
         let authorUid = null;
-        let authorInventory = [];
-        
         for (const [uid, userData] of Object.entries(usersData)) {
             if(userData && userData.email === authorEmail) {
                 authorUid = uid;
-                authorInventory = userData.inventory || [];
                 break;
             }
         }
         
         if(!authorUid) return;
         
-        // 작성자가 크리스마스 테마를 보유하고 있는지 확인
-        const hasChristmasTheme = authorInventory.includes('christmas_theme');
+        const inventorySnapshot = await db.ref("users/" + authorUid + "/inventory").once("value");
+        const inventory = inventorySnapshot.val() || [];
         
-        if(!hasChristmasTheme) {
-            console.log("📰 작성자가 크리스마스 테마를 보유하지 않음");
-            return;
+        const hasChristmasTheme = inventory.includes('christmas_theme');
+        const hasChristmasSounds = inventory.includes('christmas_sounds');
+        const hasChristmasBGM = inventory.includes('christmas_bgm');
+        
+        // ✅ 테마 적용
+        if(hasChristmasTheme) {
+            const themeSnapshot = await db.ref("users/" + authorUid + "/activeTheme").once("value");
+            const authorTheme = themeSnapshot.val();
+            
+            if(authorTheme === 'christmas') {
+                console.log(`🎄 작성자의 크리스마스 테마 적용`);
+                if(typeof applyTheme === 'function') {
+                    applyTheme('christmas', false);
+                }
+            }
         }
         
-        // 작성자의 테마 설정 가져오기
-        const themeSnapshot = await db.ref("users/" + authorUid + "/activeTheme").once("value");
-        const authorTheme = themeSnapshot.val();
+        // ✅ 사운드 적용 (수정됨)
+        if(hasChristmasSounds) {
+            const soundsSnapshot = await db.ref("users/" + authorUid + "/activeSounds").once("value");
+            const authorSounds = soundsSnapshot.val();
+            
+            if(authorSounds && typeof window !== 'undefined') {
+                console.log(`🔊 작성자의 크리스마스 효과음 적용`);
+                window.soundEnabled = true;
+            }
+        }
         
-        // ⭐ 작성자가 크리스마스 테마를 사용 중이고, 보유한 경우에만 적용
-        if(authorTheme === 'christmas') {
-            console.log(`🎄 작성자(${authorEmail})의 크리스마스 테마 임시 적용`);
+        // ✅ BGM 적용 (수정됨)
+        if(hasChristmasBGM) {
+            const bgmSnapshot = await db.ref("users/" + authorUid + "/activeBGM").once("value");
+            const authorBGM = bgmSnapshot.val();
             
-            // ⭐ 현재 사용자도 크리스마스 테마를 보유했는지 확인
-            let viewerHasTheme = false;
-            if(isLoggedIn()) {
-                const viewerUid = getUserId();
-                const viewerSnapshot = await db.ref("users/" + viewerUid + "/inventory").once("value");
-                const viewerInventory = viewerSnapshot.val() || [];
-                viewerHasTheme = viewerInventory.includes('christmas_theme');
+            if(authorBGM && typeof window !== 'undefined') {
+                console.log(`🎵 작성자의 크리스마스 BGM 적용`);
+                window.bgmEnabled = true;
+                
+                // ✅ BGM 초기화 및 재생
+                if(typeof initBGM === 'function') {
+                    initBGM();
+                }
+                if(typeof playBGM === 'function') {
+                    playBGM();
+                }
             }
-            
-            // 뷰어가 테마를 보유하지 않았으면 일시적으로만 적용
-            if(!viewerHasTheme) {
-                console.log("⚠️ 뷰어는 크리스마스 테마 미보유 - 임시 적용");
-            }
-            
-            applyTheme('christmas', false);
         }
         
     } catch(error) {
-        console.error("작성자 테마 로드 실패:", error);
+        console.error("❌ 작성자 테마 로드 실패:", error);
     }
 }
 
-// ⭐ 기사에서 나갈 때 원래 테마로 복원
+// script.js - restoreUserTheme 함수 수정
 function restoreUserTheme() {
     if(originalUserTheme) {
-        console.log("🔄 사용자의 원래 테마로 복원:", originalUserTheme);
+        console.log("🔄 사용자의 원래 설정으로 복원");
         applyTheme(originalUserTheme, false);
-        originalUserTheme = null; // 초기화
+        
+        // ✅ 사운드 복원
+        if(typeof window.originalUserSounds !== 'undefined') {
+            window.soundEnabled = window.originalUserSounds;
+        }
+        
+        // ✅ BGM 복원
+        if(typeof window.originalUserBGM !== 'undefined') {
+            window.bgmEnabled = window.originalUserBGM;
+            if(!window.originalUserBGM && typeof stopBGM === 'function') {
+                stopBGM();
+            }
+        }
+        
+        originalUserTheme = null;
+        window.originalUserSounds = undefined;
+        window.originalUserBGM = undefined;
     }
 }
 
 // ===== Part 8: 기사 상세, 작성, 수정 =====
 
-// 기사 상세 보기
 async function showArticleDetail(id) {
+    // 1. 화면 전환 및 초기화 (이전 내용 즉시 삭제)
+    hideAll();
+    const detailSection = document.getElementById("articleDetailSection");
+    detailSection.classList.add("active");
+    
+    // ⭐ 중요: 로딩 중 표시를 먼저 띄워서 이전 기사 잔상을 없앱니다.
+    const root = document.getElementById("articleDetail");
+    root.innerHTML = `
+        <div style="padding:60px 20px; text-align:center;">
+            <div style="width:40px; height:40px; border:4px solid #f3f3f3; border-top:4px solid #c62828; border-radius:50%; animation:spin 1s linear infinite; margin:0 auto 20px;"></div>
+            <p style="color:#666;">기사를 불러오는 중입니다...</p>
+        </div>
+    `;
+    
+    // 댓글 영역도 초기화
+    document.getElementById("comments").innerHTML = "";
+    document.getElementById("commentCount").textContent = "";
+
+    // URL 업데이트
+    updateURL('article', id);
+
+    // 2. 데이터 불러오기 시작
     db.ref("articles/" + id).once("value").then(async snapshot => {
+        // ... (이후 코드는 기존과 동일하게 유지)
         const A = snapshot.val();
-        if(!A) {
-            alert("존재하지 않는 기사입니다!");
-            showArticles();
-            return;
+        if(!A) { 
+             alert("존재하지 않는 기사입니다!");
+             showArticles();
+             return;
         }
+        // ... 기존 코드 계속 ...
         
         if (currentArticleId !== id) {
             incrementView(id);
@@ -2531,7 +2641,7 @@ async function showArticleDetail(id) {
         // ⭐ 작성자의 테마/사운드 로드 및 적용
         await loadArticleAuthorTheme(A.authorEmail);
         
-        // ⭐ 프로필 사진 + 장식 로드
+        // ✅ 프로필 사진 + 장식 로드
         const authorPhoto = await getUserProfilePhoto(A.authorEmail);
         const authorPhotoHTML = await createProfilePhotoWithDecorations(authorPhoto, 40, A.authorEmail);
 
@@ -2569,6 +2679,7 @@ async function showArticleDetail(id) {
             </div>` : ''}
         </div>`;
         
+
         // ⭐ 프로필 사진이 포함된 댓글 로드
         loadCommentsWithProfile(id);
         
@@ -3432,6 +3543,158 @@ async function showAdminEvent() {
         </div>
     `;
     
+
+    // ===== 관리자: 제출물 관리 (버그 및 문제 출제) =====
+
+// 관리자 메뉴에 버튼 추가 (기존 showAdminEvent 함수 내부에 추가)
+// <button onclick="showSubmissionManager()" class="btn-primary btn-block" style="margin-bottom:10px;">📩 제출된 항목 확인</button>
+
+// script.js 약 3850줄에 이 코드가 있어야 합니다:
+
+window.showSubmissionManager = function() {
+    if (!isAdmin()) return alert("관리자 권한이 없습니다.");
+    
+    hideAll();
+    let section = document.getElementById("adminSubmissionSection");
+    if (!section) {
+        section = document.createElement("div");
+        section.id = "adminSubmissionSection";
+        section.className = "page-section";
+        document.querySelector("main").appendChild(section);
+    }
+    section.classList.add("active");
+    
+    section.innerHTML = `
+        <div style="padding:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="color:#333;">📩 제출 관리함</h2>
+                <button onclick="showAdminEvent()" class="btn-secondary">뒤로</button>
+            </div>
+            
+            <div class="tabs" style="display:flex; gap:10px; margin-bottom:20px;">
+                <button onclick="loadPendingGames()" class="btn-primary" style="flex:1;">🎨 문제 출제</button>
+                <button onclick="loadBugReports()" class="btn-danger" style="flex:1;">🐛 버그 제보</button>
+            </div>
+            
+            <div id="submissionList" style="background:#f9f9f9; padding:15px; border-radius:8px; min-height:300px;">
+                <p style="text-align:center; color:#888;">상단 탭을 선택하여 내용을 확인하세요.</p>
+            </div>
+        </div>
+    `;
+}
+
+// 뱃지 숫자 가져오기 (비동기라 UI엔 나중에 반영되거나 생략 가능)
+function getBadge(path) {
+    return "?"; // 실시간 개수는 별도 리스너 필요, 여기선 단순화
+}
+
+// 1. 출제된 문제 로드
+async function loadPendingGames() {
+    const container = document.getElementById("submissionList");
+    container.innerHTML = '<p style="text-align:center;">로딩 중...</p>';
+    
+    const snapshot = await db.ref("pendingGames").once("value");
+    const data = snapshot.val() || {};
+    
+    if (Object.keys(data).length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:#888;">제출된 문제가 없습니다.</p>';
+        return;
+    }
+
+    container.innerHTML = Object.entries(data).map(([id, game]) => `
+        <div style="background:white; padding:15px; border-radius:8px; margin-bottom:15px; border:1px solid #ddd;">
+            <div style="display:flex; justify-content:space-between;">
+                <strong>${game.subject} (난이도: ${game.difficulty})</strong>
+                <span style="font-size:12px; color:#666;">${new Date(game.submittedAt).toLocaleString()}</span>
+            </div>
+            <p><strong>출제자:</strong> ${game.author}</p>
+            <p><strong>정답:</strong> ${game.answer}</p>
+            <p><strong>힌트:</strong> ${game.hints ? game.hints.join(', ') : '없음'}</p>
+            <p><strong>설명:</strong> ${game.description || '없음'}</p>
+            
+            <div style="display:flex; gap:5px; overflow-x:auto; margin:10px 0;">
+                ${game.images ? game.images.map(src => `<img src="${src}" style="height:60px; border-radius:4px; border:1px solid #eee;">`).join('') : ''}
+            </div>
+            
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <button onclick="approveGame('${id}')" class="btn-success" style="flex:1; padding:5px;">승인 (게임에 추가)</button>
+                <button onclick="deleteSubmission('pendingGames', '${id}')" class="btn-danger" style="flex:1; padding:5px;">삭제</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// 2. 버그 제보 로드
+async function loadBugReports() {
+    const container = document.getElementById("submissionList");
+    container.innerHTML = '<p style="text-align:center;">로딩 중...</p>';
+    
+    const snapshot = await db.ref("bugReports").once("value");
+    const data = snapshot.val() || {};
+
+    if (Object.keys(data).length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:#888;">제보된 버그가 없습니다.</p>';
+        return;
+    }
+
+    container.innerHTML = Object.entries(data).reverse().map(([id, report]) => `
+        <div style="background:white; padding:15px; border-radius:8px; margin-bottom:15px; border-left:4px solid #d32f2f;">
+            <div style="display:flex; justify-content:space-between;">
+                <strong>${report.reporter}</strong>
+                <span style="font-size:12px; color:#666;">${report.dateStr}</span>
+            </div>
+            <p style="margin:5px 0; font-size:13px; color:#555;">📱 ${report.device}</p>
+            <div style="background:#f1f1f1; padding:10px; border-radius:4px; margin:10px 0; white-space:pre-wrap;">${report.description}</div>
+            
+            <div style="display:flex; gap:5px; overflow-x:auto; margin-bottom:10px;">
+                ${report.images ? report.images.map(src => `<img src="${src}" onclick="window.open(this.src)" style="height:80px; cursor:pointer; border-radius:4px; border:1px solid #ccc;">`).join('') : ''}
+            </div>
+            
+            <button onclick="deleteSubmission('bugReports', '${id}')" class="btn-secondary" style="width:100%; padding:5px;">확인 완료 (삭제)</button>
+        </div>
+    `).join('');
+}
+
+// 제출물 삭제
+async function deleteSubmission(node, id) {
+    if (!confirm("정말 삭제하시겠습니까?")) return;
+    await db.ref(`${node}/${id}`).remove();
+    if (node === 'pendingGames') loadPendingGames();
+    else loadBugReports();
+}
+
+// 게임 승인 (json 파일이 아닌 pendingGames에서 실제 게임 목록으로 이동시키는 로직 필요 시 구현)
+// 참고: 현재 구조상 JSON 파일을 수정할 순 없으므로, Firebase에 'customGames' 노드를 만들어 게임을 실행할 때 같이 불러오게 수정해야 합니다.
+async function approveGame(id) {
+    if (!confirm("이 문제를 승인하시겠습니까?")) return;
+    
+    // 1. pendingGames에서 데이터 가져오기
+    const snap = await db.ref(`pendingGames/${id}`).once("value");
+    const gameData = snap.val();
+    
+    // 2. 구조에 맞게 변환 (첫 번째 이미지만 메인으로 사용 등)
+    const approvedGame = {
+        id: id,
+        subject: gameData.subject,
+        answer: gameData.answer,
+        hints: gameData.hints || [],
+        imageUrl: gameData.images ? gameData.images[0] : null, // 첫 번째 이미지를 대표로
+        extraImages: gameData.images || [],
+        difficulty: gameData.difficulty,
+        timeLimit: gameData.difficulty === 'easy' ? 30 : gameData.difficulty === 'medium' ? 20 : 15,
+        rewards: { "5sec": 100, "15sec": 50, "30sec": 30 } // 기본 보상 설정
+    };
+    
+    // 3. customGames 노드에 저장 (게임 로직에서 이 노드도 읽어와야 함)
+    // 주의: 기존 loadCatchMindConfig() 함수에서 이 노드도 함께 읽어와야 게임에 등장합니다.
+    // 여기서는 DB에 'approved'로 옮기는 작업만 수행합니다.
+    await db.ref("adminSettings/catchMind/customGames").push(approvedGame);
+    await db.ref(`pendingGames/${id}`).remove();
+    
+    alert("승인 완료! (게임 목록에 추가됨)");
+    loadPendingGames();
+}
+
     updateURL('admin');
 }
 
@@ -3582,6 +3845,107 @@ window.deleteAd = async function(adId) {
     
     alert("광고가 삭제되었습니다.");
     showAdManager();
+}
+
+// 제출물 관리 - 출제된 문제 로드
+window.loadPendingGames = async function() {
+    const container = document.getElementById("submissionList");
+    container.innerHTML = '<p style="text-align:center;">로딩 중...</p>';
+    
+    const snapshot = await db.ref("pendingGames").once("value");
+    const data = snapshot.val() || {};
+    
+    if (Object.keys(data).length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:#888;">제출된 문제가 없습니다.</p>';
+        return;
+    }
+
+    container.innerHTML = Object.entries(data).map(([id, game]) => `
+        <div style="background:white; padding:15px; border-radius:8px; margin-bottom:15px; border:1px solid #ddd;">
+            <div style="display:flex; justify-content:space-between;">
+                <strong>${game.subject} (난이도: ${game.difficulty})</strong>
+                <span style="font-size:12px; color:#666;">${new Date(game.submittedAt).toLocaleString()}</span>
+            </div>
+            <p><strong>출제자:</strong> ${game.author}</p>
+            <p><strong>정답:</strong> ${game.answer}</p>
+            <p><strong>힌트:</strong> ${game.hints ? game.hints.join(', ') : '없음'}</p>
+            <p><strong>설명:</strong> ${game.description || '없음'}</p>
+            
+            <div style="display:flex; gap:5px; overflow-x:auto; margin:10px 0;">
+                ${game.images ? game.images.map(src => `<img src="${src}" style="height:60px; border-radius:4px; border:1px solid #eee;">`).join('') : ''}
+            </div>
+            
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <button onclick="approveGame('${id}')" class="btn-success" style="flex:1; padding:5px;">승인 (게임에 추가)</button>
+                <button onclick="deleteSubmission('pendingGames', '${id}')" class="btn-danger" style="flex:1; padding:5px;">삭제</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// 버그 리포트 로드
+window.loadBugReports = async function() {
+    const container = document.getElementById("submissionList");
+    container.innerHTML = '<p style="text-align:center;">로딩 중...</p>';
+    
+    const snapshot = await db.ref("bugReports").once("value");
+    const data = snapshot.val() || {};
+
+    if (Object.keys(data).length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:#888;">제보된 버그가 없습니다.</p>';
+        return;
+    }
+
+    container.innerHTML = Object.entries(data).reverse().map(([id, report]) => `
+        <div style="background:white; padding:15px; border-radius:8px; margin-bottom:15px; border-left:4px solid #d32f2f;">
+            <div style="display:flex; justify-content:space-between;">
+                <strong>${report.reporter}</strong>
+                <span style="font-size:12px; color:#666;">${report.dateStr}</span>
+            </div>
+            <p style="margin:5px 0; font-size:13px; color:#555;">📱 ${report.device}</p>
+            <div style="background:#f1f1f1; padding:10px; border-radius:4px; margin:10px 0; white-space:pre-wrap;">${report.description}</div>
+            
+            <div style="display:flex; gap:5px; overflow-x:auto; margin-bottom:10px;">
+                ${report.images ? report.images.map(src => `<img src="${src}" onclick="window.open(this.src)" style="height:80px; cursor:pointer; border-radius:4px; border:1px solid #ccc;">`).join('') : ''}
+            </div>
+            
+            <button onclick="deleteSubmission('bugReports', '${id}')" class="btn-secondary" style="width:100%; padding:5px;">확인 완료 (삭제)</button>
+        </div>
+    `).join('');
+}
+
+// 제출물 삭제
+window.deleteSubmission = async function(node, id) {
+    if (!confirm("정말 삭제하시겠습니까?")) return;
+    await db.ref(`${node}/${id}`).remove();
+    if (node === 'pendingGames') loadPendingGames();
+    else loadBugReports();
+}
+
+// 게임 승인
+window.approveGame = async function(id) {
+    if (!confirm("이 문제를 승인하시겠습니까?")) return;
+    
+    const snap = await db.ref(`pendingGames/${id}`).once("value");
+    const gameData = snap.val();
+    
+    const approvedGame = {
+        id: id,
+        subject: gameData.subject,
+        answer: gameData.answer,
+        hints: gameData.hints || [],
+        imageUrl: gameData.images ? gameData.images[0] : null,
+        extraImages: gameData.images || [],
+        difficulty: gameData.difficulty,
+        timeLimit: gameData.difficulty === 'easy' ? 30 : gameData.difficulty === 'medium' ? 20 : 15,
+        rewards: { "5sec": 100, "15sec": 50, "30sec": 30 }
+    };
+    
+    await db.ref("adminSettings/catchMind/customGames").push(approvedGame);
+    await db.ref(`pendingGames/${id}`).remove();
+    
+    alert("승인 완료! (게임 목록에 추가됨)");
+    loadPendingGames();
 }
 
 // ===== Part 12: 사용자 관리 시스템 =====
@@ -4294,7 +4658,7 @@ function showMoreMenu() {
     hideAll();
     document.getElementById("moreMenuSection").classList.add("active");
     
-    
+
     // 이벤트 버튼 표시 여부 체크
     checkEventAccess();
     
@@ -4501,14 +4865,13 @@ async function checkEventAccess() {
     eventBtn.style.display = isVIP ? "block" : "none";
 }
 
-// script.js 내부 - renderThemeSoundSettings 함수 전체 교체
+// renderThemeSoundSettings 함수 수정
 async function renderThemeSoundSettings() {
     if(!isLoggedIn()) return '';
     
     const uid = getUserId();
     
     try {
-        // 현재 설정 로드
         const themeSnapshot = await db.ref("users/" + uid + "/activeTheme").once("value");
         const soundsSnapshot = await db.ref("users/" + uid + "/activeSounds").once("value");
         const bgmSnapshot = await db.ref("users/" + uid + "/activeBGM").once("value");
@@ -4519,9 +4882,38 @@ async function renderThemeSoundSettings() {
         const activeBGM = bgmSnapshot.val() || false;
         const inventory = inventorySnapshot.val() || [];
         
-        // 크리스마스 테마 보유 여부 확인
         const hasChristmasTheme = inventory.includes('christmas_theme');
-
+        
+        // ✅ 테마 ON/OFF 상태 정확히 표시
+        const isThemeActive = activeTheme === 'christmas';
+        
+        return `
+            <div style="background:#fff; border:1px solid #dadce0; padding:20px; border-radius:8px; margin-bottom:20px;">
+                <h4 style="margin:0 0 15px 0; color:#202124;">🎨 테마 & 사운드</h4>
+                
+                ${hasChristmasTheme ? `
+                    <div style="background:#fff3cd; padding:12px; border-radius:6px; margin-bottom:15px; border-left:4px solid #856404;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <strong style="color:#856404;">🎄 크리스마스 테마</strong>
+                                <div style="font-size:12px; color:#856404; margin-top:3px;">
+                                    현재: ${isThemeActive ? '✅ ON' : '⭕ OFF'}
+                                </div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" ${isThemeActive ? 'checked' : ''} onchange="toggleThemeFromInventory()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                ` : `
+                    <p style="color:#868e96; font-size:13px; text-align:center; padding:20px;">
+                        보유한 테마가 없습니다.
+                    </p>
+                `}
+            </div>
+        `;
+        
     } catch(error) {
         console.error("설정 렌더링 오류:", error);
         return '';
@@ -4652,7 +5044,7 @@ function loadCatchMindConfig() {
         });
 }
 
-// 캐치마인드 시작 화면
+// 기존 showCatchMind 함수 수정
 function showCatchMind() {
     if(!isLoggedIn()) {
         alert("로그인이 필요합니다!");
@@ -4690,6 +5082,11 @@ function showCatchMind() {
             <button onclick="startCatchMindGame()" class="btn-primary btn-block" style="margin-bottom:12px;">
                 <i class="fas fa-play"></i> 게임 시작
             </button>
+            
+            <button onclick="showCreateGamePage()" class="btn-warning btn-block" style="margin-bottom:12px; background:#ff9800; border:none; color:white;">
+                <i class="fas fa-palette"></i> 그림 직접 그려서 출제하기
+            </button>
+
             <button onclick="showEventMenu()" class="btn-secondary btn-block">
                 <i class="fas fa-arrow-left"></i> 돌아가기
             </button>
@@ -5718,3 +6115,574 @@ window.toggleThemeFromInventory = async function() {
         alert("테마 변경 중 오류가 발생했습니다.");
     }
 }; // 기존에 여기에 있던 불필요한 } 를 제거하고 ; 로 마무리
+
+// ===== 캐치마인드 문제 출제 시스템 =====
+
+// 출제 페이지 표시
+function showCreateGamePage() {
+    const content = document.getElementById("catchMindContent");
+    content.innerHTML = `
+        <div style="max-width:600px; margin:0 auto;">
+            <h3 style="text-align:center; margin-bottom:20px; color:#ff9800;">🎨 나만의 문제 만들기</h3>
+            
+            <div style="background:white; padding:20px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+                <div class="form-group">
+                    <label class="form-label">그림 업로드 (여러 장 가능)</label>
+                    <input type="file" id="gameImages" class="form-control" accept="image/*" multiple onchange="previewGameImages(this)">
+                    <div id="gameImagePreviews" style="display:flex; gap:10px; overflow-x:auto; margin-top:10px; padding-bottom:5px;"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">주제</label>
+                    <input type="text" id="gameSubject" class="form-control" placeholder="예: 동물, 음식, 속담">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">정답</label>
+                    <input type="text" id="gameAnswer" class="form-control" placeholder="정답을 입력하세요">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">난이도</label>
+                    <select id="gameDifficulty" class="form-control">
+                        <option value="easy">쉬움</option>
+                        <option value="medium">보통</option>
+                        <option value="hard">어려움</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">힌트 설정</label>
+                    <div id="hintInputsContainer">
+                        <input type="text" class="form-control hint-input" placeholder="힌트 1" style="margin-bottom:5px;">
+                    </div>
+                    <button onclick="addHintInput()" class="btn-secondary" style="width:100%; margin-top:5px; font-size:12px;">+ 힌트 추가</button>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">설명 (선택사항)</label>
+                    <textarea id="gameDescription" class="form-control" placeholder="문제에 대한 추가 설명이나 출제자의 한마디"></textarea>
+                </div>
+
+                <button onclick="submitUserGame()" class="btn-primary btn-block" style="margin-top:20px;">
+                    <i class="fas fa-paper-plane"></i> 관리자에게 제출하기
+                </button>
+                <button onclick="showCatchMind()" class="btn-secondary btn-block" style="margin-top:10px;">
+                    취소
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// 힌트 입력칸 추가
+function addHintInput() {
+    const container = document.getElementById("hintInputsContainer");
+    const count = container.children.length + 1;
+    if(count > 5) return alert("힌트는 최대 5개까지 설정 가능합니다.");
+    
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "form-control hint-input";
+    input.placeholder = `힌트 ${count}`;
+    input.style.marginBottom = "5px";
+    container.appendChild(input);
+}
+
+// 이미지 미리보기
+function previewGameImages(input) {
+    const container = document.getElementById("gameImagePreviews");
+    container.innerHTML = "";
+    
+    if (input.files) {
+        Array.from(input.files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.createElement("img");
+                img.src = e.target.result;
+                img.style.width = "60px";
+                img.style.height = "60px";
+                img.style.objectFit = "cover";
+                img.style.borderRadius = "4px";
+                img.style.border = "1px solid #ddd";
+                container.appendChild(img);
+            }
+            reader.readAsDataURL(file);
+        });
+    }
+}
+
+// 문제 제출 로직
+async function submitUserGame() {
+    if (!confirm("작성한 문제를 제출하시겠습니까?\n관리자 검토 후 게임에 등록됩니다.")) return;
+    
+    showLoadingIndicator("제출 중...");
+    
+    const subject = document.getElementById("gameSubject").value;
+    const answer = document.getElementById("gameAnswer").value;
+    const difficulty = document.getElementById("gameDifficulty").value;
+    const description = document.getElementById("gameDescription").value;
+    const hintInputs = document.querySelectorAll(".hint-input");
+    const hints = Array.from(hintInputs).map(input => input.value).filter(val => val.trim() !== "");
+    
+    const imageInput = document.getElementById("gameImages");
+    
+    if (!subject || !answer || imageInput.files.length === 0) {
+        hideLoadingIndicator();
+        return alert("주제, 정답, 이미지는 필수 항목입니다!");
+    }
+
+    // 이미지들을 Base64로 변환
+    const imageUrls = [];
+    const files = Array.from(imageInput.files);
+    
+    try {
+        for (const file of files) {
+            const base64 = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.readAsDataURL(file);
+            });
+            imageUrls.push(base64);
+        }
+
+        const gameData = {
+            author: getNickname(),
+            authorEmail: getUserEmail(),
+            uid: getUserId(),
+            submittedAt: Date.now(),
+            subject: subject,
+            answer: answer,
+            difficulty: difficulty,
+            hints: hints,
+            description: description,
+            images: imageUrls,
+            status: 'pending' // 승인 대기 상태
+        };
+
+        // DB pendingGames 경로에 저장
+        await db.ref("pendingGames").push(gameData);
+        
+        hideLoadingIndicator();
+        alert("✅ 문제가 성공적으로 제출되었습니다!\n관리자 검토 후 반영됩니다.");
+        showCatchMind();
+        
+    } catch (error) {
+        hideLoadingIndicator();
+        console.error("제출 오류:", error);
+        alert("제출 중 오류가 발생했습니다: " + error.message);
+    }
+}
+
+// ===== 버그 제보 시스템 =====
+
+function showBugReportPage() {
+    hideAll();
+    
+    // 동적으로 섹션 생성 (없다면)
+    let section = document.getElementById("bugReportSection");
+    if (!section) {
+        section = document.createElement("div");
+        section.id = "bugReportSection";
+        section.className = "page-section";
+        document.querySelector("main").appendChild(section);
+    }
+    
+    section.classList.add("active");
+    
+    // 기기 정보 자동 감지
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const deviceType = isMobile ? "모바일 (Mobile)" : "PC (Desktop)";
+    const currentTime = new Date().toLocaleString();
+    const nickname = isLoggedIn() ? getNickname() : "익명";
+
+    section.innerHTML = `
+        <div style="max-width:600px; margin:0 auto; padding:20px;">
+            <h2 style="margin-bottom:30px; text-align:center; color:#d32f2f;">
+                <i class="fas fa-bug"></i> 버그 제보
+            </h2>
+            
+            <div style="background:#fff; border-radius:12px; padding:25px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+                
+                <div class="form-group">
+                    <label class="form-label">제보자</label>
+                    <input type="text" class="form-control" value="${nickname}" disabled style="background:#f5f5f5;">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">발생 시간</label>
+                    <input type="text" class="form-control" value="${currentTime}" disabled style="background:#f5f5f5;">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">기기 정보</label>
+                    <input type="text" id="bugDevice" class="form-control" value="${deviceType}" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">스크린샷 첨부 (여러 장 가능)</label>
+                    <input type="file" id="bugImages" class="form-control" accept="image/*" multiple onchange="previewBugImages(this)">
+                    <div id="bugImagePreviews" style="display:flex; gap:10px; overflow-x:auto; margin-top:10px;"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">오류 설명</label>
+                    <textarea id="bugDescription" class="form-control" placeholder="어떤 상황에서 오류가 발생했는지 자세히 적어주세요." style="min-height:150px;"></textarea>
+                </div>
+
+                <button onclick="submitBugReport()" class="btn-primary btn-block" style="background:#d32f2f; border-color:#d32f2f;">
+                    <i class="fas fa-exclamation-triangle"></i> 버그 제보하기
+                </button>
+                
+                <button onclick="showMoreMenu()" class="btn-secondary btn-block" style="margin-top:10px;">
+                    취소
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function previewBugImages(input) {
+    const container = document.getElementById("bugImagePreviews");
+    container.innerHTML = "";
+    if (input.files) {
+        Array.from(input.files).forEach(file => {
+            const img = document.createElement("img");
+            img.src = URL.createObjectURL(file);
+            img.style.height = "80px";
+            img.style.borderRadius = "4px";
+            img.style.border = "1px solid #ddd";
+            container.appendChild(img);
+        });
+    }
+}
+
+// 파일 맨 끝 부분 (약 6280줄)
+async function submitBugReport() {
+    if (!confirm("버그 리포트를 제출하시겠습니까?")) return;
+    
+    showLoadingIndicator("전송 중...");
+
+    const description = document.getElementById("bugDescription").value;
+    const device = document.getElementById("bugDevice").value;
+    const imageInput = document.getElementById("bugImages");
+
+    if (!description) {
+        hideLoadingIndicator();
+        return alert("오류 설명을 입력해주세요.");
+    }
+
+    const imageUrls = [];
+    if (imageInput.files.length > 0) {
+        const files = Array.from(imageInput.files);
+        for (const file of files) {
+            const base64 = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.readAsDataURL(file);
+            });
+            imageUrls.push(base64);
+        }
+    }
+
+    const reportData = {
+        reporter: getNickname(),
+        reporterEmail: getUserEmail(),
+        timestamp: Date.now(),
+        dateStr: new Date().toLocaleString(),
+        device: device,
+        description: description,
+        images: imageUrls,
+        status: 'open'
+    };
+
+    try {
+        await db.ref("bugReports").push(reportData);
+        hideLoadingIndicator();
+        alert("✅ 소중한 제보 감사합니다! 관리자에게 전송되었습니다.");
+        showMoreMenu();
+    } catch (error) {
+        hideLoadingIndicator();
+        console.error("버그 제보 실패:", error);
+        alert("전송 실패: " + error.message);
+    }
+}
+
+// ✅ 이 줄만 남기고 나머지 삭제
+console.log("✅ script.js 로드 완료");
+
+// ===== [추가] 제출물 관리(버그 제보 등) 관리자 기능 =====
+window.showSubmissionManager = async function() {
+    if (!isAdmin()) {
+        alert("관리자만 접근할 수 있습니다.");
+        return;
+    }
+
+    showLoadingIndicator("제출물 목록을 불러오는 중...");
+
+    try {
+        // 버그 리포트 데이터 가져오기
+        const snapshot = await db.ref("bugReports").once("value");
+        const reports = snapshot.val() || {};
+        
+        // 모달 HTML 생성
+        let listHTML = '<div class="list-group">';
+        
+        if (Object.keys(reports).length === 0) {
+            listHTML += '<div class="p-3 text-center">제출된 내용이 없습니다.</div>';
+        } else {
+            // 최신순 정렬
+            const sortedKeys = Object.keys(reports).sort((a, b) => reports[b].timestamp - reports[a].timestamp);
+            
+            sortedKeys.forEach(key => {
+                const report = reports[key];
+                listHTML += `
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-1">${report.description.substring(0, 30)}...</h6>
+                            <small>${report.dateStr || '날짜 없음'}</small>
+                        </div>
+                        <p class="mb-1 text-muted small">제보자: ${report.reporter} (${report.device})</p>
+                        ${report.images && report.images.length > 0 ? '📷 이미지 포함' : ''}
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteBugReport('${key}')">삭제</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        listHTML += '</div>';
+
+        // 모달 띄우기 (기존 showModal 함수 활용)
+        const modalTitle = "📋 제출물(버그 제보) 관리";
+        const modalContent = `
+            <div style="max-height: 60vh; overflow-y: auto;">
+                ${listHTML}
+            </div>
+            <div class="text-right mt-3">
+                <button class="btn btn-secondary" onclick="closeModal()">닫기</button>
+            </div>
+        `;
+        
+        hideLoadingIndicator();
+        
+        // 모달 표시 (프로젝트에 있는 모달 방식에 맞춤)
+        if (typeof showModal === 'function') {
+            showModal(modalTitle, modalContent);
+        } else {
+            // showModal이 없다면 alert로 대체하거나 직접 DOM 조작
+            alert("제출물 관리 기능을 열었습니다. (모달 함수 확인 필요)");
+            console.log(reports);
+        }
+
+    } catch (error) {
+        hideLoadingIndicator();
+        console.error("제출물 로드 실패:", error);
+        alert("데이터를 불러오는데 실패했습니다: " + error.message);
+    }
+};
+
+// 버그 리포트 삭제 함수
+window.deleteBugReport = async function(key) {
+    if(!confirm("정말 이 제보를 삭제하시겠습니까?")) return;
+    
+    try {
+        await db.ref("bugReports/" + key).remove();
+        alert("삭제되었습니다.");
+        closeModal(); // 모달 닫고
+        showSubmissionManager(); // 다시 열어서 갱신
+    } catch(err) {
+        alert("삭제 실패: " + err.message);
+    }
+};
+
+// ==========================================================
+// [추가] 이미지 뷰어 및 제출물 관리 시스템 (완전판)
+// ==========================================================
+
+// 1. 이미지 확대 및 다운로드 뷰어 (모달)
+window.showImageViewer = function(imgUrl) {
+    // 기존 뷰어 제거
+    const oldViewer = document.getElementById('fullScreenImageViewer');
+    if(oldViewer) oldViewer.remove();
+    
+    // HTML 생성
+    const viewerHTML = `
+        <div id="fullScreenImageViewer" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+            
+            <button onclick="document.getElementById('fullScreenImageViewer').remove()" 
+                    style="position:absolute; top:20px; right:20px; background:none; border:none; color:white; font-size:30px; cursor:pointer;">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <img src="${imgUrl}" style="max-width:90%; max-height:80vh; border-radius:4px; box-shadow:0 0 20px rgba(0,0,0,0.5);">
+            
+            <div style="margin-top:20px; display:flex; gap:15px;">
+                <a href="${imgUrl}" download="image_download.png" target="_blank" class="btn btn-primary" style="text-decoration:none; padding:10px 20px; border-radius:20px;">
+                    <i class="fas fa-download"></i> 다운로드
+                </a>
+                <button onclick="document.getElementById('fullScreenImageViewer').remove()" class="btn btn-secondary" style="padding:10px 20px; border-radius:20px;">
+                    닫기
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', viewerHTML);
+};
+
+// 2. 관리자 제출물 관리 함수 (이미지 클릭 시 뷰어 연결)
+window.showSubmissionManager = async function() {
+    if (!isAdmin()) { return alert("관리자 권한이 없습니다."); }
+    
+    hideAll(); // 기존 화면 숨기기
+    
+    let section = document.getElementById("adminSubmissionSection");
+    if (!section) {
+        section = document.createElement("div");
+        section.id = "adminSubmissionSection";
+        section.className = "page-section"; // CSS 스타일 적용을 위해
+        document.querySelector("main").appendChild(section);
+    }
+    
+    // CSS 강제 적용 (화면이 안 보이는 문제 방지)
+    section.style.display = 'block';
+    section.classList.add("active");
+    
+    section.innerHTML = `
+        <div style="padding:20px; max-width:800px; margin:0 auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2>📁 제출물 관리 센터</h2>
+                <button onclick="showAdminEvent()" class="btn-secondary"><i class="fas fa-arrow-left"></i> 돌아가기</button>
+            </div>
+            
+            <div class="tabs" style="display:flex; gap:10px; margin-bottom:20px; border-bottom:1px solid #ddd; padding-bottom:10px;">
+                <button onclick="loadPendingGames()" class="btn-primary" style="flex:1;">🎨 문제 출제</button>
+                <button onclick="loadBugReports()" class="btn-danger" style="flex:1;">🐛 버그 제보</button>
+            </div>
+            
+            <div id="submissionList" style="min-height:300px;">
+                <p style="text-align:center; color:#666; padding:50px;">상단 버튼을 눌러 목록을 불러오세요.</p>
+            </div>
+        </div>
+    `;
+    
+    // 기본적으로 문제 출제 탭 로드
+    loadPendingGames();
+};
+
+// (내부 함수) 문제 출제 목록 로드
+window.loadPendingGames = async function() {
+    const container = document.getElementById("submissionList");
+    container.innerHTML = '<div style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> 불러오는 중...</div>';
+    
+    const snapshot = await db.ref("pendingGames").once("value");
+    const data = snapshot.val() || {};
+    
+    if (Object.keys(data).length === 0) {
+        container.innerHTML = '<p style="text-align:center; padding:50px; color:#999;">제출된 문제가 없습니다.</p>';
+        return;
+    }
+
+    container.innerHTML = Object.entries(data).reverse().map(([id, game]) => `
+        <div style="background:white; padding:20px; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.1); margin-bottom:15px;">
+            <div style="display:flex; justify-content:space-between;">
+                <h4>${game.subject} <span class="badge badge-info">${game.difficulty}</span></h4>
+                <small>${new Date(game.submittedAt).toLocaleDateString()}</small>
+            </div>
+            <p>출제자: <strong>${game.author}</strong></p>
+            <p>정답: <span style="color:green; font-weight:bold;">${game.answer}</span></p>
+            
+            <div style="display:flex; gap:10px; overflow-x:auto; margin:15px 0;">
+                ${game.images ? game.images.map(src => `
+                    <img src="${src}" 
+                         onclick="showImageViewer('${src}')" 
+                         style="height:100px; border-radius:5px; cursor:zoom-in; border:1px solid #eee;" 
+                         title="클릭하여 확대 및 다운로드">
+                `).join('') : '<span style="color:#ccc;">이미지 없음</span>'}
+            </div>
+            
+            <div style="margin-top:10px; display:flex; gap:10px;">
+                <button onclick="approveGame('${id}')" class="btn-success" style="flex:1;">승인</button>
+                <button onclick="deleteSubmission('pendingGames', '${id}')" class="btn-danger" style="flex:1;">삭제</button>
+            </div>
+        </div>
+    `).join('');
+};
+
+// (내부 함수) 버그 리포트 목록 로드
+window.loadBugReports = async function() {
+    const container = document.getElementById("submissionList");
+    container.innerHTML = '<div style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> 불러오는 중...</div>';
+    
+    const snapshot = await db.ref("bugReports").once("value");
+    const data = snapshot.val() || {};
+
+    if (Object.keys(data).length === 0) {
+        container.innerHTML = '<p style="text-align:center; padding:50px; color:#999;">제보된 버그가 없습니다.</p>';
+        return;
+    }
+
+    container.innerHTML = Object.entries(data).reverse().map(([id, report]) => `
+        <div style="background:#fff0f0; padding:20px; border-radius:10px; border-left:4px solid #d32f2f; margin-bottom:15px;">
+            <div style="display:flex; justify-content:space-between;">
+                <strong style="color:#d32f2f;">🐛 버그 리포트</strong>
+                <small>${report.dateStr}</small>
+            </div>
+            <p style="margin:5px 0; font-size:14px;">제보자: ${report.reporter} (${report.device})</p>
+            <div style="background:white; padding:10px; border-radius:5px; margin:10px 0; border:1px solid #ffdcdc;">
+                ${report.description}
+            </div>
+            
+            <div style="display:flex; gap:10px; overflow-x:auto; margin:10px 0;">
+                ${report.images ? report.images.map(src => `
+                    <img src="${src}" 
+                         onclick="showImageViewer('${src}')" 
+                         style="height:100px; border-radius:5px; cursor:zoom-in; border:1px solid #eee;"
+                         title="클릭하여 확대 및 다운로드">
+                `).join('') : ''}
+            </div>
+            
+            <div style="text-align:right;">
+                <button onclick="deleteSubmission('bugReports', '${id}')" class="btn-secondary btn-sm">처리 완료(삭제)</button>
+            </div>
+        </div>
+    `).join('');
+};
+
+// (내부 함수) 삭제 및 승인 (기존과 동일하되 명시적으로 포함)
+window.deleteSubmission = async function(node, id) {
+    if(!confirm("삭제하시겠습니까?")) return;
+    await db.ref(`${node}/${id}`).remove();
+    alert("삭제되었습니다.");
+    if(node === 'pendingGames') loadPendingGames(); else loadBugReports();
+};
+
+window.approveGame = async function(id) {
+    if(!confirm("이 문제를 승인하여 게임에 추가하시겠습니까?")) return;
+    try {
+        const snap = await db.ref(`pendingGames/${id}`).once("value");
+        const g = snap.val();
+        
+        // 정식 게임 데이터 구조로 변환
+        const newGame = {
+            id: id,
+            subject: g.subject,
+            answer: g.answer,
+            hints: g.hints || [],
+            imageUrl: g.images ? g.images[0] : null,
+            extraImages: g.images || [],
+            difficulty: g.difficulty,
+            timeLimit: g.difficulty === 'easy' ? 30 : g.difficulty === 'medium' ? 20 : 15,
+            rewards: { "5sec": 100, "15sec": 50, "30sec": 30 },
+            author: g.author
+        };
+        
+        await db.ref("adminSettings/catchMind/customGames").push(newGame);
+        await db.ref(`pendingGames/${id}`).remove();
+        alert("승인 완료!");
+        loadPendingGames();
+    } catch(e) {
+        alert("오류: " + e.message);
+    }
+};
