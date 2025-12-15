@@ -421,7 +421,7 @@ window.showInventoryPage = async function() {
                 </button>
             </div>
             
- // ✅ 1. showInventoryPage 함수 내부 (약 430줄)
+
             <!-- 내 아이템 탭 -->
             <div id="itemsTab" style="display:block;">
                 ${ownedItems.length === 0 ? `
