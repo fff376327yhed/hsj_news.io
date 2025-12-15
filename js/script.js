@@ -199,6 +199,10 @@ let originalUserTheme = null;
 // 기존 전역 변수들 아래에 추가
 let profilePhotoCache = new Map(); // ✅ 이 줄 추가
 
+if(!window.userDecorationCache) {
+    window.userDecorationCache = {};
+}
+
 
 // 캐치마인드 게임 변수
 let catchMindGames = [];
@@ -793,6 +797,7 @@ function toggleProfileMenu() {
 
 // script.js에서 updateProfileDropdown 함수를 찾아서 이 코드로 교체하세요
 
+// 헤더 프로필 드롭다운 업데이트
 async function updateProfileDropdown() {
     const content = document.getElementById("profileDropdownContent");
     const user = auth.currentUser;
@@ -802,16 +807,22 @@ async function updateProfileDropdown() {
         const userData = userSnapshot.val() || {};
         const isVIP = userData.isVIP || false;
         
-        // 프로필 사진 가져오기
+        // ✅ 프로필 사진 + 장식 적용
         const photoUrl = userData.profilePhoto || null;
+        let profilePhotoHTML = '';
+        
+        if(typeof window.createProfilePhotoWithDecorations === 'function') {
+            profilePhotoHTML = await window.createProfilePhotoWithDecorations(photoUrl, 48, user.email);
+        } else {
+            profilePhotoHTML = photoUrl ? 
+                `<img src="${photoUrl}" style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:2px solid #dadce0;">` :
+                `<i class="fas fa-user-circle"></i>`;
+        }
         
         content.innerHTML = `
             <div class="profile-info">
                 <div class="profile-avatar" style="position:relative; cursor:pointer;" onclick="openProfilePhotoModal()">
-                    ${photoUrl ? 
-                        `<img src="${photoUrl}" style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:2px solid #dadce0;">` :
-                        `<i class="fas fa-user"></i>`
-                    }
+                    ${profilePhotoHTML}
                     <div style="position:absolute; bottom:-5px; right:-5px; background:#c62828; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid white;">
                         <i class="fas fa-camera" style="font-size:10px; color:white;"></i>
                     </div>
@@ -1550,21 +1561,29 @@ document.addEventListener('visibilitychange', () => {
 });
 
 
+
 // 헤더 프로필 버튼 업데이트
 async function updateHeaderProfileButton(user) {
     const headerBtn = document.getElementById("headerProfileBtn");
     if(!headerBtn) return;
     
     if(user) {
-        // 프로필 사진 로드
+        // ✅ 프로필 사진 + 장식 로드
         const photoSnapshot = await db.ref("users/" + user.uid + "/profilePhoto").once("value");
         const photoUrl = photoSnapshot.val();
         
-        if(photoUrl) {
-            headerBtn.innerHTML = `<img src="${photoUrl}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;">`;
+        let profileHTML = '';
+        if(typeof window.createProfilePhotoWithDecorations === 'function') {
+            profileHTML = await window.createProfilePhotoWithDecorations(photoUrl, 32, user.email);
         } else {
-            headerBtn.innerHTML = `<i class="fas fa-user-circle"></i>`;
+            if(photoUrl) {
+                profileHTML = `<img src="${photoUrl}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;">`;
+            } else {
+                profileHTML = `<i class="fas fa-user-circle"></i>`;
+            }
         }
+        
+        headerBtn.innerHTML = profileHTML;
     } else {
         headerBtn.innerHTML = `<i class="fas fa-user-circle"></i>`;
     }
@@ -1757,9 +1776,6 @@ async function toggleFollowUser(userEmail, isFollowing) {
     }
 }
 
-// ===== 1. updateSettings 함수 수정 (undefined 해결) =====
-// script.js의 기존 updateSettings 함수를 찾아서 이 코드로 교체하세요
-
 async function updateSettings() {
     // 1. 프로필 카드 업데이트
     const el = document.getElementById("profileNickname");
@@ -1776,19 +1792,30 @@ async function updateSettings() {
                 const isBanned = userData.isBanned || false;
                 const notificationsEnabled = userData.notificationsEnabled !== false;
                 
-
+                // ✅ 프로필 사진 + 장식 로드
+                const photoUrl = userData.profilePhoto || null;
+                let profilePhotoHTML = '';
                 
-                // ⭐ 프로필 사진 버튼 추가
+                if(typeof window.createProfilePhotoWithDecorations === 'function') {
+                    profilePhotoHTML = await window.createProfilePhotoWithDecorations(photoUrl, 120, user.email);
+                } else {
+                    if(photoUrl) {
+                        profilePhotoHTML = `<img src="${photoUrl}" style="width:120px; height:120px; border-radius:50%; object-fit:cover; border:3px solid #dadce0;">`;
+                    } else {
+                        profilePhotoHTML = `<div style="width:120px; height:120px; border-radius:50%; background:#f1f3f4; display:inline-flex; align-items:center; justify-content:center; border:3px solid #dadce0; margin:0 auto;">
+                            <i class="fas fa-user" style="font-size:50px; color:#9aa0a6;"></i>
+                        </div>`;
+                    }
+                }
+                
                 el.innerHTML = `
-                    
-                    
                     <div style="background:#fff; border:1px solid #dadce0; padding:20px; border-radius:8px; margin-bottom:20px;">
                         <h4 style="margin:0 0 15px 0; color:#202124;">내 정보</h4>
                         
                         <!-- 프로필 사진 표시 -->
                         <div style="text-align:center; margin-bottom:20px;">
                             <div id="userProfilePhotoPreview" style="margin-bottom:15px;">
-                                <!-- 프로필 사진이 여기에 로드됩니다 -->
+                                ${profilePhotoHTML}
                             </div>
                             <button onclick="openProfilePhotoModal()" class="btn-secondary" style="font-size:13px;">
                                 <i class="fas fa-camera"></i> 프로필 사진 변경
@@ -1804,21 +1831,6 @@ async function updateSettings() {
                         }
                     </div>
                 `;
-
-                // 프로필 사진 로드
-                db.ref("users/" + user.uid + "/profilePhoto").once("value").then(snapshot => {
-                    const photoUrl = snapshot.val();
-                    const preview = document.getElementById("userProfilePhotoPreview");
-                    if(preview) {
-                        if(photoUrl) {
-                            preview.innerHTML = `<img src="${photoUrl}" style="width:120px; height:120px; border-radius:50%; object-fit:cover; border:3px solid #dadce0;">`;
-                        } else {
-                            preview.innerHTML = `<div style="width:120px; height:120px; border-radius:50%; background:#f1f3f4; display:inline-flex; align-items:center; justify-content:center; border:3px solid #dadce0; margin:0 auto;">
-                                <i class="fas fa-user" style="font-size:50px; color:#9aa0a6;"></i>
-                            </div>`;
-                        }
-                    }
-                });
                 
                 // 알림 토글 상태 업데이트
                 const notificationToggle = document.getElementById("notificationToggle");
@@ -2066,65 +2078,213 @@ function getSortedFreeboardArticles() {
     return articles;
 }
 
-async function renderFreeboardArticles() {
-    const list = getSortedFreeboardArticles();
-    const grid = document.getElementById("freeboardGrid");
-    const loadMore = document.getElementById("freeboardLoadMoreContainer");
-    
-    if (list.length === 0) {
-        grid.innerHTML = `<div style="text-align:center;padding:60px 20px;background:#fff;border-radius:8px;">
-            <p style="color:#868e96;font-size:16px;">자유게시판에 등록된 기사가 없습니다.</p>
-        </div>`;
-        loadMore.innerHTML = "";
-        return;
-    }
-    
-    const endIdx = currentFreeboardPage * ARTICLES_PER_PAGE;
-    const displayArticles = list.slice(0, endIdx);
-    
-    // 댓글 수 계산 로직 추가
-const commentCount = a.comments ? Object.keys(a.comments).length : 0;
+// ===== renderArticles 함수 수정 (script.js 약 2340줄) =====
 
-// 카드 HTML 생성 부분 (수정됨)
-articlesHTML.push(`
-    <article class="news-card" onclick="showArticleDetail('${id}')">
-        ${a.thumbnail ? `<div class="card-thumbnail"><img src="${a.thumbnail}"></div>` : ''}
+async function renderArticles() {
+    const list = getSortedArticles();
+    
+    let grid = document.getElementById("articlesGrid");
+    let featured = document.getElementById("featuredSection");
+    let pinnedSection = document.getElementById("pinnedArticlesSection");
+    let adSection = document.getElementById("adSection");
+    let loadMore = document.getElementById("loadMoreContainer");
+    
+    if(!grid || !featured || !pinnedSection || !adSection || !loadMore) {
+        console.warn("⚠️ 필수 요소가 없어서 동적으로 생성합니다.");
         
-        <div class="card-content">
-            <h3 class="card-title">${a.title}</h3>
-            <p class="card-excerpt">${a.content.substring(0, 60)}...</p>
-            
-            <div class="card-meta">
-                <div class="author-info">
-                    ${authorPhotoHTML} <span>${a.author}</span>
+        const articlesSection = document.getElementById("articlesSection");
+        if(!articlesSection) {
+            console.error("❌ articlesSection을 찾을 수 없습니다!");
+            return;
+        }
+        
+        articlesSection.innerHTML = `
+            <div class="container">
+                <div class="search-section">
+                    <div class="search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchKeyword" placeholder="검색어를 입력하세요" onkeypress="if(event.key==='Enter') searchArticles()">
+                        <select id="searchCategory" onchange="searchArticles()">
+                            <option value="">전체 카테고리</option>
+                            <option value="정치">정치</option>
+                            <option value="경제">경제</option>
+                            <option value="사회">사회</option>
+                            <option value="문화">문화</option>
+                            <option value="IT/과학">IT/과학</option>
+                            <option value="스포츠">스포츠</option>
+                        </select>
+                        <button onclick="searchArticles()" class="btn-primary">검색</button>
+                    </div>
+                    
+                    <div class="sort-chips">
+                        <button class="chip active" onclick="sortArticles('latest', this)">최신순</button>
+                        <button class="chip" onclick="sortArticles('oldest', this)">오래된순</button>
+                        <button class="chip" onclick="sortArticles('views', this)">조회순</button>
+                        <button class="chip" onclick="sortArticles('likes', this)">추천순</button>
+                    </div>
                 </div>
                 
-                <div class="meta-stats">
-                    <span><i class="fas fa-eye"></i> ${a.views || 0}</span>
-                    
-                    <span><i class="far fa-heart"></i> ${a.likes ? Object.keys(a.likes).length : 0}</span>
-                    
-                    <span style="margin-left:8px; color:#555;">
-                        <i class="far fa-comment-dots"></i> ${commentCount}
-                    </span>
+                <div id="adSection"></div>
+                <div id="pinnedArticlesSection"></div>
+                <div id="featuredSection"></div>
+                <div id="articlesGrid" class="articles-grid"></div>
+                <div id="loadMoreContainer"></div>
+            </div>
+        `;
+        
+        grid = document.getElementById("articlesGrid");
+        featured = document.getElementById("featuredSection");
+        pinnedSection = document.getElementById("pinnedArticlesSection");
+        adSection = document.getElementById("adSection");
+        loadMore = document.getElementById("loadMoreContainer");
+    }
+    
+    if(!window.profilePhotoCache) {
+        window.profilePhotoCache = new Map();
+    }
+    
+    if(!window.cachedAds) {
+        const adsSnapshot = await db.ref("advertisements").once("value");
+        const adsData = adsSnapshot.val() || {};
+        window.cachedAds = Object.values(adsData).sort((a, b) => b.createdAt - a.createdAt);
+    }
+    const ads = window.cachedAds;
+
+    const pinsSnapshot = await db.ref("pinnedArticles").once("value");
+    const pinnedData = pinsSnapshot.val() || {};
+    const pinnedIds = Object.keys(pinnedData);
+
+    const pinnedArticles = [];
+    const unpinnedArticles = [];
+
+    list.forEach(article => {
+        if (pinnedIds.includes(article.id)) {
+            article.pinnedAt = pinnedData[article.id].pinnedAt;
+            pinnedArticles.push(article);
+        } else {
+            unpinnedArticles.push(article);
+        }
+    });
+
+    pinnedArticles.sort((a, b) => b.pinnedAt - a.pinnedAt);
+
+    if(ads.length > 0) {
+        adSection.innerHTML = ads.map(ad => `
+            <div class="ad-banner" style="background:${ad.color}; border:1px solid #ddd;">
+                <span class="ad-badge">광고</span>
+                <h3 style="margin:5px 0; font-size:18px;">${ad.title}</h3>
+                <p style="margin:5px 0; font-size:14px; color:#555;">${ad.content}</p>
+                ${ad.link ? `<a href="${ad.link}" target="_blank" style="font-size:12px; text-decoration:underline;">더보기 &gt;</a>` : ''}
+            </div>
+        `).join('');
+    } else {
+        adSection.innerHTML = '';
+    }
+
+    if (list.length === 0) {
+        featured.innerHTML = `<div style="text-align:center;padding:60px 20px;background:#fff;border-radius:8px;">
+            <p style="color:#868e96;font-size:16px;">등록된 기사가 없습니다.</p>
+        </div>`;
+        grid.innerHTML = "";
+        loadMore.innerHTML = "";
+        pinnedSection.innerHTML = "";
+        return;
+    }
+
+    // ✅ 고정 기사 렌더링 (프로필 사진 포함)
+    if(pinnedArticles.length > 0) {
+        const pinnedPhotos = await Promise.all(
+            pinnedArticles.map(a => getUserProfilePhoto(a.authorEmail))
+        );
+        
+        pinnedSection.innerHTML = pinnedArticles.map((a, idx) => {
+            const views = getArticleViews(a);
+            // ✅ getProfilePlaceholder 사용하여 .needs-decoration 클래스 추가
+            const authorPhotoHTML = getProfilePlaceholder(pinnedPhotos[idx], 24, a.authorEmail);
+            
+            return `<div class="article-card" onclick="showArticleDetail('${a.id}')" style="border-left:4px solid #ffd700;cursor:pointer;">
+                <div class="article-content">
+                    <span class="category-badge">${a.category}</span>
+                    <span class="pinned-badge">📌 고정</span>
+                    <h3 class="article-title">${a.title}</h3>
+                    <div class="article-meta" style="display:flex; align-items:center; gap:8px;">
+                        ${authorPhotoHTML}
+                        <span style="flex:1;">${a.author}</span>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    } else {
+        pinnedSection.innerHTML = '';
+    }
+
+    featured.innerHTML = '';
+    const endIdx = currentArticlePage * ARTICLES_PER_PAGE;
+    const displayArticles = unpinnedArticles.slice(0, endIdx);
+    
+    const emails = [...new Set(displayArticles.map(a => a.authorEmail).filter(Boolean))];
+    const uncachedEmails = emails.filter(email => !window.profilePhotoCache.has(email));
+
+    if(uncachedEmails.length > 0) {
+        const usersSnapshot = await db.ref("users").once("value");
+        const usersData = usersSnapshot.val() || {};
+        
+        Object.values(usersData).forEach(userData => {
+            if(userData && userData.email && uncachedEmails.includes(userData.email)) {
+                window.profilePhotoCache.set(userData.email, userData.profilePhoto || null);
+            }
+        });
+    }
+    
+    // ✅ HTML 생성 (getProfilePlaceholder 사용)
+    const articlesHTML = displayArticles.map(a => {
+        const views = getArticleViews(a);
+        const votes = getArticleVoteCounts(a);
+        const photoUrl = window.profilePhotoCache.get(a.authorEmail) || null;
+
+        // ✅ getProfilePlaceholder 사용
+        const authorPhotoHTML = getProfilePlaceholder(photoUrl, 48, a.authorEmail);
+    
+        return `<div class="article-card" onclick="showArticleDetail('${a.id}')" style="cursor:pointer;">
+            ${a.thumbnail ? `<img src="${a.thumbnail}" class="article-thumbnail" alt="썸네일">` : ''}
+            <div class="article-content">
+                <span class="category-badge">${a.category}</span>
+                <h3 class="article-title">${a.title}</h3>
+                <p class="article-summary">${a.summary||''}</p>
+                <div class="article-meta" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <div style="display:flex; align-items:center; gap:8px; flex:1;">
+                        ${authorPhotoHTML}
+                        <span>${a.author}</span>
+                    </div>
+                    <div class="article-stats" style="display:flex; gap:12px;">
+                        <span class="stat-item">👁️ ${views}</span>
+                        <span class="stat-item">👍 ${votes.likes}</span>
+                    </div>
                 </div>
             </div>
-            <div class="card-date">${dateStr}</div>
-        </div>
-    </article>
-`);
+        </div>`;
+    });
     
-    if(endIdx < list.length) {
-        loadMore.innerHTML = `<button onclick="loadMoreFreeboardArticles()" class="btn-block" style="background:#fff; border:1px solid #ddd; color:#555;">
-            더 보기 (${list.length - endIdx})</button>`;
+    grid.innerHTML = articlesHTML.join('');
+
+    // ✅ 렌더링 완료 후 100ms 대기
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // ✅ 장식 로드
+    if(typeof loadAllProfileDecorations === 'function') {
+        console.log("🎨 장식 로드 시작...");
+        await loadAllProfileDecorations();
+        console.log("✅ 장식 로드 완료");
+    } else {
+        console.warn("⚠️ loadAllProfileDecorations 함수를 찾을 수 없습니다.");
+    }
+    
+    if(endIdx < unpinnedArticles.length) {
+        loadMore.innerHTML = `<button onclick="loadMoreArticles()" class="btn-block" style="background:#fff; border:1px solid #ddd; color:#555;">
+            더 보기 (${unpinnedArticles.length - endIdx})</button>`;
     } else {
         loadMore.innerHTML = "";
     }
-}
-
-function loadMoreFreeboardArticles() {
-    currentFreeboardPage++;
-    renderFreeboardArticles();
 }
 
 // ===== Part 7: 기사 관리 및 렌더링 (최적화) =====
@@ -2306,23 +2466,82 @@ function getSortedArticles() {
     return articles;
 }
 
-// script.js 약 2350줄 근처 - renderArticles 함수 시작 부분
+// ===== renderArticles 함수 수정 (script.js 약 2340줄) =====
+
 async function renderArticles() {
     const list = getSortedArticles();
-    const grid = document.getElementById("articlesGrid");
-    const featured = document.getElementById("featuredSection");
-    const pinnedSection = document.getElementById("pinnedArticlesSection");
-    const adSection = document.getElementById("adSection");
-    const loadMore = document.getElementById("loadMoreContainer");
-
-    // ✅ 모든 console.log 제거 (DEBUG_MODE 관련 코드 삭제)
     
+    // ✅ 요소 찾기 전에 존재 여부 확인
+    let grid = document.getElementById("articlesGrid");
+    let featured = document.getElementById("featuredSection");
+    let pinnedSection = document.getElementById("pinnedArticlesSection");
+    let adSection = document.getElementById("adSection");
+    let loadMore = document.getElementById("loadMoreContainer");
+    
+    // ✅ 요소가 없으면 동적 생성
     if(!grid || !featured || !pinnedSection || !adSection || !loadMore) {
-        console.error("필수 요소를 찾을 수 없습니다.");
-        return;
+        console.warn("⚠️ 필수 요소가 없어서 동적으로 생성합니다.");
+        
+        const articlesSection = document.getElementById("articlesSection");
+        if(!articlesSection) {
+            console.error("❌ articlesSection을 찾을 수 없습니다!");
+            return;
+        }
+        
+        // 기존 내용 초기화
+        articlesSection.innerHTML = `
+            <div class="container">
+                <!-- 검색 & 필터 -->
+                <div class="search-section">
+                    <div class="search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchKeyword" placeholder="검색어를 입력하세요" onkeypress="if(event.key==='Enter') searchArticles()">
+                        <select id="searchCategory" onchange="searchArticles()">
+                            <option value="">전체 카테고리</option>
+                            <option value="정치">정치</option>
+                            <option value="경제">경제</option>
+                            <option value="사회">사회</option>
+                            <option value="문화">문화</option>
+                            <option value="IT/과학">IT/과학</option>
+                            <option value="스포츠">스포츠</option>
+                        </select>
+                        <button onclick="searchArticles()" class="btn-primary">검색</button>
+                    </div>
+                    
+                    <div class="sort-chips">
+                        <button class="chip active" onclick="sortArticles('latest', this)">최신순</button>
+                        <button class="chip" onclick="sortArticles('oldest', this)">오래된순</button>
+                        <button class="chip" onclick="sortArticles('views', this)">조회순</button>
+                        <button class="chip" onclick="sortArticles('likes', this)">추천순</button>
+                    </div>
+                </div>
+                
+                <!-- 광고 섹션 -->
+                <div id="adSection"></div>
+                
+                <!-- 고정 기사 섹션 -->
+                <div id="pinnedArticlesSection"></div>
+                
+                <!-- 추천 기사 섹션 -->
+                <div id="featuredSection"></div>
+                
+                <!-- 일반 기사 목록 -->
+                <div id="articlesGrid" class="articles-grid"></div>
+                
+                <!-- 더보기 버튼 -->
+                <div id="loadMoreContainer"></div>
+            </div>
+        `;
+        
+        // 재할당
+        grid = document.getElementById("articlesGrid");
+        featured = document.getElementById("featuredSection");
+        pinnedSection = document.getElementById("pinnedArticlesSection");
+        adSection = document.getElementById("adSection");
+        loadMore = document.getElementById("loadMoreContainer");
     }
     
-    // ✅ 프로필 사진 캐싱 최적화
+    // ✅ 이제 요소가 확실히 있으므로 계속 진행
     if(!window.profilePhotoCache) {
         window.profilePhotoCache = new Map();
     }
@@ -2368,6 +2587,20 @@ async function renderArticles() {
         adSection.innerHTML = '';
     }
 
+    // ✅ [수정] await 추가하여 장식 로드 완료 대기
+    if(typeof loadAllProfileDecorations === 'function') {
+        console.log("🎨 장식 로드 함수 호출...");
+        
+        // DOM 렌더링 완료 대기 (중요!)
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        await loadAllProfileDecorations();
+        
+        console.log("✅ 장식 로드 완료");
+    } else {
+        console.warn("⚠️ loadAllProfileDecorations 함수를 찾을 수 없습니다.");
+    }
+
     // ✅ 5. 기사가 없을 때
     if (list.length === 0) {
         featured.innerHTML = `<div style="text-align:center;padding:60px 20px;background:#fff;border-radius:8px;">
@@ -2410,20 +2643,20 @@ async function renderArticles() {
     const endIdx = currentArticlePage * ARTICLES_PER_PAGE;
     const displayArticles = unpinnedArticles.slice(0, endIdx);
     
- // ✅ 2. 이메일 중복 제거 후 한 번에 로드
-const emails = [...new Set(displayArticles.map(a => a.authorEmail).filter(Boolean))];
-const uncachedEmails = emails.filter(email => !window.profilePhotoCache.has(email));
+    // ✅ 2. 이메일 중복 제거 후 한 번에 로드
+    const emails = [...new Set(displayArticles.map(a => a.authorEmail).filter(Boolean))];
+    const uncachedEmails = emails.filter(email => !window.profilePhotoCache.has(email));
 
-if(uncachedEmails.length > 0) {
-    const usersSnapshot = await db.ref("users").once("value");
-    const usersData = usersSnapshot.val() || {};
-    
-    Object.values(usersData).forEach(userData => {
-        if(userData && userData.email && uncachedEmails.includes(userData.email)) {
-            window.profilePhotoCache.set(userData.email, userData.profilePhoto || null);
-        }
-    });
-}
+    if(uncachedEmails.length > 0) {
+        const usersSnapshot = await db.ref("users").once("value");
+        const usersData = usersSnapshot.val() || {};
+        
+        Object.values(usersData).forEach(userData => {
+            if(userData && userData.email && uncachedEmails.includes(userData.email)) {
+                window.profilePhotoCache.set(userData.email, userData.profilePhoto || null);
+            }
+        });
+    }
     
     // ✅ 8. HTML 생성 (장식 포함)
     const articlesHTML = await Promise.all(displayArticles.map(async (a) => {
@@ -2431,28 +2664,27 @@ if(uncachedEmails.length > 0) {
         const votes = getArticleVoteCounts(a);
         const photoUrl = window.profilePhotoCache.get(a.authorEmail) || null;
 
-        // 1. await를 쓰지 않고, 동기 함수인 getProfilePlaceholder를 사용합니다.
-const authorPhotoHTML = getProfilePlaceholder(photoUrl, 48, a.authorEmail);
+        const authorPhotoHTML = getProfilePlaceholder(photoUrl, 48, a.authorEmail);
     
-    return `<div class="article-card" onclick="showArticleDetail('${a.id}')" style="cursor:pointer;">
-        ${a.thumbnail ? `<img src="${a.thumbnail}" class="article-thumbnail" alt="썸네일">` : ''}
-        <div class="article-content">
-            <span class="category-badge">${a.category}</span>
-            <h3 class="article-title">${a.title}</h3>
-            <p class="article-summary">${a.summary||''}</p>
-            <div class="article-meta" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                <div style="display:flex; align-items:center; gap:8px; flex:1;">
-                    ${authorPhotoHTML}
-                    <span>${a.author}</span>
-                </div>
-                <div class="article-stats" style="display:flex; gap:12px;">
-                    <span class="stat-item">👁️ ${views}</span>
-                    <span class="stat-item">👍 ${votes.likes}</span>
+        return `<div class="article-card" onclick="showArticleDetail('${a.id}')" style="cursor:pointer;">
+            ${a.thumbnail ? `<img src="${a.thumbnail}" class="article-thumbnail" alt="썸네일">` : ''}
+            <div class="article-content">
+                <span class="category-badge">${a.category}</span>
+                <h3 class="article-title">${a.title}</h3>
+                <p class="article-summary">${a.summary||''}</p>
+                <div class="article-meta" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <div style="display:flex; align-items:center; gap:8px; flex:1;">
+                        ${authorPhotoHTML}
+                        <span>${a.author}</span>
+                    </div>
+                    <div class="article-stats" style="display:flex; gap:12px;">
+                        <span class="stat-item">👁️ ${views}</span>
+                        <span class="stat-item">👍 ${votes.likes}</span>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>`;
-}));
+        </div>`;
+    }));
     
     grid.innerHTML = articlesHTML.join('');
 
@@ -2470,11 +2702,7 @@ const authorPhotoHTML = getProfilePlaceholder(photoUrl, 48, a.authorEmail);
     }
 }
 
-// 기사 더보기
-function loadMoreArticles() {
-    currentArticlePage++;
-    renderArticles();
-}
+
 
 // script.js 약 2780줄 근처
 async function loadArticleAuthorTheme(authorEmail) {
