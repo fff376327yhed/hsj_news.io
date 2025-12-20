@@ -1623,3 +1623,203 @@ textarea.form-control {
     color: white;
     border-color: #c41e3a;
 }
+
+/* ===== 대댓글 및 댓글 스타일 개선 ===== */
+
+.comment-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 12px;
+}
+
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.comment-author {
+    font-weight: 700;
+    color: #333;
+    font-size: 14px;
+}
+
+.comment-time {
+    font-size: 11px;
+    color: #888;
+}
+
+.comment-body {
+    font-size: 14px;
+    color: #444;
+    line-height: 1.5;
+    margin-bottom: 10px;
+    white-space: pre-wrap;
+}
+
+.comment-footer {
+    display: flex;
+    gap: 10px;
+    font-size: 12px;
+}
+
+.btn-text {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #666;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.btn-text:hover {
+    text-decoration: underline;
+}
+
+.btn-text.text-danger {
+    color: #d93025;
+}
+
+.btn-text-danger {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #d93025;
+    cursor: pointer;
+    font-size: 11px;
+}
+
+/* 대댓글 컨테이너 */
+.replies-container {
+    margin-top: 10px;
+    margin-left: 10px;
+    padding-left: 10px;
+    border-left: 2px solid #eee;
+}
+
+.reply-item {
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 6px;
+}
+
+.reply-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    font-size: 12px;
+}
+
+.reply-author {
+    font-weight: 600;
+    color: #555;
+}
+
+.reply-time {
+    font-size: 10px;
+    color: #999;
+}
+
+.reply-content {
+    font-size: 13px;
+    color: #333;
+}
+
+.reply-actions {
+    text-align: right;
+    margin-top: 4px;
+}
+
+/* 답글 입력창 */
+.reply-input-area {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    background: #f1f3f4;
+    padding: 8px;
+    border-radius: 8px;
+}
+
+.reply-input {
+    flex: 1;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 8px;
+    font-size: 13px;
+}
+
+.btn-reply-submit {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 36px;
+    cursor: pointer;
+}
+
+/* ===== 페이지 섹션 상단 여백 증가 ===== */
+.page-section {
+    padding-top: 10px !important; /* 기존보다 증가 */
+    padding-bottom: 100px;
+    min-height: calc(100vh - 120px);
+}
+
+/* 더보기 메뉴 특별 처리 */
+#moreMenuSection {
+    padding-top: 10px !important;
+}
+
+/* 설정 섹션 */
+#settingsSection {
+    padding-top: 10px !important;
+    padding-bottom: 120px;
+}
+
+/* 사용자 관리 섹션 */
+#userManagementSection {
+    padding-top: 10px !important;
+    padding-bottom: 140px;
+}
+
+/* 기사 상세 섹션 */
+#articleDetailSection {
+    padding-top: 10px !important;
+    padding-bottom: 120px;
+}
+
+/* 메신저 섹션 */
+#messengerSection {
+    padding-top: 10px !important;
+}
+
+/* 이벤트 메뉴 */
+#eventMenuSection {
+    padding-top: 10px !important;
+}
+
+/* 인벤토리 */
+#inventorySection {
+    padding-top: 10px !important;
+}
+
+/* 상점 */
+#storeSection {
+    padding-top: 10px !important;
+}
+
+/* 헤더 고정 시 본문 여백 */
+body {
+    padding-top: 70px; /* 헤더 높이만큼 */
+}
+
+header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+}
