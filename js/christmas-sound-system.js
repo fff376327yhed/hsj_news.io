@@ -1,6 +1,3 @@
-// 맨 위에 추가
-window.currentTheme = 'default'; // ✅ 전역으로 노출
-
 // applyTheme 함수 내부 수정
 function applyTheme(theme, showNotification = true) {
     currentTheme = theme;
@@ -41,7 +38,7 @@ async function initSoundSystem() {
 // 2. 테마 적용
 function applyTheme(theme, showNotification = true) {
     currentTheme = theme;
-    
+    window.currentTheme = theme; // ✅ 전역으로 노출
     const christmasStylesheet = document.getElementById('christmasStylesheet');
     
     if (theme === 'christmas') {
