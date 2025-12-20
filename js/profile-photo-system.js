@@ -41,7 +41,7 @@ window.openProfilePhotoModal = function() {
                             <div id="uploadPhotoText">
                                 <i class="fas fa-camera" style="font-size:48px; color:#c62828; margin-bottom:10px;"></i>
                                 <p style="color:#5f6368; font-size:14px;">클릭하여 이미지 선택</p>
-                                <small style="color:#868e96;">권장: 정사각형 이미지, 최대 2MB</small>
+                                <small style="color:#868e96;">권장: 정사각형 이미지</small>
                             </div>
                             <img id="uploadPhotoPreview" class="image-preview" style="display:none; max-width:100%; border-radius:50%; width:200px; height:200px; object-fit:cover;">
                         </div>
@@ -151,16 +151,10 @@ async function loadCurrentProfilePhoto() {
     }
 }
 
-// 파일 업로드 미리보기
+// 파일 업로드 미리보기 (2MB 제한 제거)
 function previewUploadPhoto(event) {
     const file = event.target.files[0];
     if(!file) return;
-    
-    // 파일 크기 체크 (2MB)
-    if(file.size > 2 * 1024 * 1024) {
-        alert("⚠️ 파일 크기는 2MB 이하여야 합니다!");
-        return;
-    }
     
     // 이미지 파일인지 체크
     if(!file.type.startsWith('image/')) {
@@ -216,6 +210,7 @@ window.uploadProfilePhoto = async function() {
             
             // UI 업데이트
             updateSettings();
+            await updateHeaderProfileButton(user);
             if(document.getElementById("articlesSection").classList.contains("active")) {
                 renderArticles();
             }
@@ -300,6 +295,7 @@ window.saveProfilePhotoUrl = async function() {
         
         // UI 업데이트
         updateSettings();
+        await updateHeaderProfileButton(user);
         if(document.getElementById("articlesSection").classList.contains("active")) {
             renderArticles();
         }
@@ -332,6 +328,7 @@ window.deleteProfilePhoto = async function() {
         
         // UI 업데이트
         updateSettings();
+        await updateHeaderProfileButton(user);
         if(document.getElementById("articlesSection").classList.contains("active")) {
             renderArticles();
         }
@@ -343,14 +340,14 @@ window.deleteProfilePhoto = async function() {
     }
 }
 
+// ✅ 프로필 사진 캐시
+if(!window.profilePhotoCache) {
+    window.profilePhotoCache = new Map();
+}
 
+// 사용자 프로필 사진 가져오기
 async function getUserProfilePhoto(email) {
     if(!email) return null;
-    
-    // ✅ window 객체를 통해 접근
-    if(!window.profilePhotoCache) {
-        window.profilePhotoCache = new Map();
-    }
     
     // 캐시 확인
     if(window.profilePhotoCache.has(email)) {
@@ -394,7 +391,123 @@ function createProfilePhotoHTML(photoUrl, size = 32, alt = "프로필") {
     }
 }
 
-// ===== 프로필 사진이 포함된 댓글 로드 (대댓글 + 수정 기능 포함 + 버그 수정됨) =====
+// ✅ 프로필 플레이스홀더 (장식 포함)
+function getProfilePlaceholder(photoUrl, size, email) {
+    if(!email || email === 'undefined' || email === 'null') {
+        return createProfilePhotoHTML(photoUrl, size);
+    }
+    
+    const safePhoto = photoUrl || '';
+    const safeEmail = email || '';
+    
+    const baseHTML = createProfilePhotoHTML(safePhoto, size);
+    
+    // 고유 ID 생성
+    const uniqueId = `profile-${btoa(safeEmail).replace(/[^a-zA-Z0-9]/g, '')}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    return `
+        <div id="${uniqueId}" class="needs-decoration profile-clickable" 
+             data-photo="${safePhoto}" 
+             data-size="${size}" 
+             data-email="${safeEmail}" 
+             onclick="showUserProfile('${safeEmail}'); event.stopPropagation();"
+             style="display:inline-block; vertical-align:middle; position:relative; width:${size}px; height:${size}px; cursor:pointer;">
+            ${baseHTML}
+        </div>
+    `;
+}
+
+// ✅ 모든 프로필 장식 로드
+window.loadAllProfileDecorations = async function() {
+    if(!window.userDecorationCache) {
+        window.userDecorationCache = {};
+    }
+    
+    const elements = document.querySelectorAll('.needs-decoration');
+    
+    console.log(`🎨 장식 로드 시작: ${elements.length}개 요소 발견`);
+    
+    if(elements.length === 0) {
+        console.warn("⚠️ .needs-decoration 요소가 없습니다.");
+        return;
+    }
+    
+    const emailsToFetch = new Set();
+    elements.forEach(el => {
+        if(el.dataset.processed === "true") return;
+        const email = el.dataset.email;
+        
+        if(email && email !== 'undefined' && email !== 'null') {
+            if(!window.userDecorationCache[email]) {
+                emailsToFetch.add(email);
+            }
+        }
+    });
+
+    console.log(`🔧 가져올 이메일: ${emailsToFetch.size}개`);
+
+    // 이메일별 장식 정보 로드
+    if(emailsToFetch.size > 0) {
+        const promises = Array.from(emailsToFetch).map(async (email) => {
+            try {
+                const usersSnapshot = await db.ref("users").once("value");
+                const usersData = usersSnapshot.val() || {};
+                let found = false;
+                
+                for(const [uid, userData] of Object.entries(usersData)) {
+                    if(userData && userData.email === email) {
+                        const decorations = userData.activeDecorations || [];
+                        window.userDecorationCache[email] = { uid: uid, decorations: decorations };
+                        console.log(`✅ ${email}: ${decorations.length}개 장식`);
+                        found = true;
+                        break;
+                    }
+                }
+                
+                if(!found) {
+                    window.userDecorationCache[email] = { uid: null, decorations: [] };
+                }
+            } catch (e) {
+                console.warn(`사용자 정보 로드 실패 (${email}):`, e);
+                window.userDecorationCache[email] = { uid: null, decorations: [] };
+            }
+        });
+        await Promise.all(promises);
+    }
+
+    // 각 요소에 장식 적용
+    let decoratedCount = 0;
+    for(const el of elements) {
+        if(el.dataset.processed === "true") continue;
+        
+        const email = el.dataset.email;
+        const size = parseInt(el.dataset.size);
+        const photo = el.dataset.photo;
+        
+        const cachedData = window.userDecorationCache[email];
+        
+        if (cachedData && cachedData.decorations && cachedData.decorations.length > 0) {
+            try {
+                if(typeof window.createProfilePhotoWithDecorations === 'function') {
+                    const decoratedHTML = await window.createProfilePhotoWithDecorations(photo, size, email);
+                    // onclick 이벤트 추가
+                    el.innerHTML = decoratedHTML;
+                    decoratedCount++;
+                } else {
+                    console.warn("⚠️ createProfilePhotoWithDecorations 함수를 찾을 수 없습니다.");
+                }
+            } catch(error) {
+                console.error(`장식 적용 실패 (${email}):`, error);
+            }
+        }
+        
+        el.dataset.processed = "true";
+    }
+    
+    console.log(`✅ 장식 적용 완료: ${decoratedCount}개`);
+};
+
+// ✅ 프로필 사진이 포함된 댓글 로드
 async function loadCommentsWithProfile(id) {
     const currentUser = getNickname();
     const currentEmail = getUserEmail();
@@ -430,9 +543,8 @@ async function loadCommentsWithProfile(id) {
         const commentsHTML = await Promise.all(displayComments.map(async ([commentId, comment]) => {
             const isMyComment = isLoggedIn() && ((comment.authorEmail === currentEmail) || isAdmin());
             
-            // ✅ shop-system.js의 완전한 createProfilePhotoWithDecorations 함수 사용
             const photoUrl = await getUserProfilePhoto(comment.authorEmail);
-            const commentPhotoHTML = await window.createProfilePhotoWithDecorations(photoUrl, 32, comment.authorEmail);
+            const commentPhotoHTML = getProfilePlaceholder(photoUrl, 32, comment.authorEmail);
             
             // 대댓글 처리
             let repliesHTML = '';
@@ -444,7 +556,7 @@ async function loadCommentsWithProfile(id) {
                 const repliesPromises = replies.map(async ([replyId, reply]) => {
                     const isMyReply = isLoggedIn() && ((reply.authorEmail === currentEmail) || isAdmin());
                     const replyPhotoUrl = await getUserProfilePhoto(reply.authorEmail);
-                    const replyPhotoHTML = await window.createProfilePhotoWithDecorations(replyPhotoUrl, 24, reply.authorEmail);
+                    const replyPhotoHTML = getProfilePlaceholder(replyPhotoUrl, 24, reply.authorEmail);
                     
                     return `
                         <div class="reply-item" id="reply-${replyId}">
@@ -457,18 +569,8 @@ async function loadCommentsWithProfile(id) {
                                     </div>
                                     <div class="reply-content" id="replyContent-${replyId}">${reply.text}</div>
                                     
-                                    <div id="replyEditForm-${replyId}" style="display:none; margin-top:8px;">
-                                        <input type="text" id="replyEditInput-${replyId}" class="reply-input" value="${reply.text}" 
-                                               onkeypress="if(event.key==='Enter') saveReplyEdit('${id}', '${commentId}', '${replyId}')">
-                                        <div style="display:flex; gap:8px; margin-top:8px;">
-                                            <button onclick="saveReplyEdit('${id}', '${commentId}', '${replyId}')" class="btn-primary" style="font-size:12px; padding:4px 12px;">저장</button>
-                                            <button onclick="cancelReplyEdit('${replyId}')" class="btn-secondary" style="font-size:12px; padding:4px 12px;">취소</button>
-                                        </div>
-                                    </div>
-                                    
                                     ${isMyReply ? `
                                         <div class="reply-actions">
-                                            <button onclick="startReplyEdit('${replyId}')" class="btn-text">수정</button>
                                             <button onclick="deleteReply('${id}', '${commentId}', '${replyId}')" class="btn-text-danger">삭제</button>
                                         </div>
                                     ` : ''}
@@ -493,18 +595,9 @@ async function loadCommentsWithProfile(id) {
                             </div>
                             <div class="comment-body" id="commentContent-${commentId}">${comment.text}</div>
                             
-                            <div id="commentEditForm-${commentId}" style="display:none; margin-top:12px;">
-                                <textarea id="commentEditInput-${commentId}" class="form-control" style="min-height:80px; resize:vertical;">${comment.text}</textarea>
-                                <div style="display:flex; gap:8px; margin-top:10px;">
-                                    <button onclick="saveCommentEdit('${id}', '${commentId}')" class="btn-primary" style="font-size:13px; padding:6px 16px;">저장</button>
-                                    <button onclick="cancelCommentEdit('${commentId}')" class="btn-secondary" style="font-size:13px; padding:6px 16px;">취소</button>
-                                </div>
-                            </div>
-                            
                             <div class="comment-footer">
                                 <button onclick="toggleReplyForm('${commentId}')" class="btn-text">💬 답글${comment.replies ? ` (${Object.keys(comment.replies).length})` : ''}</button>
                                 ${isMyComment ? `
-                                    <button onclick="startCommentEdit('${commentId}')" class="btn-text">수정</button>
                                     <button onclick="deleteComment('${id}', '${commentId}', '${comment.author}')" class="btn-text text-danger">삭제</button>
                                 ` : ''}
                             </div>
@@ -530,6 +623,11 @@ async function loadCommentsWithProfile(id) {
             loadMoreBtn.innerHTML = "";
         }
         
+        // ✅ 장식 적용
+        if(typeof window.loadAllProfileDecorations === 'function') {
+            await window.loadAllProfileDecorations();
+        }
+        
     } catch(error) {
         console.error("❌ 댓글 로드 오류:", error);
         const root = document.getElementById("comments");
@@ -537,126 +635,4 @@ async function loadCommentsWithProfile(id) {
     }
 }
 
-// 나머지 함수들은 동일...
-// (startCommentEdit, cancelCommentEdit, saveCommentEdit, startReplyEdit, cancelReplyEdit, saveReplyEdit, loadMoreComments, toggleReplyForm, submitReply, deleteReply 등)
-
-// ===== 1. profile-photo-system.js의 getProfilePlaceholder 함수 수정 (약 540줄) =====
-
-function getProfilePlaceholder(photoUrl, size, email) {
-    // ✅ 즉시 장식을 적용하는 방식으로 변경
-    if(!email || email === 'undefined' || email === 'null') {
-        return createProfilePhotoHTML(photoUrl, size);
-    }
-    
-    const safePhoto = photoUrl || '';
-    const safeEmail = email || '';
-    
-    const baseHTML = createProfilePhotoHTML(safePhoto, size);
-    
-    // ✅ 고유 ID 생성 (이메일 + 타임스탬프)
-    const uniqueId = `profile-${btoa(safeEmail).replace(/[^a-zA-Z0-9]/g, '')}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
-    return `
-        <div id="${uniqueId}" class="needs-decoration" 
-             data-photo="${safePhoto}" 
-             data-size="${size}" 
-             data-email="${safeEmail}" 
-             style="display:inline-block; vertical-align:middle; position:relative; width:${size}px; height:${size}px;">
-            ${baseHTML}
-        </div>
-    `;
-}
-
-// ===== 수정: window.loadAllProfileDecorations 함수 (profile-photo-system.js 약 550줄) =====
-
-// ===== 2. profile-photo-system.js의 loadAllProfileDecorations 함수 수정 (약 550줄) =====
-
-window.loadAllProfileDecorations = async function() {
-    // ✅ 캐시 초기화
-    if(!window.userDecorationCache) {
-        window.userDecorationCache = {};
-    }
-    
-    const elements = document.querySelectorAll('.needs-decoration');
-    
-    console.log(`🎨 장식 로드 시작: ${elements.length}개 요소 발견`);
-    
-    if(elements.length === 0) {
-        console.warn("⚠️ .needs-decoration 요소가 없습니다.");
-        return;
-    }
-    
-    const emailsToFetch = new Set();
-    elements.forEach(el => {
-        if(el.dataset.processed === "true") return;
-        const email = el.dataset.email;
-        
-        if(email && email !== 'undefined' && email !== 'null') {
-            if(!window.userDecorationCache[email]) {
-                emailsToFetch.add(email);
-            }
-        }
-    });
-
-    console.log(`📧 가져올 이메일: ${emailsToFetch.size}개`);
-
-    // ✅ 이메일별 장식 정보 로드
-    if(emailsToFetch.size > 0) {
-        const promises = Array.from(emailsToFetch).map(async (email) => {
-            try {
-                const usersSnapshot = await db.ref("users").once("value");
-                const usersData = usersSnapshot.val() || {};
-                let found = false;
-                
-                for(const [uid, userData] of Object.entries(usersData)) {
-                    if(userData && userData.email === email) {
-                        const decorations = userData.activeDecorations || [];
-                        window.userDecorationCache[email] = { uid: uid, decorations: decorations };
-                        console.log(`✅ ${email}: ${decorations.length}개 장식`);
-                        found = true;
-                        break;
-                    }
-                }
-                
-                if(!found) {
-                    window.userDecorationCache[email] = { uid: null, decorations: [] };
-                }
-            } catch (e) {
-                console.warn(`사용자 정보 로드 실패 (${email}):`, e);
-                window.userDecorationCache[email] = { uid: null, decorations: [] };
-            }
-        });
-        await Promise.all(promises);
-    }
-
-    // ✅ 각 요소에 장식 적용
-    let decoratedCount = 0;
-    for(const el of elements) {
-        if(el.dataset.processed === "true") continue;
-        
-        const email = el.dataset.email;
-        const size = parseInt(el.dataset.size);
-        const photo = el.dataset.photo;
-        
-        const cachedData = window.userDecorationCache[email];
-        
-        if (cachedData && cachedData.decorations && cachedData.decorations.length > 0) {
-            try {
-                // ✅ shop-system.js의 완전한 함수 호출
-                if(typeof window.createProfilePhotoWithDecorations === 'function') {
-                    const decoratedHTML = await window.createProfilePhotoWithDecorations(photo, size, email);
-                    el.innerHTML = decoratedHTML;
-                    decoratedCount++;
-                } else {
-                    console.warn("⚠️ createProfilePhotoWithDecorations 함수를 찾을 수 없습니다.");
-                }
-            } catch(error) {
-                console.error(`장식 적용 실패 (${email}):`, error);
-            }
-        }
-        
-        el.dataset.processed = "true";
-    }
-    
-    console.log(`✅ 장식 적용 완료: ${decoratedCount}개`);
-};
+console.log("✅ profile-photo-system.js 로드 완료");
