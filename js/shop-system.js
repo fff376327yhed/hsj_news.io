@@ -166,6 +166,9 @@ function renderShopItem(item, userMoney, isFeatured = false) {
     const canAfford = userMoney >= item.price;
     const isBundle = item.isBundle || false;
     
+    // ✅ 구매 횟수 체크 로직 수정 필요 (비동기 처리 필요)
+    // 일단 기본적으로는 표시하고, 구매 버튼 클릭 시 체크하도록 변경
+    
     // 필수 아이템 체크
     let canBuy = true;
     let requiredMessage = '';
@@ -178,6 +181,16 @@ function renderShopItem(item, userMoney, isFeatured = false) {
         }
     }
     
+    // ✅ maxPurchases 표시 수정
+    let purchaseInfo = '';
+    if(item.maxPurchases) {
+        if(item.maxPurchases === 1) {
+            purchaseInfo = owned ? '<span style="font-size:12px; color:#868e96;">1회 구매 완료</span>' : '<span style="font-size:12px; color:#868e96;">1회 구매 제한</span>';
+        } else {
+            purchaseInfo = `<span style="font-size:12px; color:#868e96;">최대 ${item.maxPurchases}회 구매 가능</span>`;
+        }
+    }
+    
     return `
         <div class="shop-item-card ${isFeatured ? 'featured' : ''}" style="
             background:white;
@@ -186,12 +199,10 @@ function renderShopItem(item, userMoney, isFeatured = false) {
             box-shadow:0 2px 12px rgba(0,0,0,0.1);
             transition:all 0.3s ease;
             border:${isFeatured ? '3px solid #d4af37' : '1px solid #e0e0e0'};
-            ${owned ? 'opacity:0.7;' : ''}
         ">
-            <!-- 뱃지 -->
+            <!-- 배지 -->
             ${isFeatured ? '<div style="background:#d4af37; color:#000; padding:5px 10px; font-size:11px; font-weight:900; text-align:center;">⭐ 추천</div>' : ''}
             ${isBundle ? '<div style="background:#c62828; color:white; padding:5px 10px; font-size:11px; font-weight:900; text-align:center;">🎁 번들 (30% 할인)</div>' : ''}
-            ${owned ? '<div style="background:#4caf50; color:white; padding:5px 10px; font-size:11px; font-weight:900; text-align:center;">✅ 보유중</div>' : ''}
             
             <!-- 이미지 -->
             <div style="width:100%; height:180px; background:#f1f3f4; display:flex; align-items:center; justify-content:center; font-size:80px;">
@@ -207,20 +218,18 @@ function renderShopItem(item, userMoney, isFeatured = false) {
                     <div style="font-size:24px; font-weight:900; color:#c62828;">
                         ${item.price.toLocaleString()}원
                     </div>
-                    ${item.maxPurchases === 1 ? '<span style="font-size:12px; color:#868e96;">1회 구매</span>' : ''}
+                    ${purchaseInfo}
                 </div>
                 
                 ${requiredMessage}
                 
-                ${owned ? 
-                    '<button class="btn-secondary btn-block" disabled style="opacity:0.5;">이미 보유중</button>' :
-                    canBuy && canAfford ?
-                        `<button onclick="purchaseItem('${item.id}')" class="btn-primary btn-block">
-                            <i class="fas fa-shopping-cart"></i> 구매하기
-                        </button>` :
-                        `<button class="btn-secondary btn-block" disabled style="opacity:0.5;">
-                            ${!canBuy ? '필수 아이템 필요' : '포인트 부족'}
-                        </button>`
+                ${canBuy && canAfford ?
+                    `<button onclick="purchaseItem('${item.id}')" class="btn-primary btn-block">
+                        <i class="fas fa-shopping-cart"></i> 구매하기
+                    </button>` :
+                    `<button class="btn-secondary btn-block" disabled style="opacity:0.5;">
+                        ${!canBuy ? '필수 아이템 필요' : '포인트 부족'}
+                    </button>`
                 }
             </div>
         </div>
@@ -251,7 +260,7 @@ window.purchaseItem = async function(itemId) {
     if(!item) return;
     
     const uid = getUserId();
-    const unlockValue = item.unlocks || itemId; // unlocks 값 미리 가져오기
+    const unlockValue = item.unlocks || itemId;
     
     try {
         // 현재 보유 포인트 확인
@@ -271,23 +280,35 @@ window.purchaseItem = async function(itemId) {
             return;
         }
         
-        // 이미 구매했는지 확인 (unlocks 값으로 체크)
-        const purchaseSnapshot = await db.ref("users/" + uid + "/purchases/" + unlockValue).once("value");
-        if(purchaseSnapshot.exists()) {
-            alert("이미 구매한 상품입니다!");
+        // ✅ 구매 횟수 체크 수정
+        const purchaseSnapshot = await db.ref("users/" + uid + "/purchases").once("value");
+        const purchases = purchaseSnapshot.val() || {};
+        
+        // 현재 상품의 구매 횟수 계산
+        let purchaseCount = 0;
+        Object.values(purchases).forEach(purchase => {
+            if(purchase.itemId === itemId) {
+                purchaseCount++;
+            }
+        });
+        
+        // maxPurchases 체크 (설정된 횟수만큼 구매 가능)
+        if(item.maxPurchases && purchaseCount >= item.maxPurchases) {
+            alert(`이 상품은 최대 ${item.maxPurchases}회까지만 구매 가능합니다.\n현재 ${purchaseCount}회 구매하셨습니다.`);
             return;
         }
         
         // 확인 메시지
-        if(!confirm(`🛒 구매하시겠습니까?\n\n상품: ${item.name}\n가격: ${itemPrice}원\n보유: ${currentMoney}원`)) {
+        if(!confirm(`🛒 구매하시겠습니까?\n\n상품: ${item.name}\n가격: ${itemPrice}원\n보유: ${currentMoney}원\n\n${item.maxPurchases ? `(구매 횟수: ${purchaseCount + 1}/${item.maxPurchases})` : ''}`)) {
             return;
         }
         
         // 포인트 차감
         await updateUserMoney(-itemPrice, `상점 구매: ${item.name}`);
         
-        // 구매 기록 (unlocks 값으로 저장)
-        await db.ref("users/" + uid + "/purchases/" + unlockValue).set({
+        // ✅ 구매 기록 - 고유 ID로 저장 (중복 구매 허용)
+        const purchaseId = `${itemId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        await db.ref("users/" + uid + "/purchases/" + purchaseId).set({
             itemId: itemId,
             itemName: item.name,
             price: itemPrice,
@@ -301,22 +322,27 @@ window.purchaseItem = async function(itemId) {
         
         // 패키지 상품 처리
         if(item.includes && item.includes.length > 0) {
-            // 패키지에 포함된 모든 아이템 추가
             item.includes.forEach(includedItem => {
                 if(!inventory.includes(includedItem)) {
                     inventory.push(includedItem);
                 }
             });
         } else {
-            // 단일 아이템 추가 - unlocks 값을 저장
-            if(!inventory.includes(unlockValue)) {
+            // ✅ 소모품(consumable)이거나 maxPurchases > 1인 경우 중복 추가 허용
+            if(item.consumable || (item.maxPurchases && item.maxPurchases > 1)) {
+                // 중복 추가 허용
                 inventory.push(unlockValue);
+            } else {
+                // 일반 아이템은 중복 방지
+                if(!inventory.includes(unlockValue)) {
+                    inventory.push(unlockValue);
+                }
             }
         }
         
         await db.ref("users/" + uid + "/inventory").set(inventory);
         
-        alert(`✅ 구매 완료!\n\n${item.name}을(를) 구매했습니다.`);
+        alert(`✅ 구매 완료!\n\n${item.name}을(를) 구매했습니다.${item.maxPurchases ? `\n(${purchaseCount + 1}/${item.maxPurchases}회 구매)` : ''}`);
         
         // 상점 새로고침
         showShop();
@@ -327,7 +353,8 @@ window.purchaseItem = async function(itemId) {
     }
 }
 
-// 인벤토리 페이지 표시 (전체 페이지)
+// 인벤토리 페이지 표시 (수정됨)
+// 인벤토리 페이지 표시
 window.showInventoryPage = async function() {
     if(!isLoggedIn()) {
         alert("로그인이 필요합니다!");
@@ -336,143 +363,161 @@ window.showInventoryPage = async function() {
     
     hideAll();
     const section = document.getElementById("inventorySection");
-    if(!section) {
-        console.error("❌ inventorySection 요소를 찾을 수 없습니다!");
-        return;
-    }
-    
     section.classList.add("active");
     updateURL('inventory');
     
-    await loadUserInventory();
+    await loadUserInventory(); // 유저 인벤토리 최신화
     
     const content = document.getElementById("inventoryContent");
-    if(!content) return;
+    showLoadingIndicator("인벤토리 정리 중...");
     
-    showLoadingIndicator("인벤토리 로딩 중...");
-    
-    // 활성화된 장식 로드
     const uid = getUserId();
+    // 장착중인 장식 정보 가져오기
     const decorSnapshot = await db.ref("users/" + uid + "/activeDecorations").once("value");
     const activeDecorations = decorSnapshot.val() || [];
     
-    // 카테고리별 분류
-    const ownedItems = shopConfig.items.filter(item => 
-        userInventory.includes(item.unlocks) && !item.isBundle
-    );
-    
-    const itemsByCategory = {
-        themes: ownedItems.filter(i => i.category === 'themes'),
-        sounds: ownedItems.filter(i => i.category === 'sounds'),
-        decorations: ownedItems.filter(i => i.category === 'decorations')
-    };
-    
-// 구매 이력 로드 (수정됨)
+    // 구매 이력 가져오기
     const purchaseSnapshot = await db.ref("users/" + uid + "/purchases").once("value");
     const purchaseHistory = [];
     purchaseSnapshot.forEach(child => {
         const data = child.val();
-        purchaseHistory.unshift({
-            id: child.key,
-            itemName: data.itemName || '알 수 없음',
-            price: data.price || 0,
-            purchasedAt: data.purchasedAt || Date.now()
-        });
+        purchaseHistory.unshift({ id: child.key, ...data });
     });
     
+    // 1. 내가 가진 아이템 데이터 매핑
+    // shopConfig.items에서 userInventory에 있는 것들을 찾음
+    const myItems = shopConfig.items.filter(item => userInventory.includes(item.unlocks));
+
+    // 2. 카테고리별 분류
+    const categorized = {
+        consumables: myItems.filter(i => i.category === 'special' || i.consumable), // 티켓 등
+        decorations: myItems.filter(i => i.category === 'decorations'), // 장식
+        themes: myItems.filter(i => i.category === 'themes'), // 테마
+        sounds: myItems.filter(i => i.category === 'sounds')  // 사운드
+    };
+
     hideLoadingIndicator();
     
     content.innerHTML = `
         <div style="max-width:1200px; margin:0 auto; padding:20px;">
-            <!-- 헤더 -->
             <div style="text-align:center; margin-bottom:30px;">
-                <h1 style="font-size:36px; margin-bottom:10px;">🎁 내 인벤토리</h1>
-                <p style="color:#5f6368; font-size:16px;">보유한 아이템을 관리하고 적용할 수 있습니다</p>
+                <h1 style="font-size:36px; margin-bottom:10px;">🎒 내 인벤토리</h1>
+                <p style="color:#5f6368;">보유한 아이템을 종류별로 관리하세요</p>
             </div>
             
-            <!-- 통계 카드 -->
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:20px; margin-bottom:40px;">
-                <div style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; padding:25px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.2);">
-                    <div style="font-size:14px; opacity:0.9; margin-bottom:5px;">📦 보유 아이템</div>
-                    <div style="font-size:36px; font-weight:900;">${ownedItems.length}개</div>
-                </div>
-                
-                <div style="background:linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color:white; padding:25px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.2);">
-                    <div style="font-size:14px; opacity:0.9; margin-bottom:5px;">✨ 적용중인 장식</div>
-                    <div style="font-size:36px; font-weight:900;">${activeDecorations.length}개</div>
-                </div>
-                
-                <div style="background:linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color:white; padding:25px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.2);">
-                    <div style="font-size:14px; opacity:0.9; margin-bottom:5px;">🛍️ 총 구매 횟수</div>
-                    <div style="font-size:36px; font-weight:900;">${purchaseHistory.length}회</div>
-                </div>
+            <div class="tab-buttons" style="margin-bottom:30px; display:flex; gap:10px; overflow-x:auto; padding-bottom:10px;">
+                <button onclick="switchInvSection('all')" class="tab-btn active" id="btn-all">전체보기</button>
+                <button onclick="switchInvSection('consumables')" class="tab-btn" id="btn-consumables">🎫 아이템/티켓</button>
+                <button onclick="switchInvSection('decorations')" class="tab-btn" id="btn-decorations">✨ 장식</button>
+                <button onclick="switchInvSection('themes')" class="tab-btn" id="btn-themes">🎨 테마/사운드</button>
+                <button onclick="switchInvSection('history')" class="tab-btn" id="btn-history">📜 구매내역</button>
             </div>
-            
-            <!-- 탭 메뉴 -->
-            <div class="tab-buttons" style="margin-bottom:30px;">
-                <button onclick="switchInventoryTab('items')" class="tab-btn active" id="itemsTabBtn">
-                    📦 내 아이템
-                </button>
-                <button onclick="switchInventoryTab('decorations')" class="tab-btn" id="decorationsTabBtn">
-                    ✨ 장식 관리
-                </button>
-                <button onclick="switchInventoryTab('history')" class="tab-btn" id="historyTabBtn">
-                    📜 구매 이력
-                </button>
-            </div>
-            
 
-            <!-- 내 아이템 탭 -->
-            <div id="itemsTab" style="display:block;">
-                ${ownedItems.length === 0 ? `
-                    <div style="text-align:center; padding:80px 20px; background:white; border-radius:12px;">
-                        <div style="font-size:80px; margin-bottom:20px;">📦</div>
-                        <h3 style="color:#212529; margin-bottom:10px;">보유한 아이템이 없습니다</h3>
-                        <p style="color:#5f6368; margin-bottom:30px;">상점에서 크리스마스 아이템을 구매해보세요!</p>
-                        <button onclick="showShop()" class="btn-primary" style="padding:15px 40px;">
-                            <i class="fas fa-shopping-bag"></i> 상점 가기
-                        </button>
-                    </div>
-                ` : `
-                    ${await Promise.all(
-                        Object.entries(itemsByCategory).map(async ([category, items]) => {
-                            if(items.length === 0) return '';
-                            
-                            const categoryNames = {
-                                themes: '🎄 테마',
-                                sounds: '🔊 사운드',
-                                decorations: '✨ 장식'
-                            };
-                            
-                            // ✅ 여기서 각 아이템 렌더링
-                            const renderedItems = await Promise.all(
-                                items.map(item => renderInventoryItem(item, activeDecorations))
-                            );
-                            
-                            return `
-                                <div style="margin-bottom:40px;">
-                                    <h2 style="font-size:24px; margin-bottom:20px; color:#c62828;">
-                                        ${categoryNames[category]}
-                                    </h2>
-                                    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:20px;">
-                                        ${renderedItems.join('')}
-                                    </div>
-                                </div>
-                            `;
-                        })
-                    ).then(results => results.join(''))}
-                `}
+            <div id="inventoryContainer">
+                </div>
+        </div>
+    `;
+
+    // 초기 렌더링 (전체 보기)
+    renderInventorySections(categorized, activeDecorations, purchaseHistory, 'all');
+    
+    // 전역 변수에 데이터 저장 (탭 전환용)
+    window.currentInventoryData = { categorized, activeDecorations, purchaseHistory };
+}
+
+// 탭 전환 및 렌더링 함수
+window.switchInvSection = function(type) {
+    // 버튼 스타일 업데이트
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`btn-${type}`).classList.add('active');
+    
+    const data = window.currentInventoryData;
+    if(data) {
+        renderInventorySections(data.categorized, data.activeDecorations, data.purchaseHistory, type);
+    }
+}
+
+// 실제 HTML 생성 함수
+async function renderInventorySections(cats, activeDecors, history, type) {
+    const container = document.getElementById('inventoryContainer');
+    let html = '';
+
+    // 헬퍼 함수: 섹션 생성
+    const makeSection = async (title, items) => {
+        if(!items || items.length === 0) return '';
+        const cards = await Promise.all(items.map(item => renderInventoryItem(item, activeDecors)));
+        return `
+            <div style="margin-bottom:40px; animation: fadeIn 0.5s;">
+                <h3 style="color:#c62828; border-bottom:2px solid #eee; padding-bottom:10px; margin-bottom:20px;">
+                    ${title} <span style="font-size:14px; color:#777; font-weight:normal;">(${items.length})</span>
+                </h3>
+                <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:20px;">
+                    ${cards.join('')}
+                </div>
             </div>
-            
-            <!-- 장식 관리 탭 -->
-            <div id="decorationsTab" style="display:none;">
-                ${renderDecorationManagement(itemsByCategory.decorations, activeDecorations)}
-            </div>
-            
-            <!-- 구매 이력 탭 -->
-            <div id="historyTab" style="display:none;">
-                ${renderPurchaseHistory(purchaseHistory)}
-            </div>
+        `;
+    };
+
+    if(type === 'history') {
+        html = renderPurchaseHistory(history);
+    } else {
+        if(type === 'all' || type === 'consumables') {
+            html += await makeSection('🎫 소모품 & 티켓', cats.consumables);
+        }
+        if(type === 'all' || type === 'decorations') {
+            html += await makeSection('✨ 프로필 장식', cats.decorations);
+        }
+        if(type === 'all' || type === 'themes') {
+            html += await makeSection('🎨 테마 & 사운드', [...cats.themes, ...cats.sounds]);
+        }
+        
+        if(html === '') {
+            html = `<div style="text-align:center; padding:50px; color:#999;">보유한 아이템이 없습니다.</div>`;
+        }
+    }
+
+    container.innerHTML = html;
+}
+
+// 개별 아이템 카드 렌더링
+async function renderInventoryItem(item, activeDecorations) {
+    let actionBtn = '';
+    let statusBadge = '';
+
+    // 1. 도박장 티켓 등 소모품
+    if(item.category === 'special' || item.consumable) {
+        if(item.unlocks === 'casino_ticket') {
+            actionBtn = `<button onclick="enterCasino()" class="btn-warning btn-block" style="color:white; margin-top:auto;">🎰 도박장 입장</button>`;
+        } else {
+            actionBtn = `<button class="btn-secondary btn-block" disabled style="margin-top:auto;">사용 대기</button>`;
+        }
+    }
+    // 2. 장식 아이템
+    else if(item.category === 'decorations') {
+        const isActive = activeDecorations.includes(item.unlocks);
+        if(isActive) statusBadge = `<span style="position:absolute; top:10px; right:10px; background:#4caf50; color:white; padding:4px 8px; border-radius:10px; font-size:11px;">장착중</span>`;
+        
+        actionBtn = `<button onclick="toggleDecoration('${item.unlocks}')" class="btn-${isActive ? 'secondary' : 'primary'} btn-block" style="margin-top:auto;">
+            ${isActive ? '장식 해제' : '장식 착용'}
+        </button>`;
+    }
+    // 3. 테마/사운드
+    else {
+        // 테마 토글 버튼 (간소화)
+        if(item.unlocks === 'christmas_theme') {
+            actionBtn = `<button onclick="toggleThemeFromInventory()" class="btn-info btn-block" style="margin-top:auto;">테마 ON/OFF</button>`;
+        } else if (item.unlocks === 'christmas_sounds' || item.unlocks === 'christmas_bgm') {
+             actionBtn = `<button class="btn-secondary btn-block" onclick="alert('설정 > 테마&사운드에서 켜고 끌 수 있습니다.')" style="margin-top:auto;">설정에서 관리</button>`;
+        }
+    }
+
+    return `
+        <div style="background:white; border:1px solid #e0e0e0; border-radius:12px; padding:20px; position:relative; display:flex; flex-direction:column; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+            ${statusBadge}
+            <div style="font-size:48px; text-align:center; margin-bottom:15px;">${item.icon}</div>
+            <h4 style="font-size:16px; margin-bottom:8px; color:#333; text-align:center;">${item.name}</h4>
+            <p style="font-size:13px; color:#666; margin-bottom:15px; text-align:center; flex:1;">${item.description}</p>
+            ${actionBtn}
         </div>
     `;
 }
