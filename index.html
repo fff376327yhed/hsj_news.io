@@ -16,6 +16,8 @@
 <script src="./js/shop-system.js"></script>
 <script src="./js/profile-photo-system.js"></script>
 <script src="./js/christmas-sound-system.js"></script>
+<!-- 도박장 시스템 -->
+<script src="./js/casino-system.js"></script>
     
     <!-- Font -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -40,10 +42,11 @@
     
     <!-- Custom CSS 경로 수정 -->
 <link rel="stylesheet" href="./css/style.css">
+<link rel="stylesheet" href="./css/style2.css">
 </head>
 <body>
 
-
+<header>
     <div class="header-content">
         <div class="logo-section">
             <h1 class="logo">📰 해정뉴스</h1>
@@ -66,42 +69,51 @@
     </div>
 </header>
 
-<!-- 하단 네비게이션 바 -->
-<nav class="bottom-nav">
-    <button class="nav-btn active" onclick="showArticles()" data-section="articles">
-        <i class="fas fa-home"></i>
-        <span>홈</span>
-    </button>
-    <button class="nav-btn" onclick="showWritePage()" data-section="write">
-        <i class="fas fa-pen"></i>
-        <span>작성</span>
-    </button>
-    <button class="nav-btn" onclick="showSettings()" data-section="settings">
-        <i class="fas fa-cog"></i>
-        <span>설정</span>
-    </button>
-    <button class="nav-btn" onclick="showMoreMenu()" data-section="more">
-        <i class="fas fa-ellipsis-h"></i>
-        <span>더보기</span>
-    </button>
-</nav>
+    <!-- ✅ 하단 네비게이션 (main 외부) -->
+    <nav class="bottom-nav">
+        <button class="nav-btn active" onclick="showArticles()">
+            <i class="fas fa-home"></i>
+            <span>홈</span>
+        </button>
+        <button class="nav-btn" onclick="showWritePage()">
+            <i class="fas fa-pen"></i>
+            <span>작성</span>
+        </button>
+        <button class="nav-btn" onclick="showSettings()">
+            <i class="fas fa-cog"></i>
+            <span>설정</span>
+        </button>
+        <button class="nav-btn" onclick="showMoreMenu()">
+            <i class="fas fa-ellipsis-h"></i>
+            <span>더보기</span>
+        </button>
+    </nav>
+</body>
 
-<!-- 메인 컨텐츠 영역 -->
-<main class="main-content">
+<!-- 사용자 프로필 섹션 -->
+<section class="page-section" id="userProfileSection">
+    <div id="userProfileContent"></div>
+</section>
 
-<div id="articlesSection" class="page-section active">
-    
-    <div id="adSection"></div>
+<!-- 프로필 설정 섹션 -->
+<section class="page-section" id="profileSettingsSection">
+    <div id="profileSettingsContent"></div>
+</section>
 
-    <div id="pinnedArticlesSection"></div>
+<!-- 친구 섹션 -->
+<section class="page-section" id="friendsSection">
+    <div id="friendsContent"></div>
+</section>
 
-    <div id="featuredSection"></div>
+<!-- 친구 요청 섹션 -->
+<section class="page-section" id="friendRequestsSection">
+    <div id="friendRequestsContent"></div>
+</section>
 
-    <div id="articlesGrid" class="articles-grid"></div>
-
-    <div id="loadMoreContainer"></div>
-
-</div>
+<!-- 상점 섹션 -->
+<section class="page-section" id="storeSection">
+    <div id="storeContent"></div>
+</section>
 
 <!-- 홈 섹션 -->
 <section class="page-section active" id="articlesSection">
@@ -131,6 +143,7 @@
         <button onclick="sortArticles('likes', this)" class="chip">추천순</button>
     </div>
 
+    <!-- ✅ 필수 요소들 (순서 중요!) -->
     <div id="adSection"></div>
     <div id="pinnedSection"></div>
     <div id="featuredArticle"></div>
@@ -442,7 +455,7 @@
     </div>
 </section>
 
-<!-- 사용자 관리 섹션 -->
+<!-- 사용자 관리 섹션 - 이 부분 전체를 교체하세요 -->
 <section class="page-section" id="userManagementSection">
     <div class="section-header">
         <button onclick="showSettings()" class="btn-back">
@@ -451,23 +464,24 @@
         <h2>👥 사용자 관리</h2>
     </div>
     
+    <!-- ✅ 닫히지 않은 div 수정 -->
     <div class="admin-actions">
-    <button onclick="showBannedWordManager()" class="btn-secondary">
-        <i class="fas fa-ban"></i> 금지어 관리
-    </button>
-    <button onclick="showPopupManager()" class="btn-info">
-        <i class="fas fa-bullhorn"></i> 팝업 관리
-    </button>
-    <button onclick="showMaintenanceManager()" class="btn-warning" style="grid-column: span 2;">
-        <i class="fas fa-tools"></i> 점검 모드 설정
-    </button>
-<!-- 기존 버튼들 아래에 추가 -->
-<button onclick="showSubmissionManager()" class="event-card">
-    <i class="fas fa-inbox"></i>
-    <span>제출물 관리</span>
-</button>
-</div>
+        <button onclick="showBannedWordManager()" class="btn-secondary">
+            <i class="fas fa-ban"></i> 금지어 관리
+        </button>
+        <button onclick="showPopupManager()" class="btn-info">
+            <i class="fas fa-bullhorn"></i> 팝업 관리
+        </button>
+        <button onclick="showMaintenanceManager()" class="btn-warning" style="grid-column: span 2;">
+            <i class="fas fa-tools"></i> 점검 모드 설정
+        </button>
+        <button onclick="showSubmissionManager()" class="event-card">
+            <i class="fas fa-inbox"></i>
+            <span>제출물 관리</span>
+        </button>
+    </div> <!-- ✅ 이 닫는 태그가 중요합니다! -->
     
+    <!-- ✅ 필수 요소 -->
     <div id="usersList"></div>
 </section>
 
@@ -494,6 +508,32 @@
     <div id="eventContent"></div>
 </section>
 
+<!-- 기존 adminEventSection 다음에 추가 -->
+
+<!-- 기사 고정 관리 섹션 -->
+<section class="page-section" id="pinnedArticlesSection">
+    <div class="section-header">
+        <button onclick="showAdminEvent()" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h2>📌 기사 고정 관리</h2>
+    </div>
+    
+    <div id="pinnedArticlesContent"></div>
+</section>
+
+<!-- 광고 관리 섹션 -->
+<section class="page-section" id="advertisementSection">
+    <div class="section-header">
+        <button onclick="showAdminEvent()" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h2>📢 광고 관리</h2>
+    </div>
+    
+    <div id="advertisementContent"></div>
+</section>
+
 <!-- 이벤트 메뉴 섹션 -->
 <section class="page-section" id="eventMenuSection">
     <div class="section-header">
@@ -507,6 +547,12 @@
         <button onclick="showCatchMind()" class="event-card">
             <i class="fas fa-gamepad"></i>
             <span>캐치마인드</span>
+        </button>
+        
+        <!-- ✅ 도박장 버튼 추가 -->
+        <button onclick="enterCasino()" class="event-card" style="background: linear-gradient(135deg, #c62828 0%, #8b0000 100%);">
+            <i class="fas fa-dice"></i>
+            <span>🎰 도박장</span>
         </button>
     </div>
 </section>
@@ -525,21 +571,22 @@
     <div id="catchMindContent"></div>
 </section>
 
-<!-- 쿠폰 섹션 -->
+<!-- 쿠폰 섹션 - 이 부분 전체를 교체하세요 -->
 <section class="page-section" id="couponSection">
     <div class="section-header">
-        <button onclick="showMoreMenu()" class="btn-back">
+        <button onclick="showEventMenu()" class="btn-back">
             <i class="fas fa-arrow-left"></i>
         </button>
         <h2>🎟️ 쿠폰</h2>
     </div>
     
+    <!-- ✅ 함수 이름 수정: redeemCoupon → useCoupon -->
     <div class="coupon-input-card">
         <h3>쿠폰 입력</h3>
         <div class="coupon-input-wrapper">
             <input id="couponCodeInput" placeholder="쿠폰 코드를 입력하세요" class="form-control">
-            <button onclick="redeemCoupon()" class="btn-primary">사용하기</button>
-        </div>
+            <button onclick="useCoupon()" class="btn-primary">사용하기</button>
+        </button>
     </div>
     
     <div id="couponHistory"></div>
