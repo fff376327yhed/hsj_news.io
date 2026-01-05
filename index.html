@@ -5,31 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>해정뉴스</title>
     
-    <!-- Firebase SDK (먼저 로드) -->
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js"></script>
 
-<!-- 하단의 스크립트 경로들 수정 -->
-<script src="./js/script.js"></script>
-<script src="./js/shop-system.js"></script>
-<script src="./js/profile-photo-system.js"></script>
-<script src="./js/christmas-sound-system.js"></script>
-<!-- 도박장 시스템 -->
-<script src="./js/casino-system.js"></script>
+    <!-- Quill 에디터 CSS -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     
     <!-- Font -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
     
-    <!-- PWA 설정 (상대 경로로 수정) -->
+    <!-- PWA 설정 -->
     <link rel="manifest" href="./manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="해정뉴스">
     
-    <!-- Favicon (상대 경로로 수정) -->
+    <!-- Favicon -->
     <link rel="icon" type="image/png" sizes="32x32" href="./favicon/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="./favicon/favicon-16x16.png">
     <link rel="apple-touch-icon" sizes="192x192" href="./favicon/android-icon-192x192.png">
@@ -40,23 +35,51 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Custom CSS 경로 수정 -->
-<link rel="stylesheet" href="./css/style.css">
-<link rel="stylesheet" href="./css/style2.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="./css/style.css">
+    
+    <!-- Quill 에디터 커스텀 스타일 -->
+    <style>
+        .ql-editor {
+            min-height: 300px;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        
+        .ql-container {
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+        
+        .ql-toolbar {
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .ql-editor img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .ql-editor iframe {
+            max-width: 100%;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+    </style>
 </head>
 <body>
 
 <header>
-    <div class="header-content">
+<div class="header-content">
         <div class="logo-section">
             <h1 class="logo">📰 해정뉴스</h1>
             <p class="logo-sub">해정이의 개 쩌는 뉴스사이트</p>
         </div>
         <div class="header-right">
-            <div class="money-display" id="headerMoney" onclick="showMoneyDetail()">
-                <i class="fas fa-coins"></i>
-                <span id="moneyAmount">0</span>원
-            </div>
             <button class="profile-btn" id="headerProfileBtn" onclick="toggleProfileMenu()">
                 <i class="fas fa-user-circle"></i>
             </button>
@@ -69,51 +92,27 @@
     </div>
 </header>
 
-    <!-- ✅ 하단 네비게이션 (main 외부) -->
-    <nav class="bottom-nav">
-        <button class="nav-btn active" onclick="showArticles()">
-            <i class="fas fa-home"></i>
-            <span>홈</span>
-        </button>
-        <button class="nav-btn" onclick="showWritePage()">
-            <i class="fas fa-pen"></i>
-            <span>작성</span>
-        </button>
-        <button class="nav-btn" onclick="showSettings()">
-            <i class="fas fa-cog"></i>
-            <span>설정</span>
-        </button>
-        <button class="nav-btn" onclick="showMoreMenu()">
-            <i class="fas fa-ellipsis-h"></i>
-            <span>더보기</span>
-        </button>
-    </nav>
-</body>
+<!-- 하단 네비게이션 -->
+<nav class="bottom-nav">
+    <button class="nav-btn active" onclick="showArticles()">
+        <i class="fas fa-home"></i>
+        <span>홈</span>
+    </button>
+    <button class="nav-btn" onclick="showWritePage()">
+        <i class="fas fa-pen"></i>
+        <span>작성</span>
+    </button>
+    <button class="nav-btn" onclick="showSettings()">
+        <i class="fas fa-cog"></i>
+        <span>설정</span>
+    </button>
+    <button class="nav-btn" onclick="showMoreMenu()">
+        <i class="fas fa-ellipsis-h"></i>
+        <span>더보기</span>
+    </button>
+</nav>
 
-<!-- 사용자 프로필 섹션 -->
-<section class="page-section" id="userProfileSection">
-    <div id="userProfileContent"></div>
-</section>
-
-<!-- 프로필 설정 섹션 -->
-<section class="page-section" id="profileSettingsSection">
-    <div id="profileSettingsContent"></div>
-</section>
-
-<!-- 친구 섹션 -->
-<section class="page-section" id="friendsSection">
-    <div id="friendsContent"></div>
-</section>
-
-<!-- 친구 요청 섹션 -->
-<section class="page-section" id="friendRequestsSection">
-    <div id="friendRequestsContent"></div>
-</section>
-
-<!-- 상점 섹션 -->
-<section class="page-section" id="storeSection">
-    <div id="storeContent"></div>
-</section>
+<main>
 
 <!-- 홈 섹션 -->
 <section class="page-section active" id="articlesSection">
@@ -122,11 +121,11 @@
             <option value="">전체</option>
             <option>자유게시판</option>
             <option>논란</option>
-            <option>저격</option>
-            <option>비난</option>
             <option>연애</option>
             <option>정아영</option>
             <option>게넥도</option>
+            <option>게임</option>
+            <option>마크</option>
         </select>
         <div class="search-input-wrapper">
             <input id="searchKeyword" placeholder="검색..." class="search-input">
@@ -143,7 +142,6 @@
         <button onclick="sortArticles('likes', this)" class="chip">추천순</button>
     </div>
 
-    <!-- ✅ 필수 요소들 (순서 중요!) -->
     <div id="adSection"></div>
     <div id="pinnedSection"></div>
     <div id="featuredArticle"></div>
@@ -151,167 +149,37 @@
     <div id="loadMoreContainer" class="load-more"></div>
 </section>
 
-<!-- 자유게시판 섹션 -->
-<section class="page-section" id="freeboardSection">
-    <div class="section-header">
-        <button onclick="showMoreMenu()" class="btn-back">
-            <i class="fas fa-arrow-left"></i>
-        </button>
-        <h2>💬 자유게시판</h2>
-    </div>
-    
-    <div class="search-bar">
-        <div class="search-input-wrapper">
-            <input id="freeboardSearchKeyword" placeholder="검색..." class="search-input">
-            <button onclick="searchFreeboardArticles()" class="search-btn">
-                <i class="fas fa-search"></i>
-            </button>
-        </div>
-    </div>
-    
-    <div class="sort-chips">
-        <button onclick="sortFreeboardArticles('latest', this)" class="chip active">최신순</button>
-        <button onclick="sortFreeboardArticles('oldest', this)" class="chip">오래된순</button>
-        <button onclick="sortFreeboardArticles('views', this)" class="chip">인기순</button>
-        <button onclick="sortFreeboardArticles('likes', this)" class="chip">추천순</button>
-    </div>
-
-    <div id="freeboardGrid"></div>
-    <div id="freeboardLoadMoreContainer" class="load-more"></div>
-</section>
-
-<!-- 상점 섹션 -->
-<section class="page-section" id="shopSection">
-    <div class="section-header">
-        <button onclick="showMoreMenu()" class="btn-back">
-            <i class="fas fa-arrow-left"></i>
-        </button>
-        <h2>🛍️ 상점</h2>
-    </div>
-    
-    <div id="shopContent"></div>
-</section>
-
-<!-- 인벤토리 섹션 -->
-<section class="page-section" id="inventorySection">
-    <div class="section-header">
-        <button onclick="showMoreMenu()" class="btn-back">
-            <i class="fas fa-arrow-left"></i>
-        </button>
-        <h2>🎁 인벤토리</h2>
-    </div>
-    
-    <div id="inventoryContent"></div>
-</section>
-
-<!-- index.html에서 더보기 섹션을 찾아 이 코드로 교체하세요 -->
-
-<!-- 더보기 섹션 -->
-<section class="page-section" id="moreMenuSection">
-    <div class="more-menu-grid">
-        <!-- ⭐ 프로필 사진 설정 버튼 추가 -->
-        <button onclick="openProfilePhotoModal()" class="more-card">
-            <i class="fas fa-user-circle"></i>
-            <span>프로필 사진</span>
-        </button>
-        
-        <button onclick="showFreeboard()" class="more-card">
-            <i class="fas fa-comments"></i>
-            <span>자유게시판</span>
-        </button>
-        <button onclick="showMessenger()" class="more-card">
-            <i class="fas fa-envelope"></i>
-            <span>메신저</span>
-            <span class="notification-badge" id="messengerBadge" style="display:none;"></span>
-        </button>
-        <!-- 더보기 섹션에 추가 -->
-<button onclick="showInventoryPage()" class="more-card">
-    <i class="fas fa-box-open"></i>
-    <span>인벤토리</span>
-</button>
-        <button onclick="showShop()" class="more-card">
-    <i class="fas fa-shopping-bag"></i>
-    <span>상점</span>
-</button>
-        <button onclick="showAdminEvent()" class="more-card" id="moreEventBtn" style="display:none;">
-            <i class="fas fa-crown"></i>
-            <span>VIP 전용 관리</span>
-        </button>
-        <button onclick="showEventMenu()" class="more-card">
-            <i class="fas fa-gift"></i>
-            <span>이벤트</span>
-        </button>
-        <button onclick="showCouponPage()" class="more-card">
-            <i class="fas fa-ticket-alt"></i>
-            <span>쿠폰</span>
-        </button>
-        <button onclick="showPatchNotesPage()" class="more-card">
-            <i class="fas fa-file-alt"></i>
-            <span>패치노트</span>
-        </button>
-        <button onclick="showQnA()" class="more-card">
-            <i class="fas fa-question-circle"></i>
-            <span>QnA</span>
-        </button>
-        <button onclick="showBugReportPage()" class="more-card" style="margin-top:10px; background:#607d8b; color:white;">
-         <i class="fas fa-bug"></i> 버그 제보
-     </button>
-    </div>
-</section>
-
-<!-- 메신저 섹션 -->
-<section class="page-section" id="messengerSection">
-    <div class="section-header">
-        <button onclick="showMoreMenu()" class="btn-back">
-            <i class="fas fa-arrow-left"></i>
-        </button>
-        <h2>📨 메신저</h2>
-        <button onclick="markAllAsRead()" class="btn-text" style="margin-left:auto;font-size:13px;color:var(--primary-color);">
-            모두 읽음
-        </button>
-    </div>
-    
-    <div class="messenger-filters">
-        <button onclick="filterNotifications('all')" class="filter-chip active" data-filter="all">전체</button>
-        <button onclick="filterNotifications('article')" class="filter-chip" data-filter="article">새 기사</button>
-        <button onclick="filterNotifications('comment')" class="filter-chip" data-filter="comment">댓글</button>
-        <button onclick="filterNotifications('myArticleComment')" class="filter-chip" data-filter="myArticleComment">내 기사</button>
-    </div>
-    
-    <div id="notificationsList"></div>
-</section>
-
-<!-- 작성 섹션 -->
+<!-- 작성 섹션 (Quill 에디터 적용) -->
 <section class="page-section" id="writeSection">
     <div class="section-header">
-        <h2>✏️ 기사 작성</h2>
+        <h2>✍️ 기사 작성</h2>
     </div>
     
     <form id="articleForm" class="write-form">
         <div class="form-group">
             <label>카테고리</label>
-            <select id="category" class="form-control">
+            <select id="category" class="form-control" required>
                 <option>자유게시판</option>
                 <option>논란</option>
-                <option>저격</option>
-                <option>비난</option>
                 <option>연애</option>
-                <option>정아영</option>
+                <option>정아의</option>
                 <option>게넥도</option>
+                <option>게임</option>
+                <option>마크</option>
             </select>
         </div>
         
         <div class="form-group">
             <label>제목</label>
-            <input id="title" class="form-control" required placeholder="기사 제목을 입력하세요">
+            <input id="title" class="form-control" required placeholder="기사 제목을 입력하세요" maxlength="100">
         </div>
         
         <div class="form-group">
-            <label>썸네일 이미지</label>
+            <label>썸네일 이미지 (선택)</label>
             <div class="image-upload-area" onclick="document.getElementById('thumbnailInput').click()">
                 <div id="uploadText">
                     <i class="fas fa-camera"></i>
-                    <p>클릭하여 이미지 업로드</p>
+                    <p>클릭하여 썸네일 이미지 업로드</p>
                 </div>
                 <img id="thumbnailPreview" class="image-preview" style="display:none;">
             </div>
@@ -320,12 +188,13 @@
         
         <div class="form-group">
             <label>요약 (선택)</label>
-            <input id="summary" class="form-control" placeholder="기사 요약">
+            <input id="summary" class="form-control" placeholder="기사 요약 (선택사항)" maxlength="200">
         </div>
         
         <div class="form-group">
-            <label>내용</label>
-            <textarea id="content" class="form-control" required placeholder="기사 내용을 입력하세요"></textarea>
+            <label>내용 <span style="color:#dc3545;">*</span></label>
+            <div id="quillEditor" style="min-height: 300px; background: white;"></div>
+            <input type="hidden" id="content" required>
         </div>
         
         <div id="bannedWordWarning" class="warning-box"></div>
@@ -336,18 +205,206 @@
     </form>
 </section>
 
-<!-- 설정 섹션 - 이 전체를 교체하세요 -->
+<style>
+/* Quill 에디터 스타일 개선 */
+.ql-container {
+    font-size: 15px;
+    font-family: 'Noto Sans KR', sans-serif;
+}
+
+.ql-editor {
+    min-height: 300px;
+    max-height: 600px;
+    overflow-y: auto;
+    padding: 16px;
+    line-height: 1.6;
+}
+
+.ql-editor.ql-blank::before {
+    color: #adb5bd;
+    font-style: normal;
+}
+
+.ql-toolbar {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6 !important;
+    border-bottom: none !important;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    padding: 12px;
+}
+
+.ql-container {
+    border: 1px solid #dee2e6 !important;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    background: white;
+}
+
+.ql-editor img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 10px 0;
+}
+
+.ql-editor iframe {
+    max-width: 100%;
+    border-radius: 8px;
+    margin: 10px 0;
+}
+
+/* 툴바 버튼 스타일 */
+.ql-toolbar button {
+    transition: all 0.2s;
+}
+
+.ql-toolbar button:hover {
+    background: rgba(0, 55, 107, 0.1);
+}
+
+.ql-toolbar button.ql-active {
+    background: rgba(0, 55, 107, 0.15);
+    color: #00376b;
+}
+
+/* 폼 그룹 간격 */
+.write-form .form-group {
+    margin-bottom: 24px;
+}
+
+.write-form .form-group label {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: #202124;
+}
+
+/* 경고 박스 */
+.warning-box {
+    display: none;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+    padding: 14px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    animation: shake 0.5s;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* 제출 버튼 */
+.write-form .btn-primary {
+    font-size: 16px;
+    padding: 14px;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(0, 55, 107, 0.2);
+}
+
+.write-form .btn-primary:hover {
+    box-shadow: 0 6px 16px rgba(0, 55, 107, 0.3);
+    transform: translateY(-2px);
+}
+
+/* 이미지 업로드 영역 개선 */
+.image-upload-area {
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    padding: 40px;
+    text-align: center;
+    background: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.image-upload-area:hover {
+    border-color: #00376b;
+    background: white;
+}
+
+.image-upload-area i {
+    font-size: 48px;
+    color: #6c757d;
+    margin-bottom: 12px;
+    display: block;
+}
+
+.image-upload-area p {
+    margin: 0;
+    color: #495057;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.image-preview {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 8px;
+    object-fit: contain;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+    .ql-toolbar {
+        padding: 8px;
+    }
+    
+    .ql-editor {
+        min-height: 250px;
+        padding: 12px;
+    }
+    
+    .write-form .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .image-upload-area {
+        padding: 30px 20px;
+    }
+}
+</style>
+
+<!-- 기사 상세 섹션 -->
+<section class="page-section" id="articleDetailSection">
+    <div class="section-header">
+        <button onclick="goBack()" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h2>기사</h2>
+    </div>
+    
+    <div id="articleDetail"></div>
+    
+    <div class="comments-section">
+        <h3>💬 댓글 <span id="commentCount"></span></h3>
+        <div id="comments"></div>
+        <div id="loadMoreComments" class="load-more"></div>
+        
+        <div class="comment-input-wrapper">
+            <input id="commentInput" placeholder="댓글 입력" class="comment-input">
+            <button onclick="submitCommentFromDetail()" class="comment-submit-btn">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+</section>
+
+<!-- 설정 섹션 -->
 <section class="page-section" id="settingsSection">
     <div class="section-header">
         <h2>⚙️ 설정</h2>
     </div>
     
-    <!-- ⭐ 프로필 카드 (프로필 사진 버튼 포함) -->
-    <div id="profileNickname" class="profile-card">
-        <!-- 여기에 동적으로 내용이 로드됩니다 -->
-    </div>
+    <div id="profileNickname" class="profile-card"></div>
     
-    <!-- 알림 설정 -->
     <div class="settings-card">
         <h3>🔔 알림 설정</h3>
         <label class="toggle-label">
@@ -359,7 +416,6 @@
             </div>
         </label>
         <div id="notificationStatus" class="notification-status"></div>
-        
         <div id="followUsersSection" style="margin-top:20px;"></div>
     </div>
     
@@ -387,6 +443,176 @@
         <i class="fas fa-users"></i> 사용자 관리
     </button>
 </section>
+
+<!-- 더보기 섹션 -->
+<section class="page-section" id="moreMenuSection">
+    <div class="more-menu-grid">
+        <button onclick="openProfilePhotoModal()" class="more-card">
+            <i class="fas fa-user-circle"></i>
+            <span>프로필 사진</span>
+        </button>
+        
+        <button onclick="showMessenger()" class="more-card">
+            <i class="fas fa-envelope"></i>
+            <span>메신저</span>
+            <span class="notification-badge" id="messengerBadge" style="display:none;"></span>
+        </button>
+        
+        <button onclick="showInventoryPage()" class="more-card">
+            <i class="fas fa-box-open"></i>
+            <span>인벤토리</span>
+        </button>
+        
+        <button onclick="showShop()" class="more-card">
+            <i class="fas fa-shopping-bag"></i>
+            <span>상점</span>
+        </button>
+        
+        <button onclick="showAdminEvent()" class="more-card" id="moreEventBtn" style="display:none;">
+            <i class="fas fa-crown"></i>
+            <span>VIP 전용 관리</span>
+        </button>
+        
+        <button onclick="showEventMenu()" class="more-card">
+            <i class="fas fa-gift"></i>
+            <span>이벤트</span>
+        </button>
+        
+        <button onclick="showCouponPage()" class="more-card">
+            <i class="fas fa-ticket-alt"></i>
+            <span>쿠폰</span>
+        </button>
+        
+        <button onclick="showPatchNotesPage()" class="more-card">
+            <i class="fas fa-file-alt"></i>
+            <span>패치노트</span>
+        </button>
+        
+        <button onclick="showQnA()" class="more-card">
+            <i class="fas fa-question-circle"></i>
+            <span>QnA</span>
+        </button>
+        
+        <button onclick="showBugReportPage()" class="more-card" style="margin-top:10px; background:#607d8b; color:white;">
+            <i class="fas fa-bug"></i> 버그 제보
+        </button>
+    </div>
+</section>
+
+<!-- 기존 메신저 섹션을 이렇게 변경하세요 -->
+
+<!-- 알림 섹션 (기존 메신저 섹션 대체) -->
+<section class="page-section" id="messengerSection">
+    <div class="section-header">
+        <button onclick="showMoreMenu()" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h2>🔔 알림</h2>
+        <button onclick="markAllNotificationsAsRead()" class="btn-text" style="margin-left:auto;font-size:13px;color:var(--primary-color);">
+            모두 읽음
+        </button>
+    </div>
+    
+    <div class="messenger-filters">
+        <button onclick="filterNotifications('all')" class="filter-chip active" data-filter="all">전체</button>
+        <button onclick="filterNotifications('article')" class="filter-chip" data-filter="article">새 기사</button>
+        <button onclick="filterNotifications('comment')" class="filter-chip" data-filter="comment">댓글</button>
+        <button onclick="filterNotifications('myArticleComment')" class="filter-chip" data-filter="myArticleComment">내 기사</button>
+        <button onclick="filterNotifications('stock_alert')" class="filter-chip" data-filter="stock_alert">주식 알림</button>
+    </div>
+    
+    <div id="notificationsList"></div>
+</section>
+
+<!-- 더보기 메뉴에서 메신저 버튼 수정 -->
+<style>
+    /* 알림 스타일 추가 */
+    .filter-chip {
+        padding: 8px 16px;
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 14px;
+        color: #495057;
+    }
+    
+    .filter-chip:hover {
+        background: #e9ecef;
+    }
+    
+    .filter-chip.active {
+        background: #c62828;
+        color: white;
+        border-color: #c62828;
+    }
+    
+    .messenger-filters {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        padding: 0 20px;
+    }
+    
+    .notification-item {
+        padding: 15px 20px;
+        border-bottom: 1px solid #f0f0f0;
+        cursor: pointer;
+        transition: background 0.2s;
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+    }
+    
+    .notification-item:hover {
+        background: #f8f9fa;
+    }
+    
+    .notification-item.unread {
+        background: #fff3cd;
+    }
+    
+    .notification-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-size: 18px;
+    }
+    
+    .notification-content {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .notification-title {
+        font-weight: 600;
+        color: #212529;
+        margin-bottom: 4px;
+    }
+    
+    .notification-text {
+        color: #6c757d;
+        font-size: 14px;
+        line-height: 1.5;
+    }
+    
+    .notification-time {
+        font-size: 12px;
+        color: #868e96;
+        margin-top: 4px;
+    }
+    
+    /* 기존 메신저 관련 스타일 제거 또는 업데이트 */
+    .messenger-section {
+        /* 삭제 */
+    }
+</style>
 
 <!-- QnA 섹션 -->
 <section class="page-section" id="qnaSection">
@@ -430,32 +656,7 @@
     <div id="patchNotesList"></div>
 </section>
 
-<!-- 기사 상세 섹션 -->
-<section class="page-section" id="articleDetailSection">
-    <div class="section-header">
-        <button onclick="goBack()" class="btn-back">
-            <i class="fas fa-arrow-left"></i>
-        </button>
-        <h2>기사</h2>
-    </div>
-    
-    <div id="articleDetail"></div>
-    
-    <div class="comments-section">
-        <h3>💬 댓글 <span id="commentCount"></span></h3>
-        <div id="comments"></div>
-        <div id="loadMoreComments" class="load-more"></div>
-        
-        <div class="comment-input-wrapper">
-            <input id="commentInput" placeholder="댓글 입력" class="comment-input">
-            <button onclick="submitCommentFromDetail()" class="comment-submit-btn">
-                <i class="fas fa-paper-plane"></i>
-            </button>
-        </div>
-    </div>
-</section>
-
-<!-- 사용자 관리 섹션 - 이 부분 전체를 교체하세요 -->
+<!-- 사용자 관리 섹션 -->
 <section class="page-section" id="userManagementSection">
     <div class="section-header">
         <button onclick="showSettings()" class="btn-back">
@@ -464,7 +665,6 @@
         <h2>👥 사용자 관리</h2>
     </div>
     
-    <!-- ✅ 닫히지 않은 div 수정 -->
     <div class="admin-actions">
         <button onclick="showBannedWordManager()" class="btn-secondary">
             <i class="fas fa-ban"></i> 금지어 관리
@@ -475,13 +675,8 @@
         <button onclick="showMaintenanceManager()" class="btn-warning" style="grid-column: span 2;">
             <i class="fas fa-tools"></i> 점검 모드 설정
         </button>
-        <button onclick="showSubmissionManager()" class="event-card">
-            <i class="fas fa-inbox"></i>
-            <span>제출물 관리</span>
-        </button>
-    </div> <!-- ✅ 이 닫는 태그가 중요합니다! -->
+    </div>
     
-    <!-- ✅ 필수 요소 -->
     <div id="usersList"></div>
 </section>
 
@@ -507,8 +702,6 @@
     
     <div id="eventContent"></div>
 </section>
-
-<!-- 기존 adminEventSection 다음에 추가 -->
 
 <!-- 기사 고정 관리 섹션 -->
 <section class="page-section" id="pinnedArticlesSection">
@@ -549,7 +742,6 @@
             <span>캐치마인드</span>
         </button>
         
-        <!-- ✅ 도박장 버튼 추가 -->
         <button onclick="enterCasino()" class="event-card" style="background: linear-gradient(135deg, #c62828 0%, #8b0000 100%);">
             <i class="fas fa-dice"></i>
             <span>🎰 도박장</span>
@@ -557,7 +749,54 @@
     </div>
 </section>
 
+<!-- 쿠폰 섹션 -->
+<section class="page-section" id="couponSection">
+    <div class="section-header">
+        <button onclick="showEventMenu()" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h2>🎟️ 쿠폰</h2>
+    </div>
+    
+    <div class="coupon-input-card">
+        <h3>쿠폰 입력</h3>
+        <div class="coupon-input-wrapper">
+            <input id="couponCodeInput" placeholder="쿠폰 코드를 입력하세요" class="form-control">
+            <button onclick="useCoupon()" class="btn-primary">사용하기</button>
+        </div>
+    </div>
+    
+    <div id="couponHistory"></div>
+</section>
 
+<!-- 상점 섹션 -->
+<section class="page-section" id="shopSection">
+    <div class="section-header">
+        <button onclick="showMoreMenu()" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h2>🛍️ 상점</h2>
+    </div>
+    
+    <div id="shopContent"></div>
+</section>
+
+<!-- 인벤토리 섹션 -->
+<section class="page-section" id="inventorySection">
+    <div class="section-header">
+        <button onclick="showMoreMenu()" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h2>🎁 인벤토리</h2>
+    </div>
+    
+    <div id="inventoryContent"></div>
+</section>
+
+<!-- 주식 거래 섹션 -->
+<section id="stockSection" class="page-section">
+    <!-- JavaScript로 동적 생성됨 -->
+</section>
 
 <!-- 캐치마인드 게임 섹션 -->
 <section class="page-section" id="catchMindSection">
@@ -571,26 +810,27 @@
     <div id="catchMindContent"></div>
 </section>
 
-<!-- 쿠폰 섹션 - 이 부분 전체를 교체하세요 -->
-<section class="page-section" id="couponSection">
-    <div class="section-header">
-        <button onclick="showEventMenu()" class="btn-back">
-            <i class="fas fa-arrow-left"></i>
-        </button>
-        <h2>🎟️ 쿠폰</h2>
-    </div>
-    
-    <!-- ✅ 함수 이름 수정: redeemCoupon → useCoupon -->
-    <div class="coupon-input-card">
-        <h3>쿠폰 입력</h3>
-        <div class="coupon-input-wrapper">
-            <input id="couponCodeInput" placeholder="쿠폰 코드를 입력하세요" class="form-control">
-            <button onclick="useCoupon()" class="btn-primary">사용하기</button>
-        </button>
-    </div>
-    
-    <div id="couponHistory"></div>
+<!-- 사용자 프로필 섹션 -->
+<section class="page-section" id="userProfileSection">
+    <div id="userProfileContent"></div>
 </section>
+
+<!-- 프로필 설정 섹션 -->
+<section class="page-section" id="profileSettingsSection">
+    <div id="profileSettingsContent"></div>
+</section>
+
+<!-- 친구 섹션 -->
+<section class="page-section" id="friendsSection">
+    <div id="friendsContent"></div>
+</section>
+
+<!-- 친구 요청 섹션 -->
+<section class="page-section" id="friendRequestsSection">
+    <div id="friendRequestsContent"></div>
+</section>
+
+</main>
 
 <!-- 팝업 -->
 <div id="mainPopupOverlay" class="main-popup-overlay">
@@ -761,11 +1001,11 @@
             이용에 불편을 드려 죄송합니다.
         </p>
         <div class="maintenance-footer">
-    <p id="mtTime"></p>
-    <button onclick="closeMaintenanceScreen()" class="btn-primary" style="margin-top:15px; background-color: #5f6368; border: none;">
-        <i class="fas fa-sign-out-alt"></i> 나가기
-    </button>
-</div>
+            <p id="mtTime"></p>
+            <button onclick="closeMaintenanceScreen()" class="btn-primary" style="margin-top:15px; background-color: #5f6368; border: none;">
+                <i class="fas fa-sign-out-alt"></i> 나가기
+            </button>
+        </div>
     </div>
 </div>
 
@@ -815,17 +1055,11 @@
     </div>
 </div>
 
-</main>
+<!-- Quill 에디터 JS -->
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
 
-<!-- 쿠폰 페이지 -->
-<div id="couponSection" class="page-section">
-    <div id="couponContent"></div>
-</div>
-
-
-
-
-
+<!-- 스크립트 로드 -->
+<script src="./js/script.js"></script>
 
 </body>
 </html>
