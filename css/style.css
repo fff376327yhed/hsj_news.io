@@ -1823,3 +1823,491 @@ header {
     right: 0;
     z-index: 1000;
 }
+
+/* ===== 주식 시스템 스타일 ===== */
+
+.stock-tab {
+    transition: all 0.3s ease;
+}
+
+.stock-tab:hover {
+    background: #f8f9fa !important;
+}
+
+/* 모달 스타일 개선 */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    max-width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #212529;
+}
+
+.modal-close {
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.3s;
+}
+
+.modal-close:hover {
+    color: #c62828;
+}
+
+/* 버튼 스타일 */
+.btn-sm {
+    padding: 8px 16px;
+    font-size: 13px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 600;
+}
+
+.btn-success {
+    background: #4caf50;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.btn-danger {
+    background: #f44336;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #da190b;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+}
+
+.btn-info {
+    background: #2196f3;
+    color: white;
+}
+
+.btn-info:hover {
+    background: #0b7dda;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+/* 로딩 스피너 */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: #c62828;
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+/* ===== 댓글 섹션 스타일 개선 ===== */
+
+.comments-section {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-top: 24px;
+}
+
+.comments-section h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0 0 20px 0;
+    color: #202124;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 댓글 카드 */
+.comment-card {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-left: 4px solid #00376b;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    transition: all 0.2s;
+}
+
+.comment-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.comment-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.comment-author {
+    font-weight: 700;
+    color: #00376b;
+    font-size: 14px;
+    flex: 1;
+}
+
+.comment-time {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.comment-body {
+    font-size: 15px;
+    color: #333;
+    line-height: 1.6;
+    margin-bottom: 12px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.comment-footer {
+    display: flex;
+    gap: 15px;
+    font-size: 13px;
+}
+
+.btn-text {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #6c757d;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.btn-text:hover {
+    color: #00376b;
+    text-decoration: underline;
+}
+
+.btn-text.text-danger {
+    color: #dc3545;
+}
+
+.btn-text.text-danger:hover {
+    color: #c82333;
+}
+
+/* 대댓글 컨테이너 */
+.replies-container {
+    margin-top: 16px;
+    padding-left: 16px;
+    border-left: 3px solid #dee2e6;
+}
+
+.reply-item {
+    background: white;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    border: 1px solid #e9ecef;
+}
+
+.reply-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.reply-author {
+    font-weight: 600;
+    color: #495057;
+    font-size: 13px;
+}
+
+.reply-time {
+    font-size: 11px;
+    color: #868e96;
+    margin-left: auto;
+}
+
+.reply-content {
+    font-size: 14px;
+    color: #333;
+    line-height: 1.5;
+}
+
+.reply-actions {
+    text-align: right;
+    margin-top: 8px;
+}
+
+.btn-text-danger {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #dc3545;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.btn-text-danger:hover {
+    color: #c82333;
+    text-decoration: underline;
+}
+
+/* 답글 입력 영역 */
+.reply-input-area {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    background: white;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.reply-input {
+    flex: 1;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.reply-input:focus {
+    outline: none;
+    border-color: #00376b;
+    box-shadow: 0 0 0 3px rgba(0, 55, 107, 0.1);
+}
+
+.btn-reply-submit {
+    background: #00376b;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    width: 44px;
+    height: 44px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-reply-submit:hover {
+    background: #00254a;
+}
+
+.btn-reply-submit:active {
+    transform: scale(0.95);
+}
+
+/* 댓글 입력 영역 */
+.comment-input-wrapper {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #dee2e6;
+}
+
+.comment-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+
+.comment-input:focus {
+    outline: none;
+    border-color: #00376b;
+    box-shadow: 0 0 0 3px rgba(0, 55, 107, 0.1);
+}
+
+.comment-input::placeholder {
+    color: #adb5bd;
+}
+
+.comment-submit-btn {
+    width: 52px;
+    height: 52px;
+    border: none;
+    background: #00376b;
+    color: white;
+    border-radius: 8px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.comment-submit-btn:hover {
+    background: #00254a;
+}
+
+.comment-submit-btn:active {
+    background: #001f3f;
+    transform: scale(0.95);
+}
+
+/* 더보기 버튼 */
+.load-more {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.load-more button {
+    padding: 12px 24px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    color: #495057;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.load-more button:hover {
+    background: #f8f9fa;
+    border-color: #00376b;
+    color: #00376b;
+}
+
+/* 빈 상태 */
+.comments-section p {
+    text-align: center;
+    padding: 40px 20px;
+    color: #868e96;
+    font-size: 15px;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+    .comments-section {
+        padding: 16px;
+    }
+    
+    .comment-card {
+        padding: 12px;
+    }
+    
+    .reply-input-area {
+        padding: 8px;
+    }
+    
+    .comment-input-wrapper {
+        gap: 8px;
+    }
+    
+    .comment-submit-btn {
+        width: 48px;
+        height: 48px;
+        font-size: 18px;
+    }
+}
