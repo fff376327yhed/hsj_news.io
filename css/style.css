@@ -2311,3 +2311,37 @@ input:checked + .slider:before {
         font-size: 18px;
     }
 }
+/* ✅ Placeholder 스타일 - 비어있을 때만 표시 */
+    #quillEditor .ql-editor.ql-blank::before {
+        content: attr(data-placeholder) !important;
+        color: #adb5bd !important;
+        font-style: italic;
+        position: absolute;
+        left: 16px;
+        right: 16px;
+        top: 16px;
+        pointer-events: none;
+        opacity: 1;
+        z-index: 1;
+        white-space: pre-wrap;
+    }
+
+    /* ✅ 내용이 조금이라도 있으면 placeholder 완전히 숨김 */
+    #quillEditor .ql-editor:not(.ql-blank)::before {
+        content: '' !important;
+        display: none !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+    }
+
+    /* ✅ 포커스 + 내용 있을 때 placeholder 숨김 */
+    #quillEditor .ql-editor:focus:not(.ql-blank)::before {
+        display: none !important;
+        visibility: hidden !important;
+    }
+
+    /* ✅ 에디터 본문의 실제 내용이 placeholder 위에 표시되도록 */
+    #quillEditor .ql-editor > * {
+        position: relative;
+        z-index: 2;
+    }
