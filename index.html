@@ -17,64 +17,178 @@
     <!-- Font -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
     
-    <!-- PWA 설정 -->
-    <link rel="manifest" href="./manifest.json">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="해정뉴스">
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" sizes="32x32" href="./favicon/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="./favicon/favicon-16x16.png">
-    <link rel="apple-touch-icon" sizes="192x192" href="./favicon/android-icon-192x192.png">
-    
-    <meta name="msapplication-TileColor" content="#da532c">
-    <meta name="theme-color" content="#ffffff">
-    
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="./css/style.css">
-    
-    <!-- Quill 에디터 커스텀 스타일 -->
+
     <style>
-        .ql-editor {
-            min-height: 300px;
-            font-size: 16px;
-            line-height: 1.6;
-        }
-        
-        .ql-container {
-            border-bottom-left-radius: 8px;
-            border-bottom-right-radius: 8px;
-        }
-        
-        .ql-toolbar {
-            border-top-left-radius: 8px;
-            border-top-right-radius: 8px;
-            background: #f8f9fa;
-        }
-        
-        .ql-editor img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 8px;
-            margin: 10px 0;
-        }
-        
-        .ql-editor iframe {
-            max-width: 100%;
-            border-radius: 8px;
-            margin: 10px 0;
-        }
-    </style>
+/* ========== Quill 에디터 스타일 ========== */
+
+/* Quill 컨테이너 기본 스타일 */
+#quillEditor {
+    background: white;
+    min-height: 300px;
+    border-radius: 8px;
+}
+
+/* Quill 툴바 스타일 */
+#quillEditor .ql-toolbar {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6 !important;
+    border-bottom: none !important;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    padding: 12px;
+}
+
+/* Quill 에디터 컨테이너 */
+#quillEditor .ql-container {
+    border: 1px solid #dee2e6 !important;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    background: white;
+    font-size: 15px;
+    font-family: 'Noto Sans KR', sans-serif;
+}
+
+/* Quill 에디터 본문 */
+#quillEditor .ql-editor {
+    min-height: 300px;
+    max-height: 600px;
+    overflow-y: auto;
+    padding: 16px;
+    line-height: 1.6;
+    font-size: 16px;
+}
+
+/* Quill 이미지 스타일 */
+#quillEditor .ql-editor img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 10px 0;
+}
+
+/* Quill iframe 스타일 */
+#quillEditor .ql-editor iframe {
+    max-width: 100%;
+    border-radius: 8px;
+    margin: 10px 0;
+}
+
+/* 툴바 버튼 호버 효과 */
+#quillEditor .ql-toolbar button {
+    transition: all 0.2s;
+}
+
+#quillEditor .ql-toolbar button:hover {
+    background: rgba(0, 55, 107, 0.1);
+}
+
+#quillEditor .ql-toolbar button.ql-active {
+    background: rgba(0, 55, 107, 0.15);
+    color: #00376b;
+}
+
+/* ✅ Quill placeholder 완전 제거 */
+.ql-editor.ql-blank::before,
+.ql-editor::before {
+    content: '' !important;
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
+.ql-container .ql-editor[data-placeholder]::before {
+    content: '' !important;
+    display: none !important;
+}
+
+#quillEditor .ql-editor.ql-blank::before,
+#quillEditor .ql-editor::before {
+    content: none !important;
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+}
+
+/* Quill 툴바 툴팁 스타일 */
+.ql-toolbar button {
+    position: relative;
+}
+
+/* title 속성이 있는 버튼에만 툴팁 표시 */
+.ql-toolbar button[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    z-index: 10000;
+    pointer-events: none;
+    animation: tooltipFadeIn 0.2s ease;
+}
+
+/* 툴팁 화살표 */
+.ql-toolbar button[title]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 3px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: rgba(0, 0, 0, 0.9);
+    z-index: 10001;
+    pointer-events: none;
+}
+
+/* 툴팁 애니메이션 */
+@keyframes tooltipFadeIn {
+    from { 
+        opacity: 0; 
+        bottom: calc(100% + 4px);
+    }
+    to { 
+        opacity: 1; 
+        bottom: calc(100% + 8px);
+    }
+}
+
+/* 드롭다운 버튼에 대한 툴팁 */
+.ql-toolbar .ql-picker[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    z-index: 10000;
+    pointer-events: none;
+    animation: tooltipFadeIn 0.2s ease;
+}
+
+</style>
+
 </head>
 <body>
 
 <header>
-<div class="header-content">
+    <div class="header-content">
         <div class="logo-section">
             <h1 class="logo">📰 해정뉴스</h1>
             <p class="logo-sub">해정이의 개 쩌는 뉴스사이트</p>
@@ -149,20 +263,20 @@
     <div id="loadMoreContainer" class="load-more"></div>
 </section>
 
-<!-- 작성 섹션 (Quill 에디터 적용) -->
+<!-- 작성 섹션 -->
 <section class="page-section" id="writeSection">
     <div class="section-header">
-        <h2>✍️ 기사 작성</h2>
+        <h2>✏️ 기사 작성</h2>
     </div>
     
     <form id="articleForm" class="write-form">
         <div class="form-group">
             <label>카테고리</label>
             <select id="category" class="form-control" required>
-                <option>자유게시판</option>
+                <option selected>자유게시판</option>
                 <option>논란</option>
                 <option>연애</option>
-                <option>정아의</option>
+                <option>정아영</option>
                 <option>게넥도</option>
                 <option>게임</option>
                 <option>마크</option>
@@ -204,173 +318,6 @@
         </button>
     </form>
 </section>
-
-<style>
-/* Quill 에디터 스타일 개선 */
-.ql-container {
-    font-size: 15px;
-    font-family: 'Noto Sans KR', sans-serif;
-}
-
-.ql-editor {
-    min-height: 300px;
-    max-height: 600px;
-    overflow-y: auto;
-    padding: 16px;
-    line-height: 1.6;
-}
-
-.ql-editor.ql-blank::before {
-    color: #adb5bd;
-    font-style: normal;
-}
-
-.ql-toolbar {
-    background: #f8f9fa;
-    border: 1px solid #dee2e6 !important;
-    border-bottom: none !important;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
-    padding: 12px;
-}
-
-.ql-container {
-    border: 1px solid #dee2e6 !important;
-    border-bottom-left-radius: 8px;
-    border-bottom-right-radius: 8px;
-    background: white;
-}
-
-.ql-editor img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 8px;
-    margin: 10px 0;
-}
-
-.ql-editor iframe {
-    max-width: 100%;
-    border-radius: 8px;
-    margin: 10px 0;
-}
-
-/* 툴바 버튼 스타일 */
-.ql-toolbar button {
-    transition: all 0.2s;
-}
-
-.ql-toolbar button:hover {
-    background: rgba(0, 55, 107, 0.1);
-}
-
-.ql-toolbar button.ql-active {
-    background: rgba(0, 55, 107, 0.15);
-    color: #00376b;
-}
-
-/* 폼 그룹 간격 */
-.write-form .form-group {
-    margin-bottom: 24px;
-}
-
-.write-form .form-group label {
-    display: block;
-    font-weight: 700;
-    margin-bottom: 10px;
-    font-size: 14px;
-    color: #202124;
-}
-
-/* 경고 박스 */
-.warning-box {
-    display: none;
-    background: #fff3cd;
-    border: 1px solid #ffc107;
-    color: #856404;
-    padding: 14px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    font-size: 14px;
-    font-weight: 600;
-    animation: shake 0.5s;
-}
-
-@keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-5px); }
-    75% { transform: translateX(5px); }
-}
-
-/* 제출 버튼 */
-.write-form .btn-primary {
-    font-size: 16px;
-    padding: 14px;
-    font-weight: 700;
-    box-shadow: 0 4px 12px rgba(0, 55, 107, 0.2);
-}
-
-.write-form .btn-primary:hover {
-    box-shadow: 0 6px 16px rgba(0, 55, 107, 0.3);
-    transform: translateY(-2px);
-}
-
-/* 이미지 업로드 영역 개선 */
-.image-upload-area {
-    border: 2px dashed #dee2e6;
-    border-radius: 8px;
-    padding: 40px;
-    text-align: center;
-    background: #f8f9fa;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
-.image-upload-area:hover {
-    border-color: #00376b;
-    background: white;
-}
-
-.image-upload-area i {
-    font-size: 48px;
-    color: #6c757d;
-    margin-bottom: 12px;
-    display: block;
-}
-
-.image-upload-area p {
-    margin: 0;
-    color: #495057;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.image-preview {
-    max-width: 100%;
-    max-height: 300px;
-    border-radius: 8px;
-    object-fit: contain;
-}
-
-/* 반응형 */
-@media (max-width: 768px) {
-    .ql-toolbar {
-        padding: 8px;
-    }
-    
-    .ql-editor {
-        min-height: 250px;
-        padding: 12px;
-    }
-    
-    .write-form .form-group {
-        margin-bottom: 20px;
-    }
-    
-    .image-upload-area {
-        padding: 30px 20px;
-    }
-}
-</style>
 
 <!-- 기사 상세 섹션 -->
 <section class="page-section" id="articleDetailSection">
@@ -423,14 +370,6 @@
         <i class="fas fa-sign-out-alt"></i> 로그아웃
     </button>
     
-    <button onclick="showQnA()" class="btn-success btn-block">
-        <i class="fas fa-question-circle"></i> QnA / 공지사항
-    </button>
-    
-    <button onclick="showPatchNotesPage()" class="btn-info btn-block">
-        <i class="fas fa-file-alt"></i> 패치노트
-    </button>
-    
     <div id="adminModeIndicator"></div>
     
     <div class="settings-divider"></div>
@@ -442,177 +381,38 @@
     <button onclick="showUserManagement()" class="btn-primary btn-block">
         <i class="fas fa-users"></i> 사용자 관리
     </button>
+    <button onclick="showPinnedArticleManager()" class="btn-success btn-block">
+        <i class="fas fa-thumbtack"></i> 기사 고정 관리
+    </button>
 </section>
 
 <!-- 더보기 섹션 -->
 <section class="page-section" id="moreMenuSection">
-    <div class="more-menu-grid">
-        <button onclick="openProfilePhotoModal()" class="more-card">
-            <i class="fas fa-user-circle"></i>
-            <span>프로필 사진</span>
-        </button>
-        
-        <button onclick="showMessenger()" class="more-card">
-            <i class="fas fa-envelope"></i>
-            <span>메신저</span>
-            <span class="notification-badge" id="messengerBadge" style="display:none;"></span>
-        </button>
-        
-        <button onclick="showInventoryPage()" class="more-card">
-            <i class="fas fa-box-open"></i>
-            <span>인벤토리</span>
-        </button>
-        
-        <button onclick="showShop()" class="more-card">
-            <i class="fas fa-shopping-bag"></i>
-            <span>상점</span>
-        </button>
-        
-        <button onclick="showAdminEvent()" class="more-card" id="moreEventBtn" style="display:none;">
-            <i class="fas fa-crown"></i>
-            <span>VIP 전용 관리</span>
-        </button>
-        
-        <button onclick="showEventMenu()" class="more-card">
-            <i class="fas fa-gift"></i>
-            <span>이벤트</span>
-        </button>
-        
-        <button onclick="showCouponPage()" class="more-card">
-            <i class="fas fa-ticket-alt"></i>
-            <span>쿠폰</span>
-        </button>
-        
-        <button onclick="showPatchNotesPage()" class="more-card">
-            <i class="fas fa-file-alt"></i>
-            <span>패치노트</span>
-        </button>
-        
-        <button onclick="showQnA()" class="more-card">
-            <i class="fas fa-question-circle"></i>
-            <span>QnA</span>
-        </button>
-        
-        <button onclick="showBugReportPage()" class="more-card" style="margin-top:10px; background:#607d8b; color:white;">
-            <i class="fas fa-bug"></i> 버그 제보
-        </button>
-    </div>
+    <!-- JavaScript로 동적 생성됨 -->
 </section>
 
-<!-- 기존 메신저 섹션을 이렇게 변경하세요 -->
-
-<!-- 알림 섹션 (기존 메신저 섹션 대체) -->
+<!-- 알림 섹션 -->
 <section class="page-section" id="messengerSection">
+    <!-- JavaScript로 동적 생성됨 -->
+</section>
+
+<!-- 사용자 관리 섹션 -->
+<section class="page-section" id="userManagementSection">
     <div class="section-header">
-        <button onclick="showMoreMenu()" class="btn-back">
+        <button onclick="showSettings()" class="btn-back">
             <i class="fas fa-arrow-left"></i>
         </button>
-        <h2>🔔 알림</h2>
-        <button onclick="markAllNotificationsAsRead()" class="btn-text" style="margin-left:auto;font-size:13px;color:var(--primary-color);">
-            모두 읽음
+        <h2>👥 사용자 관리</h2>
+    </div>
+    
+    <div class="admin-actions">
+        <button onclick="showBannedWordManager()" class="btn-secondary">
+            <i class="fas fa-ban"></i> 금지어 관리
         </button>
     </div>
     
-    <div class="messenger-filters">
-        <button onclick="filterNotifications('all')" class="filter-chip active" data-filter="all">전체</button>
-        <button onclick="filterNotifications('article')" class="filter-chip" data-filter="article">새 기사</button>
-        <button onclick="filterNotifications('comment')" class="filter-chip" data-filter="comment">댓글</button>
-        <button onclick="filterNotifications('myArticleComment')" class="filter-chip" data-filter="myArticleComment">내 기사</button>
-        <button onclick="filterNotifications('stock_alert')" class="filter-chip" data-filter="stock_alert">주식 알림</button>
-    </div>
-    
-    <div id="notificationsList"></div>
+    <div id="usersList"></div>
 </section>
-
-<!-- 더보기 메뉴에서 메신저 버튼 수정 -->
-<style>
-    /* 알림 스타일 추가 */
-    .filter-chip {
-        padding: 8px 16px;
-        background: #f8f9fa;
-        border: 1px solid #dee2e6;
-        border-radius: 20px;
-        cursor: pointer;
-        transition: all 0.2s;
-        font-size: 14px;
-        color: #495057;
-    }
-    
-    .filter-chip:hover {
-        background: #e9ecef;
-    }
-    
-    .filter-chip.active {
-        background: #c62828;
-        color: white;
-        border-color: #c62828;
-    }
-    
-    .messenger-filters {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 20px;
-        flex-wrap: wrap;
-        padding: 0 20px;
-    }
-    
-    .notification-item {
-        padding: 15px 20px;
-        border-bottom: 1px solid #f0f0f0;
-        cursor: pointer;
-        transition: background 0.2s;
-        display: flex;
-        gap: 12px;
-        align-items: flex-start;
-    }
-    
-    .notification-item:hover {
-        background: #f8f9fa;
-    }
-    
-    .notification-item.unread {
-        background: #fff3cd;
-    }
-    
-    .notification-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        font-size: 18px;
-    }
-    
-    .notification-content {
-        flex: 1;
-        min-width: 0;
-    }
-    
-    .notification-title {
-        font-weight: 600;
-        color: #212529;
-        margin-bottom: 4px;
-    }
-    
-    .notification-text {
-        color: #6c757d;
-        font-size: 14px;
-        line-height: 1.5;
-    }
-    
-    .notification-time {
-        font-size: 12px;
-        color: #868e96;
-        margin-top: 4px;
-    }
-    
-    /* 기존 메신저 관련 스타일 제거 또는 업데이트 */
-    .messenger-section {
-        /* 삭제 */
-    }
-</style>
 
 <!-- QnA 섹션 -->
 <section class="page-section" id="qnaSection">
@@ -623,21 +423,11 @@
         <h2>❓ QnA</h2>
     </div>
     
-    <div class="tab-buttons">
-        <button onclick="showQnATab()" class="tab-btn active" id="qnaTabBtn">
-            📋 QnA
-        </button>
-        <button onclick="showPatchNotesTab()" class="tab-btn" id="patchTabBtn">
-            📄 패치노트
-        </button>
-    </div>
-    
     <div class="info-text">
         ※ QnA 내용은 관리자가 작업폴더의 <b>QnA.html</b> 파일에서 직접 수정합니다.
     </div>
     
     <div id="qnaList"></div>
-    <div id="patchNotesContainer" style="display:none;"></div>
 </section>
 
 <!-- 패치노트 섹션 -->
@@ -656,195 +446,7 @@
     <div id="patchNotesList"></div>
 </section>
 
-<!-- 사용자 관리 섹션 -->
-<section class="page-section" id="userManagementSection">
-    <div class="section-header">
-        <button onclick="showSettings()" class="btn-back">
-            <i class="fas fa-arrow-left"></i>
-        </button>
-        <h2>👥 사용자 관리</h2>
-    </div>
-    
-    <div class="admin-actions">
-        <button onclick="showBannedWordManager()" class="btn-secondary">
-            <i class="fas fa-ban"></i> 금지어 관리
-        </button>
-        <button onclick="showPopupManager()" class="btn-info">
-            <i class="fas fa-bullhorn"></i> 팝업 관리
-        </button>
-        <button onclick="showMaintenanceManager()" class="btn-warning" style="grid-column: span 2;">
-            <i class="fas fa-tools"></i> 점검 모드 설정
-        </button>
-    </div>
-    
-    <div id="usersList"></div>
-</section>
-
-<!-- 관리자 이벤트 섹션 -->
-<section class="page-section" id="adminEventSection">
-    <div class="section-header">
-        <button onclick="showMoreMenu()" class="btn-back">
-            <i class="fas fa-arrow-left"></i>
-        </button>
-        <h2>👑 VIP 전용 관리</h2>
-    </div>
-    
-    <div class="admin-event-grid">
-        <button onclick="showPinManager()" class="event-card">
-            <i class="fas fa-thumbtack"></i>
-            <span>기사 고정 관리</span>
-        </button>
-        <button onclick="showAdManager()" class="event-card">
-            <i class="fas fa-ad"></i>
-            <span>광고 관리</span>
-        </button>
-    </div>
-    
-    <div id="eventContent"></div>
-</section>
-
-<!-- 기사 고정 관리 섹션 -->
-<section class="page-section" id="pinnedArticlesSection">
-    <div class="section-header">
-        <button onclick="showAdminEvent()" class="btn-back">
-            <i class="fas fa-arrow-left"></i>
-        </button>
-        <h2>📌 기사 고정 관리</h2>
-    </div>
-    
-    <div id="pinnedArticlesContent"></div>
-</section>
-
-<!-- 광고 관리 섹션 -->
-<section class="page-section" id="advertisementSection">
-    <div class="section-header">
-        <button onclick="showAdminEvent()" class="btn-back">
-            <i class="fas fa-arrow-left"></i>
-        </button>
-        <h2>📢 광고 관리</h2>
-    </div>
-    
-    <div id="advertisementContent"></div>
-</section>
-
-<!-- 이벤트 메뉴 섹션 -->
-<section class="page-section" id="eventMenuSection">
-    <div class="section-header">
-        <button onclick="showMoreMenu()" class="btn-back">
-            <i class="fas fa-arrow-left"></i>
-        </button>
-        <h2>🎮 이벤트</h2>
-    </div>
-    
-    <div class="event-menu-grid">
-        <button onclick="showCatchMind()" class="event-card">
-            <i class="fas fa-gamepad"></i>
-            <span>캐치마인드</span>
-        </button>
-        
-        <button onclick="enterCasino()" class="event-card" style="background: linear-gradient(135deg, #c62828 0%, #8b0000 100%);">
-            <i class="fas fa-dice"></i>
-            <span>🎰 도박장</span>
-        </button>
-    </div>
-</section>
-
-<!-- 쿠폰 섹션 -->
-<section class="page-section" id="couponSection">
-    <div class="section-header">
-        <button onclick="showEventMenu()" class="btn-back">
-            <i class="fas fa-arrow-left"></i>
-        </button>
-        <h2>🎟️ 쿠폰</h2>
-    </div>
-    
-    <div class="coupon-input-card">
-        <h3>쿠폰 입력</h3>
-        <div class="coupon-input-wrapper">
-            <input id="couponCodeInput" placeholder="쿠폰 코드를 입력하세요" class="form-control">
-            <button onclick="useCoupon()" class="btn-primary">사용하기</button>
-        </div>
-    </div>
-    
-    <div id="couponHistory"></div>
-</section>
-
-<!-- 상점 섹션 -->
-<section class="page-section" id="shopSection">
-    <div class="section-header">
-        <button onclick="showMoreMenu()" class="btn-back">
-            <i class="fas fa-arrow-left"></i>
-        </button>
-        <h2>🛍️ 상점</h2>
-    </div>
-    
-    <div id="shopContent"></div>
-</section>
-
-<!-- 인벤토리 섹션 -->
-<section class="page-section" id="inventorySection">
-    <div class="section-header">
-        <button onclick="showMoreMenu()" class="btn-back">
-            <i class="fas fa-arrow-left"></i>
-        </button>
-        <h2>🎁 인벤토리</h2>
-    </div>
-    
-    <div id="inventoryContent"></div>
-</section>
-
-<!-- 주식 거래 섹션 -->
-<section id="stockSection" class="page-section">
-    <!-- JavaScript로 동적 생성됨 -->
-</section>
-
-<!-- 캐치마인드 게임 섹션 -->
-<section class="page-section" id="catchMindSection">
-    <div class="section-header">
-        <button onclick="showEventMenu()" class="btn-back">
-            <i class="fas fa-arrow-left"></i>
-        </button>
-        <h2>🎨 캐치마인드</h2>
-    </div>
-    
-    <div id="catchMindContent"></div>
-</section>
-
-<!-- 사용자 프로필 섹션 -->
-<section class="page-section" id="userProfileSection">
-    <div id="userProfileContent"></div>
-</section>
-
-<!-- 프로필 설정 섹션 -->
-<section class="page-section" id="profileSettingsSection">
-    <div id="profileSettingsContent"></div>
-</section>
-
-<!-- 친구 섹션 -->
-<section class="page-section" id="friendsSection">
-    <div id="friendsContent"></div>
-</section>
-
-<!-- 친구 요청 섹션 -->
-<section class="page-section" id="friendRequestsSection">
-    <div id="friendRequestsContent"></div>
-</section>
-
 </main>
-
-<!-- 팝업 -->
-<div id="mainPopupOverlay" class="main-popup-overlay">
-    <div class="main-popup">
-        <div class="popup-body">
-            <h3 id="popupTitleDisplay" class="popup-title">공지사항</h3>
-            <p id="popupContentDisplay" class="popup-content">공지 내용이 들어갑니다.</p>
-        </div>
-        <div class="popup-footer">
-            <button class="popup-btn dont-show" onclick="closePopupToday()">오늘 하루 보지 않기</button>
-            <button class="popup-btn close" onclick="closePopup()">확인</button>
-        </div>
-    </div>
-</div>
 
 <!-- 모달들 -->
 <div id="adminAuthModal" class="modal">
@@ -881,42 +483,6 @@
     </div>
 </div>
 
-<div id="adCreateModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>📢 광고 제작</h3>
-            <button onclick="closeAdCreateModal()" class="modal-close">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <form id="adCreateForm">
-            <div class="form-group">
-                <label>광고 제목</label>
-                <input id="adTitle" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label>광고 내용</label>
-                <textarea id="adContent" class="form-control" required></textarea>
-            </div>
-            <div class="form-group">
-                <label>링크 URL (선택)</label>
-                <input id="adLink" class="form-control" placeholder="https://example.com">
-            </div>
-            <div class="form-group">
-                <label>배경 색상</label>
-                <select id="adColor" class="form-control">
-                    <option value="#fff3cd">노란색 (기본)</option>
-                    <option value="#d1ecf1">파란색</option>
-                    <option value="#d4edda">녹색</option>
-                    <option value="#f8d7da">빨간색</option>
-                    <option value="#e2e3e5">회색</option>
-                </select>
-            </div>
-            <button type="submit" class="btn-primary btn-block">광고 생성</button>
-        </form>
-    </div>
-</div>
-
 <div id="bannedWordsModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -936,39 +502,14 @@
     </div>
 </div>
 
-<div id="popupManagerModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>📢 팝업 설정</h3>
-            <button onclick="closePopupManager()" class="modal-close"><i class="fas fa-times"></i></button>
-        </div>
-        <form id="popupForm" onsubmit="savePopupSettings(event)">
-            <div class="form-group">
-                <label>활성화 여부</label>
-                <label class="toggle-label">
-                    <input type="checkbox" id="popupActiveToggle">
-                    <span class="toggle-slider"></span>
-                    <span class="toggle-text"><strong>팝업 띄우기</strong></span>
-                </label>
-            </div>
-            <div class="form-group">
-                <label>팝업 제목</label>
-                <input id="popupTitleInput" class="form-control" placeholder="예: 긴급 공지">
-            </div>
-            <div class="form-group">
-                <label>팝업 내용</label>
-                <textarea id="popupContentInput" class="form-control" placeholder="내용을 입력하세요"></textarea>
-            </div>
-            <button type="submit" class="btn-primary btn-block">저장 및 적용</button>
-        </form>
-    </div>
-</div>
-
+<!-- 패치노트 모달 -->
 <div id="patchNoteModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
             <h3>📄 패치노트 작성</h3>
-            <button onclick="closePatchNoteModal()" class="modal-close"><i class="fas fa-times"></i></button>
+            <button onclick="closePatchNoteModal()" class="modal-close">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
         <form id="patchNoteForm" onsubmit="savePatchNote(event)">
             <input type="hidden" id="editPatchId">
@@ -989,77 +530,12 @@
     </div>
 </div>
 
-<div id="maintenanceOverlay" class="maintenance-overlay">
-    <div class="maintenance-box">
-        <div class="maintenance-icon">
-            <i class="fas fa-tools"></i>
-        </div>
-        <h2 id="mtTitle" class="maintenance-title">시스템 점검 중입니다</h2>
-        <div id="mtImageContainer" class="maintenance-img-wrapper"></div>
-        <p id="mtMessage" class="maintenance-message">
-            더 나은 서비스를 위해 서버 점검을 진행하고 있습니다.<br>
-            이용에 불편을 드려 죄송합니다.
-        </p>
-        <div class="maintenance-footer">
-            <p id="mtTime"></p>
-            <button onclick="closeMaintenanceScreen()" class="btn-primary" style="margin-top:15px; background-color: #5f6368; border: none;">
-                <i class="fas fa-sign-out-alt"></i> 나가기
-            </button>
-        </div>
-    </div>
-</div>
-
-<div id="maintenanceModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>🛠️ 점검 모드 관리</h3>
-            <button onclick="closeMaintenanceModal()" class="modal-close">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <form id="maintenanceForm" onsubmit="saveMaintenanceSettings(event)">
-            <div class="form-group">
-                <label class="toggle-label" style="background: #fff3cd; border: 1px solid #ffeeba;">
-                    <input type="checkbox" id="mtActiveToggle">
-                    <span class="toggle-slider"></span>
-                    <div class="toggle-text">
-                        <strong style="color:#856404;">점검 모드</strong>
-                        <small>켜면 관리자와 허용된 유저 외에는 접속이 차단됩니다.</small>
-                    </div>
-                </label>
-            </div>
-            
-            <div class="form-group">
-                <label>점검 제목</label>
-                <input id="mtTitleInput" class="form-control" placeholder="예: 긴급 서버 점검 안내">
-            </div>
-            
-            <div class="form-group">
-                <label>점검 안내 문구 (줄바꿈 가능)</label>
-                <textarea id="mtMessageInput" class="form-control" placeholder="점검 사유 및 예상 시간을 적어주세요"></textarea>
-            </div>
-
-            <div class="form-group">
-                <label>이미지 URL (선택)</label>
-                <input id="mtImgInput" class="form-control" placeholder="https://example.com/image.jpg">
-            </div>
-
-            <div class="form-group">
-                <label>접속 허용 유저 (이메일)</label>
-                <p class="info-text">점검 중에도 접속 가능한 사용자의 이메일을 <b>콤마(,)</b>로 구분해 입력하세요.<br>(관리자는 자동 포함됩니다)</p>
-                <textarea id="mtAllowedUsers" class="form-control" placeholder="user1@test.com, user2@test.com"></textarea>
-            </div>
-
-            <button type="submit" class="btn-primary btn-block">설정 저장 및 적용</button>
-        </form>
-    </div>
-</div>
-
 <!-- Quill 에디터 JS -->
 <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
 
 <!-- 스크립트 로드 -->
 <script src="./js/script.js"></script>
+<script src="./js/script2.js"></script>
 
 </body>
 </html>
