@@ -1,0 +1,780 @@
+// ===== script2.js - 완전 개선 버전 =====
+
+console.log("🔄 script2.js 로딩 시작...");
+
+// ===== 1. 프로필 사진 변경 기능 =====
+
+window.openProfilePhotoModal = function() {
+    if(!isLoggedIn()) {
+        alert("로그인이 필요합니다!");
+        return;
+    }
+    
+    let modal = document.getElementById("profilePhotoModal");
+    
+    if(!modal) {
+        const modalHTML = `
+            <div id="profilePhotoModal" class="modal">
+                <div class="modal-content" style="max-width:500px;">
+                    <div class="modal-header">
+                        <h3 style="color:#c62828;">📷 프로필 사진 변경</h3>
+                        <button onclick="closeProfilePhotoModal()" class="modal-close">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <div style="text-align:center; margin:20px 0;">
+                        <div id="profilePhotoPreviewContainer" style="margin-bottom:15px;">
+                            <div style="width:150px; height:150px; border-radius:50%; margin:0 auto; background:#f1f3f4; display:flex; align-items:center; justify-content:center; border:3px solid #dadce0;">
+                                <i class="fas fa-user" style="font-size:60px; color:#9aa0a6;"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="upload-area" style="border:2px dashed #ddd; padding:30px; border-radius:8px; cursor:pointer; background:#f8f9fa; margin-bottom:20px;" onclick="document.getElementById('profilePhotoInputModal').click()">
+                            <i class="fas fa-cloud-upload-alt" style="font-size:40px; color:#868e96; margin-bottom:10px; display:block;"></i>
+                            <p style="color:#868e96; margin:0;">클릭하여 사진 선택</p>
+                        </div>
+                        <input type="file" id="profilePhotoInputModal" accept="image/*" style="display:none;">
+                    </div>
+                    
+                    <div style="display:flex; gap:10px;">
+                        <button onclick="saveProfilePhoto()" class="btn-primary btn-block">저장</button>
+                        <button onclick="closeProfilePhotoModal()" class="btn-secondary btn-block">취소</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        modal = document.getElementById("profilePhotoModal");
+        
+        document.getElementById('profilePhotoInputModal').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    document.getElementById('profilePhotoPreviewContainer').innerHTML = 
+                        `<img src="${event.target.result}" style="width:150px; height:150px; border-radius:50%; object-fit:cover; border:3px solid #dadce0;">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+    
+    modal.classList.add("active");
+    loadCurrentProfilePhotoInModal();
+};
+
+window.closeProfilePhotoModal = function() {
+    const modal = document.getElementById("profilePhotoModal");
+    if(modal) modal.classList.remove("active");
+};
+
+async function loadCurrentProfilePhotoInModal() {
+    const user = auth.currentUser;
+    if(!user) return;
+    
+    try {
+        const snapshot = await db.ref("users/" + user.uid + "/profilePhoto").once("value");
+        const photoUrl = snapshot.val();
+        
+        if(photoUrl) {
+            const container = document.getElementById('profilePhotoPreviewContainer');
+            if(container) {
+                container.innerHTML = `<img src="${photoUrl}" style="width:150px; height:150px; border-radius:50%; object-fit:cover; border:3px solid #dadce0;">`;
+            }
+        }
+    } catch(error) {
+        console.error("프로필 사진 로드 실패:", error);
+    }
+}
+
+window.saveProfilePhoto = async function() {
+    const user = auth.currentUser;
+    if(!user) {
+        alert("로그인이 필요합니다!");
+        return;
+    }
+    
+    const fileInput = document.getElementById('profilePhotoInputModal');
+    const file = fileInput ? fileInput.files[0] : null;
+    
+    if(!file) {
+        alert("사진을 선택해주세요!");
+        return;
+    }
+    
+    showLoadingIndicator("사진 업로드 중...");
+    
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        const photoData = e.target.result;
+        
+        try {
+            await db.ref("users/" + user.uid).update({
+                profilePhoto: photoData,
+                photoUpdatedAt: Date.now()
+            });
+            
+            if(window.profilePhotoCache) {
+                window.profilePhotoCache.set(user.email, photoData);
+            }
+            
+            hideLoadingIndicator();
+            closeProfilePhotoModal();
+            alert("프로필 사진이 변경되었습니다!");
+            
+            if(typeof updateSettings === 'function') updateSettings();
+            if(typeof updateHeaderProfileButton === 'function') updateHeaderProfileButton(user);
+            
+        } catch(error) {
+            hideLoadingIndicator();
+            console.error("업로드 실패:", error);
+            alert("업로드 실패: " + error.message);
+        }
+    };
+    
+    reader.readAsDataURL(file);
+};
+
+console.log("✅ 프로필 사진 변경 기능 로드 완료");
+
+// ===== 2. 이미지 전체보기 + 확대/축소 =====
+
+window.openImageModal = function(imageSrc) {
+    const existingModal = document.getElementById('imageViewModal');
+    if(existingModal) existingModal.remove();
+    
+    const modalHTML = `
+        <div id="imageViewModal" class="modal active" style="z-index:10000; background:rgba(0,0,0,0.95);">
+            <div style="position:fixed; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; padding:20px;">
+                <div style="position:relative; max-width:95%; max-height:95%; overflow:auto;">
+                    <button onclick="closeImageModal()" style="position:fixed; top:20px; right:20px; background:rgba(255,255,255,0.9); color:#333; border:none; border-radius:50%; width:50px; height:50px; cursor:pointer; font-size:24px; z-index:10002; box-shadow:0 2px 12px rgba(0,0,0,0.5); font-weight:bold;">
+                        ×
+                    </button>
+                    
+                    <div style="position:fixed; bottom:20px; left:50%; transform:translateX(-50%); display:flex; gap:10px; z-index:10002;">
+                        <button onclick="zoomImage(1.2)" style="background:rgba(255,255,255,0.9); color:#333; border:none; border-radius:50%; width:50px; height:50px; cursor:pointer; font-size:20px; box-shadow:0 2px 12px rgba(0,0,0,0.5);">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button onclick="zoomImage(0.8)" style="background:rgba(255,255,255,0.9); color:#333; border:none; border-radius:50%; width:50px; height:50px; cursor:pointer; font-size:20px; box-shadow:0 2px 12px rgba(0,0,0,0.5);">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <button onclick="resetZoom()" style="background:rgba(255,255,255,0.9); color:#333; border:none; border-radius:50%; width:50px; height:50px; cursor:pointer; font-size:16px; box-shadow:0 2px 12px rgba(0,0,0,0.5);">
+                            <i class="fas fa-redo"></i>
+                        </button>
+                    </div>
+                    
+                    <img id="modalImageElement" src="${imageSrc}" style="display:block; max-width:none; border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,0.5); cursor:grab; transition:transform 0.2s;">
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    const img = document.getElementById('modalImageElement');
+    let isDragging = false;
+    let startX, startY, scrollLeft, scrollTop;
+    const container = img.parentElement;
+    
+    img.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        img.style.cursor = 'grabbing';
+        startX = e.pageX - container.offsetLeft;
+        startY = e.pageY - container.offsetTop;
+        scrollLeft = container.scrollLeft;
+        scrollTop = container.scrollTop;
+    });
+    
+    img.addEventListener('mouseleave', () => {
+        isDragging = false;
+        img.style.cursor = 'grab';
+    });
+    
+    img.addEventListener('mouseup', () => {
+        isDragging = false;
+        img.style.cursor = 'grab';
+    });
+    
+    img.addEventListener('mousemove', (e) => {
+        if(!isDragging) return;
+        e.preventDefault();
+        const x = e.pageX - container.offsetLeft;
+        const y = e.pageY - container.offsetTop;
+        const walkX = (x - startX) * 2;
+        const walkY = (y - startY) * 2;
+        container.scrollLeft = scrollLeft - walkX;
+        container.scrollTop = scrollTop - walkY;
+    });
+    
+    resetZoom();
+};
+
+window.closeImageModal = function() {
+    const modal = document.getElementById('imageViewModal');
+    if(modal) modal.remove();
+};
+
+let currentScale = 1;
+
+window.zoomImage = function(factor) {
+    const img = document.getElementById('modalImageElement');
+    if(!img) return;
+    
+    currentScale *= factor;
+    img.style.transform = `scale(${currentScale})`;
+};
+
+window.resetZoom = function() {
+    const img = document.getElementById('modalImageElement');
+    if(!img) return;
+    
+    currentScale = 1;
+    img.style.transform = 'scale(1)';
+    
+    const windowWidth = window.innerWidth * 0.9;
+    const windowHeight = window.innerHeight * 0.9;
+    
+    img.style.maxWidth = windowWidth + 'px';
+    img.style.maxHeight = windowHeight + 'px';
+};
+
+// 기사 상세보기에서 이미지 클릭 이벤트
+function addImageClickHandlersToArticle() {
+    setTimeout(() => {
+        const articleDetail = document.getElementById("articleDetail");
+        if(!articleDetail) return;
+        
+        const images = articleDetail.querySelectorAll('img');
+        images.forEach(img => {
+            img.style.cursor = 'pointer';
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            
+            img.onclick = null;
+            
+            img.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                openImageModal(this.src);
+            });
+        });
+        
+        console.log(`✅ ${images.length}개 이미지에 클릭 핸들러 추가됨`);
+    }, 200);
+}
+
+if(typeof window.originalShowArticleDetail === 'undefined') {
+    window.originalShowArticleDetail = window.showArticleDetail;
+    window.showArticleDetail = function(articleId) {
+        if(typeof window.originalShowArticleDetail === 'function') {
+            window.originalShowArticleDetail(articleId);
+        }
+        addImageClickHandlersToArticle();
+    };
+}
+
+console.log("✅ 이미지 전체보기 기능 로드 완료");
+
+// ===== 3. 기사 고정 관리 (관리자 전용) =====
+
+window.showPinnedArticleManager = async function() {
+    if(!isLoggedIn()) {
+        alert("로그인이 필요합니다!");
+        return;
+    }
+    
+    if(!isAdmin()) {
+        alert("🚫 이 기능은 관리자만 사용할 수 있습니다!");
+        return;
+    }
+    
+    showLoadingIndicator("고정 기사 불러오는 중...");
+    
+    try {
+        const [articlesSnapshot, pinnedSnapshot] = await Promise.all([
+            db.ref("articles").once("value"),
+            db.ref("pinnedArticles").once("value")
+        ]);
+        
+        const articlesData = articlesSnapshot.val() || {};
+        const pinnedData = pinnedSnapshot.val() || {};
+        
+        const articles = Object.values(articlesData);
+        
+        const categories = ['자유게시판', '논란', '연애', '정아영', '게넥도', '게임', '마크'];
+        const articlesByCategory = {};
+        
+        categories.forEach(cat => {
+            articlesByCategory[cat] = articles.filter(a => a.category === cat);
+        });
+        
+        hideLoadingIndicator();
+        
+        let modal = document.getElementById("pinnedArticleModal");
+        if(!modal) {
+            const modalHTML = `
+                <div id="pinnedArticleModal" class="modal">
+                    <div class="modal-content" style="max-width:800px; max-height:80vh; overflow-y:auto;">
+                        <div class="modal-header">
+                            <h3 style="color:#c62828;">📌 기사 고정 관리 (관리자 전용)</h3>
+                            <button onclick="closePinnedArticleModal()" class="modal-close">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div id="pinnedArticleContent"></div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            modal = document.getElementById("pinnedArticleModal");
+        }
+        
+        let contentHTML = '';
+        
+        categories.forEach(category => {
+            const categoryArticles = articlesByCategory[category] || [];
+            
+            contentHTML += `
+                <div style="margin-bottom:30px; border:1px solid #e0e0e0; border-radius:8px; padding:15px;">
+                    <h4 style="color:#1976d2; margin-bottom:15px; border-bottom:2px solid #1976d2; padding-bottom:8px;">
+                        ${category} (${categoryArticles.length}개)
+                    </h4>
+            `;
+            
+            if(categoryArticles.length === 0) {
+                contentHTML += '<p style="color:#868e96; text-align:center; padding:20px;">기사가 없습니다.</p>';
+            } else {
+                categoryArticles.forEach(article => {
+                    const isPinned = pinnedData[article.id] ? true : false;
+                    
+                    contentHTML += `
+                        <div style="background:#f8f9fa; padding:12px; margin-bottom:8px; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+                            <div style="flex:1;">
+                                <strong>${article.title}</strong>
+                                <div style="font-size:12px; color:#6c757d; margin-top:4px;">
+                                    ${article.author} · ${article.date}
+                                </div>
+                            </div>
+                            <button onclick="togglePinArticle('${article.id}', ${isPinned})" 
+                                    class="btn-${isPinned ? 'danger' : 'primary'}" 
+                                    style="padding:6px 12px; font-size:12px; white-space:nowrap;">
+                                ${isPinned ? '📌 고정 해제' : '📌 고정'}
+                            </button>
+                        </div>
+                    `;
+                });
+            }
+            
+            contentHTML += '</div>';
+        });
+        
+        const contentElement = document.getElementById("pinnedArticleContent");
+        if(contentElement) {
+            contentElement.innerHTML = contentHTML;
+        }
+        
+        modal.classList.add("active");
+        
+    } catch(error) {
+        hideLoadingIndicator();
+        console.error("기사 고정 관리 오류:", error);
+        alert("오류가 발생했습니다: " + error.message);
+    }
+};
+
+window.closePinnedArticleModal = function() {
+    const modal = document.getElementById("pinnedArticleModal");
+    if(modal) modal.classList.remove("active");
+};
+
+window.togglePinArticle = async function(articleId, isPinned) {
+    if(!isAdmin()) {
+        alert("🚫 관리자 권한이 필요합니다!");
+        return;
+    }
+    
+    try {
+        if(isPinned) {
+            await db.ref("pinnedArticles/" + articleId).remove();
+            alert("고정이 해제되었습니다.");
+        } else {
+            await db.ref("pinnedArticles/" + articleId).set({
+                pinnedAt: Date.now()
+            });
+            alert("기사가 고정되었습니다.");
+        }
+        
+        showPinnedArticleManager();
+        
+        if(document.getElementById("articlesSection")?.classList.contains("active")) {
+            if(typeof renderArticles === 'function') {
+                renderArticles();
+            }
+        }
+        
+    } catch(error) {
+        console.error("고정 토글 실패:", error);
+        alert("오류가 발생했습니다: " + error.message);
+    }
+};
+
+console.log("✅ 기사 고정 관리 기능 로드 완료");
+
+// ===== 4. 임시저장 기능 (Quill 에디터 Ready 이벤트 사용) =====
+
+let draftSaveEnabled = false;
+
+// Quill 에디터 준비 감지
+window.addEventListener('quillEditorReady', function() {
+    console.log("✅ Quill 에디터 준비 완료 - 임시저장 활성화");
+    draftSaveEnabled = true;
+});
+
+// 임시 저장 함수
+function saveDraft() {
+    if(!draftSaveEnabled) {
+        return;
+    }
+    
+    const writeSection = document.getElementById('writeSection');
+    if(!writeSection || !writeSection.classList.contains('active')) {
+        return;
+    }
+    
+    // Quill 에디터 확인 (여러 방법 시도)
+    const quillEditor = window.quillEditor || window.quill;
+    
+    if(!quillEditor || !quillEditor.root) {
+        console.warn("⚠️ Quill 에디터를 찾을 수 없습니다");
+        return;
+    }
+    
+    try {
+        // Quill에서 HTML 내용 가져오기
+        const editorContent = quillEditor.root.innerHTML;
+        
+        const draft = {
+            category: document.getElementById('category')?.value || '자유게시판',
+            title: document.getElementById('title')?.value || '',
+            summary: document.getElementById('summary')?.value || '',
+            content: editorContent || '', // ✅ Quill HTML 내용 저장
+            thumbnail: '',
+            savedAt: Date.now()
+        };
+        
+        const thumbnailEl = document.getElementById('thumbnailPreview');
+        if(thumbnailEl && thumbnailEl.src && !thumbnailEl.src.includes('data:,')) {
+            draft.thumbnail = thumbnailEl.src;
+        }
+        
+        // 내용이 있는지 확인 (빈 Quill은 <p><br></p>)
+        const hasContent = draft.title || draft.summary || 
+                          (draft.content && 
+                           draft.content.trim() !== '' && 
+                           draft.content.trim() !== '<p><br></p>' &&
+                           draft.content.trim() !== '<p></p>');
+        
+        if(hasContent) {
+            localStorage.setItem('draft_article', JSON.stringify(draft));
+            console.log("💾 임시저장 완료 (내용 길이:", draft.content.length, ")");
+        }
+    } catch(error) {
+        console.error("❌ 임시저장 오류:", error);
+    }
+}
+
+// 임시 저장 불러오기
+function loadDraft() {
+    const draftData = localStorage.getItem('draft_article');
+    if(!draftData) return false;
+    
+    try {
+        const draft = JSON.parse(draftData);
+        
+        // 24시간 이상 지난 임시저장은 삭제
+        if(Date.now() - draft.savedAt > 24 * 60 * 60 * 1000) {
+            localStorage.removeItem('draft_article');
+            return false;
+        }
+        
+        const categoryEl = document.getElementById('category');
+        const titleEl = document.getElementById('title');
+        const summaryEl = document.getElementById('summary');
+        
+        if(draft.category && categoryEl) categoryEl.value = draft.category;
+        if(draft.title && titleEl) titleEl.value = draft.title;
+        if(draft.summary && summaryEl) summaryEl.value = draft.summary;
+        
+        // ✅ Quill 에디터에 내용 로드 (여러 방법 시도)
+        let attempts = 0;
+        const maxAttempts = 30;
+        
+        const loadToEditor = () => {
+            const quillEditor = window.quillEditor || window.quill;
+            
+            if(quillEditor && quillEditor.root) {
+                // ✅ HTML 내용을 Quill에 설정
+                quillEditor.root.innerHTML = draft.content;
+                console.log("✅ 임시저장 복원 완료 (내용 길이:", draft.content.length, ")");
+            } else if(attempts < maxAttempts) {
+                attempts++;
+                setTimeout(loadToEditor, 100);
+            } else {
+                console.error("❌ Quill 에디터 초기화 대기 시간 초과");
+            }
+        };
+        
+        loadToEditor();
+        
+        // 썸네일 복원
+        if(draft.thumbnail) {
+            const preview = document.getElementById('thumbnailPreview');
+            const uploadText = document.getElementById('uploadText');
+            if(preview && uploadText) {
+                preview.src = draft.thumbnail;
+                preview.style.display = 'block';
+                uploadText.innerHTML = '<i class="fas fa-check"></i><p>임시저장된 이미지</p>';
+            }
+        }
+        
+        return true;
+    } catch(error) {
+        console.error("❌ 임시저장 복원 실패:", error);
+        localStorage.removeItem('draft_article');
+        return false;
+    }
+}
+
+// showWritePage 후킹
+if(typeof window.originalShowWritePage === 'undefined') {
+    window.originalShowWritePage = window.showWritePage;
+    
+    window.showWritePage = function() {
+        if(typeof window.originalShowWritePage === 'function') {
+            window.originalShowWritePage();
+        }
+        
+        setTimeout(() => {
+            const hasDraft = loadDraft();
+            if(hasDraft) {
+                if(confirm("💾 임시저장된 작성 중인 기사가 있습니다.\n복원하시겠습니까?")) {
+                    console.log("✅ 사용자가 복원 선택");
+                } else {
+                    localStorage.removeItem('draft_article');
+                    if(window.quillEditor) window.quillEditor.setText('');
+                    console.log("❌ 사용자가 복원 거부");
+                }
+            }
+        }, 500);
+    };
+}
+
+// 자동 임시저장 (10초마다)
+setInterval(() => {
+    const writeSection = document.getElementById('writeSection');
+    if(writeSection?.classList.contains('active')) {
+        saveDraft();
+    }
+}, 10000);
+
+// 페이지 이탈 시
+window.addEventListener('beforeunload', () => {
+    const writeSection = document.getElementById('writeSection');
+    if(writeSection?.classList.contains('active')) {
+        saveDraft();
+    }
+});
+
+// 페이지 이동 시
+if(typeof window.originalHideAll === 'undefined') {
+    window.originalHideAll = window.hideAll;
+    window.hideAll = function() {
+        const writeSection = document.getElementById('writeSection');
+        if(writeSection?.classList.contains('active')) {
+            saveDraft();
+        }
+        if(typeof window.originalHideAll === 'function') {
+            window.originalHideAll();
+        }
+    };
+}
+
+console.log("✅ 임시저장 기능 로드 완료");
+
+// ===== 5. 기사 수정 기능 =====
+
+if(typeof window.originalEditArticle === 'undefined') {
+    window.originalEditArticle = window.editArticle;
+    
+    window.editArticle = async function(id) {
+        try {
+            const snapshot = await db.ref("articles/" + id).once("value");
+            const article = snapshot.val();
+            
+            if(!article) {
+                alert("존재하지 않는 기사입니다!");
+                return;
+            }
+            
+            const currentUser = getNickname();
+            if(!isLoggedIn() || (article.author !== currentUser && !isAdmin())) {
+                alert("수정 권한이 없습니다!");
+                return;
+            }
+            
+            localStorage.removeItem('draft_article');
+            draftSaveEnabled = false; // 수정 모드에서는 임시저장 비활성화
+            
+            hideAll();
+            document.getElementById("writeSection").classList.add("active");
+            
+            document.getElementById("category").value = article.category || '자유게시판';
+            document.getElementById("title").value = article.title || '';
+            document.getElementById("summary").value = article.summary || '';
+            
+            // Quill 에디터에 내용 로드
+            let attempts = 0;
+            const loadContent = () => {
+                if(window.quillEditor && window.quillEditor.root) {
+                    window.quillEditor.root.innerHTML = article.content || '';
+                    console.log("✅ 기사 내용 로드 완료");
+                } else if(attempts < 20) {
+                    attempts++;
+                    setTimeout(loadContent, 100);
+                } else {
+                    console.error("❌ Quill 에디터 초기화 실패");
+                    alert("에디터 초기화에 실패했습니다. 페이지를 새로고침해주세요.");
+                }
+            };
+            
+            // 에디터가 준비될 때까지 대기
+            setTimeout(loadContent, 200);
+            
+            if(article.thumbnail) {
+                const preview = document.getElementById('thumbnailPreview');
+                const uploadText = document.getElementById('uploadText');
+                if(preview && uploadText) {
+                    preview.src = article.thumbnail;
+                    preview.style.display = 'block';
+                    uploadText.innerHTML = '<i class="fas fa-check"></i><p>기존 이미지</p>';
+                }
+            }
+            
+            setupEditForm(article, id);
+            
+        } catch(error) {
+            console.error("기사 수정 로드 실패:", error);
+            alert("기사를 불러오는데 실패했습니다: " + error.message);
+        }
+    };
+}
+
+function setupEditForm(article, articleId) {
+    const form = document.getElementById("articleForm");
+    const newForm = form.cloneNode(true);
+    form.parentNode.replaceChild(newForm, form);
+    
+    const titleInput = newForm.querySelector("#title");
+    const summaryInput = newForm.querySelector("#summary");
+    const warningEl = newForm.querySelector("#bannedWordWarning");
+    
+    function checkInputs() {
+        if(!window.quillEditor?.getText) return;
+        
+        const editorContent = window.quillEditor.getText();
+        const combinedText = titleInput.value + " " + summaryInput.value + " " + editorContent;
+        const foundWord = checkBannedWords(combinedText);
+        
+        if(foundWord) {
+            warningEl.textContent = `🚫 금지어: "${foundWord}"`;
+            warningEl.style.display = "block";
+        } else {
+            warningEl.style.display = "none";
+        }
+    }
+    
+    titleInput.addEventListener("input", checkInputs);
+    summaryInput.addEventListener("input", checkInputs);
+    
+    const fileInput = newForm.querySelector('#thumbnailInput');
+    fileInput.addEventListener('change', previewThumbnail);
+    
+    newForm.addEventListener("submit", function(e) {
+        e.preventDefault();
+        
+        const title = titleInput.value;
+        const summary = summaryInput.value;
+        const content = window.quillEditor?.root?.innerHTML || '';
+        
+        const foundWord = checkBannedWords(title + " " + content + " " + summary);
+        if(foundWord) {
+            alert(`⚠️ 금지어("${foundWord}")가 포함되어 있습니다.`);
+            addWarningToCurrentUser();
+            return;
+        }
+        
+        if(fileInput.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                article.thumbnail = e.target.result;
+                saveUpdatedArticle();
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        } else {
+            saveUpdatedArticle();
+        }
+        
+        function saveUpdatedArticle() {
+            article.category = newForm.querySelector("#category").value;
+            article.title = title;
+            article.summary = summary;
+            article.content = content;
+            article.date = new Date().toLocaleString() + " (수정됨)";
+            
+            saveArticle(article, () => {
+                newForm.reset();
+                if(window.quillEditor?.setText) {
+                    window.quillEditor.setText('');
+                }
+                const preview = document.getElementById('thumbnailPreview');
+                const uploadText = document.getElementById('uploadText');
+                if(preview) preview.style.display = 'none';
+                if(uploadText) uploadText.innerHTML = '<i class="fas fa-camera"></i><p>이미지 업로드</p>';
+                warningEl.style.display = "none";
+                
+                localStorage.removeItem('draft_article');
+                draftSaveEnabled = true; // 수정 완료 후 임시저장 재활성화
+                
+                alert("기사가 수정되었습니다!");
+                showArticleDetail(articleId);
+            });
+        }
+    });
+}
+
+console.log("✅ 기사 수정 기능 로드 완료");
+
+// ===== 6. 로그인 UX 개선 =====
+
+window.showLoginRequired = function(feature = "이 기능") {
+    if(confirm(`🔒 ${feature}은(는) 로그인이 필요합니다.\n\n로그인하시겠습니까?`)) {
+        googleLogin();
+    }
+};
+
+console.log("✅ 로그인 UX 개선 완료");
+
+// ===== 초기화 완료 =====
+
+console.log("✅ script2.js 모든 기능 로드 완료");
+console.log("📋 로드된 기능:");
+console.log("  1. 프로필 사진 변경");
+console.log("  2. 이미지 전체보기 + 확대/축소/드래그");
+console.log("  3. 카테고리별 기사 고정 관리 (관리자 전용)");
+console.log("  4. 스마트 임시저장 (Quill Ready 감지)");
+console.log("  5. 기사 수정 (기존 내용 불러오기)");
+console.log("  6. 로그인 UX 개선");
+console.log("");
+console.log("🎨 카테고리: 자유게시판, 논란, 연애, 정아영, 게넥도, 게임, 마크");
