@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>해정뉴스</title>
     
+    <!-- 파비콘 추가 -->
+    <link rel="icon" type="image/x-icon" href="https://raw.githubusercontent.com/fff376327yhed/hsj_news.io/main/favicon/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://raw.githubusercontent.com/fff376327yhed/hsj_news.io/main/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://raw.githubusercontent.com/fff376327yhed/hsj_news.io/main/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://raw.githubusercontent.com/fff376327yhed/hsj_news.io/main/favicon/favicon-16x16.png">
+    
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
@@ -182,6 +188,21 @@
     animation: tooltipFadeIn 0.2s ease;
 }
 
+/* 🐴 테마 옵션 스타일 */
+    .theme-option:hover {
+        border-color: #c62828 !important;
+        box-shadow: 0 4px 12px rgba(198, 40, 40, 0.2);
+    }
+
+    .theme-option input:checked + div {
+        color: #c62828;
+    }
+
+    .theme-option:has(input:checked) {
+        border-color: #c62828 !important;
+        background: linear-gradient(90deg, rgba(255, 248, 225, 0.3) 0%, transparent 100%);
+    }
+
 </style>
 
 </head>
@@ -232,8 +253,7 @@
 <section class="page-section active" id="articlesSection">
     <div class="search-bar">
         <select id="searchCategory" class="search-select">
-            <option value="">전체</option>
-            <option>자유게시판</option>
+            <option value="자유게시판" selected>자유게시판</option>
             <option>논란</option>
             <option>연애</option>
             <option>정아영</option>
@@ -289,11 +309,11 @@
         </div>
         
         <div class="form-group">
-            <label>썸네일 이미지 (선택)</label>
+            <label>인네일 이미지 (선택)</label>
             <div class="image-upload-area" onclick="document.getElementById('thumbnailInput').click()">
                 <div id="uploadText">
                     <i class="fas fa-camera"></i>
-                    <p>클릭하여 썸네일 이미지 업로드</p>
+                    <p>클릭하여 인네일 이미지 업로드</p>
                 </div>
                 <img id="thumbnailPreview" class="image-preview" style="display:none;">
             </div>
@@ -307,6 +327,10 @@
         
         <div class="form-group">
             <label>내용 <span style="color:#dc3545;">*</span></label>
+            <div class="markdown-hint" style="background:#e3f2fd; padding:10px; border-radius:6px; margin-bottom:10px; font-size:13px; color:#1976d2;">
+                <strong>💡 마크다운 단축키:</strong> 
+                ### 큰제목 | ## 중간제목 | # 작은제목 | - 목록 | **굵게** | *기울임* | > 인용
+            </div>
             <div id="quillEditor" style="min-height: 300px; background: white;"></div>
             <input type="hidden" id="content" required>
         </div>
@@ -351,6 +375,73 @@
     </div>
     
     <div id="profileNickname" class="profile-card"></div>
+
+    <!-- 🐴 테마 설정 섹션 -->
+    <div style="background: white; padding: 16px; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 12px; color: #202124;">
+            <i class="fas fa-palette"></i> 테마 설정
+        </h3>
+        
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            <!-- 기본 테마 -->
+            <label class="theme-option" style="display: flex; align-items: center; padding: 12px; border: 2px solid #dadce0; border-radius: 10px; cursor: pointer; transition: all 0.3s;">
+                <input type="radio" name="theme" value="default" id="themeDefault" checked style="margin-right: 12px; width: 20px; height: 20px; cursor: pointer;">
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; color: #202124; margin-bottom: 4px;">
+                        <i class="fas fa-newspaper"></i> 기본 테마
+                    </div>
+                    <div style="font-size: 12px; color: #5f6368;">
+                        깔끔하고 전문적인 뉴스 디자인
+                    </div>
+                </div>
+                <div style="width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg, #00376b 0%, #5f6368 100%); border: 2px solid #dadce0;"></div>
+            </label>
+
+<!-- 크리스마스 테마 -->
+<label class="theme-option" style="display: flex; align-items: center; padding: 12px; border: 2px solid #dadce0; border-radius: 10px; cursor: pointer; transition: all 0.3s;">
+    <input type="radio" name="theme" value="christmas" id="themeChristmas" style="margin-right: 12px; width: 20px; height: 20px; cursor: pointer;">
+    <div style="flex: 1;">
+        <div style="font-weight: 600; color: #202124; margin-bottom: 4px;">
+            <i class="fas fa-candy-cane"></i> 크리스마스 테마 <span style="background: linear-gradient(135deg, #c41e3a, #0f7f3e); padding: 2px 6px; border-radius: 4px; font-size: 10px; color: white; margin-left: 4px;">SPECIAL</span>
+        </div>
+        <div style="font-size: 12px; color: #5f6368;">
+            🎄 메리 크리스마스! 눈 내리는 특별한 디자인
+        </div>
+    </div>
+    <div style="width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg, #c41e3a 0%, #0f7f3e 50%, #d4af37 100%); border: 2px solid #d4af37; box-shadow: 0 0 10px rgba(196, 30, 58, 0.5);"></div>
+</label>
+
+<!-- 크리스마스 테마 설명 (선택 시 표시) -->
+<div style="margin-top: 12px; padding: 12px; background: #e8f5e9; border-radius: 8px; border: 2px solid #a5d6a7; display: none;" id="christmasInfo">
+    <div style="font-size: 13px; color: #1b5e20; line-height: 1.6;">
+        <strong>🎄 메리 크리스마스!</strong><br>
+        눈 내리는 효과와 함께하는 따뜻한 크리스마스 테마입니다.<br>
+    </div>
+</div>
+            
+            <!-- 붉은 말 테마 -->
+            <label class="theme-option" style="display: flex; align-items: center; padding: 12px; border: 2px solid #dadce0; border-radius: 10px; cursor: pointer; transition: all 0.3s;">
+                <input type="radio" name="theme" value="red-horse" id="themeRedHorse" style="margin-right: 12px; width: 20px; height: 20px; cursor: pointer;">
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; color: #202124; margin-bottom: 4px;">
+                        <i class="fas fa-fire"></i> 붉은 말 테마 <span style="background: linear-gradient(135deg, #FF6F00, #c62828); padding: 2px 6px; border-radius: 4px; font-size: 10px; color: white; margin-left: 4px;">2026 NEW</span>
+                    </div>
+                    <div style="font-size: 12px; color: #5f6368;">
+                        🐴 2026 붉은 말의 해 특별 디자인
+                    </div>
+                </div>
+                <div style="width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg, #FF6F00 0%, #c62828 50%, #8e0000 100%); border: 2px solid #FFD700; box-shadow: 0 0 10px rgba(198, 40, 40, 0.5);"></div>
+            </label>
+        </div>
+        
+        <div style="margin-top: 12px; padding: 12px; background: #FFF8E1; border-radius: 8px; border: 2px solid #FFCCBC; display: none;" id="redHorseInfo">
+            <div style="font-size: 13px; color: #3e2723; line-height: 1.6;">
+                <strong>🐴 2026년 병오년(丙午年)</strong><br>
+                불의 말의 해를 기념하는 특별 테마입니다.<br>
+                역동적이고 열정적인 디자인을 경험하세요!
+            </div>
+        </div>
+    </div>
     
     <div class="settings-card">
         <h3>🔔 알림 설정</h3>
@@ -536,6 +627,23 @@
 <!-- 스크립트 로드 -->
 <script src="./js/script.js"></script>
 <script src="./js/script2.js"></script>
+
+<script>
+// Service Worker 등록
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./firebase-messaging-sw.js')
+    .then((registration) => {
+      console.log('✅ Service Worker 등록 성공:', registration.scope);
+    })
+    .catch((error) => {
+      console.error('❌ Service Worker 등록 실패:', error);
+    });
+}
+</script>
+
+<!-- ❄️ 눈 내리는 효과 컨테이너 (body 끝에 추가될 부분이지만 여기서 미리 준비) -->
+<!-- 이 부분은 </body> 바로 위에 추가하세요 -->
+<div id="snowfall-container"></div>
 
 </body>
 </html>
