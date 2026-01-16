@@ -629,14 +629,30 @@
 <script src="./js/script2.js"></script>
 
 <script>
-// Service Worker 등록
+// Service Worker 등록 (GitHub Pages 호환)
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./firebase-messaging-sw.js')
+  // GitHub Pages 서브디렉토리 감지
+  const basePath = window.location.pathname.match(/\/([^\/]+)\/?$/);
+  const swPath = basePath && basePath[1] !== '' 
+    ? `/${basePath[1]}/firebase-messaging-sw.js` 
+    : '/firebase-messaging-sw.js';
+  
+  navigator.serviceWorker.register(swPath, {
+    scope: window.location.pathname.endsWith('/') 
+      ? window.location.pathname 
+      : window.location.pathname + '/'
+  })
     .then((registration) => {
       console.log('✅ Service Worker 등록 성공:', registration.scope);
+      
+      // Firebase Messaging에 등록 전달
+      if (messaging) {
+        messaging.useServiceWorker(registration);
+      }
     })
     .catch((error) => {
       console.error('❌ Service Worker 등록 실패:', error);
+      console.error('시도한 경로:', swPath);
     });
 }
 </script>
