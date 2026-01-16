@@ -203,6 +203,72 @@
         background: linear-gradient(90deg, rgba(255, 248, 225, 0.3) 0%, transparent 100%);
     }
 
+    /* 댓글 수정 폼 스타일 */
+.comment-edit-form {
+    margin-top: 10px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.comment-edit-textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.comment-edit-textarea:focus {
+    outline: none;
+    border-color: #c62828;
+}
+
+.reply-edit-form {
+    margin-top: 5px;
+}
+
+.reply-edit-form input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.reply-edit-form input:focus {
+    outline: none;
+    border-color: #c62828;
+}
+
+/* 수정됨 표시 */
+.edited-badge {
+    display: inline-block;
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    margin-left: 8px;
+    font-weight: 600;
+}
+
+/* 수정됨 표시 */
+.edited-badge {
+    display: inline-block;
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    margin-left: 8px;
+    font-weight: 600;
+}
+
 </style>
 
 </head>
@@ -461,7 +527,32 @@
         <i class="fas fa-sign-out-alt"></i> 로그아웃
     </button>
     
-    <div id="adminModeIndicator"></div>
+    <!-- 관리자 전용 섹션 -->
+<div id="adminModeIndicator"></div>
+
+<!-- ✅ 추가: 조회수 관리 섹션 -->
+<div id="viewsManagementSection" style="display:none;">
+    <div class="settings-divider"></div>
+    
+    <h3 class="section-title">📊 조회수 관리</h3>
+    <div style="background:white; padding:16px; border-radius:12px; margin-bottom:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+        <p style="color:#6c757d; font-size:14px; margin-bottom:12px;">
+            <i class="fas fa-info-circle"></i> 모든 기사의 조회수를 0으로 초기화합니다.
+        </p>
+        <button onclick="resetAllViews()" class="btn-warning btn-block">
+            <i class="fas fa-redo"></i> 전체 조회수 초기화
+        </button>
+    </div>
+    
+    <div style="background:white; padding:16px; border-radius:12px; margin-bottom:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+        <p style="color:#6c757d; font-size:14px; margin-bottom:12px;">
+            <i class="fas fa-info-circle"></i> 내 브라우저의 조회 기록을 삭제합니다.
+        </p>
+        <button onclick="clearMyViewHistory()" class="btn-secondary btn-block">
+            <i class="fas fa-trash-alt"></i> 내 조회 기록 삭제
+        </button>
+    </div>
+</div>
     
     <div class="settings-divider"></div>
     
@@ -645,10 +736,24 @@ if ('serviceWorker' in navigator) {
     .then((registration) => {
       console.log('✅ Service Worker 등록 성공:', registration.scope);
       
-      // Firebase Messaging에 등록 전달
-      if (messaging) {
-        messaging.useServiceWorker(registration);
-      }
+      // ✅ Firebase Messaging이 준비될 때까지 대기
+      const waitForMessaging = setInterval(() => {
+        if (window.messaging) {
+          clearInterval(waitForMessaging);
+          try {
+            // Firebase Messaging에 Service Worker 등록
+            window.messaging.useServiceWorker(registration);
+            console.log('✅ Firebase Messaging에 Service Worker 연결 완료');
+          } catch(e) {
+            console.warn('⚠️ Firebase Messaging 연결 실패:', e);
+          }
+        }
+      }, 100);
+      
+      // 10초 후 타임아웃
+      setTimeout(() => {
+        clearInterval(waitForMessaging);
+      }, 10000);
     })
     .catch((error) => {
       console.error('❌ Service Worker 등록 실패:', error);
