@@ -1,0 +1,14 @@
+{
+     "crons": [
+       {
+         "path": "/api/cron",
+         "schedule": "*/5 * * * *",
+         "timezone": "Asia/Seoul"
+       }
+     ],
+     "functions": {
+       "api/cron.js": {
+         "maxDuration": 60
+       }
+     }
+   }
