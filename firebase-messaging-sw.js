@@ -28,14 +28,29 @@ messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.data?.title || payload.notification?.title || '📰 해정뉴스';
   const notificationBody = payload.data?.body || payload.data?.text || payload.notification?.body || '새로운 알림이 있습니다';
   
-  // 베이스 경로 감지 (Service Worker 스코프에서)
-  const basePath = self.registration.scope.match(/\/([^\/]+)\/$/);
-  const basePrefix = basePath && basePath[1] ? `/${basePath[1]}` : '';
-  
-  const notificationOptions = {
+// ✅ 베이스 경로 감지 개선 (GitHub Pages 대응)
+const getBasePath = () => {
+    const scope = self.registration.scope;
+    const url = new URL(scope);
+    const pathname = url.pathname;
+    
+    // GitHub Pages 패턴: /username.github.io/repo-name/
+    const match = pathname.match(/^\/([^\/]+)\/?$/);
+    
+    if (match && match[1] && match[1] !== '') {
+        return `/${match[1]}`;
+    }
+    
+    return '';
+};
+
+const basePrefix = getBasePath();
+console.log('[Service Worker] 베이스 경로:', basePrefix);
+
+const notificationOptions = {
     body: notificationBody,
-    icon: `${basePrefix}/favicon/android-icon-192x192.png`, // 상대 경로
-    badge: `${basePrefix}/favicon/favicon-16x16.png`, // 상대 경로
+    icon: `${basePrefix}/favicon/android-icon-192x192.png`,
+    badge: `${basePrefix}/favicon/favicon-16x16.png`,
     tag: payload.data?.notificationId || 'notification-' + Date.now(),
     data: {
       articleId: payload.data?.articleId || '',
