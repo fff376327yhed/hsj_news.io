@@ -141,74 +141,219 @@ console.log("✅ 프로필 사진 변경 기능 로드 완료");
 
 // ===== 2. 이미지 전체보기 + 확대/축소 =====
 
+// ===== 2. 이미지 전체보기 + 확대/축소 + 휠 확대 =====
+
 window.openImageModal = function(imageSrc) {
     const existingModal = document.getElementById('imageViewModal');
     if(existingModal) existingModal.remove();
     
     const modalHTML = `
         <div id="imageViewModal" class="modal active" style="z-index:10000; background:rgba(0,0,0,0.95);">
-            <div style="position:fixed; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; padding:20px;">
-                <div style="position:relative; max-width:95%; max-height:95%; overflow:auto;">
-                    <button onclick="closeImageModal()" style="position:fixed; top:20px; right:20px; background:rgba(255,255,255,0.9); color:#333; border:none; border-radius:50%; width:50px; height:50px; cursor:pointer; font-size:24px; z-index:10002; box-shadow:0 2px 12px rgba(0,0,0,0.5); font-weight:bold;">
+            <div style="position:fixed; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; padding:20px; overflow:hidden;">
+                <div id="imageContainer" style="position:relative; width:100%; height:100%; overflow:hidden; cursor:grab;">
+                    <button onclick="closeImageModal()" style="position:fixed; top:20px; right:20px; background:rgba(255,255,255,0.9); color:#333; border:none; border-radius:50%; width:50px; height:50px; cursor:pointer; font-size:24px; z-index:10002; box-shadow:0 2px 12px rgba(0,0,0,0.5); font-weight:bold; display:flex; align-items:center; justify-content:center;">
                         ×
                     </button>
                     
                     <div style="position:fixed; bottom:20px; left:50%; transform:translateX(-50%); display:flex; gap:10px; z-index:10002;">
-                        <button onclick="zoomImage(1.2)" style="background:rgba(255,255,255,0.9); color:#333; border:none; border-radius:50%; width:50px; height:50px; cursor:pointer; font-size:20px; box-shadow:0 2px 12px rgba(0,0,0,0.5);">
+                        <button onclick="zoomImage(1.2)" class="image-control-btn">
                             <i class="fas fa-plus"></i>
                         </button>
-                        <button onclick="zoomImage(0.8)" style="background:rgba(255,255,255,0.9); color:#333; border:none; border-radius:50%; width:50px; height:50px; cursor:pointer; font-size:20px; box-shadow:0 2px 12px rgba(0,0,0,0.5);">
+                        <button onclick="zoomImage(0.8)" class="image-control-btn">
                             <i class="fas fa-minus"></i>
                         </button>
-                        <button onclick="resetZoom()" style="background:rgba(255,255,255,0.9); color:#333; border:none; border-radius:50%; width:50px; height:50px; cursor:pointer; font-size:16px; box-shadow:0 2px 12px rgba(0,0,0,0.5);">
+                        <button onclick="resetZoom()" class="image-control-btn">
                             <i class="fas fa-redo"></i>
                         </button>
                     </div>
                     
-                    <img id="modalImageElement" src="${imageSrc}" style="display:block; max-width:none; border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,0.5); cursor:grab; transition:transform 0.2s;">
+                    <div id="imageWrapper" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); transition:transform 0.1s ease-out;">
+                        <img id="modalImageElement" src="${imageSrc}" style="display:block; max-width:90vw; max-height:90vh; border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,0.5); user-select:none; pointer-events:none;">
+                    </div>
                 </div>
             </div>
         </div>
+        
+        <style>
+            .image-control-btn {
+                background: rgba(255,255,255,0.9);
+                color: #333;
+                border: none;
+                border-radius: 50%;
+                width: 50px;
+                height: 50px;
+                cursor: pointer;
+                font-size: 18px;
+                box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.2s;
+            }
+            
+            .image-control-btn:hover {
+                background: white;
+                transform: scale(1.1);
+            }
+            
+            .image-control-btn:active {
+                transform: scale(0.95);
+            }
+        </style>
     `;
     
     document.body.insertAdjacentHTML('beforeend', modalHTML);
     
+    // ✅ 드래그 및 확대/축소 기능
+    const container = document.getElementById('imageContainer');
+    const wrapper = document.getElementById('imageWrapper');
     const img = document.getElementById('modalImageElement');
+    
+    let scale = 1;
+    let translateX = 0;
+    let translateY = 0;
     let isDragging = false;
-    let startX, startY, scrollLeft, scrollTop;
-    const container = img.parentElement;
+    let startX = 0;
+    let startY = 0;
+    let lastX = 0;
+    let lastY = 0;
     
-    img.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        img.style.cursor = 'grabbing';
-        startX = e.pageX - container.offsetLeft;
-        startY = e.pageY - container.offsetTop;
-        scrollLeft = container.scrollLeft;
-        scrollTop = container.scrollTop;
-    });
+    // 변환 적용 함수
+    function applyTransform() {
+        wrapper.style.transform = `translate(calc(-50% + ${translateX}px), calc(-50% + ${translateY}px)) scale(${scale})`;
+    }
     
-    img.addEventListener('mouseleave', () => {
-        isDragging = false;
-        img.style.cursor = 'grab';
-    });
-    
-    img.addEventListener('mouseup', () => {
-        isDragging = false;
-        img.style.cursor = 'grab';
-    });
-    
-    img.addEventListener('mousemove', (e) => {
-        if(!isDragging) return;
+    // 마우스 휠 확대/축소
+    container.addEventListener('wheel', (e) => {
         e.preventDefault();
-        const x = e.pageX - container.offsetLeft;
-        const y = e.pageY - container.offsetTop;
-        const walkX = (x - startX) * 2;
-        const walkY = (y - startY) * 2;
-        container.scrollLeft = scrollLeft - walkX;
-        container.scrollTop = scrollTop - walkY;
+        
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        const newScale = scale * delta;
+        
+        if (newScale >= 0.5 && newScale <= 5) {
+            scale = newScale;
+            applyTransform();
+        }
+    }, { passive: false });
+    
+    // 마우스 드래그
+    container.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        container.style.cursor = 'grabbing';
+        startX = e.clientX - translateX;
+        startY = e.clientY - translateY;
+        lastX = translateX;
+        lastY = translateY;
     });
     
-    resetZoom();
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        
+        translateX = e.clientX - startX;
+        translateY = e.clientY - startY;
+        
+        wrapper.style.transition = 'none';
+        applyTransform();
+    });
+    
+    document.addEventListener('mouseup', () => {
+        if (isDragging) {
+            isDragging = false;
+            container.style.cursor = 'grab';
+            wrapper.style.transition = 'transform 0.1s ease-out';
+        }
+    });
+    
+    // 터치 이벤트 (모바일)
+    let initialDistance = 0;
+    let initialScale = 1;
+    
+    container.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+            // 단일 터치 - 드래그
+            isDragging = true;
+            startX = e.touches[0].clientX - translateX;
+            startY = e.touches[0].clientY - translateY;
+        } else if (e.touches.length === 2) {
+            // 두 손가락 - 핀치 줌
+            isDragging = false;
+            initialDistance = Math.hypot(
+                e.touches[1].clientX - e.touches[0].clientX,
+                e.touches[1].clientY - e.touches[0].clientY
+            );
+            initialScale = scale;
+        }
+    });
+    
+    container.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        
+        if (e.touches.length === 1 && isDragging) {
+            translateX = e.touches[0].clientX - startX;
+            translateY = e.touches[0].clientY - startY;
+            wrapper.style.transition = 'none';
+            applyTransform();
+        } else if (e.touches.length === 2) {
+            const currentDistance = Math.hypot(
+                e.touches[1].clientX - e.touches[0].clientX,
+                e.touches[1].clientY - e.touches[0].clientY
+            );
+            const newScale = initialScale * (currentDistance / initialDistance);
+            
+            if (newScale >= 0.5 && newScale <= 5) {
+                scale = newScale;
+                applyTransform();
+            }
+        }
+    }, { passive: false });
+    
+    container.addEventListener('touchend', () => {
+        isDragging = false;
+        wrapper.style.transition = 'transform 0.1s ease-out';
+    });
+    
+    // ESC 키로 닫기
+    const handleEsc = (e) => {
+        if (e.key === 'Escape') {
+            closeImageModal();
+            document.removeEventListener('keydown', handleEsc);
+        }
+    };
+    document.addEventListener('keydown', handleEsc);
+    
+    // 전역 변수에 저장 (버튼에서 사용)
+    window.currentImageScale = {
+        get scale() { return scale; },
+        set scale(val) { 
+            scale = val; 
+            applyTransform(); 
+        },
+        reset() {
+            scale = 1;
+            translateX = 0;
+            translateY = 0;
+            wrapper.style.transition = 'transform 0.3s ease';
+            applyTransform();
+            setTimeout(() => {
+                wrapper.style.transition = 'transform 0.1s ease-out';
+            }, 300);
+        }
+    };
+};
+
+window.zoomImage = function(factor) {
+    if (!window.currentImageScale) return;
+    
+    const newScale = window.currentImageScale.scale * factor;
+    if (newScale >= 0.5 && newScale <= 5) {
+        window.currentImageScale.scale = newScale;
+    }
+};
+
+window.resetZoom = function() {
+    if (window.currentImageScale) {
+        window.currentImageScale.reset();
+    }
 };
 
 window.closeImageModal = function() {
@@ -242,19 +387,41 @@ window.resetZoom = function() {
 
 // 기사 상세보기에서 이미지 클릭 이벤트
 function addImageClickHandlersToArticle() {
-    setTimeout(() => {
+    // ✅ 더 긴 대기 시간과 재시도 로직 추가
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    const attachHandlers = () => {
         const articleDetail = document.getElementById("articleDetail");
-        if(!articleDetail) return;
+        if(!articleDetail) {
+            if(attempts < maxAttempts) {
+                attempts++;
+                setTimeout(attachHandlers, 200);
+            }
+            return;
+        }
         
         const images = articleDetail.querySelectorAll('img');
+        if(images.length === 0 && attempts < maxAttempts) {
+            attempts++;
+            setTimeout(attachHandlers, 200);
+            return;
+        }
+        
         images.forEach(img => {
+            // ✅ 썸네일 이미지는 제외
+            if(img.classList.contains('article-thumbnail')) return;
+            
             img.style.cursor = 'pointer';
             img.style.maxWidth = '100%';
             img.style.height = 'auto';
             
-            img.onclick = null;
+            // ✅ 기존 이벤트 리스너 제거
+            const newImg = img.cloneNode(true);
+            img.parentNode.replaceChild(newImg, img);
             
-            img.addEventListener('click', function(e) {
+            // ✅ 새로운 이벤트 리스너 추가
+            newImg.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
                 openImageModal(this.src);
@@ -262,16 +429,29 @@ function addImageClickHandlersToArticle() {
         });
         
         console.log(`✅ ${images.length}개 이미지에 클릭 핸들러 추가됨`);
-    }, 200);
+    };
+    
+    attachHandlers();
 }
 
+// ✅ showArticleDetail 오버라이드 개선
 if(typeof window.originalShowArticleDetail === 'undefined') {
     window.originalShowArticleDetail = window.showArticleDetail;
+    
     window.showArticleDetail = function(articleId) {
-        if(typeof window.originalShowArticleDetail === 'function') {
-            window.originalShowArticleDetail(articleId);
+        // 원본 함수 실행
+        const result = window.originalShowArticleDetail(articleId);
+        
+        // Promise인 경우 처리
+        if(result && typeof result.then === 'function') {
+            result.then(() => {
+                setTimeout(() => addImageClickHandlersToArticle(), 500);
+            });
+        } else {
+            setTimeout(() => addImageClickHandlersToArticle(), 500);
         }
-        addImageClickHandlersToArticle();
+        
+        return result;
     };
 }
 
@@ -630,39 +810,53 @@ if(typeof window.originalEditArticle === 'undefined') {
             hideAll();
             document.getElementById("writeSection").classList.add("active");
             
-            document.getElementById("category").value = article.category || '자유게시판';
-            document.getElementById("title").value = article.title || '';
-            document.getElementById("summary").value = article.summary || '';
-            
-            // Quill 에디터에 내용 로드
-            let attempts = 0;
-            const loadContent = () => {
-                if(window.quillEditor && window.quillEditor.root) {
-                    window.quillEditor.root.innerHTML = article.content || '';
-                    console.log("✅ 기사 내용 로드 완료");
-                } else if(attempts < 20) {
-                    attempts++;
-                    setTimeout(loadContent, 100);
-                } else {
-                    console.error("❌ Quill 에디터 초기화 실패");
-                    alert("에디터 초기화에 실패했습니다. 페이지를 새로고침해주세요.");
-                }
-            };
-            
-            // 에디터가 준비될 때까지 대기
-            setTimeout(loadContent, 200);
-            
-            if(article.thumbnail) {
-                const preview = document.getElementById('thumbnailPreview');
-                const uploadText = document.getElementById('uploadText');
-                if(preview && uploadText) {
-                    preview.src = article.thumbnail;
-                    preview.style.display = 'block';
-                    uploadText.innerHTML = '<i class="fas fa-check"></i><p>기존 이미지</p>';
-                }
-            }
-            
-            setupEditForm(article, id);
+            // ✅ 수정: Quill 에디터 먼저 초기화
+            setTimeout(() => {
+                // 1. Quill 에디터 강제 재초기화
+                window.quillEditor = null;
+                editorInitialized = false;
+                initQuillEditor();
+                
+                // 2. 에디터 준비 대기
+                const waitForEditor = (attempts = 0) => {
+                    if (window.quillEditor && window.quillEditor.root) {
+                        // 3. 폼 필드 값 설정
+                        document.getElementById("category").value = article.category || '자유게시판';
+                        document.getElementById("title").value = article.title || '';
+                        document.getElementById("summary").value = article.summary || '';
+                        
+                        // 4. Quill 에디터에 내용 로드 (HTML 형식)
+                        try {
+                            window.quillEditor.root.innerHTML = article.content || '';
+                            console.log("✅ 기사 내용 로드 완료 (script2.js):", article.content ? article.content.substring(0, 50) + '...' : '(빈 내용)');
+                        } catch(error) {
+                            console.error("❌ Quill 에디터 내용 로드 실패:", error);
+                        }
+                        
+                        // 5. 썸네일 처리
+                        if(article.thumbnail) {
+                            const preview = document.getElementById('thumbnailPreview');
+                            const uploadText = document.getElementById('uploadText');
+                            if (preview && uploadText) {
+                                preview.src = article.thumbnail;
+                                preview.style.display = 'block';
+                                uploadText.innerHTML = '<i class="fas fa-check"></i><p>기존 이미지</p>';
+                            }
+                        }
+                        
+                        // 6. 수정 폼 설정 (이벤트 바인딩)
+                        setupEditForm(article, id);
+                        
+                    } else if (attempts < 50) {
+                        setTimeout(() => waitForEditor(attempts + 1), 100);
+                    } else {
+                        console.error("❌ Quill 에디터 초기화 대기 시간 초과");
+                        alert("에디터 초기화에 실패했습니다. 페이지를 새로고침해주세요.");
+                    }
+                };
+                
+                waitForEditor();
+            }, 200);
             
         } catch(error) {
             console.error("기사 수정 로드 실패:", error);
