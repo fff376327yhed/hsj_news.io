@@ -89,7 +89,11 @@ try {
     console.warn("⚠️ Firebase Messaging 초기화 실패:", err.message);
 }
 
+
 // 전역 변수
+// ===== Part 1 초반에 추가 =====
+let currentCategory = "자유게시판";
+let currentScrollPosition = 0;
 window.isEditingArticle = false;
 let currentArticlePage = 1;
 const ARTICLES_PER_PAGE = 5;
@@ -467,6 +471,9 @@ function goBack() {
     if(typeof restoreUserTheme === 'function') {
         restoreUserTheme();
     }
+    
+    // ✅ 수정: 현재 스크롤 위치 저장
+    currentScrollPosition = window.pageYOffset || document.documentElement.scrollTop;
     
     showArticles();
 }
@@ -1222,19 +1229,28 @@ async function updateSettings() {
     }
     
     const adminIndicator = document.getElementById("adminModeIndicator");
-    if(adminIndicator) {
-        if(isAdmin()) {
-            adminIndicator.innerHTML = `
-                <div style="background:#e8f0fe; border:1px solid #1967d2; padding:15px; border-radius:8px; margin:20px 0;">
-                    <h4 style="margin:0 0 10px 0; color:#1967d2;">🛡️ 관리자 모드 ON</h4>
-                    <button onclick="disableAdminMode()" class="btn-block" style="background:#fff; color:#1967d2; border:1px solid #1967d2;">모드 해제</button>
-                </div>
-            `;
-        } else {
-            adminIndicator.innerHTML = '';
-        }
+if(adminIndicator) {
+    if(isAdmin()) {
+        adminIndicator.innerHTML = `
+            <div style="background:#e8f0fe; border:1px solid #1967d2; padding:15px; border-radius:8px; margin:20px 0;">
+                <h4 style="margin:0 0 10px 0; color:#1967d2;">🛡️ 관리자 모드 ON</h4>
+                <button onclick="disableAdminMode()" class="btn-block" style="background:#fff; color:#1967d2; border:1px solid #1967d2;">모드 해제</button>
+            </div>
+        `;
+    } else {
+        adminIndicator.innerHTML = '';
     }
 }
+
+// ✅ 추가: 관리자 전용 조회수 관리 섹션 표시
+const viewsSection = document.getElementById("viewsManagementSection");
+if(viewsSection) {
+    if(isAdmin()) {
+        viewsSection.style.display = 'block';
+    } else {
+        viewsSection.style.display = 'none';
+    }
+}}
 
 // ✅ 알림 토글
 async function toggleNotifications() {
@@ -1298,32 +1314,33 @@ function hideAll() {
 
 function showArticles() {
     hideAll();
-    window.scrollTo(0, 0);
     
     document.getElementById("articlesSection").classList.add("active");
     
     const header = document.querySelector('header');
     if(header) header.style.display = 'block';
     
-    currentArticlePage = 1;
-    document.getElementById("searchCategory").value = "자유게시판"; // ✅ 수정: 기본값을 자유게시판으로
+    // ✅ 수정: 카테고리 상태 복원 (저장된 카테고리 사용)
+    document.getElementById("searchCategory").value = currentCategory;
     document.getElementById("searchKeyword").value = "";
     
-    // ✅ 수정: 초기 로드 시 자유게시판 필터 적용
-    const category = "자유게시판";
+    // ✅ 수정: 현재 카테고리로 필터링
+    const category = currentCategory;
     filteredArticles = allArticles.filter(a => a.category === category);
     
     renderArticles();
     
     updateURL('home');
     
-    // ✅ 카테고리 리스너 재등록 (페이지 이동 후에도 작동하도록)
+    // ✅ 스크롤 위치 복원
     setTimeout(() => {
+        if(currentScrollPosition > 0) {
+            window.scrollTo(0, currentScrollPosition);
+        }
         setupCategoryChangeListener();
     }, 100);
 }
 
-// ✅ 카테고리 변경 시 자동 적용
 function setupCategoryChangeListener() {
     const categorySelect = document.getElementById("searchCategory");
     if (!categorySelect) return;
@@ -1333,6 +1350,9 @@ function setupCategoryChangeListener() {
     
     categorySelect.addEventListener('change', function() {
         console.log("✅ 카테고리 변경:", this.value);
+        // ✅ 수정: 현재 카테고리 상태 저장
+        currentCategory = this.value;
+        currentScrollPosition = 0; // 카테고리 변경 시 스크롤 초기화
         searchArticles(true); // 자동으로 검색 실행
     });
     
@@ -1469,6 +1489,10 @@ function showCategoryArticles(category) {
     
     const section = document.getElementById("articlesSection");
     section.classList.add("active");
+    
+    // ✅ 수정: 현재 카테고리 상태 저장
+    currentCategory = category;
+    currentScrollPosition = 0; // 새 카테고리 선택 시 스크롤 초기화
     
     document.getElementById("searchCategory").value = category;
     document.getElementById("searchKeyword").value = "";
@@ -1934,7 +1958,6 @@ console.log("✅ Part 7 기사 렌더링 완료");
 
 // ===== Part 8: 기사 상세보기 및 작성/수정 =====
 
-// ✅ 기사 상세보기
 async function showArticleDetail(id) {
     hideAll();
     const detailSection = document.getElementById("articleDetailSection");
@@ -1965,13 +1988,17 @@ async function showArticleDetail(id) {
         
         if (currentArticleId !== id) {
             incrementView(id);
+            currentArticleId = id;
         }
-        currentArticleId = id;
+        
         currentCommentPage = 1;
-
+        
         const currentUser = getNickname();
         const canEdit = isLoggedIn() && ((A.author === currentUser) || isAdmin());
-        const views = getArticleViews(A);
+        
+        const viewsSnapshot = await db.ref(`articles/${id}/views`).once("value");
+        const views = viewsSnapshot.val() || 0;
+        
         const votes = getArticleVoteCounts(A);
         
         const [userVote, authorPhoto] = await Promise.all([
@@ -1981,9 +2008,16 @@ async function showArticleDetail(id) {
         
         const authorPhotoHTML = await createProfilePhoto(authorPhoto, 40);
 
+        // ✅ 수정됨 표시 추가
+        const editedBadge = A.lastModified ? 
+            `<span class="edited-badge"><i class="fas fa-edit"></i> 수정됨</span>` : '';
+
         root.innerHTML = `<div style="background:#fff;padding:20px;border-radius:8px;">
             <span class="category-badge">${A.category}</span>
-            <h1 style="font-size:22px;font-weight:700;margin:15px 0;line-height:1.4;">${A.title}</h1>
+            <h1 style="font-size:22px;font-weight:700;margin:15px 0;line-height:1.4;">
+                ${A.title}
+                ${editedBadge}
+            </h1>
             
             <div class="article-meta" style="border-bottom:1px solid #eee; padding-bottom:15px; margin-bottom:20px; display:flex; align-items:center; gap:12px;">
                 ${authorPhotoHTML}
@@ -1991,7 +2025,7 @@ async function showArticleDetail(id) {
                     <div style="font-weight:600; color:#202124;">${A.author}</div>
                     <div style="color:#5f6368; font-size:13px;">${A.date}</div>
                 </div>
-                <span style="color:#5f6368;">👁️ ${views}</span>
+                <span style="color:#5f6368;" id="viewCountDisplay">👁️ ${views}</span>
             </div>
             
             ${A.thumbnail ? `<img src="${A.thumbnail}" style="width:100%;border-radius:8px;margin-bottom:20px;" alt="이미지">` : ''}
@@ -2015,7 +2049,6 @@ async function showArticleDetail(id) {
         
         loadCommentsWithProfile(id);
 
-        // ✅ 추가: 이미지 클릭 핸들러 활성화
         if(typeof addImageClickHandlersToArticle === 'function') {
             setTimeout(() => addImageClickHandlersToArticle(), 300);
         }
@@ -2051,58 +2084,107 @@ function deleteArticle(id) {
 
 // ✅ 기사 수정
 function editArticle(id) {
+    console.log("📝 기사 수정 시작:", id);
+    
     db.ref("articles/" + id).once("value").then(snapshot => {
-        const A = snapshot.val();
-        if(!A) return alert("없는 기사!");
+        const article = snapshot.val();
+        
+        if(!article) {
+            alert("존재하지 않는 기사입니다!");
+            return;
+        }
         
         const currentUser = getNickname();
-        if(!isLoggedIn() || (A.author !== currentUser && !isAdmin())) {
-            return alert("수정 권한이 없습니다!");
+        if(!isLoggedIn() || (article.author !== currentUser && !isAdmin())) {
+            alert("수정 권한이 없습니다!");
+            return;
         }
+        
+        console.log("📄 수정할 기사:", {
+            id: id,
+            title: article.title,
+            contentLength: article.content ? article.content.length : 0
+        });
+        
+        // ✅ 수정: 임시저장 비활성화
+        if (typeof draftSaveEnabled !== 'undefined') {
+            window.draftSaveEnabled = false;
+        }
+        localStorage.removeItem('draft_article');
         
         hideAll();
         document.getElementById("writeSection").classList.add("active");
-        window.isEditingArticle = true;
         
-        // ✅ 순서 변경: 먼저 에디터 초기화, 그 다음 폼 설정
+        // ✅ 수정: 수정 모드 플래그 설정
+        window.isEditingArticle = true;
+        window.editingArticleId = id;
+        
         setTimeout(() => {
             // 1. Quill 에디터 강제 재초기화
             window.quillEditor = null;
-            editorInitialized = false;
-            const editor = initQuillEditor();
+            if (typeof editorInitialized !== 'undefined') {
+                window.editorInitialized = false;
+            }
             
-            // 2. 에디터 준비 대기
+            // 2. 에디터 초기화
+            if (typeof initQuillEditor === 'function') {
+                initQuillEditor();
+            }
+            
+            // 3. 에디터 준비 대기 및 내용 로드
             const waitForEditor = (attempts = 0) => {
                 if (window.quillEditor && window.quillEditor.root) {
-                    // 3. 폼 필드 값 설정
-                    document.getElementById("category").value = A.category || '자유게시판';
-                    document.getElementById("title").value = A.title || '';
-                    document.getElementById("summary").value = A.summary || '';
+                    console.log("✅ Quill 에디터 준비 완료");
                     
-                    // 4. Quill 에디터에 내용 로드
+                    // 4. 폼 필드 값 설정
+                    const categoryEl = document.getElementById("category");
+                    const titleEl = document.getElementById("title");
+                    const summaryEl = document.getElementById("summary");
+                    
+                    if (categoryEl) categoryEl.value = article.category || '자유게시판';
+                    if (titleEl) titleEl.value = article.title || '';
+                    if (summaryEl) summaryEl.value = article.summary || '';
+                    
+                    // 5. Quill 에디터에 내용 로드 (HTML 형식)
                     try {
-                        window.quillEditor.root.innerHTML = A.content || '';
-                        console.log("✅ 기사 내용 로드 완료:", A.content ? A.content.substring(0, 50) + '...' : '(빈 내용)');
+                        const contentToLoad = article.content || '';
+                        window.quillEditor.root.innerHTML = contentToLoad;
+                        
+                        console.log("✅ 에디터 내용 로드 완료:", {
+                            length: contentToLoad.length,
+                            preview: contentToLoad.substring(0, 100)
+                        });
+                        
+                        // ✅ 내용 검증
+                        setTimeout(() => {
+                            const loadedContent = window.quillEditor.root.innerHTML;
+                            if (loadedContent !== contentToLoad) {
+                                console.warn("⚠️ 로드된 내용이 원본과 다릅니다!");
+                                window.quillEditor.root.innerHTML = contentToLoad;
+                            }
+                        }, 100);
+                        
                     } catch(error) {
                         console.error("❌ Quill 에디터 내용 로드 실패:", error);
+                        alert("내용을 불러오는데 실패했습니다: " + error.message);
+                        return;
                     }
                     
-                    // 5. 썸네일 처리
-                    if(A.thumbnail) {
+                    // 6. 썸네일 처리
+                    if(article.thumbnail) {
                         const preview = document.getElementById('thumbnailPreview');
                         const uploadText = document.getElementById('uploadText');
                         if (preview && uploadText) {
-                            preview.src = A.thumbnail;
+                            preview.src = article.thumbnail;
                             preview.style.display = 'block';
                             uploadText.innerHTML = '<i class="fas fa-check"></i><p>기존 이미지 (클릭하여 변경)</p>';
                         }
                     }
                     
-                    // 6. 수정 폼 설정 (이벤트 바인딩)
-                    setupEditForm(A, id);
+                    // 7. 수정 폼 설정 (이벤트 바인딩)
+                    setupEditForm(article, id);
                     
                 } else if (attempts < 50) {
-                    // 최대 5초 대기 (50 x 100ms)
                     setTimeout(() => waitForEditor(attempts + 1), 100);
                 } else {
                     console.error("❌ Quill 에디터 초기화 대기 시간 초과");
@@ -2112,66 +2194,91 @@ function editArticle(id) {
             
             waitForEditor();
         }, 200);
+        
+    }).catch(error => {
+        console.error("❌ 기사 수정 로드 실패:", error);
+        alert("기사를 불러오는데 실패했습니다: " + error.message);
     });
 }
 
 // ✅ 수정 폼 설정
-function setupEditForm(article, id) {
+function setupEditForm(article, articleId) {
     const form = document.getElementById("articleForm");
     
-    const titleInput = document.getElementById("title");
-    const summaryInput = document.getElementById("summary");
-    const warningEl = document.getElementById("bannedWordWarning");
+    // ✅ 수정: 기존 폼 이벤트 완전히 제거하고 새로 바인딩
+    const newForm = form.cloneNode(true);
+    form.parentNode.replaceChild(newForm, form);
+    
+    const titleInput = newForm.querySelector("#title");
+    const summaryInput = newForm.querySelector("#summary");
+    const warningEl = newForm.querySelector("#bannedWordWarning");
+    
+    // ✅ 수정: 수정 모드임을 명시적으로 표시
+    window.isEditingArticle = true;
+    window.editingArticleId = articleId;
     
     function checkInputs() {
-        const editorContent = window.quillEditor ? window.quillEditor.getText() : '';
-        const combinedText = (titleInput.value + " " + summaryInput.value + " " + editorContent);
+        if (!window.quillEditor || !window.quillEditor.getText) return;
+        
+        const editorContent = window.quillEditor.getText();
+        const combinedText = titleInput.value + " " + summaryInput.value + " " + editorContent;
         const foundWord = checkBannedWords(combinedText);
         
         if (foundWord) {
-            warningEl.textContent = `🚫 사용할 수 없는 단어가 포함되어 있습니다: "${foundWord}"`;
+            warningEl.textContent = `🚫 금지어: "${foundWord}"`;
             warningEl.style.display = "block";
         } else {
             warningEl.style.display = "none";
         }
     }
     
-    // 기존 이벤트 리스너 제거를 위해 복제 대신 once 사용은 불가능하므로
-    // 플래그로 중복 제출 방지
-    window.isSubmitting = false;
+    titleInput.addEventListener("input", checkInputs);
+    summaryInput.addEventListener("input", checkInputs);
     
-    // Quill 에디터 변경 감지
     if (window.quillEditor) {
-        // 기존 리스너 제거 후 새로 추가
         window.quillEditor.off('text-change');
         window.quillEditor.on('text-change', checkInputs);
     }
     
-    // 폼 제출 이벤트 (기존 리스너 유지 - 플래그로 중복 방지)
-    form.onsubmit = function(e) {
+    const fileInput = newForm.querySelector('#thumbnailInput');
+    fileInput.addEventListener('change', previewThumbnail);
+    
+    // ✅ 수정: 새로운 폼에 이벤트 바인딩
+    newForm.addEventListener("submit", function(e) {
         e.preventDefault();
         
-        // 중복 제출 방지
-        if (window.isSubmitting) {
-            console.log("이미 제출 중입니다.");
-            return;
-        }
-        window.isSubmitting = true;
-        
+        // ✅ 수정: Quill 에디터 내용 확실히 가져오기
         const title = titleInput.value;
-        const content = window.quillEditor ? window.quillEditor.root.innerHTML : '';
         const summary = summaryInput.value;
+        const content = window.quillEditor && window.quillEditor.root 
+            ? window.quillEditor.root.innerHTML 
+            : '';
         
-        const foundWord = checkBannedWords(title + " " + (window.quillEditor ? window.quillEditor.getText() : '') + " " + summary);
+        console.log("📝 수정 내용:", {
+            title: title.substring(0, 30),
+            summary: summary.substring(0, 30),
+            contentLength: content.length,
+            articleId: articleId
+        });
+        
+        // 금지어 체크
+        const foundWord = checkBannedWords(title + " " + content + " " + summary);
         if (foundWord) {
-            alert(`⚠️ 금지어("${foundWord}")가 포함되어 있어 수정이 불가능하며, 경고 1회가 누적됩니다.`);
+            alert(`⚠️ 금지어("${foundWord}")가 포함되어 있습니다.`);
             addWarningToCurrentUser();
-            window.isSubmitting = false;
             return;
         }
         
-        const fileInput = document.getElementById('thumbnailInput');
-        if(fileInput && fileInput.files[0]) {
+        // 내용 검증
+        if (!title || !content || content === '<p><br></p>') {
+            alert("제목과 내용을 입력해주세요.");
+            return;
+        }
+        
+        showLoadingIndicator("기사 수정 중...");
+        
+        // 썸네일 처리
+        if (fileInput.files[0]) {
             const reader = new FileReader();
             reader.onload = function(e) {
                 article.thumbnail = e.target.result;
@@ -2183,24 +2290,55 @@ function setupEditForm(article, id) {
         }
         
         function saveUpdatedArticle() {
-            article.category = document.getElementById("category").value;
-            article.title = title;
-            article.summary = summary;
-            article.content = content;
-            article.date = new Date().toLocaleString() + " (수정됨)";
+            // ✅ 수정: 기사 객체 업데이트 (ID 유지)
+            const updatedArticle = {
+                ...article,
+                id: articleId, // ✅ 중요: 기사 ID 명시적으로 유지
+                category: newForm.querySelector("#category").value,
+                title: title,
+                summary: summary,
+                content: content, // ✅ Quill HTML 내용
+                date: new Date().toLocaleString() + " (수정됨)",
+                lastModified: Date.now()
+            };
             
-            saveArticle(article, () => {
-                form.reset();
-                if (window.quillEditor) window.quillEditor.setText('');
-                document.getElementById('thumbnailPreview').style.display = 'none';
-                document.getElementById('uploadText').innerHTML = '<i class="fas fa-camera"></i><p>클릭하여 이미지 업로드</p>';
+            console.log("💾 저장할 기사:", {
+                id: updatedArticle.id,
+                title: updatedArticle.title.substring(0, 30),
+                contentLength: updatedArticle.content.length
+            });
+            
+            // ✅ 수정: saveArticle 함수로 저장
+            saveArticle(updatedArticle, () => {
+                hideLoadingIndicator();
+                
+                // 폼 초기화
+                newForm.reset();
+                if (window.quillEditor && window.quillEditor.setText) {
+                    window.quillEditor.setText('');
+                }
+                
+                const preview = document.getElementById('thumbnailPreview');
+                const uploadText = document.getElementById('uploadText');
+                if (preview) preview.style.display = 'none';
+                if (uploadText) uploadText.innerHTML = '<i class="fas fa-camera"></i><p>이미지 업로드</p>';
+                
                 warningEl.style.display = "none";
-                window.isSubmitting = false;
-                alert("기사가 수정되었습니다!");
-                showArticleDetail(id);
+                
+                // 수정 모드 해제
+                window.isEditingArticle = false;
+                window.editingArticleId = null;
+                
+                // 임시저장 삭제
+                if (typeof clearDraftContent === 'function') {
+                    clearDraftContent();
+                }
+                
+                alert("✅ 기사가 수정되었습니다!");
+                showArticleDetail(articleId);
             });
         }
-    };
+    });
 }
 
 // ✅ 썸네일 미리보기
@@ -2865,6 +3003,10 @@ async function loadCommentsWithProfile(id) {
             const photoUrl = window.profilePhotoCache.get(comment.authorEmail) || null;
             const authorPhotoHTML = getProfilePlaceholder(photoUrl, 32);
             
+            // ✅ 수정됨 표시
+            const commentEditedBadge = comment.edited ? 
+                `<span class="edited-badge"><i class="fas fa-edit"></i> 수정됨</span>` : '';
+            
             let repliesHTML = '';
             if (comment.replies) {
                 const replies = Object.entries(comment.replies).sort((a, b) => new Date(a[1].timestamp) - new Date(b[1].timestamp));
@@ -2874,16 +3016,29 @@ async function loadCommentsWithProfile(id) {
                     const replyPhotoUrl = window.profilePhotoCache.get(reply.authorEmail) || null;
                     const replyPhotoHTML = getProfilePlaceholder(replyPhotoUrl, 24);
                     
+                    // ✅ 답글 수정됨 표시
+                    const replyEditedBadge = reply.edited ? 
+                        `<span class="edited-badge"><i class="fas fa-edit"></i> 수정됨</span>` : '';
+                    
                     return `
-                        <div class="reply-item" id="reply-${replyId}">
+                        <div class="reply-item" id="reply-${commentId}-${replyId}">
                             <div class="reply-header">
                                 ${replyPhotoHTML}
                                 <span class="reply-author">↳ ${reply.author}</span>
                                 <span class="reply-time">${reply.timestamp}</span>
+                                ${replyEditedBadge}
                             </div>
-                            <div class="reply-content">${reply.text}</div>
+                            <div class="reply-content" id="replyContent-${commentId}-${replyId}">${reply.text}</div>
+                            <div class="reply-edit-form" id="replyEditForm-${commentId}-${replyId}" style="display:none;">
+                                <input type="text" id="replyEditInput-${commentId}-${replyId}" class="reply-input" value="${reply.text.replace(/"/g, '&quot;')}" onkeypress="if(event.key==='Enter') saveReplyEdit('${id}', '${commentId}', '${replyId}')">
+                                <div style="display:flex; gap:5px; margin-top:5px;">
+                                    <button onclick="saveReplyEdit('${id}', '${commentId}', '${replyId}')" class="btn-text" style="color:#1976d2;">저장</button>
+                                    <button onclick="cancelReplyEdit('${commentId}', '${replyId}')" class="btn-text">취소</button>
+                                </div>
+                            </div>
                             ${isMyReply ? `
                                 <div class="reply-actions">
+                                    <button onclick="editReply('${commentId}', '${replyId}')" class="btn-text">수정</button>
                                     <button onclick="deleteReply('${id}', '${commentId}', '${replyId}')" class="btn-text-danger">삭제</button>
                                 </div>
                             ` : ''}
@@ -2898,12 +3053,22 @@ async function loadCommentsWithProfile(id) {
                         ${authorPhotoHTML}
                         <span class="comment-author">${comment.author}</span>
                         <span class="comment-time">${comment.timestamp}</span>
+                        ${commentEditedBadge}
                     </div>
-                    <div class="comment-body">${comment.text}</div>
+                    <div class="comment-body" id="commentBody-${commentId}">${comment.text}</div>
+                    
+                    <div class="comment-edit-form" id="commentEditForm-${commentId}" style="display:none;">
+                        <textarea id="commentEditInput-${commentId}" class="comment-edit-textarea" onkeypress="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); saveCommentEdit('${id}', '${commentId}'); }">${comment.text}</textarea>
+                        <div style="display:flex; gap:10px; margin-top:10px;">
+                            <button onclick="saveCommentEdit('${id}', '${commentId}')" class="btn-primary" style="padding:8px 16px; font-size:13px;">저장</button>
+                            <button onclick="cancelCommentEdit('${commentId}')" class="btn-secondary" style="padding:8px 16px; font-size:13px;">취소</button>
+                        </div>
+                    </div>
                     
                     <div class="comment-footer">
                         <button onclick="toggleReplyForm('${commentId}')" class="btn-text">💬 답글</button>
                         ${isMyComment ? `
+                            <button onclick="editComment('${commentId}')" class="btn-text">✏️ 수정</button>
                             <button onclick="deleteComment('${id}', '${commentId}', '${comment.author}')" class="btn-text text-danger">삭제</button>
                         ` : ''}
                     </div>
@@ -2934,6 +3099,141 @@ async function loadCommentsWithProfile(id) {
         document.getElementById("comments").innerHTML = "<p style='color:#f44336;text-align:center;padding:30px;'>댓글을 불러오는 중 오류가 발생했습니다.</p>";
     }
 }
+
+// ✅ 댓글 수정 모드로 전환
+window.editComment = function(commentId) {
+    const commentBody = document.getElementById(`commentBody-${commentId}`);
+    const editForm = document.getElementById(`commentEditForm-${commentId}`);
+    
+    if(!commentBody || !editForm) return;
+    
+    // 댓글 내용 숨기고 수정 폼 표시
+    commentBody.style.display = 'none';
+    editForm.style.display = 'block';
+    
+    // 입력창에 포커스
+    const input = document.getElementById(`commentEditInput-${commentId}`);
+    if(input) {
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+    }
+};
+
+// ✅ 댓글 수정 저장
+window.saveCommentEdit = async function(articleId, commentId) {
+    const input = document.getElementById(`commentEditInput-${commentId}`);
+    if(!input) return;
+    
+    const newText = input.value.trim();
+    
+    if(!newText) {
+        alert("댓글 내용을 입력해주세요!");
+        return;
+    }
+    
+    // 금지어 체크
+    const foundWord = checkBannedWords(newText);
+    if(foundWord) {
+        alert(`⚠️ 금지어("${foundWord}")가 포함되어 있습니다.`);
+        addWarningToCurrentUser();
+        return;
+    }
+    
+    try {
+        // Firebase에 업데이트
+        await db.ref(`comments/${articleId}/${commentId}/text`).set(newText);
+        await db.ref(`comments/${articleId}/${commentId}/edited`).set(true);
+        await db.ref(`comments/${articleId}/${commentId}/editedAt`).set(new Date().toLocaleString());
+        
+        // 화면 새로고침
+        loadComments(articleId);
+        
+        console.log("✅ 댓글 수정 완료");
+        
+    } catch(error) {
+        console.error("댓글 수정 실패:", error);
+        alert("댓글 수정 중 오류가 발생했습니다: " + error.message);
+    }
+};
+
+// ✅ 댓글 수정 취소
+window.cancelCommentEdit = function(commentId) {
+    const commentBody = document.getElementById(`commentBody-${commentId}`);
+    const editForm = document.getElementById(`commentEditForm-${commentId}`);
+    
+    if(!commentBody || !editForm) return;
+    
+    // 수정 폼 숨기고 원래 내용 표시
+    editForm.style.display = 'none';
+    commentBody.style.display = 'block';
+};
+
+// ✅ 답글 수정 모드로 전환
+window.editReply = function(commentId, replyId) {
+    const replyContent = document.getElementById(`replyContent-${commentId}-${replyId}`);
+    const editForm = document.getElementById(`replyEditForm-${commentId}-${replyId}`);
+    
+    if(!replyContent || !editForm) return;
+    
+    // 답글 내용 숨기고 수정 폼 표시
+    replyContent.style.display = 'none';
+    editForm.style.display = 'block';
+    
+    // 입력창에 포커스
+    const input = document.getElementById(`replyEditInput-${commentId}-${replyId}`);
+    if(input) {
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+    }
+};
+
+// ✅ 답글 수정 저장
+window.saveReplyEdit = async function(articleId, commentId, replyId) {
+    const input = document.getElementById(`replyEditInput-${commentId}-${replyId}`);
+    if(!input) return;
+    
+    const newText = input.value.trim();
+    
+    if(!newText) {
+        alert("답글 내용을 입력해주세요!");
+        return;
+    }
+    
+    // 금지어 체크
+    const foundWord = checkBannedWords(newText);
+    if(foundWord) {
+        alert(`⚠️ 금지어("${foundWord}")가 포함되어 있습니다.`);
+        return;
+    }
+    
+    try {
+        // Firebase에 업데이트
+        await db.ref(`comments/${articleId}/${commentId}/replies/${replyId}/text`).set(newText);
+        await db.ref(`comments/${articleId}/${commentId}/replies/${replyId}/edited`).set(true);
+        await db.ref(`comments/${articleId}/${commentId}/replies/${replyId}/editedAt`).set(new Date().toLocaleString());
+        
+        // 화면 새로고침
+        loadComments(articleId);
+        
+        console.log("✅ 답글 수정 완료");
+        
+    } catch(error) {
+        console.error("답글 수정 실패:", error);
+        alert("답글 수정 중 오류가 발생했습니다: " + error.message);
+    }
+};
+
+// ✅ 답글 수정 취소
+window.cancelReplyEdit = function(commentId, replyId) {
+    const replyContent = document.getElementById(`replyContent-${commentId}-${replyId}`);
+    const editForm = document.getElementById(`replyEditForm-${commentId}-${replyId}`);
+    
+    if(!replyContent || !editForm) return;
+    
+    // 수정 폼 숨기고 원래 내용 표시
+    editForm.style.display = 'none';
+    replyContent.style.display = 'block';
+};
 
 // ✅ 댓글 로드 (호환성)
 function loadComments(id) {
@@ -3510,6 +3810,100 @@ window.deleteUserCompletely = async function(nick){
     }
 }
 
+// ===== 조회수 관리 함수들 =====
+
+// ✅ 전체 조회수 초기화 (관리자 전용)
+window.resetAllViews = async function() {
+    if(!isAdmin()) {
+        alert("🚫 관리자 권한이 필요합니다!");
+        return;
+    }
+    
+    if(!confirm("⚠️ 정말 모든 기사의 조회수를 0으로 초기화하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다!")) {
+        return;
+    }
+    
+    if(!confirm("⚠️ 다시 한 번 확인합니다.\n정말 진행하시겠습니까?")) {
+        return;
+    }
+    
+    showLoadingIndicator("조회수 초기화 중...");
+    
+    try {
+        const snapshot = await db.ref("articles").once("value");
+        const articlesData = snapshot.val() || {};
+        
+        const updates = {};
+        let count = 0;
+        
+        Object.keys(articlesData).forEach(articleId => {
+            updates[`articles/${articleId}/views`] = 0;
+            count++;
+        });
+        
+        if(count === 0) {
+            hideLoadingIndicator();
+            alert("초기화할 기사가 없습니다.");
+            return;
+        }
+        
+        await db.ref().update(updates);
+        
+        hideLoadingIndicator();
+        alert(`✅ ${count}개 기사의 조회수가 초기화되었습니다!`);
+        
+        // 현재 페이지가 기사 목록이면 새로고침
+        if(document.getElementById("articlesSection")?.classList.contains("active")) {
+            if(typeof renderArticles === 'function') {
+                renderArticles();
+            }
+        }
+        
+    } catch(error) {
+        hideLoadingIndicator();
+        console.error("❌ 조회수 초기화 실패:", error);
+        alert("초기화 실패: " + error.message);
+    }
+};
+
+// ✅ 내 조회 기록 삭제 (수동)
+window.clearMyViewHistory = function() {
+    if(!confirm("⚠️ 영구 저장된 조회 기록을 삭제하시겠습니까?\n\n삭제 후 모든 기사를 다시 조회할 수 있습니다.")) {
+        return;
+    }
+    
+    try {
+        localStorage.removeItem('viewedArticles');
+        alert("✅ 조회 기록이 삭제되었습니다!");
+        console.log("✅ 영구 조회 기록 삭제 완료");
+    } catch(error) {
+        console.error("❌ 조회 기록 삭제 실패:", error);
+        alert("삭제 실패: " + error.message);
+    }
+};
+
+// ✅ 조회 기록 통계 확인
+window.getViewStats = function() {
+    try {
+        const viewedArticles = getViewedArticles();
+        const articleIds = Object.keys(viewedArticles);
+        
+        console.log("📊 조회 기록 통계:");
+        console.log("- 총 조회한 기사:", articleIds.length);
+        console.log("- 상세 기록:", viewedArticles);
+        
+        return {
+            totalViewed: articleIds.length,
+            articles: viewedArticles
+        };
+    } catch(error) {
+        console.error("통계 확인 실패:", error);
+        return null;
+    }
+};
+
+console.log("✅ 조회수 관리 시스템 로드 완료");
+
 console.log("✅ Part 11 사용자 관리 완료");
 
 // ===== Part 12: 금지어 관리 =====
@@ -3562,15 +3956,30 @@ function setupArticlesListener() {
 
 // ✅ 기사 저장
 function saveArticle(article, callback) {
+    // ✅ 수정: 기사 ID 검증
+    if (!article.id) {
+        console.error("❌ 기사 ID가 없습니다!", article);
+        alert("저장 실패: 기사 ID가 없습니다.");
+        return;
+    }
+    
+    // 기본값 설정
     if (!article.views) article.views = 0;
     if (!article.likeCount) article.likeCount = 0;
     if (!article.dislikeCount) article.dislikeCount = 0;
     
+    console.log("💾 기사 저장 시작:", {
+        id: article.id,
+        title: article.title.substring(0, 30),
+        contentLength: article.content ? article.content.length : 0
+    });
+    
     db.ref("articles/" + article.id).set(article).then(() => {
+        console.log("✅ 기사 저장 완료:", article.id);
         if(callback) callback();
     }).catch(error => {
+        console.error("❌ 기사 저장 실패:", error);
         alert("저장 실패: " + error.message);
-        console.error(error);
     });
 }
 
@@ -3589,14 +3998,116 @@ function deleteArticleFromDB(articleId, callback) {
     });
 }
 
-// ✅ 조회수 증가
+// ✅ 조회 기록 관리 함수들 추가
+function getViewedArticles() {
+    try {
+        const viewed = localStorage.getItem('viewedArticles');
+        return viewed ? JSON.parse(viewed) : {};
+    } catch(error) {
+        console.error("조회 기록 로드 실패:", error);
+        return {};
+    }
+}
+
+function hasViewedArticle(articleId) {
+    const viewedArticles = getViewedArticles();
+    const viewRecord = viewedArticles[articleId];
+    
+    // ✅ 기록이 있으면 true, 없으면 false (시간 체크 제거)
+    return !!viewRecord;
+}
+
+function markArticleAsViewed(articleId) {
+    try {
+        const viewedArticles = getViewedArticles();
+        viewedArticles[articleId] = {
+            timestamp: Date.now(),
+            viewedAt: new Date().toLocaleString(),
+            permanent: true // ✅ 영구 저장 표시
+        };
+        localStorage.setItem('viewedArticles', JSON.stringify(viewedArticles));
+        console.log("✅ 조회 기록 영구 저장:", articleId);
+    } catch(error) {
+        console.error("조회 기록 저장 실패:", error);
+    }
+}
+
 function incrementView(id) {
+    // 이미 조회한 기사인지 확인 (영구적으로)
+    if (hasViewedArticle(id)) {
+        console.log("ℹ️ 이미 조회한 기사입니다 (영구 기록):", id);
+        return;
+    }
+    
+    // 조회수 증가
     const viewRef = db.ref(`articles/${id}/views`);
     viewRef.transaction((currentViews) => {
         return (currentViews || 0) + 1;
+    }).then((result) => {
+        // 조회 기록 영구 저장
+        markArticleAsViewed(id);
+        
+        // ✅ 새로운 조회수 값
+        const newViewCount = result.snapshot.val();
+        console.log("✅ 조회수 증가 완료:", id, "→", newViewCount);
+        
+        // ✅ 화면에 실시간 반영
+        updateViewCountOnScreen(newViewCount);
+        
+    }).catch(error => {
+        console.error("❌ 조회수 증가 실패:", error);
     });
 }
 
+// ✅ 화면에 조회수 실시간 반영 (개선 버전)
+function updateViewCountOnScreen(newViewCount) {
+    // 방법 1: ID로 직접 찾기
+    const viewCountDisplay = document.getElementById('viewCountDisplay');
+    if (viewCountDisplay) {
+        // 애니메이션 효과
+        viewCountDisplay.style.transition = 'all 0.3s ease';
+        viewCountDisplay.style.transform = 'scale(1.3)';
+        viewCountDisplay.style.color = '#c62828';
+        viewCountDisplay.style.fontWeight = '700';
+        
+        // 조회수 업데이트
+        viewCountDisplay.innerHTML = `👁️ ${newViewCount}`;
+        
+        // 0.3초 후 원래대로
+        setTimeout(() => {
+            viewCountDisplay.style.transform = 'scale(1)';
+            viewCountDisplay.style.color = '#5f6368';
+            viewCountDisplay.style.fontWeight = '400';
+        }, 300);
+        
+        console.log("✅ 화면 조회수 실시간 반영:", newViewCount);
+        return;
+    }
+    
+    // 방법 2: 백업 - article-meta에서 찾기
+    const articleMeta = document.querySelector('.article-meta');
+    if (!articleMeta) {
+        console.warn("⚠️ article-meta를 찾을 수 없습니다");
+        return;
+    }
+    
+    const spans = articleMeta.querySelectorAll('span');
+    spans.forEach(span => {
+        if (span.textContent.includes('👁️')) {
+            span.style.transition = 'all 0.3s ease';
+            span.style.transform = 'scale(1.3)';
+            span.style.color = '#c62828';
+            span.textContent = `👁️ ${newViewCount}`;
+            
+            setTimeout(() => {
+                span.style.transform = 'scale(1)';
+                span.style.color = '#5f6368';
+            }, 300);
+            
+            console.log("✅ 화면 조회수 실시간 반영 (백업):", newViewCount);
+        }
+    });
+}
 // ✅ 조회수 가져오기
 function getArticleViews(article) {
     return article.views || 0;
@@ -3724,8 +4235,19 @@ function getSortedArticles() {
 
 // ✅ 기사 더보기
 function loadMoreArticles() {
+    // ✅ 수정: 더보기 전 스크롤 위치 저장
+    const beforeHeight = document.documentElement.scrollHeight;
+    const beforeScroll = window.pageYOffset;
+    
     currentArticlePage++;
     renderArticles();
+    
+    // ✅ 수정: 렌더링 후 스크롤 위치 복원
+    setTimeout(() => {
+        const afterHeight = document.documentElement.scrollHeight;
+        const heightDiff = afterHeight - beforeHeight;
+        window.scrollTo(0, beforeScroll + heightDiff - 100); // 새 콘텐츠 시작점으로 스크롤
+    }, 100);
 }
 
 console.log("✅ Part 13 Firebase 리스너 완료");
@@ -4114,7 +4636,20 @@ window.addEventListener("load", () => {
     // ✅ 카테고리 자동 적용 리스너 등록
     setupCategoryChangeListener();
     
+    // ✅ 수정: 세션 스토리지에서 카테고리 복원
+    const savedCategory = sessionStorage.getItem('currentCategory');
+    if(savedCategory) {
+        currentCategory = savedCategory;
+    }
+    
+    // ✅ 삭제됨: cleanupOldViewRecords() 호출 제거
+    
     initialRoute();
+});
+
+// ✅ 추가: 페이지 언로드 시 카테고리 저장
+window.addEventListener('beforeunload', () => {
+    sessionStorage.setItem('currentCategory', currentCategory);
 });
 
 // ============================================================
