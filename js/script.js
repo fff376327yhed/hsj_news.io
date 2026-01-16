@@ -824,8 +824,6 @@ console.log("✅ Part 3 프로필 관리 완료");
 
 // ===== Part 4: 알림 시스템 (간소화) =====
 
-// ===== Part 4: 알림 시스템 (개선) =====
-
 // FCM 토큰 등록 함수 추가
 async function registerFCMToken() {
     if (!messaging) {
@@ -836,6 +834,10 @@ async function registerFCMToken() {
     if (!isLoggedIn()) return;
     
     try {
+        // ✅ Service Worker 등록 확인 먼저 수행
+        const swRegistration = await navigator.serviceWorker.ready;
+        console.log('✅ Service Worker 준비 완료:', swRegistration.scope);
+        
         // 알림 권한 요청
         const permission = await Notification.requestPermission();
         
@@ -846,9 +848,10 @@ async function registerFCMToken() {
         
         console.log('✅ 알림 권한 승인됨');
         
-        // FCM 토큰 가져오기
+        // ✅ Service Worker 등록을 명시적으로 전달
         const token = await messaging.getToken({
-            vapidKey: 'BFJBBAv_qOw_aklFbE89r_cuCArMJkMK56Ryj9M1l1a3qv8CuHCJ-fKALtOn4taF7Pjwo2bjfoOuewEKBqRBtCo' // ⚠️ Firebase Console에서 발급받은 VAPID 키 필요
+            vapidKey: 'BFJBBAv_qOw_aklFbE89r_cuCArMJkMK56Ryj9M1l1a3qv8CuHCJ-fKALtOn4taF7Pjwo2bjfoOuewEKBqRBtCo',
+            serviceWorkerRegistration: swRegistration
         });
         
         if (token) {
@@ -869,6 +872,7 @@ async function registerFCMToken() {
         
     } catch (error) {
         console.error('❌ FCM 토큰 등록 실패:', error);
+        console.error('오류 상세:', error.code, error.message);
     }
 }
 
