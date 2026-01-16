@@ -69,15 +69,16 @@ messaging.onBackgroundMessage((payload) => {
 self.addEventListener('notificationclick', (event) => {
   console.log('[Service Worker] 알림 클릭:', event.action);
   
-  event.notification.close();
-  
-  // 액션에 따라 처리
+  // 닫기 버튼 클릭 시 알림만 닫고 종료
   if (event.action === 'close') {
-    // 닫기 버튼 클릭 시 아무것도 안 함
+    console.log('[Service Worker] 닫기 버튼 클릭 - 알림만 닫기');
+    event.notification.close();
     return;
   }
   
   // 기본 클릭 또는 "기사 보기" 클릭
+  event.notification.close(); // 알림 닫기
+  
   let urlToOpen = event.notification.data?.url || '/';
   const articleId = event.notification.data?.articleId;
   
