@@ -90,6 +90,7 @@ try {
 }
 
 // 전역 변수
+window.isEditingArticle = false;
 let currentArticlePage = 1;
 const ARTICLES_PER_PAGE = 5;
 let currentCommentPage = 1;
@@ -103,7 +104,7 @@ let currentFreeboardPage = 1;
 let currentFreeboardSortMethod = 'latest';
 let filteredFreeboardArticles = [];
 let originalUserTheme = null;
-let profilePhotoCache = new Map();
+window.profilePhotoCache = new Map(); // window 객체에 직접 할당하여 다른 함수에서도 접근 가능하도록
 let maintenanceChecked = false;
 
 // 로딩 인디케이터
@@ -823,6 +824,104 @@ console.log("✅ Part 3 프로필 관리 완료");
 
 // ===== Part 4: 알림 시스템 (간소화) =====
 
+// ===== Part 4: 알림 시스템 (개선) =====
+
+// FCM 토큰 등록 함수 추가
+async function registerFCMToken() {
+    if (!messaging) {
+        console.warn("⚠️ Firebase Messaging not supported");
+        return;
+    }
+    
+    if (!isLoggedIn()) return;
+    
+    try {
+        // 알림 권한 요청
+        const permission = await Notification.requestPermission();
+        
+        if (permission !== 'granted') {
+            console.log('❌ 알림 권한 거부됨');
+            return;
+        }
+        
+        console.log('✅ 알림 권한 승인됨');
+        
+        // FCM 토큰 가져오기
+        const token = await messaging.getToken({
+            vapidKey: 'BFJBBAv_qOw_aklFbE89r_cuCArMJkMK56Ryj9M1l1a3qv8CuHCJ-fKALtOn4taF7Pjwo2bjfoOuewEKBqRBtCo' // ⚠️ Firebase Console에서 발급받은 VAPID 키 필요
+        });
+        
+        if (token) {
+            console.log('📱 FCM 토큰:', token);
+            
+            // Firebase에 토큰 저장
+            const uid = getUserId();
+            const tokenKey = btoa(token).substring(0, 20).replace(/[^a-zA-Z0-9]/g, '');
+            
+            await db.ref(`users/${uid}/fcmTokens/${tokenKey}`).set({
+                token: token,
+                createdAt: Date.now(),
+                userAgent: navigator.userAgent
+            });
+            
+            console.log('✅ FCM 토큰 저장 완료');
+        }
+        
+    } catch (error) {
+        console.error('❌ FCM 토큰 등록 실패:', error);
+    }
+}
+
+// 포그라운드 메시지 수신 핸들러
+if (messaging) {
+    messaging.onMessage((payload) => {
+        console.log('📨 포그라운드 메시지 수신:', payload);
+        
+        const title = payload.data?.title || payload.notification?.title || '📰 해정뉴스';
+        const body = payload.data?.body || payload.data?.text || payload.notification?.body || '새로운 알림';
+        const articleId = payload.data?.articleId || null;
+        
+        showToastNotification(title, body, articleId);
+    });
+}
+
+// ===== 기존 setupNotificationListener 함수 수정 =====
+let notificationListenerActive = false;
+
+function setupNotificationListener(uid) {
+    if (!uid || notificationListenerActive) return;
+    
+    // FCM 토큰 등록 (최초 1회)
+    registerFCMToken();
+    
+    db.ref("notifications/" + uid).off();
+    
+    const shownNotifications = new Set();
+    const pageLoadTime = Date.now();
+    
+    db.ref("notifications/" + uid)
+        .orderByChild("read")
+        .equalTo(false)
+        .on("child_added", (snapshot) => {
+            const notification = snapshot.val();
+            const notifId = snapshot.key;
+            
+            if (shownNotifications.has(notifId)) return;
+            if (notification.timestamp < pageLoadTime) return;
+            
+            if (!notification.read) {
+                shownNotifications.add(notifId);
+                showToastNotification(notification.title, notification.text, notification.articleId);
+                
+                setTimeout(() => {
+                    db.ref("notifications/" + uid + "/" + notifId).update({ read: true });
+                }, 5000);
+            }
+        });
+    
+    notificationListenerActive = true;
+}
+
 // ✅ 알림 전송 함수 (핵심만)
 async function sendNotification(type, data) {
     console.log("📤 알림 전송:", type, data);
@@ -890,12 +989,8 @@ async function createProfilePhoto(photoUrl, size) {
     return `<img src="${photoUrl}" style="width:${size}px; height:${size}px; border-radius:50%; object-fit:cover; border:2px solid #dadce0;">`;
 }
 
-// ✅ 알림 리스너 설정
-let notificationListenerActive = false;
-
-function setupNotificationListener(uid) {
-    if (!uid || notificationListenerActive) return;
-    
+    // ✅ 알림 리스너 시작
+function startNotificationListener(uid) {
     db.ref("notifications/" + uid).off();
     
     const shownNotifications = new Set();
@@ -920,9 +1015,11 @@ function setupNotificationListener(uid) {
                 }, 5000);
             }
         });
-    
-    notificationListenerActive = true;
+
+        notificationListenerActive = true;
 }
+
+
 
 console.log("✅ Part 4 알림 시스템 완료");
 
@@ -1195,7 +1292,6 @@ function hideAll() {
     if(dropdown) dropdown.classList.remove("active");
 }
 
-// ✅ 홈(기사 목록) 표시
 function showArticles() {
     hideAll();
     window.scrollTo(0, 0);
@@ -1206,12 +1302,37 @@ function showArticles() {
     if(header) header.style.display = 'block';
     
     currentArticlePage = 1;
-    document.getElementById("searchCategory").value = "";
+    document.getElementById("searchCategory").value = "자유게시판"; // ✅ 수정: 기본값을 자유게시판으로
     document.getElementById("searchKeyword").value = "";
-    filteredArticles = allArticles;
+    
+    // ✅ 수정: 초기 로드 시 자유게시판 필터 적용
+    const category = "자유게시판";
+    filteredArticles = allArticles.filter(a => a.category === category);
+    
     renderArticles();
     
     updateURL('home');
+    
+    // ✅ 카테고리 리스너 재등록 (페이지 이동 후에도 작동하도록)
+    setTimeout(() => {
+        setupCategoryChangeListener();
+    }, 100);
+}
+
+// ✅ 카테고리 변경 시 자동 적용
+function setupCategoryChangeListener() {
+    const categorySelect = document.getElementById("searchCategory");
+    if (!categorySelect) return;
+    
+    // 기존 이벤트 리스너 제거 방지를 위해 한 번만 등록
+    if (categorySelect.dataset.listenerAdded === 'true') return;
+    
+    categorySelect.addEventListener('change', function() {
+        console.log("✅ 카테고리 변경:", this.value);
+        searchArticles(true); // 자동으로 검색 실행
+    });
+    
+    categorySelect.dataset.listenerAdded = 'true';
 }
 
 // 4. 글 작성 페이지 (기존 함수 덮어쓰기)
@@ -1228,7 +1349,13 @@ function showWritePage() {
     document.getElementById("writeSection").classList.add("active");
     
     setTimeout(() => {
-        setupArticleForm();
+        // Quill 에디터가 아직 초기화되지 않았거나, 수정 모드가 아닌 경우에만 초기화
+        if (!window.quillEditor || !window.isEditingArticle) {
+            setupArticleForm();
+        } else {
+            // 이미 초기화된 경우, 저장된 임시 내용 복원
+            restoreDraftContent();
+        }
     }, 100);
     
     updateURL('write'); 
@@ -1387,24 +1514,34 @@ async function updateMessengerBadge() {
     }
 }
 
-// ✅ QnA 페이지
-function showQnA() {
+// ===== script.js에서 찾아서 추가/교체할 부분 3: QnA 및 패치노트 =====
+// 위치: script.js의 약 2000-2100번째 줄 근처
+// 아래 함수들을 찾아서 교체하거나, 없으면 추가하세요
+
+// QnA 페이지 표시
+window.showQnA = function() {
     hideAll();
     window.scrollTo(0, 0);
     
     const section = document.getElementById("qnaSection");
-    if(!section) return;
+    if(!section) {
+        console.error("❌ qnaSection을 찾을 수 없습니다");
+        return;
+    }
     
     section.classList.add("active");
     loadQnAFromFile();
     
     updateURL('qna');
-}
+};
 
-// ✅ QnA 파일 로드
+// QnA 파일 로드
 function loadQnAFromFile() {
     const qnaList = document.getElementById("qnaList");
-    if(!qnaList) return;
+    if(!qnaList) {
+        console.error("❌ qnaList를 찾을 수 없습니다");
+        return;
+    }
     
     qnaList.innerHTML = '<p style="text-align:center; color:#868e96; padding:40px;">QnA 내용을 불러오는 중...</p>';
     
@@ -1415,30 +1552,207 @@ function loadQnAFromFile() {
         })
         .then(html => {
             qnaList.innerHTML = html;
+            console.log("✅ QnA 로드 완료");
         })
         .catch(error => {
-            console.error("QnA 로드 실패:", error);
-            qnaList.innerHTML = `<div style="text-align:center; padding:60px 20px;">
-                <p style="color:#f44336; margin-bottom:20px;">❌ QnA 파일을 불러올 수 없습니다.</p>
-            </div>`;
+            console.error("❌ QnA 로드 실패:", error);
+            qnaList.innerHTML = `
+                <div style="text-align:center; padding:60px 20px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size:48px; color:#f44336; margin-bottom:20px;"></i>
+                    <p style="color:#f44336; margin-bottom:20px;">QnA 파일을 불러올 수 없습니다.</p>
+                    <p style="color:#868e96; font-size:14px;">파일 경로: ./html/qna.html</p>
+                    <button onclick="loadQnAFromFile()" class="btn-primary" style="margin-top:20px;">
+                        다시 시도
+                    </button>
+                </div>
+            `;
         });
 }
 
-// ✅ 패치노트 페이지
-function showPatchNotesPage() {
+// 패치노트 페이지 표시
+window.showPatchNotesPage = function() {
     hideAll();
     window.scrollTo(0, 0);
     
     const section = document.getElementById("patchnotesSection");
-    if(!section) return;
+    if(!section) {
+        console.error("❌ patchnotesSection을 찾을 수 없습니다");
+        return;
+    }
     
     section.classList.add("active");
-    loadPatchNotesToContainer(document.getElementById("patchNotesList"));
+    
+    const listElement = document.getElementById("patchNotesList");
+    if(listElement) {
+        loadPatchNotesToContainer(listElement);
+    } else {
+        console.error("❌ patchNotesList를 찾을 수 없습니다");
+    }
     
     updateURL('patchnotes');
+};
+
+// 패치노트 로드
+function loadPatchNotesToContainer(container) {
+    if(!container) {
+        console.error("❌ 패치노트 컨테이너가 없습니다");
+        return;
+    }
+    
+    container.innerHTML = '<div style="text-align:center; padding:20px;">로딩 중...</div>';
+
+    db.ref('patchNotes').orderByChild('date').once('value').then(snapshot => {
+        container.innerHTML = '';
+        
+        // 관리자인 경우 추가 버튼 표시
+        if (isAdmin()) {
+            const addBtn = document.createElement('div');
+            addBtn.className = 'admin-patch-controls';
+            addBtn.style.marginBottom = '20px';
+            addBtn.innerHTML = `<button onclick="openPatchNoteModal()" class="btn-primary btn-block">
+                <i class="fas fa-plus"></i> 새 패치노트 작성
+            </button>`;
+            container.appendChild(addBtn);
+        }
+
+        const notes = [];
+        snapshot.forEach(child => {
+            notes.push({ id: child.key, ...child.val() });
+        });
+
+        if (notes.length === 0) {
+            container.innerHTML += '<p style="text-align:center; color:#888;">등록된 패치노트가 없습니다.</p>';
+            return;
+        }
+
+        notes.reverse().forEach(note => {
+            const card = document.createElement('div');
+            card.className = 'qna-card'; 
+            
+            let adminBtns = '';
+            if (isAdmin()) {
+                adminBtns = `
+                    <div style="margin-top:10px; border-top:1px solid #eee; padding-top:10px; text-align:right;">
+                        <button onclick="openPatchNoteModal('${note.id}')" class="btn-secondary" style="padding:4px 8px; font-size:11px;">수정</button>
+                        <button onclick="deletePatchNote('${note.id}')" class="btn-danger" style="padding:4px 8px; font-size:11px;">삭제</button>
+                    </div>
+                `;
+            }
+
+            card.innerHTML = `
+                <div class="qna-header">
+                    <i class="fas fa-tag"></i> ${note.version} 
+                    <span style="font-size:12px; margin-left:auto; opacity:0.8;">${note.date}</span>
+                </div>
+                <div class="qna-body">
+                    <div class="a-part" style="white-space: pre-wrap;">${note.content}</div>
+                    ${adminBtns}
+                </div>
+            `;
+            container.appendChild(card);
+        });
+        
+        console.log("✅ 패치노트 로드 완료");
+    }).catch(error => {
+        console.error("❌ 패치노트 로드 실패:", error);
+        container.innerHTML = `
+            <div style="text-align:center; padding:40px 20px; color:#f44336;">
+                <p>패치노트를 불러오는데 실패했습니다.</p>
+                <button onclick="loadPatchNotesToContainer(this.parentElement.parentElement)" class="btn-primary" style="margin-top:20px;">
+                    다시 시도
+                </button>
+            </div>
+        `;
+    });
 }
 
-console.log("✅ Part 6 네비게이션 완료");
+// 패치노트 모달 열기
+window.openPatchNoteModal = function(id = null) {
+    const modal = document.getElementById('patchNoteModal');
+    if(!modal) {
+        console.error("❌ patchNoteModal을 찾을 수 없습니다");
+        return;
+    }
+    
+    const form = document.getElementById('patchNoteForm');
+    if(form) {
+        form.reset();
+    }
+    
+    const editIdInput = document.getElementById('editPatchId');
+    if(editIdInput) {
+        editIdInput.value = '';
+    }
+
+    if (id) {
+        db.ref('patchNotes/' + id).once('value').then(snap => {
+            const data = snap.val();
+            if(editIdInput) editIdInput.value = id;
+            
+            const versionInput = document.getElementById('patchVersion');
+            const dateInput = document.getElementById('patchDate');
+            const contentInput = document.getElementById('patchContent');
+            
+            if(versionInput) versionInput.value = data.version;
+            if(dateInput) dateInput.value = data.date;
+            if(contentInput) contentInput.value = data.content;
+            
+            modal.classList.add('active');
+        });
+    } else {
+        const dateInput = document.getElementById('patchDate');
+        if(dateInput) {
+            dateInput.value = new Date().toISOString().split('T')[0];
+        }
+        modal.classList.add('active');
+    }
+};
+
+window.closePatchNoteModal = function() {
+    const modal = document.getElementById('patchNoteModal');
+    if(modal) {
+        modal.classList.remove('active');
+    }
+};
+
+// 패치노트 저장
+window.savePatchNote = function(e) {
+    e.preventDefault();
+    if (!isAdmin()) return alert("관리자만 가능합니다.");
+
+    const id = document.getElementById('editPatchId')?.value;
+    const data = {
+        version: document.getElementById('patchVersion')?.value,
+        date: document.getElementById('patchDate')?.value,
+        content: document.getElementById('patchContent')?.value
+    };
+
+    if (id) {
+        db.ref('patchNotes/' + id).update(data);
+    } else {
+        db.ref('patchNotes').push(data);
+    }
+    
+    closePatchNoteModal();
+    
+    if(document.getElementById("patchnotesSection")?.classList.contains("active")) {
+        showPatchNotesPage();
+    }
+};
+
+// 패치노트 삭제
+window.deletePatchNote = function(id) {
+    if(!isAdmin()) return;
+    if(confirm('정말 삭제하시겠습니까?')) {
+        db.ref('patchNotes/' + id).remove().then(() => {
+            if(document.getElementById("patchnotesSection")?.classList.contains("active")) {
+                showPatchNotesPage();
+            }
+        });
+    }
+};
+
+console.log("✅ QnA 및 패치노트 기능 로드 완료");
 
 // ===== Part 7: 기사 렌더링 =====
 
@@ -1479,7 +1793,6 @@ async function getUserProfilePhoto(email) {
     }
 }
 
-// ✅ 기사 렌더링
 async function renderArticles() {
     const list = getSortedArticles();
     
@@ -1497,6 +1810,9 @@ async function renderArticles() {
         window.profilePhotoCache = new Map();
     }
     
+    // ✅ 수정: 현재 선택된 카테고리 가져오기
+    const currentCategory = document.getElementById("searchCategory")?.value || "자유게시판";
+    
     // 고정 기사
     const pinsSnapshot = await db.ref("pinnedArticles").once("value");
     const pinnedData = pinsSnapshot.val() || {};
@@ -1507,8 +1823,13 @@ async function renderArticles() {
 
     list.forEach(article => {
         if (pinnedIds.includes(article.id)) {
-            article.pinnedAt = pinnedData[article.id].pinnedAt;
-            pinnedArticles.push(article);
+            // ✅ 수정: 고정 기사가 현재 카테고리와 일치하는 경우만 표시
+            if (article.category === currentCategory) {
+                article.pinnedAt = pinnedData[article.id].pinnedAt;
+                pinnedArticles.push(article);
+            } else {
+                unpinnedArticles.push(article);
+            }
         } else {
             unpinnedArticles.push(article);
         }
@@ -1689,6 +2010,11 @@ async function showArticleDetail(id) {
         </div>`;
         
         loadCommentsWithProfile(id);
+
+        // ✅ 추가: 이미지 클릭 핸들러 활성화
+        if(typeof addImageClickHandlersToArticle === 'function') {
+            setTimeout(() => addImageClickHandlersToArticle(), 300);
+        }
         
     } catch(error) {
         console.error("기사 로드 실패:", error);
@@ -1732,37 +2058,70 @@ function editArticle(id) {
         
         hideAll();
         document.getElementById("writeSection").classList.add("active");
+        window.isEditingArticle = true;
         
-        document.getElementById("category").value = A.category;
-        document.getElementById("title").value = A.title;
-        document.getElementById("summary").value = A.summary || '';
-        document.getElementById("content").value = A.content;
-        
-        if(A.thumbnail) {
-            const preview = document.getElementById('thumbnailPreview');
-            const uploadText = document.getElementById('uploadText');
-            preview.src = A.thumbnail;
-            preview.style.display = 'block';
-            uploadText.innerHTML = '<i class="fas fa-check"></i><p>기존 이미지 (클릭하여 변경)</p>';
-        }
-        
-        setupEditForm(A, id);
+        // ✅ 순서 변경: 먼저 에디터 초기화, 그 다음 폼 설정
+        setTimeout(() => {
+            // 1. Quill 에디터 강제 재초기화
+            window.quillEditor = null;
+            editorInitialized = false;
+            const editor = initQuillEditor();
+            
+            // 2. 에디터 준비 대기
+            const waitForEditor = (attempts = 0) => {
+                if (window.quillEditor && window.quillEditor.root) {
+                    // 3. 폼 필드 값 설정
+                    document.getElementById("category").value = A.category || '자유게시판';
+                    document.getElementById("title").value = A.title || '';
+                    document.getElementById("summary").value = A.summary || '';
+                    
+                    // 4. Quill 에디터에 내용 로드
+                    try {
+                        window.quillEditor.root.innerHTML = A.content || '';
+                        console.log("✅ 기사 내용 로드 완료:", A.content ? A.content.substring(0, 50) + '...' : '(빈 내용)');
+                    } catch(error) {
+                        console.error("❌ Quill 에디터 내용 로드 실패:", error);
+                    }
+                    
+                    // 5. 썸네일 처리
+                    if(A.thumbnail) {
+                        const preview = document.getElementById('thumbnailPreview');
+                        const uploadText = document.getElementById('uploadText');
+                        if (preview && uploadText) {
+                            preview.src = A.thumbnail;
+                            preview.style.display = 'block';
+                            uploadText.innerHTML = '<i class="fas fa-check"></i><p>기존 이미지 (클릭하여 변경)</p>';
+                        }
+                    }
+                    
+                    // 6. 수정 폼 설정 (이벤트 바인딩)
+                    setupEditForm(A, id);
+                    
+                } else if (attempts < 50) {
+                    // 최대 5초 대기 (50 x 100ms)
+                    setTimeout(() => waitForEditor(attempts + 1), 100);
+                } else {
+                    console.error("❌ Quill 에디터 초기화 대기 시간 초과");
+                    alert("에디터 초기화에 실패했습니다. 페이지를 새로고침해주세요.");
+                }
+            };
+            
+            waitForEditor();
+        }, 200);
     });
 }
 
 // ✅ 수정 폼 설정
 function setupEditForm(article, id) {
     const form = document.getElementById("articleForm");
-    const newForm = form.cloneNode(true);
-    form.parentNode.replaceChild(newForm, form);
     
-    const titleInput = newForm.querySelector("#title");
-    const summaryInput = newForm.querySelector("#summary");
-    const contentInput = newForm.querySelector("#content");
-    const warningEl = newForm.querySelector("#bannedWordWarning");
+    const titleInput = document.getElementById("title");
+    const summaryInput = document.getElementById("summary");
+    const warningEl = document.getElementById("bannedWordWarning");
     
     function checkInputs() {
-        const combinedText = (titleInput.value + " " + summaryInput.value + " " + contentInput.value);
+        const editorContent = window.quillEditor ? window.quillEditor.getText() : '';
+        const combinedText = (titleInput.value + " " + summaryInput.value + " " + editorContent);
         const foundWord = checkBannedWords(combinedText);
         
         if (foundWord) {
@@ -1773,29 +2132,42 @@ function setupEditForm(article, id) {
         }
     }
     
-    titleInput.addEventListener("input", checkInputs);
-    summaryInput.addEventListener("input", checkInputs);
-    contentInput.addEventListener("input", checkInputs);
+    // 기존 이벤트 리스너 제거를 위해 복제 대신 once 사용은 불가능하므로
+    // 플래그로 중복 제출 방지
+    window.isSubmitting = false;
     
-    const newFileInput = newForm.querySelector('#thumbnailInput');
-    newFileInput.addEventListener('change', previewThumbnail);
+    // Quill 에디터 변경 감지
+    if (window.quillEditor) {
+        // 기존 리스너 제거 후 새로 추가
+        window.quillEditor.off('text-change');
+        window.quillEditor.on('text-change', checkInputs);
+    }
     
-    newForm.addEventListener("submit", function(e) {
+    // 폼 제출 이벤트 (기존 리스너 유지 - 플래그로 중복 방지)
+    form.onsubmit = function(e) {
         e.preventDefault();
         
+        // 중복 제출 방지
+        if (window.isSubmitting) {
+            console.log("이미 제출 중입니다.");
+            return;
+        }
+        window.isSubmitting = true;
+        
         const title = titleInput.value;
-        const content = contentInput.value;
+        const content = window.quillEditor ? window.quillEditor.root.innerHTML : '';
         const summary = summaryInput.value;
         
-        const foundWord = checkBannedWords(title + " " + content + " " + summary);
+        const foundWord = checkBannedWords(title + " " + (window.quillEditor ? window.quillEditor.getText() : '') + " " + summary);
         if (foundWord) {
             alert(`⚠️ 금지어("${foundWord}")가 포함되어 있어 수정이 불가능하며, 경고 1회가 누적됩니다.`);
             addWarningToCurrentUser();
+            window.isSubmitting = false;
             return;
         }
         
-        const fileInput = newForm.querySelector('#thumbnailInput');
-        if(fileInput.files[0]) {
+        const fileInput = document.getElementById('thumbnailInput');
+        if(fileInput && fileInput.files[0]) {
             const reader = new FileReader();
             reader.onload = function(e) {
                 article.thumbnail = e.target.result;
@@ -1807,22 +2179,24 @@ function setupEditForm(article, id) {
         }
         
         function saveUpdatedArticle() {
-            article.category = newForm.querySelector("#category").value;
+            article.category = document.getElementById("category").value;
             article.title = title;
             article.summary = summary;
             article.content = content;
             article.date = new Date().toLocaleString() + " (수정됨)";
             
             saveArticle(article, () => {
-                newForm.reset();
+                form.reset();
+                if (window.quillEditor) window.quillEditor.setText('');
                 document.getElementById('thumbnailPreview').style.display = 'none';
                 document.getElementById('uploadText').innerHTML = '<i class="fas fa-camera"></i><p>클릭하여 이미지 업로드</p>';
                 warningEl.style.display = "none";
+                window.isSubmitting = false;
                 alert("기사가 수정되었습니다!");
                 showArticleDetail(id);
             });
         }
-    });
+    };
 }
 
 // ✅ 썸네일 미리보기
@@ -1841,32 +2215,385 @@ function previewThumbnail(event) {
     }
 }
 
-// ⭐ setupArticleForm 함수 수정
+
+// ===== 작성 중인 내용 저장 및 복원 =====
+
+// 작성 중인 내용 임시 저장
+function saveDraftContent() {
+    if (!window.quillEditor) return;
+    
+    try {
+        const draftData = {
+            category: document.getElementById("category")?.value || '',
+            title: document.getElementById("title")?.value || '',
+            summary: document.getElementById("summary")?.value || '',
+            content: window.quillEditor.root.innerHTML || '',
+            thumbnail: document.getElementById('thumbnailPreview')?.src || '',
+            timestamp: Date.now()
+        };
+        
+        localStorage.setItem('articleDraft', JSON.stringify(draftData));
+    } catch(error) {
+        console.error("임시 저장 실패:", error);
+    }
+}
+
+// 저장된 임시 내용 복원
+function restoreDraftContent() {
+    try {
+        const savedDraft = localStorage.getItem('articleDraft');
+        if (!savedDraft) return;
+        
+        const draftData = JSON.parse(savedDraft);
+        
+        // 5분 이내의 임시 저장만 복원
+        if (Date.now() - draftData.timestamp > 5 * 60 * 1000) {
+            localStorage.removeItem('articleDraft');
+            return;
+        }
+        
+        // Quill 에디터가 준비될 때까지 대기
+        const waitForEditor = () => {
+            if (!window.quillEditor || !window.quillEditor.root) {
+                setTimeout(waitForEditor, 100);
+                return;
+            }
+            
+            // 폼 필드 복원
+            const categoryEl = document.getElementById("category");
+            const titleEl = document.getElementById("title");
+            const summaryEl = document.getElementById("summary");
+            
+            if (categoryEl && draftData.category) categoryEl.value = draftData.category;
+            if (titleEl && draftData.title) titleEl.value = draftData.title;
+            if (summaryEl && draftData.summary) summaryEl.value = draftData.summary;
+            
+            // Quill 에디터 내용 복원
+            if (draftData.content) {
+                window.quillEditor.root.innerHTML = draftData.content;
+            }
+            
+            // 썸네일 복원
+            if (draftData.thumbnail && draftData.thumbnail.startsWith('data:')) {
+                const preview = document.getElementById('thumbnailPreview');
+                const uploadText = document.getElementById('uploadText');
+                if (preview && uploadText) {
+                    preview.src = draftData.thumbnail;
+                    preview.style.display = 'block';
+                    uploadText.innerHTML = '<i class="fas fa-check"></i><p>기존 이미지 (클릭하여 변경)</p>';
+                }
+            }
+            
+            console.log("✅ 임시 저장된 내용 복원 완료");
+        };
+        
+        waitForEditor();
+    } catch(error) {
+        console.error("임시 내용 복원 실패:", error);
+    }
+}
+
+// 임시 저장 내용 삭제
+function clearDraftContent() {
+    localStorage.removeItem('articleDraft');
+}
+
+
+// ===== Quill 에디터 초기화 및 글 작성 폼 설정 =====
+
+// 전역 변수 선언
+window.quillEditor = null;
+let editorInitialized = false;
+
+function initQuillEditor() {
+    console.log("Quill 에디터 초기화 시작...");
+    
+    const container = document.getElementById('quillEditor');
+    if (!container) {
+        console.error("quillEditor 컨테이너를 찾을 수 없습니다");
+        return null;
+    }
+    
+    // ✅ 수정: 이미 초기화된 에디터가 있으면 재사용
+    if (window.quillEditor && editorInitialized) {
+        console.log("✅ 기존 Quill 에디터 재사용");
+        return window.quillEditor;
+    }
+    
+    // ✅ 수정: 기존 에디터가 있으면 완전히 제거
+    if (window.quillEditor) {
+        try {
+            if (window.quillEditor.theme && window.quillEditor.theme.tooltip) {
+                window.quillEditor.theme.tooltip.hide();
+            }
+            // Quill 이벤트 리스너 모두 제거
+            window.quillEditor.off('text-change');
+            window.quillEditor = null;
+        } catch(e) {
+            console.warn("기존 에디터 정리 중 오류:", e);
+        }
+    }
+    
+    // ✅ 수정: 툴바도 완전히 제거
+    const existingToolbar = document.querySelector('.ql-toolbar');
+    if (existingToolbar) {
+        existingToolbar.remove();
+    }
+    
+    // DOM 완전히 초기화
+    container.innerHTML = '';
+    editorInitialized = false;
+    
+try {
+    // ✅ 수정: 마크다운 스타일 바인딩 추가
+    const bindings = {
+        // ### 큰 제목
+        header1: {
+            key: '#',
+            prefix: /^###\s$/,
+            handler: function(range, context) {
+                this.quill.formatLine(range.index, 1, 'header', 1);
+                this.quill.deleteText(range.index - 4, 4);
+            }
+        },
+        // ## 중간 제목
+        header2: {
+            key: '#',
+            prefix: /^##\s$/,
+            handler: function(range, context) {
+                this.quill.formatLine(range.index, 1, 'header', 2);
+                this.quill.deleteText(range.index - 3, 3);
+            }
+        },
+        // # 작은 제목
+        header3: {
+            key: '#',
+            prefix: /^#\s$/,
+            handler: function(range, context) {
+                this.quill.formatLine(range.index, 1, 'header', 3);
+                this.quill.deleteText(range.index - 2, 2);
+            }
+        },
+        // - 목록
+        list: {
+            key: ' ',
+            prefix: /^-$/,
+            handler: function(range, context) {
+                this.quill.formatLine(range.index, 1, 'list', 'bullet');
+                this.quill.deleteText(range.index - 1, 1);
+            }
+        },
+        // **굵게**
+        bold: {
+            key: '*',
+            prefix: /\*\*(.+)\*\*$/,
+            handler: function(range, context) {
+                const match = context.prefix.match(/\*\*(.+)\*\*$/);
+                if (match) {
+                    const text = match[1];
+                    const startIndex = range.index - match[0].length;
+                    this.quill.deleteText(startIndex, match[0].length);
+                    this.quill.insertText(startIndex, text, { bold: true });
+                    this.quill.setSelection(startIndex + text.length);
+                }
+            }
+        },
+        // *기울임*
+        italic: {
+            key: '*',
+            prefix: /\*(.+)\*$/,
+            handler: function(range, context) {
+                const match = context.prefix.match(/\*(.+)\*$/);
+                if (match && !context.prefix.includes('**')) {
+                    const text = match[1];
+                    const startIndex = range.index - match[0].length;
+                    this.quill.deleteText(startIndex, match[0].length);
+                    this.quill.insertText(startIndex, text, { italic: true });
+                    this.quill.setSelection(startIndex + text.length);
+                }
+            }
+        },
+        // > 인용
+        blockquote: {
+            key: ' ',
+            prefix: /^>$/,
+            handler: function(range, context) {
+                this.quill.formatLine(range.index, 1, 'blockquote', true);
+                this.quill.deleteText(range.index - 1, 1);
+            }
+        }
+    };
+    
+    // ✅ Quill 에디터 생성
+    window.quillEditor = new Quill('#quillEditor', {
+        theme: 'snow',
+        modules: {
+            toolbar: [
+                [{ 'header': [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'color': [] }, { 'background': [] }],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                ['blockquote'],
+                [{ 'align': [] }],
+                ['link', 'image', 'video'],
+                ['clean']
+            ],
+            keyboard: {
+                bindings: bindings
+            }
+        },
+        placeholder: '' // 플레이스홀더 제거
+    });
+
+    editorInitialized = true;
+    
+    // DOM 업데이트 후 툴바 버튼에 툴팁 추가 (선택사항)
+    setTimeout(() => {
+        try {
+            addQuillTooltips(container);
+        } catch(e) {
+            // 툴팁 추가 실패해도 무시
+        }
+    }, 200);
+    
+    console.log("✅ Quill 에디터 초기화 완료");
+    
+    // 커스텀 이벤트 발생
+    window.dispatchEvent(new Event('quillEditorReady'));
+    
+    return window.quillEditor;
+    
+} catch (error) {
+    console.error("❌ Quill 에디터 초기화 실패:", error);
+    return null;
+}}
+
+// Quill 툴바 툴팁 추가 함수
+function addQuillTooltips(container, retryCount = 0) {
+    setTimeout(() => {
+        const toolbar = container.querySelector('.ql-toolbar');
+        if (!toolbar) {
+            // 최대 2번까지 재시도
+            if (retryCount < 2) {
+                addQuillTooltips(container, retryCount + 1);
+                return;
+            } else {
+                // 조용히 실패 (툴팁은 선택사항이므로)
+                return;
+            }
+        }
+        
+        // 툴팁 매핑
+        const tooltips = {
+            'bold': '굵게',
+            'italic': '기울임꼴',
+            'underline': '밑줄',
+            'strike': '취소선',
+            'link': '링크 삽입',
+            'image': '이미지 삽입',
+            'video': '동영상 삽입',
+            'clean': '서식 지우기'
+        };
+        
+        // 각 클래스에 대해 title 속성 추가
+        Object.entries(tooltips).forEach(([className, tooltip]) => {
+            const buttons = toolbar.querySelectorAll('.ql-' + className);
+            buttons.forEach(btn => {
+                btn.setAttribute('title', tooltip);
+            });
+        });
+        
+        // 헤더 버튼
+        toolbar.querySelectorAll('.ql-header').forEach(btn => {
+            const value = btn.getAttribute('value');
+            if (value === '1') btn.setAttribute('title', '큰 제목');
+            else if (value === '2') btn.setAttribute('title', '중간 제목');
+            else if (value === '3') btn.setAttribute('title', '작은 제목');
+            else if (!value || value === 'false') btn.setAttribute('title', '일반 텍스트');
+        });
+        
+        // 목록 버튼
+        toolbar.querySelectorAll('.ql-list').forEach(btn => {
+            const value = btn.getAttribute('value');
+            if (value === 'ordered') btn.setAttribute('title', '번호 목록');
+            else if (value === 'bullet') btn.setAttribute('title', '글머리 기호 목록');
+        });
+        
+        // 정렬 버튼
+        toolbar.querySelectorAll('.ql-align').forEach(btn => {
+            const value = btn.getAttribute('value');
+            if (!value) btn.setAttribute('title', '왼쪽 정렬');
+            else if (value === 'center') btn.setAttribute('title', '가운데 정렬');
+            else if (value === 'right') btn.setAttribute('title', '오른쪽 정렬');
+            else if (value === 'justify') btn.setAttribute('title', '양쪽 정렬');
+        });
+        
+        // 색상 피커
+        toolbar.querySelectorAll('.ql-color').forEach(btn => {
+            btn.setAttribute('title', '글자 색상');
+        });
+        
+        toolbar.querySelectorAll('.ql-background').forEach(btn => {
+            btn.setAttribute('title', '배경 색상');
+        });
+        
+        console.log("Quill 툴바 툴팁 추가 완료");
+    }, 200);
+}
+
 function setupArticleForm() {
+    console.log("📝 setupArticleForm 시작");
+    
     const form = document.getElementById("articleForm");
-    if(!form) return;
+    if (!form) {
+        console.error("❌ articleForm을 찾을 수 없습니다");
+        return;
+    }
     
-    // ⭐ 폼만 리셋하고 에디터는 별도 초기화
-    const newForm = form.cloneNode(true);
-    form.parentNode.replaceChild(newForm, form);
+    // ✅ 수정: 에디터가 이미 초기화되어 있으면 재사용
+    let editor = window.quillEditor;
+    if (!editor || !editorInitialized) {
+        editor = initQuillEditor();
+    } else {
+        console.log("✅ 기존 Quill 에디터 재사용");
+    }
     
-    // ⭐ 에디터 초기화 (기존 에디터 제거 + 새로 생성)
-    initQuillEditor();
+    const titleInput = document.getElementById("title");
+    const summaryInput = document.getElementById("summary");
+    const warningEl = document.getElementById("bannedWordWarning");
     
-    const titleInput = newForm.querySelector("#title");
-    const summaryInput = newForm.querySelector("#summary");
-    const warningEl = newForm.querySelector("#bannedWordWarning");
+    // 폼 초기화
+    window.isEditingArticle = false; // 수정 모드 해제
+    form.reset();
     
-    newForm.reset();
+    // 에디터 초기화
+    setTimeout(() => {
+        if (window.quillEditor) {
+            window.quillEditor.setText('');
+        }
+        clearDraftContent(); // 임시 저장 내용 삭제
+    }, 100);
+    
     const preview = document.getElementById('thumbnailPreview');
     const uploadText = document.getElementById('uploadText');
-    if(preview) preview.style.display = 'none';
-    if(uploadText) uploadText.innerHTML = '<i class="fas fa-camera"></i><p>클릭하여 이미지 업로드</p>';
+    if (preview) preview.style.display = 'none';
+    if (uploadText) uploadText.innerHTML = '<i class="fas fa-camera"></i><p>클릭하여 이미지 업로드</p>';
     
+    // 작성 중인 내용 자동 저장 (3초마다)
+    if (window.autoSaveInterval) {
+        clearInterval(window.autoSaveInterval);
+    }
+    window.autoSaveInterval = setInterval(() => {
+        if (!window.isEditingArticle) {
+            saveDraftContent();
+        }
+    }, 3000);
+    
+    // 금지어 체크 함수
     function checkInputs() {
-        if (!quillEditor) return;
+        if (!window.quillEditor) return;
         
-        const editorContent = quillEditor.getText();
+        const editorContent = window.quillEditor.getText();
         const combinedText = (titleInput.value + " " + summaryInput.value + " " + editorContent);
         const foundWord = checkBannedWords(combinedText);
         
@@ -1881,23 +2608,31 @@ function setupArticleForm() {
     titleInput.addEventListener("input", checkInputs);
     summaryInput.addEventListener("input", checkInputs);
     
-    const fileInput = newForm.querySelector('#thumbnailInput');
+    // Quill 에디터 변경 감지
+    if (window.quillEditor) {
+        window.quillEditor.on('text-change', checkInputs);
+    }
+    
+    // 파일 입력 이벤트
+    const fileInput = document.getElementById('thumbnailInput');
     fileInput.addEventListener('change', previewThumbnail);
     
-    newForm.addEventListener("submit", async function(e) {
+    // 폼 제출 이벤트
+    form.onsubmit = async function(e) {
         e.preventDefault();
-        if(!isLoggedIn()) {
+        
+        if (!isLoggedIn()) {
             alert("기사 작성은 로그인 후 가능합니다!");
             return;
         }
 
-        if (!quillEditor) {
+        if (!window.quillEditor) {
             alert("에디터가 초기화되지 않았습니다. 페이지를 새로고침해주세요.");
             return;
         }
 
         const title = titleInput.value;
-        const content = quillEditor.root.innerHTML;
+        const content = window.quillEditor.root.innerHTML;
         const summary = summaryInput.value;
 
         if (!title || !content) {
@@ -1905,16 +2640,18 @@ function setupArticleForm() {
             return;
         }
 
+        // 금지어 체크
         const foundWord = checkBannedWords(title + " " + content + " " + summary);
         if (foundWord) {
             alert(`금지어("${foundWord}")가 포함되어 업로드가 차단되고 경고 1회가 누적됩니다.`);
             addWarningToCurrentUser();
+            window.isSubmitting = false;
             return;
         }
         
-        const A = {
+        const article = {
             id: Date.now().toString(),
-            category: newForm.querySelector("#category").value,
+            category: document.getElementById("category").value,
             title: title,
             summary: summary,
             content: content,
@@ -1928,54 +2665,147 @@ function setupArticleForm() {
             thumbnail: null
         };
         
-        if(fileInput.files[0]) {
+        const fileInputSubmit = document.getElementById('thumbnailInput');
+        if (fileInputSubmit.files[0]) {
             const reader = new FileReader();
             reader.onload = async function(e) {
-                A.thumbnail = e.target.result;
-                saveArticle(A, async () => {
-                    newForm.reset();
-                    if (quillEditor) {
-                        quillEditor.setText('');
+                article.thumbnail = e.target.result;
+                saveArticle(article, async () => {
+                    form.reset();
+                    if (window.quillEditor) {
+                        window.quillEditor.setText('');
                     }
-                    document.getElementById('thumbnailPreview').style.display = 'none';
-                    document.getElementById('uploadText').innerHTML = '<i class="fas fa-camera"></i><p>클릭하여 이미지 업로드</p>';
+                    if (preview) preview.style.display = 'none';
+                    if (uploadText) uploadText.innerHTML = '<i class="fas fa-camera"></i><p>클릭하여 이미지 업로드</p>';
                     warningEl.style.display = "none";
+                    window.isSubmitting = false;
                     alert("기사가 발행되었습니다!");
                     
+                    // 임시저장 데이터 삭제
+                    clearDraftContent();
+                    
                     await sendNotification('article', {
-                        authorEmail: A.authorEmail,
-                        authorName: A.author,
-                        title: A.title,
-                        articleId: A.id
+                        authorEmail: article.authorEmail,
+                        authorName: article.author,
+                        title: article.title,
+                        articleId: article.id
                     });
                     
                     showArticles();
                 });
             };
-            reader.readAsDataURL(fileInput.files[0]);
+            reader.readAsDataURL(fileInputSubmit.files[0]);
         } else {
-            saveArticle(A, async () => {
-                newForm.reset();
-                if (quillEditor) {
-                    quillEditor.setText('');
+            saveArticle(article, async () => {
+                form.reset();
+                if (window.quillEditor) {
+                    window.quillEditor.setText('');
                 }
-                document.getElementById('thumbnailPreview').style.display = 'none';
-                document.getElementById('uploadText').innerHTML = '<i class="fas fa-camera"></i><p>클릭하여 이미지 업로드</p>';
+                if (preview) preview.style.display = 'none';
+                if (uploadText) uploadText.innerHTML = '<i class="fas fa-camera"></i><p>클릭하여 이미지 업로드</p>';
                 warningEl.style.display = "none";
                 alert("기사가 발행되었습니다!");
                 
+                // 임시저장 데이터 삭제
+                clearDraftContent();
+                
                 await sendNotification('article', {
-                    authorEmail: A.authorEmail,
-                    authorName: A.author,
-                    title: A.title,
-                    articleId: A.id
+                    authorEmail: article.authorEmail,
+                    authorName: article.author,
+                    title: article.title,
+                    articleId: article.id
                 });
                 
                 showArticles();
             });
         }
-    });
+    };
+    
+    console.log("✅ setupArticleForm 완료");
 }
+
+// ✅ 기사 수정 폼 설정 (setupEditForm도 수정)
+function setupEditForm(article, articleId) {
+    const form = document.getElementById("articleForm");
+    
+    const titleInput = document.getElementById("title");
+    const summaryInput = document.getElementById("summary");
+    const warningEl = document.getElementById("bannedWordWarning");
+    
+    function checkInputs() {
+        if (!window.quillEditor?.getText) return;
+        
+        const editorContent = window.quillEditor.getText();
+        const combinedText = titleInput.value + " " + summaryInput.value + " " + editorContent;
+        const foundWord = checkBannedWords(combinedText);
+        
+        if (foundWord) {
+            warningEl.textContent = `🚫 금지어: "${foundWord}"`;
+            warningEl.style.display = "block";
+        } else {
+            warningEl.style.display = "none";
+        }
+    }
+    
+    titleInput.addEventListener("input", checkInputs);
+    summaryInput.addEventListener("input", checkInputs);
+    
+    const fileInput = document.getElementById('thumbnailInput');
+    fileInput.addEventListener('change', previewThumbnail);
+    
+    form.onsubmit = function(e) {
+        e.preventDefault();
+        
+        const title = titleInput.value;
+        const summary = summaryInput.value;
+        const content = window.quillEditor?.root?.innerHTML || '';
+        
+        const foundWord = checkBannedWords(title + " " + content + " " + summary);
+        if (foundWord) {
+            alert(`⚠️ 금지어("${foundWord}")가 포함되어 있습니다.`);
+            addWarningToCurrentUser();
+            return;
+        }
+        
+        if (fileInput.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                article.thumbnail = e.target.result;
+                saveUpdatedArticle();
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        } else {
+            saveUpdatedArticle();
+        }
+        
+        function saveUpdatedArticle() {
+            article.category = document.getElementById("category").value;
+            article.title = title;
+            article.summary = summary;
+            article.content = content;
+            article.date = new Date().toLocaleString() + " (수정됨)";
+            
+            saveArticle(article, () => {
+                form.reset();
+                if (window.quillEditor?.setText) {
+                    window.quillEditor.setText('');
+                }
+                const preview = document.getElementById('thumbnailPreview');
+                const uploadText = document.getElementById('uploadText');
+                if (preview) preview.style.display = 'none';
+                if (uploadText) uploadText.innerHTML = '<i class="fas fa-camera"></i><p>이미지 업로드</p>';
+                warningEl.style.display = "none";
+                
+                clearDraftContent();
+                
+                alert("기사가 수정되었습니다!");
+                showArticleDetail(articleId);
+            });
+        }
+    };
+}
+
+console.log("✅ Quill 에디터 시스템 로드 완료");
 
 // ===== Part 9: 댓글 관리 =====
 
@@ -3264,7 +4094,6 @@ console.log("✅ 메신저 → 알림 확인 기능으로 변경 완료");
 
 // ===== Part 14: 최종 초기화 =====
 
-// ✅ 최종 초기화
 window.addEventListener("load", () => {
     console.log("🚀 시스템 초기화...");
     
@@ -3277,143 +4106,721 @@ window.addEventListener("load", () => {
     });
     
     setupArticleForm();
+    
+    // ✅ 카테고리 자동 적용 리스너 등록
+    setupCategoryChangeListener();
+    
     initialRoute();
 });
 
-console.log("✅ script1.js 최적화 버전 완료 (Parts 1-14 통합)");
+// ============================================================
+// 🎨 Part 15: 테마 시스템 (기본/붉은말/크리스마스)
+// 기존 코드 4116줄부터 4420줄까지를 이 코드로 완전히 교체하세요
+// ============================================================
 
-// ===== 통합 스크립트: 모든 기능을 script.js 끝에 추가 =====
+console.log("🎨 Part 15: 멀티 테마 시스템 시작");
 
-// ===== 통합 스크립트: 모든 기능을 script.js 끝에 추가 =====
+// 테마 CSS 링크 엘리먼트
+let themeStylesheet = null;
+let currentAppliedTheme = null;
 
-// ===== 1. Quill 에디터 중복 방지 수정 =====
+// 현재 테마 가져오기
+function getCurrentTheme() {
+    const theme = localStorage.getItem('selectedTheme') || 'default';
+    return theme;
+}
 
-let quillEditor = null;
-let editorInitialized = false;
+// 테마 저장하기
+function saveTheme(themeName) {
+    localStorage.setItem('selectedTheme', themeName);
+    console.log('💾 테마 저장:', themeName);
+}
 
-function initQuillEditor() {
-    const editorContainer = document.getElementById('quillEditor');
-    if (!editorContainer) {
-        console.error('Quill 에디터 컨테이너를 찾을 수 없습니다');
+// 붉은 말 인사 배너 표시
+function showHorseGreeting() {
+    // 이미 배너가 있으면 스킵
+    if (document.getElementById('horseGreeting')) {
         return;
     }
+    
+    // 배너 HTML 생성
+    const greeting = document.createElement('div');
+    greeting.id = 'horseGreeting';
+    greeting.className = 'horse-greeting';
+    greeting.innerHTML = `
+        <div class="horse-greeting-text">
+            <div class="horse-greeting-title">🎊 2026년 병오년(丙午年) 새해 복 많이 받으세요!</div>
+            <div class="horse-greeting-desc">붉은 말이 여러분의 해정뉴스 탐험을 안내합니다 ✨</div>
+        </div>
+        <button class="horse-greeting-close" onclick="hideHorseGreeting()">×</button>
+    `;
+    
+    // 메인 컨텐츠 최상단에 추가
+    const mainContent = document.querySelector('main');
+    if (mainContent && mainContent.firstChild) {
+        mainContent.insertBefore(greeting, mainContent.firstChild);
+        
+        // 애니메이션 효과
+        setTimeout(() => {
+            greeting.style.animation = 'slideDown 0.5s ease';
+        }, 100);
+        
+        console.log('🐴 붉은 말 인사 배너 표시');
+    }
+}
 
-    // ⭐ 기존 에디터 완전히 제거
-    if (quillEditor) {
-        try {
-            const toolbar = editorContainer.previousElementSibling;
-            if (toolbar && toolbar.classList.contains('ql-toolbar')) {
-                toolbar.remove();
-            }
-            quillEditor = null;
-        } catch (e) {
-            console.warn('기존 에디터 제거 중 오류:', e);
-        }
+// 붉은 말 인사 배너 숨기기
+window.hideHorseGreeting = function() {
+    const greeting = document.getElementById('horseGreeting');
+    if (greeting) {
+        greeting.style.animation = 'slideUp 0.3s ease';
+        setTimeout(() => {
+            greeting.remove();
+            localStorage.setItem('horseGreetingDismissed', 'true');
+            console.log('🐴 붉은 말 인사 배너 닫기');
+        }, 300);
+    }
+};
+
+// ❄️ 눈 내리는 효과 함수들 (개선 버전)
+
+// 눈 내리는 효과 초기화 - 즉시 실행
+function initSnowfall() {
+    console.log('❄️ 눈 내리는 효과 초기화 시작');
+    
+    const container = document.getElementById('snowfall-container');
+    if (!container) {
+        console.warn('⚠️ snowfall-container를 찾을 수 없습니다.');
+        // 컨테이너가 없으면 생성
+        const newContainer = document.createElement('div');
+        newContainer.id = 'snowfall-container';
+        document.body.appendChild(newContainer);
+        
+        // 재귀 호출
+        setTimeout(() => initSnowfall(), 100);
+        return;
     }
     
-    // ⭐ 컨테이너 완전히 비우기
-    editorContainer.innerHTML = '';
-    editorInitialized = false;
+    // 기존 눈송이 제거 (중복 방지)
+    container.innerHTML = '';
+    
+    // 눈송이 개수 설정 (모바일/PC 반응형)
+    const isMobile = window.innerWidth <= 768;
+    const snowflakeCount = isMobile ? 40 : 60; // 개수 증가
+    
+    // 다양한 눈송이 모양
+    const snowflakeShapes = ['❄', '❅', '❆', '•', '∗'];
+    
+    // 눈송이 생성
+    for (let i = 0; i < snowflakeCount; i++) {
+        createSnowflake(container, snowflakeShapes);
+    }
+    
+    console.log(`✅ 크리스마스 눈 내리는 효과 시작! ${snowflakeCount}개의 눈송이 ❄️`);
+}
 
-    // ⭐ 새로운 에디터 생성
-    try {
-        quillEditor = new Quill('#quillEditor', {
-            theme: 'snow',
-            modules: {
-                toolbar: [
-                    [{ 'header': [1, 2, 3, false] }],
-                    ['bold', 'italic', 'underline', 'strike'],
-                    [{ 'color': [] }, { 'background': [] }],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    [{ 'align': [] }],
-                    ['link', 'image'],
-                    ['clean']
-                ]
-            },
-            placeholder: '기사 내용을 작성하세요...'
+function createSnowflake(container, shapes) {
+    const snowflake = document.createElement('div');
+    snowflake.className = 'snowflake';
+    
+    // 랜덤 눈송이 모양
+    const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
+    snowflake.textContent = randomShape;
+    
+    // 랜덤 위치 (가로)
+    const randomLeft = Math.random() * 100;
+    snowflake.style.left = randomLeft + '%';
+    
+    // 랜덤 크기 (0.5em ~ 1.5em)
+    const randomSize = Math.random() * 1 + 0.5;
+    snowflake.style.fontSize = randomSize + 'em';
+    
+    // 랜덤 애니메이션 지속시간 (5초 ~ 15초)
+    const randomDuration = Math.random() * 10 + 5;
+    snowflake.style.animationDuration = randomDuration + 's';
+    
+    // 랜덤 애니메이션 딜레이 (0초 ~ 2초) - 딜레이 감소
+    const randomDelay = Math.random() * 2;
+    snowflake.style.animationDelay = randomDelay + 's';
+    
+    // 랜덤 투명도 (0.5 ~ 1)
+    const randomOpacity = Math.random() * 0.5 + 0.5;
+    snowflake.style.opacity = randomOpacity;
+    
+    // 컨테이너에 추가
+    container.appendChild(snowflake);
+}
+
+function removeSnowfall() {
+    const container = document.getElementById('snowfall-container');
+    if (container) {
+        container.innerHTML = '';
+        console.log('❄️ 눈 효과 제거됨');
+    }
+}
+
+// 테마 적용 함수 수정 부분
+function applyTheme(themeName) {
+    console.log('🎨 테마 적용 시도:', themeName);
+    
+    if (currentAppliedTheme === themeName) {
+        console.log('✅ 이미 적용된 테마:', themeName);
+        return;
+    }
+    
+    // 기존 테마 스타일시트 제거
+    if (themeStylesheet && themeStylesheet.parentNode) {
+        console.log('🗑️ 기존 테마 스타일시트 제거');
+        themeStylesheet.parentNode.removeChild(themeStylesheet);
+        themeStylesheet = null;
+    }
+    
+    // 크리스마스 테마 적용
+    if (themeName === 'christmas') {
+        let style1 = document.querySelector('link[href*="style1.css"]');
+        
+        if (!style1) {
+            themeStylesheet = document.createElement('link');
+            themeStylesheet.rel = 'stylesheet';
+            themeStylesheet.href = 'css/style1.css';
+            themeStylesheet.id = 'christmas-theme';
+            document.head.appendChild(themeStylesheet);
+            
+            console.log('🎄 크리스마스 테마 로드');
+            
+            themeStylesheet.onload = function() {
+                console.log('✅ 크리스마스 테마 로드 완료!');
+                currentAppliedTheme = themeName;
+                
+                // ✅ 눈 내리는 효과 즉시 시작 (딜레이 제거)
+                initSnowfall();
+            };
+            
+            themeStylesheet.onerror = function() {
+                console.error('❌ style1.css 로드 실패!');
+            };
+        } else {
+            style1.disabled = false;
+            themeStylesheet = style1;
+            console.log('♻️ 기존 크리스마스 테마 활성화');
+            currentAppliedTheme = themeName;
+            
+            // 즉시 눈 효과 시작
+            initSnowfall();
+        }
+        
+        // 붉은 말 인사 배너 제거
+        const greeting = document.getElementById('horseGreeting');
+        if (greeting) greeting.remove();
+    } 
+    // 붉은 말 테마
+    else if (themeName === 'red-horse') {
+        // ... 기존 코드 ...
+        removeSnowfall();
+    } 
+    // 기본 테마
+    else {
+        // ... 기존 코드 ...
+        removeSnowfall();
+    }
+    
+    updateThemeInfo(themeName);
+    
+    document.body.style.transition = 'opacity 0.3s';
+    document.body.style.opacity = '0.9';
+    setTimeout(() => {
+        document.body.style.opacity = '1';
+    }, 150);
+}
+
+// 초기 테마 적용 함수 수정
+function applyInitialTheme() {
+    const savedTheme = getCurrentTheme();
+    console.log('⚡ 초기 테마 적용:', savedTheme);
+    
+    if (savedTheme === 'christmas') {
+        let style1 = document.querySelector('link[href*="style1.css"]');
+        
+        if (!style1) {
+            const newLink = document.createElement('link');
+            newLink.rel = 'stylesheet';
+            newLink.href = 'css/style1.css';
+            newLink.id = 'christmas-theme';
+            document.head.appendChild(newLink);
+            themeStylesheet = newLink;
+            
+            newLink.onload = function() {
+                console.log('✅ 크리스마스 테마 초기 로드 완료');
+                currentAppliedTheme = 'christmas';
+                
+                // ✅ 눈 효과 즉시 시작
+                setTimeout(() => initSnowfall(), 100);
+            };
+        } else {
+            style1.disabled = false;
+            themeStylesheet = style1;
+            currentAppliedTheme = 'christmas';
+            
+            // 즉시 눈 효과 시작
+            setTimeout(() => initSnowfall(), 100);
+        }
+    } 
+    // ... 나머지 테마 처리 ...
+}
+
+// 페이지 로드 시 즉시 실행
+applyInitialTheme();
+
+// DOM 로드 완료 시에도 재확인
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(initThemeSelector, 100);
+        
+        // 크리스마스 테마면 눈 효과 재시작
+        if (getCurrentTheme() === 'christmas') {
+            setTimeout(() => initSnowfall(), 200);
+        }
+    });
+} else {
+    setTimeout(initThemeSelector, 100);
+    
+    if (getCurrentTheme() === 'christmas') {
+        setTimeout(() => initSnowfall(), 200);
+    }
+}
+
+console.log("✅ 크리스마스 눈 내리는 효과 시스템 로드 완료");
+
+function createSnowflake(container, shapes) {
+    const snowflake = document.createElement('div');
+    snowflake.className = 'snowflake';
+    
+    // 랜덤 눈송이 모양
+    const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
+    snowflake.textContent = randomShape;
+    
+    // 랜덤 위치 (가로)
+    const randomLeft = Math.random() * 100;
+    snowflake.style.left = randomLeft + '%';
+    
+    // 랜덤 크기 (0.5em ~ 1.5em)
+    const randomSize = Math.random() * 1 + 0.5;
+    snowflake.style.fontSize = randomSize + 'em';
+    
+    // 랜덤 애니메이션 지속시간 (5초 ~ 15초)
+    const randomDuration = Math.random() * 10 + 5;
+    snowflake.style.animationDuration = randomDuration + 's';
+    
+    // 랜덤 애니메이션 딜레이 (0초 ~ 5초)
+    const randomDelay = Math.random() * 5;
+    snowflake.style.animationDelay = randomDelay + 's';
+    
+    // 랜덤 투명도 (0.5 ~ 1)
+    const randomOpacity = Math.random() * 0.5 + 0.5;
+    snowflake.style.opacity = randomOpacity;
+    
+    // 컨테이너에 추가
+    container.appendChild(snowflake);
+}
+
+function removeSnowfall() {
+    const container = document.getElementById('snowfall-container');
+    if (container) {
+        container.innerHTML = '';
+        console.log('❄️ 눈 효과 제거됨');
+    }
+}
+
+// 테마 적용하기
+function applyTheme(themeName) {
+    console.log('🎨 테마 적용 시도:', themeName);
+    
+    // 이미 적용된 테마면 스킵
+    if (currentAppliedTheme === themeName) {
+        console.log('✅ 이미 적용된 테마:', themeName);
+        return;
+    }
+    
+    // 기존 테마 스타일시트 제거
+    if (themeStylesheet && themeStylesheet.parentNode) {
+        console.log('🗑️ 기존 테마 스타일시트 제거');
+        themeStylesheet.parentNode.removeChild(themeStylesheet);
+        themeStylesheet = null;
+    }
+    
+    // 붉은 말 테마 적용
+    if (themeName === 'red-horse') {
+        // style2.css가 이미 로드되어 있는지 확인
+        let style2 = document.querySelector('link[href*="style2.css"]');
+        
+        if (!style2) {
+            // 새로운 링크 생성
+            themeStylesheet = document.createElement('link');
+            themeStylesheet.rel = 'stylesheet';
+            themeStylesheet.href = 'css/style2.css';
+            themeStylesheet.id = 'red-horse-theme';
+            
+            // head에 추가
+            document.head.appendChild(themeStylesheet);
+            console.log('🐴 붉은 말 테마 로드');
+            
+            themeStylesheet.onload = function() {
+                console.log('✅ 붉은 말 테마 로드 완료!');
+                currentAppliedTheme = themeName;
+                
+                // 배너가 이전에 닫힌 적 없으면 표시
+                if (!localStorage.getItem('horseGreetingDismissed')) {
+                    setTimeout(showHorseGreeting, 500);
+                }
+            };
+            
+            themeStylesheet.onerror = function() {
+                console.error('❌ style2.css 로드 실패! 파일이 css 폴더에 있는지 확인하세요.');
+            };
+        } else {
+            style2.disabled = false;
+            themeStylesheet = style2;
+            console.log('♻️ 기존 붉은 말 테마 활성화');
+            currentAppliedTheme = themeName;
+            
+            // 배너 표시
+            if (!localStorage.getItem('horseGreetingDismissed')) {
+                setTimeout(showHorseGreeting, 500);
+            }
+        }
+        
+        // 눈 효과 제거
+        removeSnowfall();
+        
+        // 인사 배너 제거 (크리스마스용)
+        const greeting = document.getElementById('horseGreeting');
+        if (greeting) {
+            greeting.remove();
+        }
+        
+    } 
+    // 크리스마스 테마 적용
+    else if (themeName === 'christmas') {
+        // style1.css가 이미 로드되어 있는지 확인
+        let style1 = document.querySelector('link[href*="style1.css"]');
+        
+        if (!style1) {
+            // 새로운 링크 생성
+            themeStylesheet = document.createElement('link');
+            themeStylesheet.rel = 'stylesheet';
+            themeStylesheet.href = 'css/style1.css';
+            themeStylesheet.id = 'christmas-theme';
+            
+            // head에 추가
+            document.head.appendChild(themeStylesheet);
+            console.log('🎄 크리스마스 테마 로드');
+            
+            themeStylesheet.onload = function() {
+                console.log('✅ 크리스마스 테마 로드 완료!');
+                currentAppliedTheme = themeName;
+                
+                // 눈 내리는 효과 시작
+                setTimeout(() => {
+                    if (typeof initSnowfall === 'function') {
+                        initSnowfall();
+                    }
+                }, 300);
+            };
+            
+            themeStylesheet.onerror = function() {
+                console.error('❌ style1.css 로드 실패! 파일이 css 폴더에 있는지 확인하세요.');
+            };
+        } else {
+            style1.disabled = false;
+            themeStylesheet = style1;
+            console.log('♻️ 기존 크리스마스 테마 활성화');
+            currentAppliedTheme = themeName;
+            
+            // 눈 내리는 효과 시작
+            setTimeout(() => {
+                if (typeof initSnowfall === 'function') {
+                    initSnowfall();
+                }
+            }, 300);
+        }
+        
+        // 붉은 말 인사 배너 제거
+        const greeting = document.getElementById('horseGreeting');
+        if (greeting) {
+            greeting.remove();
+        }
+        
+    } 
+    // 기본 테마로 복원
+    else {
+        // style2.css 비활성화
+        const style2 = document.querySelector('link[href*="style2.css"]');
+        if (style2) {
+            style2.disabled = true;
+            console.log('❌ 붉은 말 테마 비활성화');
+        }
+        
+        // style1.css 비활성화
+        const style1 = document.querySelector('link[href*="style1.css"]');
+        if (style1) {
+            style1.disabled = true;
+            console.log('❌ 크리스마스 테마 비활성화');
+        }
+        
+        // 눈 효과 제거
+        removeSnowfall();
+        
+        // 인사 배너 제거
+        const greeting = document.getElementById('horseGreeting');
+        if (greeting) {
+            greeting.remove();
+        }
+        
+        currentAppliedTheme = themeName;
+        console.log('📰 기본 테마로 복원');
+    }
+    
+    // 테마 정보 표시 업데이트
+    updateThemeInfo(themeName);
+    
+    // 페이지 부드러운 전환 효과
+    document.body.style.transition = 'opacity 0.3s';
+    document.body.style.opacity = '0.9';
+    setTimeout(() => {
+        document.body.style.opacity = '1';
+    }, 150);
+}
+
+// 테마 정보 표시 업데이트
+function updateThemeInfo(themeName) {
+    const redHorseInfo = document.getElementById('redHorseInfo');
+    const christmasInfo = document.getElementById('christmasInfo');
+    
+    // 모든 정보 박스 숨기기
+    if (redHorseInfo) {
+        redHorseInfo.style.display = 'none';
+    }
+    if (christmasInfo) {
+        christmasInfo.style.display = 'none';
+    }
+    
+    // 선택된 테마의 정보 박스만 표시
+    if (themeName === 'red-horse' && redHorseInfo) {
+        redHorseInfo.style.display = 'block';
+    } else if (themeName === 'christmas' && christmasInfo) {
+        christmasInfo.style.display = 'block';
+    }
+}
+
+// 테마 선택 이벤트 리스너
+function initThemeSelector() {
+    console.log('🎨 테마 선택기 초기화 시작');
+    
+    // 라디오 버튼 찾기
+    const defaultRadio = document.getElementById('themeDefault');
+    const redHorseRadio = document.getElementById('themeRedHorse');
+    const christmasRadio = document.getElementById('themeChristmas');
+    
+    if (!defaultRadio || !redHorseRadio) {
+        console.log('⚠️ 라디오 버튼을 찾을 수 없음. 1초 후 재시도...');
+        setTimeout(initThemeSelector, 1000);
+        return;
+    }
+    
+    console.log('✅ 라디오 버튼 발견:', {
+        default: !!defaultRadio,
+        redHorse: !!redHorseRadio,
+        christmas: !!christmasRadio
+    });
+    
+    // 저장된 테마 불러오기
+    const savedTheme = getCurrentTheme();
+    console.log('💾 저장된 테마:', savedTheme);
+    
+    // 라디오 버튼 상태 설정
+    if (savedTheme === 'red-horse') {
+        redHorseRadio.checked = true;
+        defaultRadio.checked = false;
+        if (christmasRadio) christmasRadio.checked = false;
+    } else if (savedTheme === 'christmas') {
+        if (christmasRadio) christmasRadio.checked = true;
+        defaultRadio.checked = false;
+        redHorseRadio.checked = false;
+    } else {
+        defaultRadio.checked = true;
+        redHorseRadio.checked = false;
+        if (christmasRadio) christmasRadio.checked = false;
+    }
+    
+    // 저장된 테마 즉시 적용
+    applyTheme(savedTheme);
+    updateThemeInfo(savedTheme);
+    
+    // 라디오 버튼 이벤트 리스너 (기존 리스너 제거 후 추가)
+    const themeRadios = document.querySelectorAll('input[name="theme"]');
+    themeRadios.forEach(radio => {
+        // 기존 리스너 제거
+        const newRadio = radio.cloneNode(true);
+        radio.parentNode.replaceChild(newRadio, radio);
+    });
+    
+    // 새로운 라디오 버튼에 이벤트 추가
+    document.querySelectorAll('input[name="theme"]').forEach(radio => {
+        radio.addEventListener('change', function(e) {
+            const selectedTheme = e.target.value;
+            console.log('🎨 테마 변경:', selectedTheme);
+            
+            // 테마 저장 및 적용
+            saveTheme(selectedTheme);
+            applyTheme(selectedTheme);
+            
+            // 사용자 피드백
+            let message = '';
+            if (selectedTheme === 'red-horse') {
+                message = '🐴 붉은 말이 안내하는 새해 테마가 적용되었습니다!';
+            } else if (selectedTheme === 'christmas') {
+                message = '🎄 메리 크리스마스! 눈 내리는 테마가 적용되었습니다!';
+            } else {
+                message = '📰 기본 테마로 돌아왔습니다!';
+            }
+            
+            console.log('💬 알림:', message);
+            
+            // 토스트 알림
+            if (typeof showToastNotification === 'function') {
+                showToastNotification('테마 변경', message);
+            } else {
+                // 간단한 알림
+                const toast = document.createElement('div');
+                toast.textContent = message;
+                toast.style.cssText = `
+                    position: fixed;
+                    bottom: 100px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: rgba(198, 40, 40, 0.95);
+                    color: white;
+                    padding: 14px 24px;
+                    border-radius: 24px;
+                    font-size: 14px;
+                    font-weight: 600;
+                    z-index: 10000;
+                    box-shadow: 0 4px 12px rgba(198, 40, 40, 0.4);
+                    animation: slideUp 0.3s ease;
+                `;
+                document.body.appendChild(toast);
+                setTimeout(() => {
+                    toast.style.animation = 'slideDown 0.3s ease reverse';
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            }
+            
+            // 붉은 말 테마 선택 시 인사 배너 초기화
+            if (selectedTheme === 'red-horse') {
+                localStorage.removeItem('horseGreetingDismissed');
+            }
         });
-
-        // ⭐ 이벤트 리스너는 한 번만 등록
-        if (!editorInitialized) {
-            quillEditor.on('text-change', function() {
-                const content = quillEditor.root.innerHTML;
-                document.getElementById('content').value = content;
-            });
-            editorInitialized = true;
-        }
-
-        console.log('✅ Quill 에디터 초기화 완료');
-    } catch (error) {
-        console.error('❌ Quill 에디터 생성 실패:', error);
-    }
-}
-
-// 2. 조회수 중복 방지
-function incrementView(articleId) {
-    const viewKey = `viewed_${articleId}`;
-    const hasViewed = localStorage.getItem(viewKey);
-    
-    if (hasViewed) {
-        console.log('이미 조회한 기사입니다');
-        return;
-    }
-    
-    const viewRef = db.ref(`articles/${articleId}/views`);
-    viewRef.transaction((currentViews) => {
-        return (currentViews || 0) + 1;
-    }).then(() => {
-        localStorage.setItem(viewKey, Date.now());
-        console.log('조회수 증가:', articleId);
     });
+    
+    console.log('✅ 테마 선택기 초기화 완료!');
 }
 
-function cleanupOldViews() {
-    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+// 초기 테마 적용 (페이지 로드 즉시)
+function applyInitialTheme() {
+    const savedTheme = getCurrentTheme();
+    console.log('⚡ 초기 테마 적용:', savedTheme);
     
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('viewed_')) {
-            const timestamp = parseInt(localStorage.getItem(key));
-            if (timestamp < oneDayAgo) {
-                localStorage.removeItem(key);
+    if (savedTheme === 'red-horse') {
+        // style2.css가 이미 있는지 확인
+        let style2 = document.querySelector('link[href*="style2.css"]');
+        
+        if (!style2) {
+            // 새로 생성
+            const newLink = document.createElement('link');
+            newLink.rel = 'stylesheet';
+            newLink.href = 'css/style2.css';
+            newLink.id = 'red-horse-theme';
+            document.head.appendChild(newLink);
+            themeStylesheet = newLink;
+            
+            newLink.onload = function() {
+                console.log('✅ 붉은 말 테마 초기 로드 완료');
+                currentAppliedTheme = 'red-horse';
+            };
+        } else {
+            style2.disabled = false;
+            themeStylesheet = style2;
+            currentAppliedTheme = 'red-horse';
+        }
+    } else if (savedTheme === 'christmas') {
+        // style1.css가 이미 있는지 확인
+        let style1 = document.querySelector('link[href*="style1.css"]');
+        
+        if (!style1) {
+            // 새로 생성
+            const newLink = document.createElement('link');
+            newLink.rel = 'stylesheet';
+            newLink.href = 'css/style1.css';
+            newLink.id = 'christmas-theme';
+            document.head.appendChild(newLink);
+            themeStylesheet = newLink;
+            
+            newLink.onload = function() {
+                console.log('✅ 크리스마스 테마 초기 로드 완료');
+                currentAppliedTheme = 'christmas';
+                
+                // 눈 내리는 효과 시작
+                setTimeout(() => {
+                    if (typeof initSnowfall === 'function') {
+                        initSnowfall();
+                    }
+                }, 500);
+            };
+        } else {
+            style1.disabled = false;
+            themeStylesheet = style1;
+            currentAppliedTheme = 'christmas';
+            
+            // 눈 내리는 효과 시작
+            setTimeout(() => {
+                if (typeof initSnowfall === 'function') {
+                    initSnowfall();
+                }
+            }, 500);
+        }
+    } else {
+        // 기본 테마는 style.css 사용 (이미 HTML에 있음)
+        currentAppliedTheme = 'default';
+        console.log('✅ 기본 테마 사용');
+    }
+}
+
+// 창 크기 변경 시 눈송이 개수 재조정
+let resizeTimeout;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        const savedTheme = localStorage.getItem('selectedTheme');
+        if (savedTheme === 'christmas') {
+            const container = document.getElementById('snowfall-container');
+            if (container && container.children.length > 0) {
+                initSnowfall();
             }
         }
-    }
+    }, 500);
+});
+
+// 즉시 초기 테마 적용
+applyInitialTheme();
+
+// DOM 로드 완료 시 테마 선택기 초기화
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initThemeSelector);
+} else {
+    // 이미 로드되었다면 즉시 실행
+    setTimeout(initThemeSelector, 100);
 }
 
-cleanupOldViews();
+console.log("✅ Part 15: 멀티 테마 시스템 로드 완료");
 
-// 2. 조회수 중복 방지
-function incrementView(articleId) {
-    const viewKey = `viewed_${articleId}`;
-    const hasViewed = localStorage.getItem(viewKey);
-    
-    if (hasViewed) {
-        console.log('이미 조회한 기사입니다');
-        return;
-    }
-    
-    const viewRef = db.ref(`articles/${articleId}/views`);
-    viewRef.transaction((currentViews) => {
-        return (currentViews || 0) + 1;
-    }).then(() => {
-        localStorage.setItem(viewKey, Date.now());
-        console.log('조회수 증가:', articleId);
-    });
-}
-
-function cleanupOldViews() {
-    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
-    
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('viewed_')) {
-            const timestamp = parseInt(localStorage.getItem(key));
-            if (timestamp < oneDayAgo) {
-                localStorage.removeItem(key);
-            }
-        }
-    }
-}
-
-cleanupOldViews();
+console.log("✅ script1.js 최적화 버전 완료 (Parts 1-14 통합)");
