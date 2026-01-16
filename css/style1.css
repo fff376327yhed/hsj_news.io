@@ -1,0 +1,467 @@
+/* ========== 크리스마스 테마 전용 CSS (style1.css) ========== */
+
+/* 🎄 기본 변수 설정 */
+:root {
+    --christmas-red: #c41e3a;
+    --christmas-green: #0f7f3e;
+    --christmas-gold: #d4af37;
+    --christmas-white: #ffffff;
+    --christmas-snow: #f0f8ff;
+    --christmas-dark: #1a472a;
+}
+
+/* ⚠️ 중요: 이 CSS는 body에 .christmas-theme 클래스 없이도 자동 적용됩니다 */
+
+/* 이 CSS 파일이 로드되면 자동으로 모든 스타일 적용 */
+body {
+    background: linear-gradient(180deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+    background-attachment: fixed;
+    position: relative;
+    overflow-x: hidden;
+}
+
+/* ❄️ 눈 내리는 효과 컨테이너 */
+#snowfall-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+    overflow: hidden;
+}
+
+/* 눈송이 애니메이션 */
+.snowflake {
+    position: absolute;
+    top: -10px;
+    color: #fff;
+    font-size: 1em;
+    animation: snowfall linear infinite;
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+    opacity: 0.8;
+}
+
+@keyframes snowfall {
+    0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(100vh) rotate(360deg);
+        opacity: 0.3;
+    }
+}
+
+/* 헤더 크리스마스 스타일 */
+body.christmas-theme header {
+    background: linear-gradient(135deg, var(--christmas-red) 0%, var(--christmas-green) 100%);
+    box-shadow: 0 4px 20px rgba(196, 30, 58, 0.4);
+    position: relative;
+    overflow: visible;
+}
+
+/* 🎄 헤더 좌측 크리스마스 트리 장식 */
+body.christmas-theme .header-content::before {
+    content: '🎄';
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 32px;
+    animation: treeGlow 2s ease-in-out infinite;
+}
+
+@keyframes treeGlow {
+    0%, 100% { 
+        filter: drop-shadow(0 0 5px #0f7f3e);
+        transform: translateY(-50%) scale(1);
+    }
+    50% { 
+        filter: drop-shadow(0 0 15px #d4af37);
+        transform: translateY(-50%) scale(1.1);
+    }
+}
+
+/* ⛄ 헤더 우측 눈사람 장식 */
+body.christmas-theme .header-content::after {
+    content: '⛄';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 32px;
+    animation: snowmanDance 3s ease-in-out infinite;
+}
+
+@keyframes snowmanDance {
+    0%, 100% { 
+        transform: translateY(-50%) rotate(-5deg);
+    }
+    50% { 
+        transform: translateY(-50%) rotate(5deg);
+    }
+}
+
+/* 로고 크리스마스 스타일 */
+body.christmas-theme .logo {
+    color: var(--christmas-white);
+    text-shadow: 
+        0 0 10px rgba(212, 175, 55, 0.8),
+        0 0 20px rgba(212, 175, 55, 0.5),
+        2px 2px 4px rgba(0, 0, 0, 0.3);
+    animation: logoGlow 2s ease-in-out infinite;
+}
+
+@keyframes logoGlow {
+    0%, 100% { 
+        text-shadow: 
+            0 0 10px rgba(212, 175, 55, 0.8),
+            0 0 20px rgba(212, 175, 55, 0.5),
+            2px 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    50% { 
+        text-shadow: 
+            0 0 20px rgba(212, 175, 55, 1),
+            0 0 30px rgba(212, 175, 55, 0.7),
+            2px 2px 4px rgba(0, 0, 0, 0.3);
+    }
+}
+
+body.christmas-theme .logo-sub {
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* 🎅 프로필 버튼 크리스마스 스타일 */
+body.christmas-theme .profile-btn {
+    background: var(--christmas-white);
+    color: var(--christmas-red);
+    border: 2px solid var(--christmas-gold);
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+}
+
+body.christmas-theme .profile-btn:hover {
+    background: var(--christmas-gold);
+    color: var(--christmas-white);
+    transform: scale(1.1) rotate(5deg);
+}
+
+/* 하단 네비게이션 크리스마스 스타일 */
+body.christmas-theme .bottom-nav {
+    background: linear-gradient(135deg, var(--christmas-red) 0%, var(--christmas-green) 100%);
+    box-shadow: 0 -4px 20px rgba(196, 30, 58, 0.4);
+    border-top: 2px solid var(--christmas-gold);
+}
+
+body.christmas-theme .nav-btn {
+    color: rgba(255, 255, 255, 0.8);
+    transition: all 0.3s ease;
+}
+
+body.christmas-theme .nav-btn:hover {
+    color: var(--christmas-white);
+    transform: translateY(-3px);
+    text-shadow: 0 0 10px rgba(212, 175, 55, 0.8);
+}
+
+body.christmas-theme .nav-btn.active {
+    color: var(--christmas-gold);
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+}
+
+body.christmas-theme .nav-btn.active i {
+    animation: iconBounce 0.6s ease-in-out infinite;
+}
+
+@keyframes iconBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+/* 메인 컨텐츠 영역 */
+body.christmas-theme main {
+    background: transparent;
+}
+
+/* 🎁 검색 바 크리스마스 스타일 */
+body.christmas-theme .search-bar {
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid var(--christmas-gold);
+    box-shadow: 0 4px 15px rgba(196, 30, 58, 0.2);
+    position: relative;
+}
+
+body.christmas-theme .search-bar::before {
+    content: '🎁';
+    position: absolute;
+    right: -15px;
+    top: -15px;
+    font-size: 24px;
+    animation: giftFloat 2s ease-in-out infinite;
+}
+
+@keyframes giftFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-10px) rotate(10deg); }
+}
+
+body.christmas-theme .search-select,
+body.christmas-theme .search-input {
+    border: 1px solid var(--christmas-green);
+}
+
+body.christmas-theme .search-select:focus,
+body.christmas-theme .search-input:focus {
+    border-color: var(--christmas-red);
+    box-shadow: 0 0 10px rgba(196, 30, 58, 0.3);
+}
+
+body.christmas-theme .search-btn {
+    background: linear-gradient(135deg, var(--christmas-red), var(--christmas-green));
+    color: white;
+}
+
+body.christmas-theme .search-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.6);
+}
+
+/* 정렬 칩 크리스마스 스타일 */
+body.christmas-theme .chip {
+    background: white;
+    color: var(--christmas-green);
+    border: 2px solid var(--christmas-green);
+}
+
+body.christmas-theme .chip:hover {
+    background: var(--christmas-green);
+    color: white;
+    border-color: var(--christmas-gold);
+    transform: translateY(-2px);
+}
+
+body.christmas-theme .chip.active {
+    background: linear-gradient(135deg, var(--christmas-red), var(--christmas-green));
+    color: white;
+    border-color: var(--christmas-gold);
+}
+
+/* ✨ 기사 카드 크리스마스 스타일 */
+body.christmas-theme .article-card {
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid var(--christmas-gold);
+    box-shadow: 
+        0 4px 15px rgba(196, 30, 58, 0.15),
+        0 0 20px rgba(212, 175, 55, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+body.christmas-theme .article-card::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    height: 4px;
+    background: linear-gradient(90deg, 
+        var(--christmas-red) 0%, 
+        var(--christmas-gold) 25%, 
+        var(--christmas-green) 50%, 
+        var(--christmas-gold) 75%, 
+        var(--christmas-red) 100%);
+    background-size: 200% 100%;
+    animation: christmasLights 3s linear infinite;
+}
+
+@keyframes christmasLights {
+    0% { background-position: 0% 0%; }
+    100% { background-position: 200% 0%; }
+}
+
+body.christmas-theme .article-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 
+        0 8px 25px rgba(196, 30, 58, 0.25),
+        0 0 30px rgba(212, 175, 55, 0.2);
+}
+
+/* 기사 카테고리 뱃지 */
+body.christmas-theme .article-category {
+    background: linear-gradient(135deg, var(--christmas-red), var(--christmas-green));
+    color: white;
+    border: 1px solid var(--christmas-gold);
+}
+
+/* 버튼 크리스마스 스타일 */
+body.christmas-theme .btn-primary {
+    background: linear-gradient(135deg, var(--christmas-red), var(--christmas-green));
+    border: 2px solid var(--christmas-gold);
+    color: white;
+    box-shadow: 0 4px 15px rgba(196, 30, 58, 0.3);
+}
+
+body.christmas-theme .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(196, 30, 58, 0.4);
+}
+
+body.christmas-theme .btn-secondary {
+    background: white;
+    color: var(--christmas-red);
+    border: 2px solid var(--christmas-red);
+}
+
+body.christmas-theme .btn-secondary:hover {
+    background: var(--christmas-red);
+    color: white;
+}
+
+/* 🔔 설정 카드 크리스마스 스타일 */
+body.christmas-theme .settings-card,
+body.christmas-theme .profile-card {
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid var(--christmas-gold);
+    box-shadow: 0 4px 15px rgba(196, 30, 58, 0.15);
+}
+
+/* 폼 컨트롤 크리스마스 스타일 */
+body.christmas-theme .form-control {
+    border: 2px solid var(--christmas-green);
+}
+
+body.christmas-theme .form-control:focus {
+    border-color: var(--christmas-red);
+    box-shadow: 0 0 10px rgba(196, 30, 58, 0.3);
+}
+
+/* 모달 크리스마스 스타일 */
+body.christmas-theme .modal-content {
+    background: white;
+    border: 3px solid var(--christmas-gold);
+    box-shadow: 0 10px 40px rgba(196, 30, 58, 0.3);
+}
+
+body.christmas-theme .modal-header {
+    background: linear-gradient(135deg, var(--christmas-red), var(--christmas-green));
+    color: white;
+    border-bottom: 2px solid var(--christmas-gold);
+}
+
+/* 댓글 섹션 크리스마스 스타일 */
+body.christmas-theme .comment {
+    background: rgba(255, 255, 255, 0.95);
+    border-left: 3px solid var(--christmas-green);
+}
+
+body.christmas-theme .comment-input-wrapper {
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid var(--christmas-gold);
+}
+
+body.christmas-theme .comment-submit-btn {
+    background: linear-gradient(135deg, var(--christmas-red), var(--christmas-green));
+    color: white;
+}
+
+/* 🎊 추가 장식 요소 */
+body.christmas-theme .section-header h2 {
+    color: var(--christmas-red);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* 로딩 인디케이터 크리스마스 스타일 */
+body.christmas-theme .loading {
+    color: var(--christmas-red);
+}
+
+/* 토글 스위치 크리스마스 스타일 */
+body.christmas-theme .toggle-slider {
+    background-color: #ccc;
+}
+
+body.christmas-theme input:checked + .toggle-slider {
+    background: linear-gradient(135deg, var(--christmas-red), var(--christmas-green));
+}
+
+/* 🌟 반짝이는 별 효과 (선택적 추가) */
+body.christmas-theme .sparkle {
+    position: fixed;
+    pointer-events: none;
+    animation: sparkleAnimation 1s ease-out forwards;
+}
+
+@keyframes sparkleAnimation {
+    0% {
+        transform: scale(0) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1.5) rotate(180deg);
+        opacity: 0;
+    }
+}
+
+/* 스크롤바 크리스마스 스타일 */
+body.christmas-theme ::-webkit-scrollbar {
+    width: 12px;
+}
+
+body.christmas-theme ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+body.christmas-theme ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--christmas-red), var(--christmas-green));
+    border-radius: 6px;
+    border: 2px solid var(--christmas-gold);
+}
+
+body.christmas-theme ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, var(--christmas-green), var(--christmas-red));
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    body.christmas-theme .header-content::before {
+        font-size: 24px;
+    }
+    
+    body.christmas-theme .header-content::after {
+        font-size: 24px;
+    }
+    
+    body.christmas-theme .search-bar::before {
+        font-size: 18px;
+        right: -10px;
+        top: -10px;
+    }
+}
+
+/* 🎄 크리스마스 테마 전환 애니메이션 */
+body.christmas-theme * {
+    transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* 눈송이 다양한 크기 */
+body.christmas-theme .snowflake.small { font-size: 0.8em; }
+body.christmas-theme .snowflake.medium { font-size: 1.2em; }
+body.christmas-theme .snowflake.large { font-size: 1.6em; }
+
+/* 특별한 크리스마스 효과 - 호버 시 눈송이 */
+body.christmas-theme .article-card:hover::after {
+    content: '❄️';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 20px;
+    animation: snowflakeSpin 2s ease-in-out infinite;
+}
+
+@keyframes snowflakeSpin {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(180deg); }
+}

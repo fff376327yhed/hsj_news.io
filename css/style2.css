@@ -1,0 +1,1513 @@
+/* ========================================
+   🐴 2025 새해 붉은 말 테마 (을사년) 🐴
+   기본 구조는 style.css 유지
+   ======================================== */
+
+/* 기본 리셋 및 설정 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+:root {
+    /* 🐴 붉은 말 테마 컬러 팔레트 */
+    --primary-color: #c62828; /* 새해 붉은색 */
+    --primary-dark: #8e0000;
+    --primary-light: #ff5f52;
+    --secondary-color: #d84315; /* 주황빛 레드 */
+    --accent-gold: #ffd700; /* 금색 강조 */
+    --accent-gold-dark: #ffb300;
+    --success-color: #c62828;
+    --warning-color: #ff6f00;
+    --danger-color: #b71c1c;
+    --dark-color: #1a0000;
+    --light-red: #ffebee; /* 연한 붉은 배경 */
+    --border-color: #ef9a9a;
+    --text-primary: #1a0000;
+    --text-secondary: #c62828;
+    --shadow: 0 2px 8px rgba(198, 40, 40, 0.15);
+    --shadow-hover: 0 4px 12px rgba(198, 40, 40, 0.25);
+    --glow-red: 0 0 20px rgba(255, 95, 82, 0.6);
+    --glow-gold: 0 0 15px rgba(255, 215, 0, 0.7);
+}
+
+/* 프로필 드롭다운 텍스트 색상 */
+.profile-details h4 {
+    margin: 0 0 4px 0;
+    font-size: 16px;
+    color: #c62828 !important;
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(198, 40, 40, 0.1);
+}
+
+/* 설정 메뉴 버튼 디자인 - 새해 테마 */
+#settingsSection .btn-block {
+    background: linear-gradient(135deg, #ffebee 0%, #fff 100%);
+    color: var(--text-primary);
+    border: 2px solid var(--border-color);
+    margin-bottom: 8px;
+    justify-content: flex-start;
+    padding: 14px;
+    box-shadow: 0 2px 6px rgba(198, 40, 40, 0.1);
+    transition: all 0.3s ease;
+}
+
+#settingsSection .btn-block:active {
+    background: linear-gradient(135deg, #ffcdd2 0%, #ffebee 100%);
+    transform: scale(0.98);
+    box-shadow: var(--glow-red);
+}
+
+#settingsSection .btn-block i {
+    color: var(--primary-color);
+    width: 24px;
+    text-align: center;
+    margin-right: 10px;
+    filter: drop-shadow(0 1px 2px rgba(198, 40, 40, 0.3));
+}
+
+/* 팝업 스타일 - 새해 테마 */
+.main-popup-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(26, 0, 0, 0.6);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+.main-popup {
+    background: linear-gradient(180deg, #ffebee 0%, white 100%);
+    width: 90%;
+    max-width: 400px;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(198, 40, 40, 0.4), var(--glow-red);
+    animation: popupPop 0.3s ease;
+    border: 3px solid var(--accent-gold);
+}
+
+@keyframes popupPop {
+    from { transform: scale(0.8) rotate(-2deg); opacity: 0; }
+    to { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+.popup-body {
+    padding: 24px;
+    text-align: center;
+    background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><text x="10" y="50" font-size="40" opacity="0.05">🐴</text></svg>') repeat;
+}
+
+.popup-title {
+    font-size: 20px;
+    font-weight: 900;
+    margin-bottom: 12px;
+    color: var(--primary-color);
+    text-shadow: 0 2px 4px rgba(255, 215, 0, 0.3);
+}
+
+.popup-content {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+}
+
+.popup-footer {
+    display: flex;
+    border-top: 2px solid var(--accent-gold);
+    background: linear-gradient(90deg, #fff5f5 0%, #ffe0e0 100%);
+}
+
+.popup-btn {
+    flex: 1;
+    padding: 14px;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.popup-btn.dont-show {
+    color: var(--text-secondary);
+    border-right: 2px solid var(--accent-gold);
+}
+
+.popup-btn.dont-show:hover {
+    background: rgba(198, 40, 40, 0.1);
+}
+
+.popup-btn.close {
+    color: var(--primary-color);
+    font-weight: 800;
+}
+
+.popup-btn.close:hover {
+    background: var(--primary-color);
+    color: white;
+}
+
+/* 관리자용 패치노트 버튼 */
+.admin-patch-controls {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+}
+
+body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: linear-gradient(180deg, #fff5f5 0%, #ffebee 50%, #fff5f5 100%);
+    background-attachment: fixed;
+    color: var(--text-primary);
+    padding-bottom: 70px;
+    overflow-x: hidden;
+    position: relative;
+}
+
+/* 🐴 말 패턴 배경 효과 */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+        radial-gradient(circle at 20% 50%, rgba(255, 215, 0, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(198, 40, 40, 0.03) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* 전역 여백 제거 */
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow-x: hidden;
+}
+
+/* 🐴 헤더 - 붉은 말 테마 */
+header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, #c62828 0%, #d84315 100%);
+    box-shadow: 0 4px 12px rgba(198, 40, 40, 0.4), var(--glow-red);
+    z-index: 1000;
+    border-bottom: 3px solid var(--accent-gold);
+}
+
+/* 🐴 새해 인사 메시지 1 - 말 2마리 사이에 텍스트 */
+header::before {
+    content: '🐴 새해 복 많이 받으세요! 🐴';
+    position: absolute;
+    top: 50%;
+    left: -100%;
+    transform: translateY(-50%);
+    white-space: nowrap;
+    font-size: 16px;
+    font-weight: 900;
+    color: #ffd700;
+    text-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.6),
+        0 0 15px rgba(255, 215, 0, 1),
+        0 0 30px rgba(255, 215, 0, 0.8);
+    pointer-events: none;
+    z-index: 1001;
+    animation: horseRun1 12s linear infinite;
+    letter-spacing: 2px;
+}
+
+/* 🐴 새해 인사 메시지 2 */
+header::after {
+    content: '🐴 을사년 행운 가득! 🐴';
+    position: absolute;
+    top: 50%;
+    left: -100%;
+    transform: translateY(-50%);
+    white-space: nowrap;
+    font-size: 16px;
+    font-weight: 900;
+    color: #ffd700;
+    text-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.6),
+        0 0 15px rgba(255, 215, 0, 1),
+        0 0 30px rgba(255, 215, 0, 0.8);
+    pointer-events: none;
+    z-index: 1001;
+    animation: horseRun2 12s linear infinite;
+    animation-delay: 6s;
+    letter-spacing: 2px;
+}
+
+/* 🐴 추가 메시지 3개 - 순차적 등장 */
+.header-content::before {
+    content: '🐴 2025년 대박나세요! 🐴';
+    position: absolute;
+    top: 50%;
+    left: -100%;
+    transform: translateY(-50%);
+    white-space: nowrap;
+    font-size: 16px;
+    font-weight: 900;
+    color: #ffd700;
+    text-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.6),
+        0 0 15px rgba(255, 215, 0, 1),
+        0 0 30px rgba(255, 215, 0, 0.8);
+    pointer-events: none;
+    z-index: 1001;
+    animation: horseRun3 12s linear infinite;
+    animation-delay: 12s;
+    letter-spacing: 2px;
+}
+
+.header-content::after {
+    content: '🐴 건강과 행복 가득! 🐴';
+    position: absolute;
+    top: 50%;
+    left: -100%;
+    transform: translateY(-50%);
+    white-space: nowrap;
+    font-size: 16px;
+    font-weight: 900;
+    color: #ffd700;
+    text-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.6),
+        0 0 15px rgba(255, 215, 0, 1),
+        0 0 30px rgba(255, 215, 0, 0.8);
+    pointer-events: none;
+    z-index: 1001;
+    animation: horseRun4 12s linear infinite;
+    animation-delay: 18s;
+    letter-spacing: 2px;
+}
+
+/* 애니메이션 키프레임 - 헤더 중앙을 지나가도록 */
+@keyframes horseRun1 {
+    0% {
+        left: -100%;
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    50% {
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    90% {
+        opacity: 1;
+    }
+    100% {
+        left: 150%;
+        opacity: 0;
+    }
+}
+
+@keyframes horseRun2 {
+    0% {
+        left: -100%;
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    50% {
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    90% {
+        opacity: 1;
+    }
+    100% {
+        left: 150%;
+        opacity: 0;
+    }
+}
+
+@keyframes horseRun3 {
+    0% {
+        left: -100%;
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    50% {
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    90% {
+        opacity: 1;
+    }
+    100% {
+        left: 150%;
+        opacity: 0;
+    }
+}
+
+@keyframes horseRun4 {
+    0% {
+        left: -100%;
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    50% {
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    90% {
+        opacity: 1;
+    }
+    100% {
+        left: 150%;
+        opacity: 0;
+    }
+}
+
+/* 모바일 최적화 */
+@media (max-width: 768px) {
+    header::before,
+    header::after,
+    .header-content::before,
+    .header-content::after {
+        font-size: 12px;
+        letter-spacing: 1px;
+        animation-duration: 10s;
+    }
+    
+    header::after {
+        animation-delay: 5s;
+    }
+    
+    .header-content::before {
+        animation-delay: 10s;
+    }
+    
+    .header-content::after {
+        animation-delay: 15s;
+    }
+}
+
+/* PC 큰 화면 최적화 */
+@media (min-width: 1200px) {
+    header::before,
+    header::after,
+    .header-content::before,
+    .header-content::after {
+        font-size: 18px;
+        letter-spacing: 3px;
+        animation-duration: 14s;
+    }
+    
+    header::after {
+        animation-delay: 7s;
+    }
+    
+    .header-content::before {
+        animation-delay: 14s;
+    }
+    
+    .header-content::after {
+        animation-delay: 21s;
+    }
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    max-width: 100%;
+    position: relative;
+}
+
+/* 🐴 말 장식 효과 (헤더 양 끝) */
+.header-content::before,
+.header-content::after {
+    content: '🐴';
+    font-size: 20px;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.3;
+    animation: horseBounce 2s ease-in-out infinite;
+}
+
+.header-content::before {
+    left: 5px;
+}
+
+.header-content::after {
+    right: 5px;
+    animation-delay: 1s;
+}
+
+@keyframes horseBounce {
+    0%, 100% { transform: translateY(-50%) scale(1); }
+    50% { transform: translateY(-55%) scale(1.1); }
+}
+
+.logo-section {
+    flex: 1;
+    z-index: 1;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 1;
+}
+
+.money-display {
+    background: rgba(255, 215, 0, 0.25);
+    padding: 6px 12px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 2px solid rgba(255, 215, 0, 0.5);
+    color: white;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.money-display:active {
+    background: rgba(255, 215, 0, 0.4);
+    transform: scale(0.95);
+    box-shadow: var(--glow-gold);
+}
+
+.money-display i {
+    font-size: 14px;
+    color: #ffd700;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+    animation: coinSpin 3s linear infinite;
+}
+
+@keyframes coinSpin {
+    0%, 100% { transform: rotateY(0deg); }
+    50% { transform: rotateY(180deg); }
+}
+
+/* 🐴 로고 - 새해 스타일 */
+.logo {
+    font-size: 20px;
+    font-weight: 900;
+    margin: 0;
+    letter-spacing: -0.5px;
+    color: white;
+    text-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.3),
+        0 0 10px rgba(255, 215, 0, 0.5);
+    position: relative;
+}
+
+.logo::after {
+    content: '🐴';
+    margin-left: 6px;
+    font-size: 18px;
+    animation: horseTrot 1.5s ease-in-out infinite;
+}
+
+@keyframes horseTrot {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(3px); }
+}
+
+.logo-sub {
+    font-size: 9px;
+    opacity: 0.95;
+    margin-top: 2px;
+    color: rgba(255, 255, 255, 0.95);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    font-weight: 600;
+}
+
+/* 🐴 프로필 버튼 - 금색 테두리 */
+.profile-btn {
+    width: 36px;
+    height: 36px;
+    border: 2px solid var(--accent-gold);
+    background: rgba(255, 215, 0, 0.2);
+    border-radius: 50%;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+}
+
+.profile-btn:active {
+    transform: scale(0.95) rotate(5deg);
+    background: rgba(255, 215, 0, 0.35);
+    box-shadow: var(--glow-gold);
+}
+
+/* 프로필 드롭다운 */
+.profile-dropdown {
+    position: absolute;
+    top: 56px;
+    right: 0;
+    width: 100%;
+    background: linear-gradient(180deg, #ffebee 0%, white 100%);
+    box-shadow: 0 4px 16px rgba(198, 40, 40, 0.25);
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    z-index: 999;
+    border-left: 3px solid var(--accent-gold);
+    border-right: 3px solid var(--accent-gold);
+}
+
+.profile-dropdown.active {
+    max-height: 300px;
+    border-bottom: 3px solid var(--accent-gold);
+}
+
+#profileDropdownContent {
+    padding: 16px;
+}
+
+.profile-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: linear-gradient(135deg, #ffcdd2 0%, #ffebee 100%);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    border: 2px solid var(--border-color);
+}
+
+.profile-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 24px;
+    box-shadow: 0 3px 10px rgba(198, 40, 40, 0.3), inset 0 0 10px rgba(255, 215, 0, 0.2);
+    border: 2px solid var(--accent-gold);
+}
+
+.profile-details h4 {
+    margin: 0 0 4px 0;
+    font-size: 16px;
+}
+
+.profile-details p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* 🐴 하단 네비게이션 - 새해 테마 */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(180deg, white 0%, #ffebee 100%);
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 0;
+    box-shadow: 0 -4px 12px rgba(198, 40, 40, 0.15);
+    z-index: 999;
+    border-top: 3px solid var(--accent-gold);
+}
+
+.nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 600;
+}
+
+.nav-btn i {
+    font-size: 20px;
+    transition: all 0.3s;
+}
+
+.nav-btn.active {
+    color: var(--primary-color);
+}
+
+.nav-btn.active i {
+    transform: scale(1.2);
+    filter: drop-shadow(0 2px 4px rgba(198, 40, 40, 0.4));
+}
+
+.nav-btn:active {
+    transform: scale(0.9);
+}
+
+/* 메인 컨텐츠 여백 조정 */
+.main-content {
+    padding-top: 70px;
+    padding-bottom: 80px;
+    min-height: calc(100vh - 150px);
+    position: relative;
+    z-index: 1;
+}
+
+.page-section {
+    display: none;
+    animation: fadeIn 0.4s ease;
+}
+
+.page-section.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { 
+        opacity: 0; 
+        transform: translateY(15px) scale(0.98);
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* 🐴 섹션 헤더 - 금색 장식 */
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #ffebee 0%, transparent 100%);
+    padding: 12px;
+    border-radius: 12px;
+    border-left: 4px solid var(--accent-gold);
+}
+
+.section-header h2 {
+    flex: 1;
+    font-size: 18px;
+    font-weight: 800;
+    margin: 0;
+    color: var(--primary-color);
+    text-shadow: 0 1px 2px rgba(198, 40, 40, 0.2);
+}
+
+.section-header h2::before {
+    content: '🎊 ';
+    font-size: 16px;
+}
+
+.btn-back {
+    width: 36px;
+    height: 36px;
+    border: 2px solid var(--border-color);
+    background: linear-gradient(135deg, #fff 0%, #ffebee 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 2px 6px rgba(198, 40, 40, 0.15);
+}
+
+.btn-back:active {
+    transform: scale(0.95) rotate(-10deg);
+    background: linear-gradient(135deg, #ffcdd2 0%, #ffebee 100%);
+    box-shadow: var(--glow-red);
+}
+
+/* 🐴 검색바 - 새해 스타일 */
+.search-bar {
+    background: linear-gradient(135deg, white 0%, #fff5f5 100%);
+    border-radius: 16px;
+    padding: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 12px rgba(198, 40, 40, 0.1);
+    border: 2px solid var(--border-color);
+}
+
+.search-select {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    font-size: 14px;
+    background: white;
+    color: var(--text-primary);
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.search-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(198, 40, 40, 0.1);
+}
+
+.search-input-wrapper {
+    display: flex;
+    gap: 8px;
+}
+
+.search-input {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    font-size: 14px;
+    background: white;
+    transition: all 0.3s;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(198, 40, 40, 0.1);
+}
+
+.search-input::placeholder {
+    color: rgba(198, 40, 40, 0.4);
+}
+
+.search-btn {
+    padding: 12px 20px;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 10px rgba(198, 40, 40, 0.3);
+}
+
+.search-btn:active {
+    transform: scale(0.95);
+    box-shadow: var(--glow-red);
+}
+
+/* 🐴 뉴스 카테고리 - 붉은 말 테마 */
+.news-categories {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 4px;
+    margin-bottom: 16px;
+    scrollbar-width: none;
+}
+
+.news-categories::-webkit-scrollbar {
+    display: none;
+}
+
+.category-btn {
+    padding: 10px 18px;
+    background: linear-gradient(135deg, white 0%, #ffebee 100%);
+    border: 2px solid var(--border-color);
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.3s;
+    box-shadow: 0 2px 6px rgba(198, 40, 40, 0.1);
+}
+
+.category-btn:active,
+.category-btn.active {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    border-color: var(--accent-gold);
+    transform: scale(0.95);
+    box-shadow: var(--glow-red);
+}
+
+/* 🐴 뉴스 카드 - 새해 분위기 */
+.news-item {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 12px rgba(198, 40, 40, 0.12);
+    transition: all 0.3s;
+    border: 2px solid transparent;
+}
+
+.news-item:hover {
+    border-color: var(--accent-gold);
+    box-shadow: 0 6px 20px rgba(198, 40, 40, 0.2), var(--glow-red);
+    transform: translateY(-2px);
+}
+
+.news-thumbnail {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    position: relative;
+}
+
+.news-thumbnail::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to bottom, transparent 50%, rgba(198, 40, 40, 0.1) 100%);
+}
+
+.news-content {
+    padding: 16px;
+}
+
+.news-title {
+    font-size: 17px;
+    font-weight: 800;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+    line-height: 1.4;
+}
+
+.news-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+.news-meta i {
+    color: var(--primary-color);
+}
+
+.news-summary {
+    font-size: 14px;
+    color: #666;
+    line-height: 1.6;
+    margin-bottom: 12px;
+}
+
+.news-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 12px;
+    border-top: 2px solid var(--light-red);
+}
+
+.news-author {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 700;
+}
+
+.news-reactions {
+    display: flex;
+    gap: 12px;
+}
+
+.reaction-btn {
+    background: none;
+    border: none;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 600;
+}
+
+.reaction-btn i {
+    margin-right: 4px;
+    color: var(--primary-color);
+}
+
+.reaction-btn:active {
+    transform: scale(1.2);
+    color: var(--primary-color);
+}
+
+/* 🐴 버튼 스타일 - 금색 강조 */
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    border: 2px solid var(--accent-gold);
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 12px rgba(198, 40, 40, 0.3);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.btn-primary:active {
+    transform: scale(0.95);
+    box-shadow: var(--glow-red), var(--glow-gold);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, white 0%, #ffebee 100%);
+    color: var(--primary-color);
+    border: 2px solid var(--border-color);
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-secondary:active {
+    background: linear-gradient(135deg, #ffcdd2 0%, #ffebee 100%);
+    transform: scale(0.95);
+}
+
+.btn-block {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #c62828 0%, #d84315 100%);
+    color: white;
+    border: 2px solid var(--accent-gold);
+}
+
+.btn-success:hover {
+    box-shadow: var(--glow-red);
+    transform: translateY(-2px);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #b71c1c 0%, #c62828 100%);
+    color: white;
+    border: 2px solid #8e0000;
+}
+
+.btn-danger:hover {
+    box-shadow: 0 4px 12px rgba(183, 28, 28, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-info {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+    color: white;
+    border: 2px solid var(--accent-gold);
+}
+
+.btn-info:hover {
+    box-shadow: var(--glow-red);
+    transform: translateY(-2px);
+}
+
+/* 로딩 스피너 - 새해 버전 */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes horseSpin {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.1); }
+    100% { transform: rotate(360deg) scale(1); }
+}
+
+/* 스위치 - 붉은 말 테마 */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, #ccc 0%, #e0e0e0 100%);
+    transition: .4s;
+    border-radius: 34px;
+    border: 2px solid #999;
+}
+
+.slider:before {
+    position: absolute;
+    content: "🐴";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 2px;
+    background: white;
+    transition: .4s;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+input:checked + .slider {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    border-color: var(--accent-gold);
+    box-shadow: var(--glow-red);
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+/* 🐴 댓글 섹션 - 새해 테마 */
+.comments-section {
+    background: linear-gradient(180deg, white 0%, #fff5f5 100%);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 12px rgba(198, 40, 40, 0.12);
+    margin-top: 24px;
+    border: 2px solid var(--border-color);
+}
+
+.comments-section h3 {
+    font-size: 18px;
+    font-weight: 800;
+    margin: 0 0 20px 0;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-shadow: 0 1px 2px rgba(198, 40, 40, 0.1);
+}
+
+.comments-section h3::before {
+    content: '💬';
+    font-size: 20px;
+}
+
+/* 댓글 카드 */
+.comment-card {
+    background: linear-gradient(135deg, #fff 0%, #fff5f5 100%);
+    border: 2px solid var(--border-color);
+    border-left: 5px solid var(--primary-color);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    transition: all 0.3s;
+    box-shadow: 0 2px 6px rgba(198, 40, 40, 0.08);
+}
+
+.comment-card:hover {
+    box-shadow: 0 4px 12px rgba(198, 40, 40, 0.15);
+    border-left-color: var(--accent-gold);
+    transform: translateX(2px);
+}
+
+.comment-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.comment-author {
+    font-weight: 800;
+    color: var(--primary-color);
+    font-size: 14px;
+    flex: 1;
+}
+
+.comment-time {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.comment-body {
+    font-size: 15px;
+    color: #333;
+    line-height: 1.6;
+    margin-bottom: 12px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.comment-footer {
+    display: flex;
+    gap: 15px;
+    font-size: 13px;
+}
+
+.btn-text {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btn-text:hover {
+    color: var(--primary-color);
+    text-decoration: underline;
+}
+
+.btn-text.text-danger {
+    color: var(--danger-color);
+}
+
+.btn-text.text-danger:hover {
+    color: var(--primary-dark);
+}
+
+/* 대댓글 컨테이너 */
+.replies-container {
+    margin-top: 16px;
+    padding-left: 16px;
+    border-left: 3px solid var(--accent-gold);
+}
+
+.reply-item {
+    background: white;
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    border: 2px solid var(--light-red);
+    transition: all 0.2s;
+}
+
+.reply-item:hover {
+    border-color: var(--border-color);
+    box-shadow: 0 2px 6px rgba(198, 40, 40, 0.1);
+}
+
+.reply-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.reply-author {
+    font-weight: 700;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.reply-time {
+    font-size: 11px;
+    color: #999;
+    margin-left: auto;
+}
+
+.reply-content {
+    font-size: 14px;
+    color: #333;
+    line-height: 1.5;
+}
+
+.reply-actions {
+    text-align: right;
+    margin-top: 8px;
+}
+
+.btn-text-danger {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--danger-color);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.btn-text-danger:hover {
+    color: var(--primary-dark);
+    text-decoration: underline;
+}
+
+/* 답글 입력 영역 */
+.reply-input-area {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    background: white;
+    padding: 12px;
+    border-radius: 10px;
+    border: 2px solid var(--border-color);
+}
+
+.reply-input {
+    flex: 1;
+    border: 2px solid var(--light-red);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: all 0.3s;
+}
+
+.reply-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(198, 40, 40, 0.1);
+}
+
+.btn-reply-submit {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    border: 2px solid var(--accent-gold);
+    border-radius: 8px;
+    width: 44px;
+    height: 44px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(198, 40, 40, 0.3);
+}
+
+.btn-reply-submit:hover {
+    box-shadow: var(--glow-red);
+}
+
+.btn-reply-submit:active {
+    transform: scale(0.95);
+}
+
+/* 댓글 입력 영역 */
+.comment-input-wrapper {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 2px solid var(--accent-gold);
+}
+
+.comment-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    font-size: 15px;
+    font-family: inherit;
+    transition: all 0.3s;
+}
+
+.comment-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(198, 40, 40, 0.1);
+}
+
+.comment-input::placeholder {
+    color: rgba(198, 40, 40, 0.4);
+}
+
+.comment-submit-btn {
+    width: 52px;
+    height: 52px;
+    border: 2px solid var(--accent-gold);
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    border-radius: 10px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(198, 40, 40, 0.3);
+}
+
+.comment-submit-btn:hover {
+    box-shadow: var(--glow-red);
+}
+
+.comment-submit-btn:active {
+    background: var(--primary-dark);
+    transform: scale(0.95) rotate(5deg);
+}
+
+/* 더보기 버튼 */
+.load-more {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.load-more button {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, white 0%, #ffebee 100%);
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    color: var(--primary-color);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.load-more button:hover {
+    background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+    border-color: var(--accent-gold);
+    box-shadow: var(--glow-red);
+}
+
+/* 빈 상태 */
+.comments-section p {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+    font-size: 15px;
+    font-weight: 600;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+    .comments-section {
+        padding: 16px;
+    }
+    
+    .comment-card {
+        padding: 12px;
+    }
+    
+    .reply-input-area {
+        padding: 8px;
+    }
+    
+    .comment-input-wrapper {
+        gap: 8px;
+    }
+    
+    .comment-submit-btn {
+        width: 48px;
+        height: 48px;
+        font-size: 18px;
+    }
+}
+
+/* Quill 에디터 Placeholder 스타일 - 새해 테마 */
+#quillEditor .ql-editor.ql-blank::before {
+    content: attr(data-placeholder) !important;
+    color: rgba(198, 40, 40, 0.4) !important;
+    font-style: italic;
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    top: 16px;
+    pointer-events: none;
+    opacity: 1;
+    z-index: 1;
+    white-space: pre-wrap;
+}
+
+#quillEditor .ql-editor:not(.ql-blank)::before {
+    content: '' !important;
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+}
+
+#quillEditor .ql-editor:focus:not(.ql-blank)::before {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+#quillEditor .ql-editor > * {
+    position: relative;
+    z-index: 2;
+}
+
+/* 🐴 특수 효과: 새해 축하 애니메이션 */
+@keyframes newYearCelebrate {
+    0%, 100% { 
+        transform: translateY(0) rotate(0deg); 
+        opacity: 1;
+    }
+    50% { 
+        transform: translateY(-10px) rotate(5deg); 
+        opacity: 0.8;
+    }
+}
+
+/* 🐴 말 이모지 반짝임 효과 */
+@keyframes horseGlow {
+    0%, 100% { 
+        filter: brightness(1) drop-shadow(0 0 5px rgba(255, 215, 0, 0.5));
+    }
+    50% { 
+        filter: brightness(1.3) drop-shadow(0 0 15px rgba(255, 215, 0, 0.8));
+    }
+}
+
+/* 🐴 금색 반짝임 효과 */
+@keyframes goldShine {
+    0%, 100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.3); }
+    50% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.7); }
+}
+
+/* 새해 장식 효과 클래스 */
+.new-year-effect {
+    animation: newYearCelebrate 2s ease-in-out infinite;
+}
+
+.horse-glow {
+    animation: horseGlow 2s ease-in-out infinite;
+}
+
+.gold-shine {
+    animation: goldShine 2s ease-in-out infinite;
+}
+
+/* 🎊 축제 분위기 배경 패턴 */
+.festive-pattern {
+    background-image: 
+        repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255, 215, 0, 0.03) 35px, rgba(255, 215, 0, 0.03) 70px),
+        repeating-linear-gradient(-45deg, transparent, transparent 35px, rgba(198, 40, 40, 0.03) 35px, rgba(198, 40, 40, 0.03) 70px);
+}
