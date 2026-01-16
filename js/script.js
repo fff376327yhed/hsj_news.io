@@ -1367,19 +1367,45 @@ function showWritePage() {
         return; 
     }
     
+    // ✅ 핵심: 수정 모드 완전히 해제
+    window.isEditingArticle = false;
+    window.editingArticleId = null;
+    
     hideAll();
     window.scrollTo(0, 0);
     
     document.getElementById("writeSection").classList.add("active");
     
     setTimeout(() => {
-        // Quill 에디터가 아직 초기화되지 않았거나, 수정 모드가 아닌 경우에만 초기화
-        if (!window.quillEditor || !window.isEditingArticle) {
-            setupArticleForm();
-        } else {
-            // 이미 초기화된 경우, 저장된 임시 내용 복원
-            restoreDraftContent();
+        // ✅ 항상 새로운 폼으로 초기화
+        setupArticleForm();
+        
+        // ✅ 폼 필드 강제 초기화
+        const categoryEl = document.getElementById("category");
+        const titleEl = document.getElementById("title");
+        const summaryEl = document.getElementById("summary");
+        
+        if (categoryEl) categoryEl.value = '자유게시판';
+        if (titleEl) titleEl.value = '';
+        if (summaryEl) summaryEl.value = '';
+        
+        // ✅ Quill 에디터 초기화
+        if (window.quillEditor && window.quillEditor.setText) {
+            window.quillEditor.setText('');
         }
+        
+        // ✅ 썸네일 초기화
+        const preview = document.getElementById('thumbnailPreview');
+        const uploadText = document.getElementById('uploadText');
+        if (preview) {
+            preview.src = '';
+            preview.style.display = 'none';
+        }
+        if (uploadText) {
+            uploadText.innerHTML = '<i class="fas fa-camera"></i><p>클릭하여 이미지 업로드</p>';
+        }
+        
+        console.log("✅ 새 기사 작성 모드 - 수정 모드 해제됨");
     }, 100);
     
     updateURL('write'); 
@@ -2201,11 +2227,10 @@ function editArticle(id) {
     });
 }
 
-// ✅ 수정 폼 설정
 function setupEditForm(article, articleId) {
     const form = document.getElementById("articleForm");
     
-    // ✅ 수정: 기존 폼 이벤트 완전히 제거하고 새로 바인딩
+    // ✅ 기존 폼 이벤트 완전히 제거하고 새로 바인딩
     const newForm = form.cloneNode(true);
     form.parentNode.replaceChild(newForm, form);
     
@@ -2216,6 +2241,8 @@ function setupEditForm(article, articleId) {
     // ✅ 수정: 수정 모드임을 명시적으로 표시
     window.isEditingArticle = true;
     window.editingArticleId = articleId;
+    
+    console.log("✏️ 수정 모드 활성화:", articleId);
     
     function checkInputs() {
         if (!window.quillEditor || !window.quillEditor.getText) return;
@@ -2254,11 +2281,11 @@ function setupEditForm(article, articleId) {
             ? window.quillEditor.root.innerHTML 
             : '';
         
-        console.log("📝 수정 내용:", {
+        console.log("🔍 수정 내용:", {
             title: title.substring(0, 30),
             summary: summary.substring(0, 30),
             contentLength: content.length,
-            articleId: articleId
+            articleId: articleId // ✅ 명시적으로 기존 ID 사용
         });
         
         // 금지어 체크
@@ -2325,7 +2352,7 @@ function setupEditForm(article, articleId) {
                 
                 warningEl.style.display = "none";
                 
-                // 수정 모드 해제
+                // ✅ 수정 모드 해제
                 window.isEditingArticle = false;
                 window.editingArticleId = null;
                 
@@ -2684,7 +2711,14 @@ function addQuillTooltips(container, retryCount = 0) {
 }
 
 function setupArticleForm() {
-    console.log("📝 setupArticleForm 시작");
+    console.log("🔧 setupArticleForm 시작");
+    
+    // ✅ 수정 모드 강제 해제
+    if (window.isEditingArticle) {
+        console.warn("⚠️ 수정 모드가 활성화되어 있었습니다. 강제 해제합니다.");
+        window.isEditingArticle = false;
+        window.editingArticleId = null;
+    }
     
     const form = document.getElementById("articleForm");
     if (!form) {
@@ -2692,7 +2726,7 @@ function setupArticleForm() {
         return;
     }
     
-    // ✅ 수정: 에디터가 이미 초기화되어 있으면 재사용
+    // ✅ 에디터가 이미 초기화되어 있으면 재사용
     let editor = window.quillEditor;
     if (!editor || !editorInitialized) {
         editor = initQuillEditor();
@@ -2700,20 +2734,15 @@ function setupArticleForm() {
         console.log("✅ 기존 Quill 에디터 재사용");
     }
     
-    const titleInput = document.getElementById("title");
-    const summaryInput = document.getElementById("summary");
-    const warningEl = document.getElementById("bannedWordWarning");
-    
-    // 폼 초기화
-    window.isEditingArticle = false; // 수정 모드 해제
+    // ✅ 폼 완전히 초기화
     form.reset();
     
-    // 에디터 초기화
+    // ✅ 에디터 내용 초기화
     setTimeout(() => {
         if (window.quillEditor) {
             window.quillEditor.setText('');
         }
-        clearDraftContent(); // 임시 저장 내용 삭제
+        clearDraftContent();
     }, 100);
     
     const preview = document.getElementById('thumbnailPreview');
@@ -2733,7 +2762,11 @@ function setupArticleForm() {
     
     // 금지어 체크 함수
     function checkInputs() {
-        if (!window.quillEditor) return;
+        const titleInput = document.getElementById("title");
+        const summaryInput = document.getElementById("summary");
+        const warningEl = document.getElementById("bannedWordWarning");
+        
+        if (!window.quillEditor || !titleInput || !summaryInput) return;
         
         const editorContent = window.quillEditor.getText();
         const combinedText = (titleInput.value + " " + summaryInput.value + " " + editorContent);
@@ -2747,38 +2780,89 @@ function setupArticleForm() {
         }
     }
     
-    titleInput.addEventListener("input", checkInputs);
-    summaryInput.addEventListener("input", checkInputs);
+    // ✅ 이벤트 리스너 추가 (기존 리스너 제거)
+    const titleInput = document.getElementById("title");
+    const summaryInput = document.getElementById("summary");
+    
+    if (titleInput) {
+        const newTitleInput = titleInput.cloneNode(true);
+        titleInput.parentNode.replaceChild(newTitleInput, titleInput);
+        newTitleInput.addEventListener("input", checkInputs);
+    }
+    
+    if (summaryInput) {
+        const newSummaryInput = summaryInput.cloneNode(true);
+        summaryInput.parentNode.replaceChild(newSummaryInput, summaryInput);
+        newSummaryInput.addEventListener("input", checkInputs);
+    }
     
     // Quill 에디터 변경 감지
     if (window.quillEditor) {
+        window.quillEditor.off('text-change');
         window.quillEditor.on('text-change', checkInputs);
     }
     
     // 파일 입력 이벤트
     const fileInput = document.getElementById('thumbnailInput');
-    fileInput.addEventListener('change', previewThumbnail);
+    if (fileInput) {
+        const newFileInput = fileInput.cloneNode(true);
+        fileInput.parentNode.replaceChild(newFileInput, fileInput);
+        newFileInput.addEventListener('change', previewThumbnail);
+    }
     
-    // 폼 제출 이벤트
+    // ✅ 폼 제출 이벤트 - onsubmit 사용 (addEventListener 대신)
     form.onsubmit = async function(e) {
         e.preventDefault();
         
+        // ✅ 중복 제출 방지
+        if (window.isSubmitting) {
+            console.warn("⚠️ 이미 제출 중입니다!");
+            return;
+        }
+        window.isSubmitting = true;
+        
+        // ✅ 제출 시점에 요소를 다시 찾기
+        const titleInput = document.getElementById("title");
+        const summaryInput = document.getElementById("summary");
+        const categoryInput = document.getElementById("category");
+        const warningEl = document.getElementById("bannedWordWarning");
+        
+        // ✅ 중요: 수정 모드인지 확인
+        if (window.isEditingArticle && window.editingArticleId) {
+            console.warn("⚠️ 수정 모드가 활성화되어 있습니다. 새 기사 작성이 아닙니다!");
+            alert("⚠️ 현재 수정 모드입니다. 새 기사를 작성하려면 '작성' 메뉴를 다시 클릭해주세요.");
+            window.isSubmitting = false;
+            return;
+        }
+        
         if (!isLoggedIn()) {
             alert("기사 작성은 로그인 후 가능합니다!");
+            window.isSubmitting = false;
             return;
         }
 
         if (!window.quillEditor) {
             alert("에디터가 초기화되지 않았습니다. 페이지를 새로고침해주세요.");
+            window.isSubmitting = false;
             return;
         }
 
-        const title = titleInput.value;
-        const content = window.quillEditor.root.innerHTML;
-        const summary = summaryInput.value;
+        const title = titleInput ? titleInput.value.trim() : '';
+        const content = window.quillEditor.root ? window.quillEditor.root.innerHTML : '';
+        const summary = summaryInput ? summaryInput.value.trim() : '';
+        const category = categoryInput ? categoryInput.value : '자유게시판';
 
-        if (!title || !content) {
+        console.log("📝 입력값 확인:", {
+            title: title,
+            titleLength: title.length,
+            content: content.substring(0, 50),
+            contentLength: content.length,
+            summary: summary
+        });
+
+        if (!title || !content || content === '<p><br></p>' || content === '<p></p>') {
             alert("제목과 내용을 입력해주세요.");
+            window.isSubmitting = false;
             return;
         }
 
@@ -2791,9 +2875,10 @@ function setupArticleForm() {
             return;
         }
         
+        // ✅ 항상 새로운 ID 생성
         const article = {
             id: Date.now().toString(),
-            category: document.getElementById("category").value,
+            category: category,
             title: title,
             summary: summary,
             content: content,
@@ -2807,24 +2892,16 @@ function setupArticleForm() {
             thumbnail: null
         };
         
+        console.log("📝 새 기사 작성:", article.id);
+        
         const fileInputSubmit = document.getElementById('thumbnailInput');
-        if (fileInputSubmit.files[0]) {
+        if (fileInputSubmit && fileInputSubmit.files[0]) {
             const reader = new FileReader();
             reader.onload = async function(e) {
                 article.thumbnail = e.target.result;
                 saveArticle(article, async () => {
-                    form.reset();
-                    if (window.quillEditor) {
-                        window.quillEditor.setText('');
-                    }
-                    if (preview) preview.style.display = 'none';
-                    if (uploadText) uploadText.innerHTML = '<i class="fas fa-camera"></i><p>클릭하여 이미지 업로드</p>';
-                    warningEl.style.display = "none";
+                    resetFormAfterSubmit();
                     window.isSubmitting = false;
-                    alert("기사가 발행되었습니다!");
-                    
-                    // 임시저장 데이터 삭제
-                    clearDraftContent();
                     
                     await sendNotification('article', {
                         authorEmail: article.authorEmail,
@@ -2839,17 +2916,8 @@ function setupArticleForm() {
             reader.readAsDataURL(fileInputSubmit.files[0]);
         } else {
             saveArticle(article, async () => {
-                form.reset();
-                if (window.quillEditor) {
-                    window.quillEditor.setText('');
-                }
-                if (preview) preview.style.display = 'none';
-                if (uploadText) uploadText.innerHTML = '<i class="fas fa-camera"></i><p>클릭하여 이미지 업로드</p>';
-                warningEl.style.display = "none";
-                alert("기사가 발행되었습니다!");
-                
-                // 임시저장 데이터 삭제
-                clearDraftContent();
+                resetFormAfterSubmit();
+                window.isSubmitting = false;
                 
                 await sendNotification('article', {
                     authorEmail: article.authorEmail,
@@ -2862,6 +2930,28 @@ function setupArticleForm() {
             });
         }
     };
+    
+    // ✅ 폼 리셋 함수
+    function resetFormAfterSubmit() {
+        const form = document.getElementById("articleForm");
+        if (form) form.reset();
+        
+        if (window.quillEditor) {
+            window.quillEditor.setText('');
+        }
+        
+        const preview = document.getElementById('thumbnailPreview');
+        const uploadText = document.getElementById('uploadText');
+        if (preview) preview.style.display = 'none';
+        if (uploadText) uploadText.innerHTML = '<i class="fas fa-camera"></i><p>클릭하여 이미지 업로드</p>';
+        
+        const warningEl = document.getElementById("bannedWordWarning");
+        if (warningEl) warningEl.style.display = "none";
+        
+        clearDraftContent();
+        
+        alert("기사가 발행되었습니다!");
+    }
     
     console.log("✅ setupArticleForm 완료");
 }
