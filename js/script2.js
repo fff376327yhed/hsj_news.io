@@ -679,6 +679,26 @@ function loadDraft() {
             return false;
         }
         
+        // ✅ 수정: 여기서는 폼에 데이터를 로드하지 않고, 단순히 임시저장 존재 여부만 확인
+        // 실제 복원은 사용자가 confirm에서 "확인"을 누른 후에만 수행
+        
+        return true; // 임시저장 데이터가 존재함을 알림
+        
+    } catch(error) {
+        console.error("❌ 임시저장 확인 실패:", error);
+        localStorage.removeItem('draft_article');
+        return false;
+    }
+}
+
+// ✅ 새로운 함수 추가: 실제 임시저장 데이터 복원
+function restoreDraft() {
+    const draftData = localStorage.getItem('draft_article');
+    if(!draftData) return;
+    
+    try {
+        const draft = JSON.parse(draftData);
+        
         const categoryEl = document.getElementById('category');
         const titleEl = document.getElementById('title');
         const summaryEl = document.getElementById('summary');
@@ -687,7 +707,7 @@ function loadDraft() {
         if(draft.title && titleEl) titleEl.value = draft.title;
         if(draft.summary && summaryEl) summaryEl.value = draft.summary;
         
-        // ✅ Quill 에디터에 내용 로드 (여러 방법 시도)
+        // Quill 에디터에 내용 로드
         let attempts = 0;
         const maxAttempts = 30;
         
@@ -695,7 +715,6 @@ function loadDraft() {
             const quillEditor = window.quillEditor || window.quill;
             
             if(quillEditor && quillEditor.root) {
-                // ✅ HTML 내용을 Quill에 설정
                 quillEditor.root.innerHTML = draft.content;
                 console.log("✅ 임시저장 복원 완료 (내용 길이:", draft.content.length, ")");
             } else if(attempts < maxAttempts) {
@@ -719,11 +738,9 @@ function loadDraft() {
             }
         }
         
-        return true;
     } catch(error) {
         console.error("❌ 임시저장 복원 실패:", error);
         localStorage.removeItem('draft_article');
-        return false;
     }
 }
 
@@ -737,14 +754,41 @@ if(typeof window.originalShowWritePage === 'undefined') {
         }
         
         setTimeout(() => {
-            const hasDraft = loadDraft();
+            const hasDraft = loadDraft(); // 임시저장 존재 여부만 확인
             if(hasDraft) {
                 if(confirm("💾 임시저장된 작성 중인 기사가 있습니다.\n복원하시겠습니까?")) {
                     console.log("✅ 사용자가 복원 선택");
+                    restoreDraft(); // ✅ 확인 시에만 실제 복원 실행
                 } else {
+                    // ✅ 취소 시 임시저장 데이터 삭제 및 폼 초기화
                     localStorage.removeItem('draft_article');
-                    if(window.quillEditor) window.quillEditor.setText('');
-                    console.log("❌ 사용자가 복원 거부");
+                    
+                    // 폼 필드 초기화
+                    const categoryEl = document.getElementById('category');
+                    const titleEl = document.getElementById('title');
+                    const summaryEl = document.getElementById('summary');
+                    
+                    if(categoryEl) categoryEl.value = '자유게시판';
+                    if(titleEl) titleEl.value = '';
+                    if(summaryEl) summaryEl.value = '';
+                    
+                    // Quill 에디터 초기화
+                    if(window.quillEditor && window.quillEditor.root) {
+                        window.quillEditor.root.innerHTML = '';
+                    }
+                    
+                    // 썸네일 초기화
+                    const preview = document.getElementById('thumbnailPreview');
+                    const uploadText = document.getElementById('uploadText');
+                    if(preview) {
+                        preview.src = '';
+                        preview.style.display = 'none';
+                    }
+                    if(uploadText) {
+                        uploadText.innerHTML = '<i class="fas fa-camera"></i><p>클릭하여 이미지 업로드</p>';
+                    }
+                    
+                    console.log("❌ 사용자가 복원 거부 - 임시저장 데이터 삭제 및 폼 초기화 완료");
                 }
             }
         }, 500);
