@@ -4871,7 +4871,7 @@ function showGanadiGreeting() {
     greeting.innerHTML = `
         <div class="ganadi-greeting-text">
             <div class="ganadi-greeting-title">🐶 듀... 가나디 테마에 오신 것을 환영합니다!</div>
-            <div class="ganadi-greeting-desc">나 안아.. 따뜻하고 귀여운 감성 디자인을 즐겨보세요 💧</div>
+            <div class="ganadi-greeting-desc">듀..? 가나디는 숨어있답니다! 찾아보세요! 💧</div>
         </div>
         <button class="ganadi-greeting-close" onclick="hideGanadiGreeting()">×</button>
     `;
