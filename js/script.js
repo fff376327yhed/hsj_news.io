@@ -4743,8 +4743,7 @@ window.addEventListener('beforeunload', () => {
 });
 
 // ============================================================
-// 🎨 Part 15: 테마 시스템 (기본/붉은말/크리스마스)
-// 기존 코드 4116줄부터 4420줄까지를 이 코드로 완전히 교체하세요
+// 🎨 Part 15: 테마 시스템 (기본/붉은말/크리스마스/가나디)
 // ============================================================
 
 console.log("🎨 Part 15: 멀티 테마 시스템 시작");
@@ -4765,14 +4764,70 @@ function saveTheme(themeName) {
     console.log('💾 테마 저장:', themeName);
 }
 
-// 붉은 말 인사 배너 표시
-function showHorseGreeting() {
-    // 이미 배너가 있으면 스킵
-    if (document.getElementById('horseGreeting')) {
+// ❄️ 눈 내리는 효과 함수들
+function initSnowfall() {
+    console.log('❄️ 눈 내리는 효과 초기화 시작');
+    
+    const container = document.getElementById('snowfall-container');
+    if (!container) {
+        console.warn('⚠️ snowfall-container를 찾을 수 없습니다.');
+        const newContainer = document.createElement('div');
+        newContainer.id = 'snowfall-container';
+        document.body.appendChild(newContainer);
+        setTimeout(() => initSnowfall(), 100);
         return;
     }
     
-    // 배너 HTML 생성
+    container.innerHTML = '';
+    
+    const isMobile = window.innerWidth <= 768;
+    const snowflakeCount = isMobile ? 40 : 60;
+    const snowflakeShapes = ['❄', '❅', '❆', '•', '∗'];
+    
+    for (let i = 0; i < snowflakeCount; i++) {
+        createSnowflake(container, snowflakeShapes);
+    }
+    
+    console.log(`✅ 크리스마스 눈 내리는 효과 시작! ${snowflakeCount}개의 눈송이 ❄️`);
+}
+
+function createSnowflake(container, shapes) {
+    const snowflake = document.createElement('div');
+    snowflake.className = 'snowflake';
+    
+    const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
+    snowflake.textContent = randomShape;
+    
+    const randomLeft = Math.random() * 100;
+    snowflake.style.left = randomLeft + '%';
+    
+    const randomSize = Math.random() * 1 + 0.5;
+    snowflake.style.fontSize = randomSize + 'em';
+    
+    const randomDuration = Math.random() * 10 + 5;
+    snowflake.style.animationDuration = randomDuration + 's';
+    
+    const randomDelay = Math.random() * 2;
+    snowflake.style.animationDelay = randomDelay + 's';
+    
+    const randomOpacity = Math.random() * 0.5 + 0.5;
+    snowflake.style.opacity = randomOpacity;
+    
+    container.appendChild(snowflake);
+}
+
+function removeSnowfall() {
+    const container = document.getElementById('snowfall-container');
+    if (container) {
+        container.innerHTML = '';
+        console.log('❄️ 눈 효과 제거됨');
+    }
+}
+
+// 🐴 붉은 말 인사 배너
+function showHorseGreeting() {
+    if (document.getElementById('horseGreeting')) return;
+    
     const greeting = document.createElement('div');
     greeting.id = 'horseGreeting';
     greeting.className = 'horse-greeting';
@@ -4784,21 +4839,16 @@ function showHorseGreeting() {
         <button class="horse-greeting-close" onclick="hideHorseGreeting()">×</button>
     `;
     
-    // 메인 컨텐츠 최상단에 추가
     const mainContent = document.querySelector('main');
     if (mainContent && mainContent.firstChild) {
         mainContent.insertBefore(greeting, mainContent.firstChild);
-        
-        // 애니메이션 효과
         setTimeout(() => {
             greeting.style.animation = 'slideDown 0.5s ease';
         }, 100);
-        
         console.log('🐴 붉은 말 인사 배너 표시');
     }
 }
 
-// 붉은 말 인사 배너 숨기기
 window.hideHorseGreeting = function() {
     const greeting = document.getElementById('horseGreeting');
     if (greeting) {
@@ -4811,84 +4861,48 @@ window.hideHorseGreeting = function() {
     }
 };
 
-// ❄️ 눈 내리는 효과 함수들 (개선 버전)
-
-// 눈 내리는 효과 초기화 - 즉시 실행
-function initSnowfall() {
-    console.log('❄️ 눈 내리는 효과 초기화 시작');
+// 🐶 가나디 인사 배너
+function showGanadiGreeting() {
+    if (document.getElementById('ganadiGreeting')) return;
     
-    const container = document.getElementById('snowfall-container');
-    if (!container) {
-        console.warn('⚠️ snowfall-container를 찾을 수 없습니다.');
-        // 컨테이너가 없으면 생성
-        const newContainer = document.createElement('div');
-        newContainer.id = 'snowfall-container';
-        document.body.appendChild(newContainer);
-        
-        // 재귀 호출
-        setTimeout(() => initSnowfall(), 100);
-        return;
-    }
+    const greeting = document.createElement('div');
+    greeting.id = 'ganadiGreeting';
+    greeting.className = 'ganadi-greeting';
+    greeting.innerHTML = `
+        <div class="ganadi-greeting-text">
+            <div class="ganadi-greeting-title">🐶 듀... 가나디 테마에 오신 것을 환영합니다!</div>
+            <div class="ganadi-greeting-desc">나 안아.. 따뜻하고 귀여운 감성 디자인을 즐겨보세요 💧</div>
+        </div>
+        <button class="ganadi-greeting-close" onclick="hideGanadiGreeting()">×</button>
+    `;
     
-    // 기존 눈송이 제거 (중복 방지)
-    container.innerHTML = '';
-    
-    // 눈송이 개수 설정 (모바일/PC 반응형)
-    const isMobile = window.innerWidth <= 768;
-    const snowflakeCount = isMobile ? 40 : 60; // 개수 증가
-    
-    // 다양한 눈송이 모양
-    const snowflakeShapes = ['❄', '❅', '❆', '•', '∗'];
-    
-    // 눈송이 생성
-    for (let i = 0; i < snowflakeCount; i++) {
-        createSnowflake(container, snowflakeShapes);
-    }
-    
-    console.log(`✅ 크리스마스 눈 내리는 효과 시작! ${snowflakeCount}개의 눈송이 ❄️`);
-}
-
-function createSnowflake(container, shapes) {
-    const snowflake = document.createElement('div');
-    snowflake.className = 'snowflake';
-    
-    // 랜덤 눈송이 모양
-    const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
-    snowflake.textContent = randomShape;
-    
-    // 랜덤 위치 (가로)
-    const randomLeft = Math.random() * 100;
-    snowflake.style.left = randomLeft + '%';
-    
-    // 랜덤 크기 (0.5em ~ 1.5em)
-    const randomSize = Math.random() * 1 + 0.5;
-    snowflake.style.fontSize = randomSize + 'em';
-    
-    // 랜덤 애니메이션 지속시간 (5초 ~ 15초)
-    const randomDuration = Math.random() * 10 + 5;
-    snowflake.style.animationDuration = randomDuration + 's';
-    
-    // 랜덤 애니메이션 딜레이 (0초 ~ 2초) - 딜레이 감소
-    const randomDelay = Math.random() * 2;
-    snowflake.style.animationDelay = randomDelay + 's';
-    
-    // 랜덤 투명도 (0.5 ~ 1)
-    const randomOpacity = Math.random() * 0.5 + 0.5;
-    snowflake.style.opacity = randomOpacity;
-    
-    // 컨테이너에 추가
-    container.appendChild(snowflake);
-}
-
-function removeSnowfall() {
-    const container = document.getElementById('snowfall-container');
-    if (container) {
-        container.innerHTML = '';
-        console.log('❄️ 눈 효과 제거됨');
+    const mainContent = document.querySelector('main');
+    if (mainContent && mainContent.firstChild) {
+        mainContent.insertBefore(greeting, mainContent.firstChild);
+        setTimeout(() => {
+            greeting.style.animation = 'slideDown 0.5s ease';
+        }, 100);
+        console.log('🐶 가나디 인사 배너 표시');
     }
 }
 
-// 테마 적용 함수 수정 부분
+window.hideGanadiGreeting = function() {
+    const greeting = document.getElementById('ganadiGreeting');
+    if (greeting) {
+        greeting.style.animation = 'slideUp 0.3s ease';
+        setTimeout(() => {
+            greeting.remove();
+            localStorage.setItem('ganadiGreetingDismissed', 'true');
+            console.log('🐶 가나디 인사 배너 닫기');
+        }, 300);
+    }
+};
+
+// ============================================
+// 🐶 수정된 applyTheme 함수 (가나디 테마 클래스 지원)
+// 이 함수를 기존 script.js의 applyTheme 함수와 교체하세요
+// ============================================
+
 function applyTheme(themeName) {
     console.log('🎨 테마 적용 시도:', themeName);
     
@@ -4904,8 +4918,48 @@ function applyTheme(themeName) {
         themeStylesheet = null;
     }
     
-    // 크리스마스 테마 적용
-    if (themeName === 'christmas') {
+    // 모든 특수 효과 및 배너 제거
+    removeSnowfall();
+    const horseGreeting = document.getElementById('horseGreeting');
+    if (horseGreeting) horseGreeting.remove();
+    const ganadiGreeting = document.getElementById('ganadiGreeting');
+    if (ganadiGreeting) ganadiGreeting.remove();
+    
+    // ✨ 가나디 테마 클래스 제거 (모든 테마 전환 시 일단 제거)
+    document.body.classList.remove('ganadi-theme');
+    
+    // 테마별 처리
+    if (themeName === 'red-horse') {
+        // 🐴 붉은 말 테마
+        let style2 = document.querySelector('link[href*="style2.css"]');
+        
+        if (!style2) {
+            themeStylesheet = document.createElement('link');
+            themeStylesheet.rel = 'stylesheet';
+            themeStylesheet.href = 'css/style2.css';
+            themeStylesheet.id = 'red-horse-theme';
+            document.head.appendChild(themeStylesheet);
+            console.log('🐴 붉은 말 테마 로드');
+            
+            themeStylesheet.onload = function() {
+                console.log('✅ 붉은 말 테마 로드 완료!');
+                currentAppliedTheme = themeName;
+                if (!localStorage.getItem('horseGreetingDismissed')) {
+                    setTimeout(showHorseGreeting, 500);
+                }
+            };
+        } else {
+            style2.disabled = false;
+            themeStylesheet = style2;
+            console.log('♻️ 기존 붉은 말 테마 활성화');
+            currentAppliedTheme = themeName;
+            if (!localStorage.getItem('horseGreetingDismissed')) {
+                setTimeout(showHorseGreeting, 500);
+            }
+        }
+        
+    } else if (themeName === 'christmas') {
+        // 🎄 크리스마스 테마
         let style1 = document.querySelector('link[href*="style1.css"]');
         
         if (!style1) {
@@ -4914,46 +4968,68 @@ function applyTheme(themeName) {
             themeStylesheet.href = 'css/style1.css';
             themeStylesheet.id = 'christmas-theme';
             document.head.appendChild(themeStylesheet);
-            
             console.log('🎄 크리스마스 테마 로드');
             
             themeStylesheet.onload = function() {
                 console.log('✅ 크리스마스 테마 로드 완료!');
                 currentAppliedTheme = themeName;
-                
-                // ✅ 눈 내리는 효과 즉시 시작 (딜레이 제거)
-                initSnowfall();
-            };
-            
-            themeStylesheet.onerror = function() {
-                console.error('❌ style1.css 로드 실패!');
+                setTimeout(() => initSnowfall(), 100);
             };
         } else {
             style1.disabled = false;
             themeStylesheet = style1;
             console.log('♻️ 기존 크리스마스 테마 활성화');
             currentAppliedTheme = themeName;
-            
-            // 즉시 눈 효과 시작
-            initSnowfall();
+            setTimeout(() => initSnowfall(), 100);
         }
         
-        // 붉은 말 인사 배너 제거
-        const greeting = document.getElementById('horseGreeting');
-        if (greeting) greeting.remove();
-    } 
-    // 붉은 말 테마
-    else if (themeName === 'red-horse') {
-        // ... 기존 코드 ...
-        removeSnowfall();
-    } 
-    // 기본 테마
-    else {
-        // ... 기존 코드 ...
-        removeSnowfall();
+    } else if (themeName === 'ganadi') {
+        // 🐶 가나디 테마
+        let style3 = document.querySelector('link[href*="style3.css"]');
+        
+        if (!style3) {
+            themeStylesheet = document.createElement('link');
+            themeStylesheet.rel = 'stylesheet';
+            themeStylesheet.href = 'css/style3.css';
+            themeStylesheet.id = 'ganadi-theme';
+            document.head.appendChild(themeStylesheet);
+            console.log('🐶 가나디 테마 로드');
+            
+            themeStylesheet.onload = function() {
+                console.log('✅ 가나디 테마 로드 완료!');
+                currentAppliedTheme = themeName;
+                document.body.classList.add('ganadi-theme'); // ✨ 가나디 테마 클래스 추가!
+                if (!localStorage.getItem('ganadiGreetingDismissed')) {
+                    setTimeout(showGanadiGreeting, 500);
+                }
+            };
+        } else {
+            style3.disabled = false;
+            themeStylesheet = style3;
+            console.log('♻️ 기존 가나디 테마 활성화');
+            currentAppliedTheme = themeName;
+            document.body.classList.add('ganadi-theme'); // ✨ 가나디 테마 클래스 추가!
+            if (!localStorage.getItem('ganadiGreetingDismissed')) {
+                setTimeout(showGanadiGreeting, 500);
+            }
+        }
+        
+    } else {
+        // 📰 기본 테마
+        const style1 = document.querySelector('link[href*="style1.css"]');
+        const style2 = document.querySelector('link[href*="style2.css"]');
+        const style3 = document.querySelector('link[href*="style3.css"]');
+        
+        if (style1) style1.disabled = true;
+        if (style2) style2.disabled = true;
+        if (style3) style3.disabled = true;
+        
+        // ✨ 모든 테마 클래스 제거
+        document.body.classList.remove('ganadi-theme');
+        
+        currentAppliedTheme = themeName;
+        console.log('📰 기본 테마로 복원');
     }
-    
-    updateThemeInfo(themeName);
     
     document.body.style.transition = 'opacity 0.3s';
     document.body.style.opacity = '0.9';
@@ -4962,14 +5038,35 @@ function applyTheme(themeName) {
     }, 150);
 }
 
-// 초기 테마 적용 함수 수정
+// 초기 테마 적용
 function applyInitialTheme() {
     const savedTheme = getCurrentTheme();
     console.log('⚡ 초기 테마 적용:', savedTheme);
     
-    if (savedTheme === 'christmas') {
+    if (savedTheme === 'red-horse') {
+        let style2 = document.querySelector('link[href*="style2.css"]');
+        if (!style2) {
+            const newLink = document.createElement('link');
+            newLink.rel = 'stylesheet';
+            newLink.href = 'css/style2.css';
+            newLink.id = 'red-horse-theme';
+            document.head.appendChild(newLink);
+            themeStylesheet = newLink;
+            newLink.onload = () => {
+                console.log('✅ 붉은 말 테마 초기 로드 완료');
+                currentAppliedTheme = 'red-horse';
+                // ✨ 가나디 클래스 제거
+                document.body.classList.remove('ganadi-theme');
+            };
+        } else {
+            style2.disabled = false;
+            themeStylesheet = style2;
+            currentAppliedTheme = 'red-horse';
+            // ✨ 가나디 클래스 제거
+            document.body.classList.remove('ganadi-theme');
+        }
+    } else if (savedTheme === 'christmas') {
         let style1 = document.querySelector('link[href*="style1.css"]');
-        
         if (!style1) {
             const newLink = document.createElement('link');
             newLink.rel = 'stylesheet';
@@ -4977,267 +5074,48 @@ function applyInitialTheme() {
             newLink.id = 'christmas-theme';
             document.head.appendChild(newLink);
             themeStylesheet = newLink;
-            
-            newLink.onload = function() {
+            newLink.onload = () => {
                 console.log('✅ 크리스마스 테마 초기 로드 완료');
                 currentAppliedTheme = 'christmas';
-                
-                // ✅ 눈 효과 즉시 시작
+                // ✨ 가나디 클래스 제거
+                document.body.classList.remove('ganadi-theme');
                 setTimeout(() => initSnowfall(), 100);
             };
         } else {
             style1.disabled = false;
             themeStylesheet = style1;
             currentAppliedTheme = 'christmas';
-            
-            // 즉시 눈 효과 시작
+            // ✨ 가나디 클래스 제거
+            document.body.classList.remove('ganadi-theme');
             setTimeout(() => initSnowfall(), 100);
         }
-    } 
-    // ... 나머지 테마 처리 ...
-}
-
-// 페이지 로드 시 즉시 실행
-applyInitialTheme();
-
-// DOM 로드 완료 시에도 재확인
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(initThemeSelector, 100);
-        
-        // 크리스마스 테마면 눈 효과 재시작
-        if (getCurrentTheme() === 'christmas') {
-            setTimeout(() => initSnowfall(), 200);
-        }
-    });
-} else {
-    setTimeout(initThemeSelector, 100);
-    
-    if (getCurrentTheme() === 'christmas') {
-        setTimeout(() => initSnowfall(), 200);
-    }
-}
-
-console.log("✅ 크리스마스 눈 내리는 효과 시스템 로드 완료");
-
-function createSnowflake(container, shapes) {
-    const snowflake = document.createElement('div');
-    snowflake.className = 'snowflake';
-    
-    // 랜덤 눈송이 모양
-    const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
-    snowflake.textContent = randomShape;
-    
-    // 랜덤 위치 (가로)
-    const randomLeft = Math.random() * 100;
-    snowflake.style.left = randomLeft + '%';
-    
-    // 랜덤 크기 (0.5em ~ 1.5em)
-    const randomSize = Math.random() * 1 + 0.5;
-    snowflake.style.fontSize = randomSize + 'em';
-    
-    // 랜덤 애니메이션 지속시간 (5초 ~ 15초)
-    const randomDuration = Math.random() * 10 + 5;
-    snowflake.style.animationDuration = randomDuration + 's';
-    
-    // 랜덤 애니메이션 딜레이 (0초 ~ 5초)
-    const randomDelay = Math.random() * 5;
-    snowflake.style.animationDelay = randomDelay + 's';
-    
-    // 랜덤 투명도 (0.5 ~ 1)
-    const randomOpacity = Math.random() * 0.5 + 0.5;
-    snowflake.style.opacity = randomOpacity;
-    
-    // 컨테이너에 추가
-    container.appendChild(snowflake);
-}
-
-function removeSnowfall() {
-    const container = document.getElementById('snowfall-container');
-    if (container) {
-        container.innerHTML = '';
-        console.log('❄️ 눈 효과 제거됨');
-    }
-}
-
-// 테마 적용하기
-function applyTheme(themeName) {
-    console.log('🎨 테마 적용 시도:', themeName);
-    
-    // 이미 적용된 테마면 스킵
-    if (currentAppliedTheme === themeName) {
-        console.log('✅ 이미 적용된 테마:', themeName);
-        return;
-    }
-    
-    // 기존 테마 스타일시트 제거
-    if (themeStylesheet && themeStylesheet.parentNode) {
-        console.log('🗑️ 기존 테마 스타일시트 제거');
-        themeStylesheet.parentNode.removeChild(themeStylesheet);
-        themeStylesheet = null;
-    }
-    
-    // 붉은 말 테마 적용
-    if (themeName === 'red-horse') {
-        // style2.css가 이미 로드되어 있는지 확인
-        let style2 = document.querySelector('link[href*="style2.css"]');
-        
-        if (!style2) {
-            // 새로운 링크 생성
-            themeStylesheet = document.createElement('link');
-            themeStylesheet.rel = 'stylesheet';
-            themeStylesheet.href = 'css/style2.css';
-            themeStylesheet.id = 'red-horse-theme';
-            
-            // head에 추가
-            document.head.appendChild(themeStylesheet);
-            console.log('🐴 붉은 말 테마 로드');
-            
-            themeStylesheet.onload = function() {
-                console.log('✅ 붉은 말 테마 로드 완료!');
-                currentAppliedTheme = themeName;
-                
-                // 배너가 이전에 닫힌 적 없으면 표시
-                if (!localStorage.getItem('horseGreetingDismissed')) {
-                    setTimeout(showHorseGreeting, 500);
-                }
-            };
-            
-            themeStylesheet.onerror = function() {
-                console.error('❌ style2.css 로드 실패! 파일이 css 폴더에 있는지 확인하세요.');
+    } else if (savedTheme === 'ganadi') {
+        let style3 = document.querySelector('link[href*="style3.css"]');
+        if (!style3) {
+            const newLink = document.createElement('link');
+            newLink.rel = 'stylesheet';
+            newLink.href = 'css/style3.css';
+            newLink.id = 'ganadi-theme';
+            document.head.appendChild(newLink);
+            themeStylesheet = newLink;
+            newLink.onload = () => {
+                console.log('✅ 가나디 테마 초기 로드 완료');
+                currentAppliedTheme = 'ganadi';
+                // ✨ 가나디 테마 클래스 추가!
+                document.body.classList.add('ganadi-theme');
             };
         } else {
-            style2.disabled = false;
-            themeStylesheet = style2;
-            console.log('♻️ 기존 붉은 말 테마 활성화');
-            currentAppliedTheme = themeName;
-            
-            // 배너 표시
-            if (!localStorage.getItem('horseGreetingDismissed')) {
-                setTimeout(showHorseGreeting, 500);
-            }
+            style3.disabled = false;
+            themeStylesheet = style3;
+            currentAppliedTheme = 'ganadi';
+            // ✨ 가나디 테마 클래스 추가!
+            document.body.classList.add('ganadi-theme');
         }
-        
-        // 눈 효과 제거
-        removeSnowfall();
-        
-        // 인사 배너 제거 (크리스마스용)
-        const greeting = document.getElementById('horseGreeting');
-        if (greeting) {
-            greeting.remove();
-        }
-        
-    } 
-    // 크리스마스 테마 적용
-    else if (themeName === 'christmas') {
-        // style1.css가 이미 로드되어 있는지 확인
-        let style1 = document.querySelector('link[href*="style1.css"]');
-        
-        if (!style1) {
-            // 새로운 링크 생성
-            themeStylesheet = document.createElement('link');
-            themeStylesheet.rel = 'stylesheet';
-            themeStylesheet.href = 'css/style1.css';
-            themeStylesheet.id = 'christmas-theme';
-            
-            // head에 추가
-            document.head.appendChild(themeStylesheet);
-            console.log('🎄 크리스마스 테마 로드');
-            
-            themeStylesheet.onload = function() {
-                console.log('✅ 크리스마스 테마 로드 완료!');
-                currentAppliedTheme = themeName;
-                
-                // 눈 내리는 효과 시작
-                setTimeout(() => {
-                    if (typeof initSnowfall === 'function') {
-                        initSnowfall();
-                    }
-                }, 300);
-            };
-            
-            themeStylesheet.onerror = function() {
-                console.error('❌ style1.css 로드 실패! 파일이 css 폴더에 있는지 확인하세요.');
-            };
-        } else {
-            style1.disabled = false;
-            themeStylesheet = style1;
-            console.log('♻️ 기존 크리스마스 테마 활성화');
-            currentAppliedTheme = themeName;
-            
-            // 눈 내리는 효과 시작
-            setTimeout(() => {
-                if (typeof initSnowfall === 'function') {
-                    initSnowfall();
-                }
-            }, 300);
-        }
-        
-        // 붉은 말 인사 배너 제거
-        const greeting = document.getElementById('horseGreeting');
-        if (greeting) {
-            greeting.remove();
-        }
-        
-    } 
-    // 기본 테마로 복원
-    else {
-        // style2.css 비활성화
-        const style2 = document.querySelector('link[href*="style2.css"]');
-        if (style2) {
-            style2.disabled = true;
-            console.log('❌ 붉은 말 테마 비활성화');
-        }
-        
-        // style1.css 비활성화
-        const style1 = document.querySelector('link[href*="style1.css"]');
-        if (style1) {
-            style1.disabled = true;
-            console.log('❌ 크리스마스 테마 비활성화');
-        }
-        
-        // 눈 효과 제거
-        removeSnowfall();
-        
-        // 인사 배너 제거
-        const greeting = document.getElementById('horseGreeting');
-        if (greeting) {
-            greeting.remove();
-        }
-        
-        currentAppliedTheme = themeName;
-        console.log('📰 기본 테마로 복원');
-    }
-    
-    // 테마 정보 표시 업데이트
-    updateThemeInfo(themeName);
-    
-    // 페이지 부드러운 전환 효과
-    document.body.style.transition = 'opacity 0.3s';
-    document.body.style.opacity = '0.9';
-    setTimeout(() => {
-        document.body.style.opacity = '1';
-    }, 150);
-}
-
-// 테마 정보 표시 업데이트
-function updateThemeInfo(themeName) {
-    const redHorseInfo = document.getElementById('redHorseInfo');
-    const christmasInfo = document.getElementById('christmasInfo');
-    
-    // 모든 정보 박스 숨기기
-    if (redHorseInfo) {
-        redHorseInfo.style.display = 'none';
-    }
-    if (christmasInfo) {
-        christmasInfo.style.display = 'none';
-    }
-    
-    // 선택된 테마의 정보 박스만 표시
-    if (themeName === 'red-horse' && redHorseInfo) {
-        redHorseInfo.style.display = 'block';
-    } else if (themeName === 'christmas' && christmasInfo) {
-        christmasInfo.style.display = 'block';
+    } else {
+        // ✨ 기본 테마일 때 가나디 클래스 제거
+        document.body.classList.remove('ganadi-theme');
+        currentAppliedTheme = 'default';
+        console.log('✅ 기본 테마 사용');
     }
 }
 
@@ -5245,10 +5123,10 @@ function updateThemeInfo(themeName) {
 function initThemeSelector() {
     console.log('🎨 테마 선택기 초기화 시작');
     
-    // 라디오 버튼 찾기
     const defaultRadio = document.getElementById('themeDefault');
     const redHorseRadio = document.getElementById('themeRedHorse');
     const christmasRadio = document.getElementById('themeChristmas');
+    const ganadiRadio = document.getElementById('themeGanadi');
     
     if (!defaultRadio || !redHorseRadio) {
         console.log('⚠️ 라디오 버튼을 찾을 수 없음. 1초 후 재시도...');
@@ -5256,97 +5134,50 @@ function initThemeSelector() {
         return;
     }
     
-    console.log('✅ 라디오 버튼 발견:', {
-        default: !!defaultRadio,
-        redHorse: !!redHorseRadio,
-        christmas: !!christmasRadio
-    });
-    
-    // 저장된 테마 불러오기
     const savedTheme = getCurrentTheme();
     console.log('💾 저장된 테마:', savedTheme);
     
     // 라디오 버튼 상태 설정
-    if (savedTheme === 'red-horse') {
-        redHorseRadio.checked = true;
-        defaultRadio.checked = false;
-        if (christmasRadio) christmasRadio.checked = false;
-    } else if (savedTheme === 'christmas') {
-        if (christmasRadio) christmasRadio.checked = true;
-        defaultRadio.checked = false;
-        redHorseRadio.checked = false;
-    } else {
-        defaultRadio.checked = true;
-        redHorseRadio.checked = false;
-        if (christmasRadio) christmasRadio.checked = false;
-    }
+    defaultRadio.checked = (savedTheme === 'default');
+    redHorseRadio.checked = (savedTheme === 'red-horse');
+    if (christmasRadio) christmasRadio.checked = (savedTheme === 'christmas');
+    if (ganadiRadio) ganadiRadio.checked = (savedTheme === 'ganadi');
     
-    // 저장된 테마 즉시 적용
     applyTheme(savedTheme);
-    updateThemeInfo(savedTheme);
     
-    // 라디오 버튼 이벤트 리스너 (기존 리스너 제거 후 추가)
+    // 이벤트 리스너 등록
     const themeRadios = document.querySelectorAll('input[name="theme"]');
     themeRadios.forEach(radio => {
-        // 기존 리스너 제거
         const newRadio = radio.cloneNode(true);
         radio.parentNode.replaceChild(newRadio, radio);
     });
     
-    // 새로운 라디오 버튼에 이벤트 추가
     document.querySelectorAll('input[name="theme"]').forEach(radio => {
         radio.addEventListener('change', function(e) {
             const selectedTheme = e.target.value;
             console.log('🎨 테마 변경:', selectedTheme);
             
-            // 테마 저장 및 적용
             saveTheme(selectedTheme);
             applyTheme(selectedTheme);
             
-            // 사용자 피드백
-            let message = '';
-            if (selectedTheme === 'red-horse') {
-                message = '🐴 붉은 말이 안내하는 새해 테마가 적용되었습니다!';
-            } else if (selectedTheme === 'christmas') {
-                message = '🎄 메리 크리스마스! 눈 내리는 테마가 적용되었습니다!';
-            } else {
-                message = '📰 기본 테마로 돌아왔습니다!';
-            }
+            const messages = {
+                'red-horse': '🐴 붉은 말이 안내하는 새해 테마가 적용되었습니다!',
+                'christmas': '🎄 메리 크리스마스! 눈 내리는 테마가 적용되었습니다!',
+                'ganadi': '🐶 가나디 테마가 적용되었습니다! 듀...',
+                'default': '📰 기본 테마로 돌아왔습니다!'
+            };
             
-            console.log('💬 알림:', message);
+            const message = messages[selectedTheme] || messages['default'];
             
-            // 토스트 알림
             if (typeof showToastNotification === 'function') {
                 showToastNotification('테마 변경', message);
-            } else {
-                // 간단한 알림
-                const toast = document.createElement('div');
-                toast.textContent = message;
-                toast.style.cssText = `
-                    position: fixed;
-                    bottom: 100px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    background: rgba(198, 40, 40, 0.95);
-                    color: white;
-                    padding: 14px 24px;
-                    border-radius: 24px;
-                    font-size: 14px;
-                    font-weight: 600;
-                    z-index: 10000;
-                    box-shadow: 0 4px 12px rgba(198, 40, 40, 0.4);
-                    animation: slideUp 0.3s ease;
-                `;
-                document.body.appendChild(toast);
-                setTimeout(() => {
-                    toast.style.animation = 'slideDown 0.3s ease reverse';
-                    setTimeout(() => toast.remove(), 300);
-                }, 3000);
             }
             
-            // 붉은 말 테마 선택 시 인사 배너 초기화
+            // 인사 배너 초기화
             if (selectedTheme === 'red-horse') {
                 localStorage.removeItem('horseGreetingDismissed');
+            } else if (selectedTheme === 'ganadi') {
+                localStorage.removeItem('ganadiGreetingDismissed');
             }
         });
     });
@@ -5354,83 +5185,12 @@ function initThemeSelector() {
     console.log('✅ 테마 선택기 초기화 완료!');
 }
 
-// 초기 테마 적용 (페이지 로드 즉시)
-function applyInitialTheme() {
-    const savedTheme = getCurrentTheme();
-    console.log('⚡ 초기 테마 적용:', savedTheme);
-    
-    if (savedTheme === 'red-horse') {
-        // style2.css가 이미 있는지 확인
-        let style2 = document.querySelector('link[href*="style2.css"]');
-        
-        if (!style2) {
-            // 새로 생성
-            const newLink = document.createElement('link');
-            newLink.rel = 'stylesheet';
-            newLink.href = 'css/style2.css';
-            newLink.id = 'red-horse-theme';
-            document.head.appendChild(newLink);
-            themeStylesheet = newLink;
-            
-            newLink.onload = function() {
-                console.log('✅ 붉은 말 테마 초기 로드 완료');
-                currentAppliedTheme = 'red-horse';
-            };
-        } else {
-            style2.disabled = false;
-            themeStylesheet = style2;
-            currentAppliedTheme = 'red-horse';
-        }
-    } else if (savedTheme === 'christmas') {
-        // style1.css가 이미 있는지 확인
-        let style1 = document.querySelector('link[href*="style1.css"]');
-        
-        if (!style1) {
-            // 새로 생성
-            const newLink = document.createElement('link');
-            newLink.rel = 'stylesheet';
-            newLink.href = 'css/style1.css';
-            newLink.id = 'christmas-theme';
-            document.head.appendChild(newLink);
-            themeStylesheet = newLink;
-            
-            newLink.onload = function() {
-                console.log('✅ 크리스마스 테마 초기 로드 완료');
-                currentAppliedTheme = 'christmas';
-                
-                // 눈 내리는 효과 시작
-                setTimeout(() => {
-                    if (typeof initSnowfall === 'function') {
-                        initSnowfall();
-                    }
-                }, 500);
-            };
-        } else {
-            style1.disabled = false;
-            themeStylesheet = style1;
-            currentAppliedTheme = 'christmas';
-            
-            // 눈 내리는 효과 시작
-            setTimeout(() => {
-                if (typeof initSnowfall === 'function') {
-                    initSnowfall();
-                }
-            }, 500);
-        }
-    } else {
-        // 기본 테마는 style.css 사용 (이미 HTML에 있음)
-        currentAppliedTheme = 'default';
-        console.log('✅ 기본 테마 사용');
-    }
-}
-
-// 창 크기 변경 시 눈송이 개수 재조정
+// 창 크기 변경 시 눈송이 재조정
 let resizeTimeout;
 window.addEventListener('resize', () => {
     clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(() => {
-        const savedTheme = localStorage.getItem('selectedTheme');
-        if (savedTheme === 'christmas') {
+        if (getCurrentTheme() === 'christmas') {
             const container = document.getElementById('snowfall-container');
             if (container && container.children.length > 0) {
                 initSnowfall();
@@ -5444,10 +5204,17 @@ applyInitialTheme();
 
 // DOM 로드 완료 시 테마 선택기 초기화
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initThemeSelector);
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(initThemeSelector, 100);
+        if (getCurrentTheme() === 'christmas') {
+            setTimeout(() => initSnowfall(), 200);
+        }
+    });
 } else {
-    // 이미 로드되었다면 즉시 실행
     setTimeout(initThemeSelector, 100);
+    if (getCurrentTheme() === 'christmas') {
+        setTimeout(() => initSnowfall(), 200);
+    }
 }
 
 console.log("✅ Part 15: 멀티 테마 시스템 로드 완료");
