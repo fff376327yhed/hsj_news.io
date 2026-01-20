@@ -30,24 +30,46 @@
     <link rel="stylesheet" href="./css/style.css">
 
 <script>
-// ===== Service Worker 등록 (GitHub Pages 호환 버전) =====
+// ===== Service Worker 등록 (GitHub Pages 완벽 호환 버전) =====
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
-      // 🌐 GitHub Pages 경로 자동 감지
+      // 🌐 GitHub Pages 베이스 경로 정확하게 감지
       const getBasePath = () => {
-        const pathArray = window.location.pathname.split('/').filter(Boolean);
-        // GitHub Pages 저장소명이 첫 경로인 경우 (예: /hsj_news.io/)
-        if (pathArray.length > 0 && !pathArray[0].includes('.')) {
-          return `/${pathArray[0]}`;
+        const pathname = window.location.pathname;
+        
+        // 1️⃣ 루트 경로인 경우 ('/' 또는 빈 문자열)
+        if (!pathname || pathname === '/') {
+          return '';
         }
-        return '';
+        
+        // 2️⃣ 경로를 분리하여 첫 세그먼트 추출
+        const segments = pathname.split('/').filter(Boolean);
+        
+        if (segments.length === 0) {
+          return '';
+        }
+        
+        // 3️⃣ 첫 번째 세그먼트가 HTML 파일이 아니면 저장소명으로 간주
+        const firstSegment = segments[0];
+        
+        // HTML 파일 확장자 체크 (.html, .htm)
+        if (firstSegment.endsWith('.html') || firstSegment.endsWith('.htm')) {
+          return '';
+        }
+        
+        // 쿼리 파라미터가 있는 경우도 처리
+        const cleanSegment = firstSegment.split('?')[0];
+        
+        // 4️⃣ 저장소명 반환
+        return `/${cleanSegment}`;
       };
       
       const basePath = getBasePath();
       const swPath = `${basePath}/firebase-messaging-sw.js`;
       const swScope = `${basePath}/`;
       
+      console.log('🔍 감지된 베이스 경로:', basePath || '(루트)');
       console.log('🔍 Service Worker 경로:', swPath);
       console.log('🔍 Service Worker 스코프:', swScope);
       
@@ -77,14 +99,28 @@ if ('serviceWorker' in navigator) {
       
     } catch (error) {
       console.error('❌ Service Worker 등록 실패:', error);
+      console.error('📍 현재 URL:', window.location.href);
       console.error('📍 현재 경로:', window.location.pathname);
-      console.error('💡 해결방법: firebase-messaging-sw.js 파일이 GitHub 저장소 루트에 있는지 확인하세요.');
+      
+      // 🔧 디버깅 정보
+      const segments = window.location.pathname.split('/').filter(Boolean);
+      console.error('📂 경로 세그먼트:', segments);
+      
+      if (error.message.includes('404')) {
+        console.error('💡 404 오류 해결방법:');
+        console.error('   1. firebase-messaging-sw.js 파일이 저장소 루트에 있는지 확인');
+        console.error('   2. 파일명 철자가 정확한지 확인');
+        console.error('   3. GitHub에서 커밋/푸시가 완료되었는지 확인');
+        console.error('   4. 다음 URL에서 직접 접근 테스트:');
+        console.error(`      ${window.location.origin}${window.location.pathname.split('/').filter(Boolean)[0] ? '/' + window.location.pathname.split('/').filter(Boolean)[0] : ''}/firebase-messaging-sw.js`);
+      }
     }
   });
 } else {
   console.warn('⚠️ 이 브라우저는 Service Worker를 지원하지 않습니다');
 }
 </script>
+
 
 <style>
 /* ========== Quill 에디터 스타일 ========== */
