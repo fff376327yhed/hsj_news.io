@@ -78,15 +78,51 @@ function closeToast() {
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
     .catch((error) => console.error("❌ 인증 지속성 설정 실패:", error));
 
-// FCM Messaging 초기화
+// ===== Firebase Messaging 초기화 (Service Worker 준비 후) =====
 let messaging = null;
-try {
-    if (firebase.messaging.isSupported && firebase.messaging.isSupported()) {
+
+async function initializeMessaging() {
+    try {
+        // 1. Messaging 지원 여부 확인
+        if (!firebase.messaging.isSupported || !firebase.messaging.isSupported()) {
+            console.warn("⚠️ 이 브라우저는 Firebase Messaging을 지원하지 않습니다.");
+            return;
+        }
+        
+        // 2. Service Worker가 준비될 때까지 대기
+        console.log("⏳ Service Worker 준비 대기 중...");
+        const swRegistration = await navigator.serviceWorker.ready;
+        console.log("✅ Service Worker 준비 완료:", swRegistration.scope);
+        
+        // 3. Firebase Messaging 초기화
         messaging = firebase.messaging();
-        console.log("✅ Firebase Messaging 초기화 성공");
+        window.messaging = messaging; // 전역 변수로 저장
+        console.log("✅ Firebase Messaging 초기화 성공!");
+        
+        // 4. 포그라운드 메시지 수신 핸들러 설정
+        messaging.onMessage((payload) => {
+            console.log('📨 포그라운드 메시지 수신:', payload);
+            
+            const title = payload.data?.title || payload.notification?.title || '📰 해정뉴스';
+            const body = payload.data?.body || payload.data?.text || payload.notification?.body || '새로운 알림';
+            const articleId = payload.data?.articleId || null;
+            
+            if (typeof showToastNotification === 'function') {
+                showToastNotification(title, body, articleId);
+            }
+        });
+        
+    } catch(error) {
+        console.error("❌ Firebase Messaging 초기화 실패:", error);
+        console.error("상세 오류:", error.code, error.message);
     }
-} catch(err) {
-    console.warn("⚠️ Firebase Messaging 초기화 실패:", err.message);
+}
+
+// Service Worker가 등록된 후 Messaging 초기화
+if ('serviceWorker' in navigator) {
+    initializeMessaging();
+} else {
+    console.warn("⚠️ Service Worker를 지원하지 않는 브라우저입니다.");
 }
 
 
@@ -542,15 +578,22 @@ async function handleAdminLogin(e) {
     showLoadingIndicator("로그인 중...");
     
     try {
-        const userCredential = await auth.signInWithEmailAndPassword(email, pw);
-        console.log("✅ 인증 성공:", userCredential.user.email);
-        
-        setCookie("is_admin", "true", 365);
-        
-        hideLoadingIndicator();
-        closeAdminAuthModal();
-        
-        alert("✅ 관리자 로그인 성공!");
+    const userCredential = await auth.signInWithEmailAndPassword(email, pw);
+    console.log("✅ 인증 성공:", userCredential.user.email);
+    
+    // ✅ Firebase에 관리자 플래그 저장
+    const uid = userCredential.user.uid;
+    await db.ref(`users/${uid}`).update({
+        isAdmin: true,
+        lastAdminLogin: Date.now()
+    });
+    
+    setCookie("is_admin", "true", 365);
+    
+    hideLoadingIndicator();
+    closeAdminAuthModal();
+    
+    alert("✅ 관리자 로그인 성공!");
         
         setTimeout(() => {
             location.reload();
@@ -832,21 +875,23 @@ console.log("✅ Part 3 프로필 관리 완료");
 
 // ===== Part 4: 알림 시스템 (간소화) =====
 
-// FCM 토큰 등록 함수 추가
 async function registerFCMToken() {
     if (!messaging) {
-        console.warn("⚠️ Firebase Messaging not supported");
+        console.warn("⚠️ Firebase Messaging이 초기화되지 않았습니다.");
         return;
     }
     
-    if (!isLoggedIn()) return;
+    if (!isLoggedIn()) {
+        console.log("ℹ️ 로그인되지 않아 FCM 토큰 등록을 건너뜁니다.");
+        return;
+    }
     
     try {
-        // ✅ Service Worker 등록 확인 먼저 수행
+        // 1. Service Worker 준비 확인
         const swRegistration = await navigator.serviceWorker.ready;
         console.log('✅ Service Worker 준비 완료:', swRegistration.scope);
         
-        // 알림 권한 요청
+        // 2. 알림 권한 요청
         const permission = await Notification.requestPermission();
         
         if (permission !== 'granted') {
@@ -856,10 +901,10 @@ async function registerFCMToken() {
         
         console.log('✅ 알림 권한 승인됨');
         
-        // ✅ Service Worker 등록을 명시적으로 전달
+        // 3. FCM 토큰 가져오기 (Service Worker 명시적 전달)
         const token = await messaging.getToken({
             vapidKey: 'BFJBBAv_qOw_aklFbE89r_cuCArMJkMK56Ryj9M1l1a3qv8CuHCJ-fKALtOn4taF7Pjwo2bjfoOuewEKBqRBtCo',
-            serviceWorkerRegistration: swRegistration
+            serviceWorkerRegistration: swRegistration // ✅ 명시적 전달!
         });
         
         if (token) {
@@ -4367,21 +4412,38 @@ window.showMessenger = async function() {
     
     section.classList.add("active");
     
-    section.innerHTML = `
-        <div style="max-width:800px; margin:0 auto; padding:20px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2 style="color:#c62828; margin:0;">
-                    <i class="fas fa-bell"></i> 알림
-                </h2>
-                <div style="display:flex; gap:10px;">
-                    <button onclick="markAllNotificationsAsRead()" class="btn-secondary">
-                        <i class="fas fa-check-double"></i> 모두 읽음
+section.innerHTML = `
+    <div style="max-width:800px; margin:0 auto; padding:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2 style="color:#c62828; margin:0;">
+                <i class="fas fa-bell"></i> 알림
+            </h2>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <!-- ✅ 선택 모드 토글 버튼 -->
+                <button onclick="toggleSelectionMode()" class="btn-secondary" id="toggleSelectionBtn">
+                    <i class="fas fa-check-square"></i> 선택
+                </button>
+                
+                <!-- ✅ 선택 삭제 버튼 (선택 모드일 때만 표시) -->
+                <button onclick="deleteSelectedNotifications()" class="btn-danger" id="deleteSelectedBtn" style="display:none;">
+                    <i class="fas fa-trash"></i> 선택 삭제
+                </button>
+                
+                <!-- ✅ 관리자 전용 전체 알림 삭제 -->
+                ${isAdmin() ? `
+                    <button onclick="showAdminNotificationManager()" class="btn-warning">
+                        <i class="fas fa-shield-alt"></i> 관리자 삭제
                     </button>
-                    <button onclick="showMoreMenu()" class="btn-secondary">
-                        <i class="fas fa-arrow-left"></i> 뒤로
-                    </button>
-                </div>
+                ` : ''}
+                
+                <button onclick="markAllNotificationsAsRead()" class="btn-secondary">
+                    <i class="fas fa-check-double"></i> 모두 읽음
+                </button>
+                <button onclick="showMoreMenu()" class="btn-secondary">
+                    <i class="fas fa-arrow-left"></i> 뒤로
+                </button>
             </div>
+        </div>
             
             <!-- 필터 버튼 -->
             <div class="messenger-filters" style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
@@ -4531,16 +4593,27 @@ async function loadNotificationsList(filter = 'all') {
         }
         
         listEl.innerHTML = notifications.map(notif => {
-            const icon = getNotificationIcon(notif.type);
-            const bgColor = getNotificationColor(notif.type);
-            const timeAgo = getTimeAgo(notif.timestamp);
+    const icon = getNotificationIcon(notif.type);
+    const bgColor = getNotificationColor(notif.type);
+    const timeAgo = getTimeAgo(notif.timestamp);
+    
+    return `
+        <div class="notification-item ${!notif.read ? 'unread' : ''}" 
+             data-notification-id="${notif.id}"
+             onclick="handleNotificationClick('${notif.id}', '${notif.articleId || ''}')">
             
-            return `
-                <div class="notification-item ${!notif.read ? 'unread' : ''}" 
-                     onclick="handleNotificationClick('${notif.id}', '${notif.articleId || ''}')">
-                    <div class="notification-icon" style="background:${bgColor}; color:white;">
-                        <i class="fas ${icon}"></i>
-                    </div>
+            <!-- ✅ 체크박스 추가 (선택 모드일 때만 표시) -->
+            <div class="notification-checkbox" style="display:none; margin-right:12px;">
+                <input type="checkbox" 
+                       class="notification-select-checkbox"
+                       data-notif-id="${notif.id}"
+                       onclick="event.stopPropagation();"
+                       style="width:18px; height:18px; cursor:pointer;">
+            </div>
+            
+            <div class="notification-icon" style="background:${bgColor}; color:white;">
+                <i class="fas ${icon}"></i>
+            </div>
                     <div class="notification-content">
                         <div class="notification-title">${notif.title || '알림'}</div>
                         <div class="notification-text">${notif.text || ''}</div>
@@ -4549,15 +4622,25 @@ async function loadNotificationsList(filter = 'all') {
                             ${!notif.read ? ' <span style="color:#c62828;">• 읽지 않음</span>' : ''}
                         </div>
                     </div>
-                    ${!notif.read ? `
-                        <button onclick="event.stopPropagation(); markNotificationAsRead('${notif.id}')" 
-                                style="padding:6px 12px; background:#e9ecef; border:none; border-radius:4px; font-size:12px; cursor:pointer;">
-                            읽음
-                        </button>
-                    ` : ''}
-                </div>
-            `;
-        }).join('');
+                    <!-- ✅ 개별 삭제 버튼 추가 -->
+            <div style="display:flex; gap:8px; margin-left:auto;">
+                ${!notif.read ? `
+                    <button onclick="event.stopPropagation(); markNotificationAsRead('${notif.id}')" 
+                            class="notif-action-btn"
+                            style="padding:6px 12px; background:#e9ecef; border:none; border-radius:4px; font-size:12px; cursor:pointer;">
+                        읽음
+                    </button>
+                ` : ''}
+                
+                <button onclick="event.stopPropagation(); deleteNotification('${notif.id}')"
+                        class="notif-action-btn"
+                        style="padding:6px 12px; background:#ffebee; color:#c62828; border:none; border-radius:4px; font-size:12px; cursor:pointer;">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+}).join('');
         
     } catch(error) {
         console.error("알림 로드 실패:", error);
@@ -4708,6 +4791,312 @@ async function updateMessengerBadge() {
 }
 
 console.log("✅ 메신저 → 알림 확인 기능으로 변경 완료");
+
+// ===== 알림 삭제 기능들 =====
+
+// 전역 변수: 선택 모드 상태
+let isSelectionMode = false;
+
+// ⭐ 선택 모드 토글
+window.toggleSelectionMode = function() {
+    isSelectionMode = !isSelectionMode;
+    
+    const toggleBtn = document.getElementById('toggleSelectionBtn');
+    const deleteBtn = document.getElementById('deleteSelectedBtn');
+    const checkboxes = document.querySelectorAll('.notification-checkbox');
+    
+    if (isSelectionMode) {
+        // 선택 모드 활성화
+        toggleBtn.innerHTML = '<i class="fas fa-times"></i> 취소';
+        toggleBtn.classList.add('active');
+        deleteBtn.style.display = 'inline-flex';
+        
+        checkboxes.forEach(cb => cb.style.display = 'flex');
+        
+        // 알림 클릭 비활성화
+        document.querySelectorAll('.notification-item').forEach(item => {
+            item.style.cursor = 'default';
+            const onclick = item.getAttribute('onclick');
+            if (onclick) {
+                item.setAttribute('data-original-onclick', onclick);
+                item.removeAttribute('onclick');
+            }
+        });
+    } else {
+        // 선택 모드 비활성화
+        toggleBtn.innerHTML = '<i class="fas fa-check-square"></i> 선택';
+        toggleBtn.classList.remove('active');
+        deleteBtn.style.display = 'none';
+        
+        checkboxes.forEach(cb => {
+            cb.style.display = 'none';
+            cb.querySelector('input').checked = false;
+        });
+        
+        // 알림 클릭 복원
+        document.querySelectorAll('.notification-item').forEach(item => {
+            item.style.cursor = 'pointer';
+            const onclick = item.getAttribute('data-original-onclick');
+            if (onclick) {
+                item.setAttribute('onclick', onclick);
+                item.removeAttribute('data-original-onclick');
+            }
+        });
+    }
+};
+
+// ⭐ 개별 알림 삭제
+window.deleteNotification = async function(notificationId) {
+    if (!confirm('이 알림을 삭제하시겠습니까?')) return;
+    
+    const myUid = getUserId();
+    
+    try {
+        await db.ref(`notifications/${myUid}/${notificationId}`).remove();
+        
+        // 화면에서 제거
+        const notifElement = document.querySelector(`[data-notification-id="${notificationId}"]`);
+        if (notifElement) {
+            notifElement.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => {
+                loadNotificationsList(currentFilter);
+            }, 300);
+        }
+        
+        await updateMessengerBadge();
+        
+    } catch(error) {
+        console.error("알림 삭제 실패:", error);
+        alert("삭제 중 오류가 발생했습니다.");
+    }
+};
+
+// ⭐ 선택된 알림들 삭제
+window.deleteSelectedNotifications = async function() {
+    const selectedCheckboxes = document.querySelectorAll('.notification-select-checkbox:checked');
+    
+    if (selectedCheckboxes.length === 0) {
+        alert('삭제할 알림을 선택해주세요.');
+        return;
+    }
+    
+    if (!confirm(`선택한 ${selectedCheckboxes.length}개의 알림을 삭제하시겠습니까?`)) return;
+    
+    const myUid = getUserId();
+    const updates = {};
+    
+    selectedCheckboxes.forEach(checkbox => {
+        const notifId = checkbox.getAttribute('data-notif-id');
+        updates[`notifications/${myUid}/${notifId}`] = null;
+    });
+    
+    try {
+        await db.ref().update(updates);
+        
+        // 선택 모드 해제
+        toggleSelectionMode();
+        
+        // 목록 새로고침
+        await loadNotificationsList(currentFilter);
+        await updateMessengerBadge();
+        
+        if (typeof showToastNotification === 'function') {
+            showToastNotification('삭제 완료', `${selectedCheckboxes.length}개의 알림이 삭제되었습니다.`);
+        }
+        
+    } catch(error) {
+        console.error("알림 삭제 실패:", error);
+        alert("삭제 중 오류가 발생했습니다.");
+    }
+};
+
+// ⭐ 관리자 전용: 전체 사용자 알림 관리 모달
+window.showAdminNotificationManager = async function() {
+    if (!isAdmin()) {
+        alert("🚫 관리자 권한이 필요합니다!");
+        return;
+    }
+    
+    showLoadingIndicator("알림 목록 로딩 중...");
+    
+    try {
+        // 모든 사용자의 알림 수집
+        const usersSnapshot = await db.ref('users').once('value');
+        const usersData = usersSnapshot.val() || {};
+        
+        const notificationMap = new Map(); // notificationId -> { count, users[], data }
+        
+        for (const [uid, userData] of Object.entries(usersData)) {
+            const notificationsSnapshot = await db.ref(`notifications/${uid}`).once('value');
+            const notifications = notificationsSnapshot.val() || {};
+            
+            for (const [notifId, notifData] of Object.entries(notifications)) {
+                // timestamp 기준으로 같은 알림 그룹화
+                const key = `${notifData.timestamp}_${notifData.title}_${notifData.articleId || 'none'}`;
+                
+                if (!notificationMap.has(key)) {
+                    notificationMap.set(key, {
+                        sampleId: notifId,
+                        data: notifData,
+                        users: [],
+                        count: 0
+                    });
+                }
+                
+                const group = notificationMap.get(key);
+                group.users.push({ uid, notifId });
+                group.count++;
+            }
+        }
+        
+        hideLoadingIndicator();
+        
+        // 모달 생성
+        const existingModal = document.getElementById('adminNotificationModal');
+        if (existingModal) existingModal.remove();
+        
+        const notifications = Array.from(notificationMap.entries())
+            .sort((a, b) => b[1].data.timestamp - a[1].data.timestamp);
+        
+        const modalHTML = `
+            <div id="adminNotificationModal" class="modal active">
+                <div class="modal-content" style="max-width:900px; max-height:80vh; overflow-y:auto;">
+                    <div class="modal-header">
+                        <h3 style="color:#c62828;">
+                            <i class="fas fa-shield-alt"></i> 관리자 알림 관리
+                        </h3>
+                        <button onclick="closeAdminNotificationModal()" class="modal-close">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <div style="padding:20px;">
+                        <div style="background:#fff3cd; padding:12px; border-radius:8px; margin-bottom:20px; border:1px solid #ffc107;">
+                            <i class="fas fa-exclamation-triangle" style="color:#856404;"></i>
+                            <strong>주의:</strong> 선택한 알림이 모든 사용자에게서 삭제됩니다.
+                        </div>
+                        
+                        ${notifications.length === 0 ? `
+                            <div style="text-align:center; padding:60px 20px; color:#868e96;">
+                                <i class="fas fa-inbox" style="font-size:48px; margin-bottom:15px; display:block;"></i>
+                                <p>전송된 알림이 없습니다.</p>
+                            </div>
+                        ` : notifications.map(([key, group]) => {
+                            const timeAgo = getTimeAgo(group.data.timestamp);
+                            const icon = getNotificationIcon(group.data.type);
+                            const bgColor = getNotificationColor(group.data.type);
+                            
+                            return `
+                                <div style="background:#f8f9fa; padding:16px; border-radius:8px; margin-bottom:12px; border:1px solid #dee2e6;">
+                                    <div style="display:flex; gap:12px; align-items:flex-start;">
+                                        <div style="width:40px; height:40px; border-radius:50%; background:${bgColor}; color:white; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                            <i class="fas ${icon}"></i>
+                                        </div>
+                                        
+                                        <div style="flex:1;">
+                                            <div style="font-weight:600; color:#212529; margin-bottom:4px;">
+                                                ${group.data.title}
+                                            </div>
+                                            <div style="font-size:14px; color:#6c757d; margin-bottom:8px;">
+                                                ${group.data.text}
+                                            </div>
+                                            <div style="font-size:12px; color:#868e96;">
+                                                <i class="fas fa-users"></i> ${group.count}명에게 전송 · ${timeAgo}
+                                                ${group.data.articleId ? ` · 기사 ID: ${group.data.articleId}` : ''}
+                                            </div>
+                                        </div>
+                                        
+                                        <button onclick="deleteNotificationForAllUsers('${key}')" 
+                                                class="btn-danger" 
+                                                style="padding:8px 16px; white-space:nowrap;">
+                                            <i class="fas fa-trash"></i> 전체 삭제
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            </div>
+            
+            <style>
+                @keyframes fadeOut {
+                    to {
+                        opacity: 0;
+                        transform: translateX(-20px);
+                    }
+                }
+            </style>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // 전역 변수에 저장 (삭제 시 사용)
+        window.adminNotificationMap = notificationMap;
+        
+    } catch(error) {
+        hideLoadingIndicator();
+        console.error("관리자 알림 목록 로딩 실패:", error);
+        alert("알림 목록을 불러오는데 실패했습니다.");
+    }
+};
+
+// ⭐ 모든 사용자에게서 특정 알림 삭제
+window.deleteNotificationForAllUsers = async function(notificationKey) {
+    if (!isAdmin()) {
+        alert("🚫 관리자 권한이 필요합니다!");
+        return;
+    }
+    
+    const group = window.adminNotificationMap.get(notificationKey);
+    
+    if (!group) {
+        alert("알림 정보를 찾을 수 없습니다.");
+        return;
+    }
+    
+    if (!confirm(`이 알림을 ${group.count}명의 사용자에게서 모두 삭제하시겠습니까?\n\n"${group.data.title}"`)) {
+        return;
+    }
+    
+    showLoadingIndicator("삭제 중...");
+    
+    try {
+        const updates = {};
+        
+        group.users.forEach(({ uid, notifId }) => {
+            updates[`notifications/${uid}/${notifId}`] = null;
+        });
+        
+        await db.ref().update(updates);
+        
+        hideLoadingIndicator();
+        
+        if (typeof showToastNotification === 'function') {
+            showToastNotification('삭제 완료', `${group.count}명의 사용자에게서 알림이 삭제되었습니다.`);
+        }
+        
+        // 모달 닫고 다시 열기
+        closeAdminNotificationModal();
+        setTimeout(() => showAdminNotificationManager(), 300);
+        
+    } catch(error) {
+        hideLoadingIndicator();
+        console.error("알림 삭제 실패:", error);
+        alert("삭제 중 오류가 발생했습니다: " + error.message);
+    }
+};
+
+// ⭐ 관리자 알림 모달 닫기
+window.closeAdminNotificationModal = function() {
+    const modal = document.getElementById('adminNotificationModal');
+    if (modal) {
+        modal.classList.remove('active');
+        setTimeout(() => modal.remove(), 300);
+    }
+};
+
+console.log("✅ 알림 삭제 기능 추가 완료");
 
 // ===== Part 14: 최종 초기화 =====
 
