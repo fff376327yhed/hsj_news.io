@@ -30,14 +30,30 @@
     <link rel="stylesheet" href="./css/style.css">
 
 <script>
-// ===== Service Worker 등록 (개선 버전) =====
+// ===== Service Worker 등록 (GitHub Pages 호환 버전) =====
 if ('serviceWorker' in navigator) {
-  // 페이지 로드 완료 후 등록
   window.addEventListener('load', async () => {
     try {
+      // 🌐 GitHub Pages 경로 자동 감지
+      const getBasePath = () => {
+        const pathArray = window.location.pathname.split('/').filter(Boolean);
+        // GitHub Pages 저장소명이 첫 경로인 경우 (예: /hsj_news.io/)
+        if (pathArray.length > 0 && !pathArray[0].includes('.')) {
+          return `/${pathArray[0]}`;
+        }
+        return '';
+      };
+      
+      const basePath = getBasePath();
+      const swPath = `${basePath}/firebase-messaging-sw.js`;
+      const swScope = `${basePath}/`;
+      
+      console.log('🔍 Service Worker 경로:', swPath);
+      console.log('🔍 Service Worker 스코프:', swScope);
+      
       // 1. Service Worker 등록
-      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-        scope: '/'
+      const registration = await navigator.serviceWorker.register(swPath, {
+        scope: swScope
       });
       
       console.log('✅ Service Worker 등록 성공:', registration.scope);
@@ -61,6 +77,8 @@ if ('serviceWorker' in navigator) {
       
     } catch (error) {
       console.error('❌ Service Worker 등록 실패:', error);
+      console.error('📍 현재 경로:', window.location.pathname);
+      console.error('💡 해결방법: firebase-messaging-sw.js 파일이 GitHub 저장소 루트에 있는지 확인하세요.');
     }
   });
 } else {
