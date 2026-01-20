@@ -888,7 +888,14 @@ async function registerFCMToken() {
     
     try {
         // 1. Service Worker 준비 확인
-        const swRegistration = await navigator.serviceWorker.ready;
+        let swRegistration = window.swRegistration;
+        
+        if (!swRegistration) {
+            console.log('⏳ Service Worker 준비 대기 중...');
+            swRegistration = await navigator.serviceWorker.ready;
+            window.swRegistration = swRegistration;
+        }
+        
         console.log('✅ Service Worker 준비 완료:', swRegistration.scope);
         
         // 2. 알림 권한 요청
@@ -901,32 +908,45 @@ async function registerFCMToken() {
         
         console.log('✅ 알림 권한 승인됨');
         
-        // 3. FCM 토큰 가져오기 (Service Worker 명시적 전달)
+        // 3. FCM 토큰 가져오기
         const token = await messaging.getToken({
             vapidKey: 'BFJBBAv_qOw_aklFbE89r_cuCArMJkMK56Ryj9M1l1a3qv8CuHCJ-fKALtOn4taF7Pjwo2bjfoOuewEKBqRBtCo',
-            serviceWorkerRegistration: swRegistration // ✅ 명시적 전달!
+            serviceWorkerRegistration: swRegistration
         });
         
         if (token) {
-            console.log('📱 FCM 토큰:', token);
+            console.log('📱 FCM 토큰 획득:', token.substring(0, 50) + '...');
             
-            // Firebase에 토큰 저장
+            // 4. Firebase Database에 저장
             const uid = getUserId();
             const tokenKey = btoa(token).substring(0, 20).replace(/[^a-zA-Z0-9]/g, '');
             
             await db.ref(`users/${uid}/fcmTokens/${tokenKey}`).set({
                 token: token,
                 createdAt: Date.now(),
-                userAgent: navigator.userAgent
+                userAgent: navigator.userAgent,
+                browser: getBrowserInfo()
             });
             
             console.log('✅ FCM 토큰 저장 완료');
+        } else {
+            console.warn('⚠️ FCM 토큰을 가져올 수 없습니다');
         }
         
     } catch (error) {
         console.error('❌ FCM 토큰 등록 실패:', error);
         console.error('오류 상세:', error.code, error.message);
     }
+}
+
+// 브라우저 정보 가져오기 (옵션)
+function getBrowserInfo() {
+    const ua = navigator.userAgent;
+    if (ua.includes('Chrome')) return 'Chrome';
+    if (ua.includes('Firefox')) return 'Firefox';
+    if (ua.includes('Safari')) return 'Safari';
+    if (ua.includes('Edge')) return 'Edge';
+    return 'Unknown';
 }
 
 // 포그라운드 메시지 수신 핸들러
