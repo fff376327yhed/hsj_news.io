@@ -1,11 +1,15 @@
-// Service Worker for Firebase Cloud Messaging (FCM)
-// 절대 경로로 import (GitHub Pages 호환)
-importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
+// ===== Firebase Cloud Messaging Service Worker =====
+// ⚠️ index.html과 동일한 버전 사용! (8.10.0)
 
-console.log('[Service Worker] 로딩 시작');
+console.log('[SW] 🔧 Service Worker 로딩 시작');
 
-// Firebase 설정 (index.html과 동일하게)
+// ✅ index.html과 동일한 버전으로 변경
+importScripts('https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js');
+importScripts('https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js');
+
+console.log('[SW] 📦 Firebase SDK 로드 완료');
+
+// Firebase 설정 (index.html과 동일)
 firebase.initializeApp({
   apiKey: "AIzaSyDgooYtVr8-jm15-fx_WvGLCDxonLpNPuU",
   authDomain: "hsj-news.firebaseapp.com",
@@ -18,54 +22,55 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-console.log('[Service Worker] Firebase Messaging 초기화 완료');
+console.log('[SW] ✅ Firebase Messaging 초기화 완료');
 
-// 백그라운드 메시지 수신 (탭이 닫혀있거나 백그라운드일 때)
+// ===== 백그라운드 메시지 수신 =====
 messaging.onBackgroundMessage((payload) => {
-  console.log('[Service Worker] 백그라운드 메시지 수신:', payload);
+  console.log('[SW] 📨 백그라운드 메시지 수신:', payload);
   
-  // 알림 제목과 본문 추출 (data 우선, 없으면 notification 사용)
-  const notificationTitle = payload.data?.title || payload.notification?.title || '📰 해정뉴스';
-  const notificationBody = payload.data?.body || payload.data?.text || payload.notification?.body || '새로운 알림이 있습니다';
+  // data 필드에서 정보 추출 (send-notifications.js에서 보낸 형식)
+  const notificationTitle = payload.data?.title || '📰 해정뉴스';
+  const notificationBody = payload.data?.body || payload.data?.text || '새로운 알림';
+  const articleId = payload.data?.articleId || '';
+  const notificationId = payload.data?.notificationId || '';
   
-// ✅ 베이스 경로 감지 개선 (GitHub Pages 대응)
-const getBasePath = () => {
+  // GitHub Pages 베이스 경로 감지
+  const getBasePath = () => {
     const scope = self.registration.scope;
     const url = new URL(scope);
     const pathname = url.pathname;
     
-    // GitHub Pages 패턴: /username.github.io/repo-name/
+    // /hsj_news.io/ 같은 패턴 감지
     const match = pathname.match(/^\/([^\/]+)\/?$/);
-    
     if (match && match[1] && match[1] !== '') {
-        return `/${match[1]}`;
+      return `/${match[1]}`;
     }
-    
     return '';
-};
-
-const basePrefix = getBasePath();
-console.log('[Service Worker] 베이스 경로:', basePrefix);
-
-const notificationOptions = {
+  };
+  
+  const basePath = getBasePath();
+  console.log('[SW] 🌐 베이스 경로:', basePath || '(루트)');
+  
+  // 알림 옵션
+  const notificationOptions = {
     body: notificationBody,
-    icon: `${basePrefix}/favicon/android-icon-192x192.png`,
-    badge: `${basePrefix}/favicon/favicon-16x16.png`,
-    tag: payload.data?.notificationId || 'notification-' + Date.now(),
-    data: {
-      articleId: payload.data?.articleId || '',
-      type: payload.data?.type || 'notification',
-      url: payload.data?.articleId ? `/?page=article&id=${payload.data.articleId}` : '/',
-      timestamp: Date.now()
-    },
+    icon: `${basePath}/favicon/android-icon-192x192.png`,
+    badge: `${basePath}/favicon/favicon-16x16.png`,
+    tag: notificationId || `notif-${Date.now()}`, // 같은 tag는 덮어씀
+    renotify: false, // 같은 tag여도 다시 알림 안 울림
     requireInteraction: false, // 자동으로 사라짐
-    vibrate: [200, 100, 200], // 진동 패턴
+    vibrate: [200, 100, 200],
     timestamp: Date.now(),
-    silent: false, // 소리 켜기
+    data: {
+      articleId: articleId,
+      url: articleId ? `${basePath}/?page=article&id=${articleId}` : `${basePath}/`,
+      notificationId: notificationId
+    },
     actions: [
       {
         action: 'open',
-        title: '📰 기사 보기'
+        title: '📰 보기',
+        icon: `${basePath}/favicon/favicon-32x32.png`
       },
       {
         action: 'close',
@@ -73,101 +78,87 @@ const notificationOptions = {
       }
     ]
   };
-
-  console.log('[Service Worker] 알림 표시:', notificationTitle);
-  console.log('[Service Worker] 아이콘 경로:', notificationOptions.icon);
   
+  console.log('[SW] 🔔 알림 표시:', notificationTitle);
+  
+  // 알림 표시
   return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// 알림 클릭 이벤트 처리
+// ===== 알림 클릭 이벤트 =====
 self.addEventListener('notificationclick', (event) => {
-  console.log('[Service Worker] 알림 클릭:', event.action);
+  console.log('[SW] 👆 알림 클릭:', event.action);
   
-  // 닫기 버튼 클릭 시 알림만 닫고 종료
+  event.notification.close(); // 알림 닫기
+  
+  // "닫기" 버튼 클릭 시 아무것도 안 함
   if (event.action === 'close') {
-    console.log('[Service Worker] 닫기 버튼 클릭 - 알림만 닫기');
-    event.notification.close();
+    console.log('[SW] ❌ 닫기 버튼 클릭');
     return;
   }
   
-  // 기본 클릭 또는 "기사 보기" 클릭
-  event.notification.close(); // 알림 닫기
+  // 기사로 이동할 URL
+  const urlToOpen = event.notification.data?.url || '/';
   
-  let urlToOpen = event.notification.data?.url || '/';
-  const articleId = event.notification.data?.articleId;
+  console.log('[SW] 🔗 이동할 URL:', urlToOpen);
   
-  // GitHub Pages 서브디렉토리 대응
-  const basePath = self.registration.scope.match(/\/([^\/]+)\/$/);
-  if (basePath && basePath[1] && !urlToOpen.includes(basePath[1])) {
-    urlToOpen = `/${basePath[1]}${urlToOpen}`;
-  }
-  
-  console.log('[Service Worker] 열 URL:', urlToOpen);
-  
+  // 페이지 열기/포커스
   event.waitUntil(
     clients.matchAll({ 
       type: 'window', 
       includeUncontrolled: true 
-    })
-    .then((clientList) => {
-      // 이미 열린 창이 있으면 포커스하고 메시지 전송
+    }).then((clientList) => {
+      // 이미 열린 창이 있으면 포커스
       for (const client of clientList) {
         const clientUrl = new URL(client.url);
         const targetUrl = new URL(urlToOpen, self.location.origin);
         
+        // 같은 오리진이면 포커스하고 메시지 전송
         if (clientUrl.origin === targetUrl.origin) {
+          console.log('[SW] ✅ 기존 창 포커스');
           return client.focus().then(() => {
-            // 페이지에 메시지 전송하여 라우팅
+            // 페이지에 메시지 전송 (라우팅용)
             client.postMessage({
               type: 'NOTIFICATION_CLICK',
               url: urlToOpen,
-              articleId: articleId
+              articleId: event.notification.data?.articleId
             });
           });
         }
       }
       
-      // 없으면 새 창 열기
+      // 열린 창이 없으면 새 창 열기
       if (clients.openWindow) {
+        console.log('[SW] 🆕 새 창 열기');
         return clients.openWindow(urlToOpen);
       }
     })
   );
 });
 
-// Service Worker 설치 이벤트
+// ===== Service Worker 설치 =====
 self.addEventListener('install', (event) => {
-  console.log('[Service Worker] 설치됨');
+  console.log('[SW] 📥 설치 시작');
   self.skipWaiting(); // 즉시 활성화
 });
 
-// Service Worker 활성화 이벤트
+// ===== Service Worker 활성화 =====
 self.addEventListener('activate', (event) => {
-  console.log('[Service Worker] 활성화됨');
+  console.log('[SW] ⚡ 활성화');
   event.waitUntil(
     self.clients.claim().then(() => {
-      console.log('[Service Worker] 모든 클라이언트 제어 시작');
+      console.log('[SW] ✅ 모든 클라이언트 제어 시작');
     })
   );
 });
 
-// 주기적으로 연결 상태 확인 (옵션)
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'check-notifications') {
-    console.log('[Service Worker] 백그라운드 동기화 실행');
-    event.waitUntil(checkForNewNotifications());
+// ===== 페이지에서 보낸 메시지 처리 (옵션) =====
+self.addEventListener('message', (event) => {
+  console.log('[SW] 💬 메시지 수신:', event.data);
+  
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
   }
 });
 
-// 백그라운드 동기화 함수 (필요시)
-async function checkForNewNotifications() {
-  try {
-    console.log('[Service Worker] 새 알림 확인 중...');
-    // 여기서 서버에 새 알림이 있는지 확인 가능
-  } catch (error) {
-    console.error('[Service Worker] 알림 확인 오류:', error);
-  }
-}
-
-console.log('[Service Worker] 완전히 로드됨');
+console.log('[SW] 🎉 Service Worker 완전히 로드됨');
