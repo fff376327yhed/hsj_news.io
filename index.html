@@ -29,46 +29,42 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="./css/style.css">
 
-    <script>
-// Service Worker 등록 (GitHub Pages 호환)
+<script>
+// ===== Service Worker 등록 (개선 버전) =====
 if ('serviceWorker' in navigator) {
-  // GitHub Pages 서브디렉토리 감지
-  const basePath = window.location.pathname.match(/\/([^\/]+)\/?$/);
-  const swPath = basePath && basePath[1] !== '' 
-    ? `/${basePath[1]}/firebase-messaging-sw.js` 
-    : '/firebase-messaging-sw.js';
-  
-  navigator.serviceWorker.register(swPath, {
-    scope: window.location.pathname.endsWith('/') 
-      ? window.location.pathname 
-      : window.location.pathname + '/'
-  })
-    .then((registration) => {
+  // 페이지 로드 완료 후 등록
+  window.addEventListener('load', async () => {
+    try {
+      // 1. Service Worker 등록
+      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+        scope: '/'
+      });
+      
       console.log('✅ Service Worker 등록 성공:', registration.scope);
       
-      // ✅ Firebase Messaging이 준비될 때까지 대기
-      const waitForMessaging = setInterval(() => {
-        if (window.messaging) {
-          clearInterval(waitForMessaging);
-          try {
-            // Firebase Messaging에 Service Worker 등록
-            window.messaging.useServiceWorker(registration);
-            console.log('✅ Firebase Messaging에 Service Worker 연결 완료');
-          } catch(e) {
-            console.warn('⚠️ Firebase Messaging 연결 실패:', e);
-          }
-        }
-      }, 100);
+      // 2. Service Worker가 활성화될 때까지 대기
+      if (registration.installing) {
+        console.log('⏳ Service Worker 설치 중...');
+        await new Promise(resolve => {
+          registration.installing.addEventListener('statechange', function() {
+            if (this.state === 'activated') {
+              resolve();
+            }
+          });
+        });
+      }
       
-      // 10초 후 타임아웃
-      setTimeout(() => {
-        clearInterval(waitForMessaging);
-      }, 10000);
-    })
-    .catch((error) => {
+      // 3. 전역 변수에 저장 (Firebase Messaging에서 사용)
+      window.swRegistration = registration;
+      
+      console.log('✅ Service Worker 준비 완료');
+      
+    } catch (error) {
       console.error('❌ Service Worker 등록 실패:', error);
-      console.error('시도한 경로:', swPath);
-    });
+    }
+  });
+} else {
+  console.warn('⚠️ 이 브라우저는 Service Worker를 지원하지 않습니다');
 }
 </script>
 
