@@ -110,6 +110,7 @@ let filteredFreeboardArticles = [];
 let originalUserTheme = null;
 window.profilePhotoCache = new Map(); // window 객체에 직접 할당하여 다른 함수에서도 접근 가능하도록
 let maintenanceChecked = false;
+let isEasterEggActive = false; // ✨ 추가: 이스터에그 활성 상태
 
 // 로딩 인디케이터
 function showLoadingIndicator(message = "로딩 중...") {
@@ -5119,6 +5120,499 @@ function applyInitialTheme() {
     }
 }
 
+// ============================================
+// 🐶 가나디 이스터에그 시스템
+// ============================================
+
+let ganadiClickCount = 0;
+let ganadiClickTimer = null;
+const GANADI_CLICK_THRESHOLD = 5; // 5번 클릭
+const GANADI_CLICK_TIMEOUT = 3000; // 3초 내
+
+function resetGanadiClickCount() {
+    ganadiClickCount = 0;
+    if (ganadiClickTimer) {
+        clearTimeout(ganadiClickTimer);
+        ganadiClickTimer = null;
+    }
+}
+
+// ✅ 수정 후 코드
+function incrementGanadiClick() {
+    // 🎯 가나디 테마일 때만 카운트
+    const currentTheme = getCurrentTheme();
+    if (currentTheme !== 'ganadi') {
+        console.log('⚠️ 가나디 테마가 아니므로 이스터에그 카운트 안 함');
+        return;
+    }
+    
+    // 🚫 이미 이스터에그가 활성화 중이면 카운트 안 함
+    if (isEasterEggActive) {
+        console.log('⚠️ 이스터에그가 이미 진행 중입니다');
+        return;
+    }
+    
+    ganadiClickCount++;
+    console.log(`🐶 가나디 클릭 카운트: ${ganadiClickCount}/${GANADI_CLICK_THRESHOLD}`);
+    
+    // 타이머 리셋
+    if (ganadiClickTimer) {
+        clearTimeout(ganadiClickTimer);
+    }
+    
+    // 3초 후 카운트 초기화
+    ganadiClickTimer = setTimeout(() => {
+        resetGanadiClickCount();
+    }, GANADI_CLICK_TIMEOUT);
+    
+    // 5번 클릭 시 이스터에그 발동
+    if (ganadiClickCount >= GANADI_CLICK_THRESHOLD) {
+        activateGanadiEasterEgg();
+        resetGanadiClickCount();
+    }
+}
+
+// ✅ 수정 후 코드
+function activateGanadiEasterEgg() {
+    // 🎯 가나디 테마 확인
+    const currentTheme = getCurrentTheme();
+    if (currentTheme !== 'ganadi') {
+        console.log('⚠️ 가나디 테마가 아니므로 이스터에그 발동 안 함');
+        return;
+    }
+    
+    // 🚫 이미 활성화 중이면 리턴
+    if (isEasterEggActive) {
+        console.log('⚠️ 이스터에그가 이미 진행 중입니다');
+        return;
+    }
+    
+    console.log('🎉🐶 가나디 이스터에그 발동! 특별 모드 시작!');
+    
+    // ✨ 이스터에그 활성화
+    isEasterEggActive = true;
+    
+    // 1. 특별 알림 표시
+    showGanadiEasterEggAlert();
+    
+    // 2. 숨겨진 가나디 캐릭터들 소환
+    setTimeout(() => {
+        summonGanadiCharacters();
+    }, 1000);
+    
+    // 3. 특별 배경 효과
+    createGanadiRainEffect();
+    
+    // 4. 특별 사운드 효과
+    playGanadiSound();
+    
+    // ⏱️ 20초 후 이스터에그 종료 및 재발동 가능
+    setTimeout(() => {
+        endGanadiEasterEgg();
+    }, 20000);
+}
+
+// ✨ 새 함수 추가: 이스터에그 종료
+function endGanadiEasterEgg() {
+    console.log('🐶 가나디 이스터에그 종료 - 다시 발동 가능');
+    
+    // 이스터에그 비활성화
+    isEasterEggActive = false;
+    
+    // 모든 가나디 캐릭터 제거
+    document.querySelectorAll('.ganadi-character').forEach(el => {
+        el.style.animation = 'ganadiDisappear 0.8s ease-out';
+        setTimeout(() => el.remove(), 800);
+    });
+    
+    // 눈물비 컨테이너 제거
+    const rainContainer = document.getElementById('ganadiRainContainer');
+    if (rainContainer) {
+        rainContainer.style.opacity = '0';
+        rainContainer.style.transition = 'opacity 1s';
+        setTimeout(() => rainContainer.remove(), 1000);
+    }
+}
+
+// ✅ 수정 후 코드
+function summonGanadiCharacters() {
+    console.log('🐶 가나디 캐릭터 소환!');
+    
+    // 기존 가나디들 제거
+    document.querySelectorAll('.ganadi-character').forEach(el => el.remove());
+    
+    // 🎪 헤더 가나디 (상단 우측) - 빙빙 돌면서 커졌다 작아졌다
+    createGanadiCharacter({
+        position: 'fixed',
+        top: '80px',
+        right: '100px',
+        size: '80px',
+        delay: 0,
+        animation: 'ganadiSpinScale 3s ease-in-out infinite'
+    });
+    
+    // 🎪 좌측 하단 가나디
+    createGanadiCharacter({
+        position: 'fixed',
+        bottom: '100px',
+        left: '50px',
+        size: '100px',
+        delay: 200,
+        animation: 'ganadiSpinScale 2.5s ease-in-out infinite'
+    });
+    
+    // 🎪 우측 중앙 가나디
+    createGanadiCharacter({
+        position: 'fixed',
+        top: '50%',
+        right: '30px',
+        size: '70px',
+        delay: 400,
+        animation: 'ganadiSpinScale 3.5s ease-in-out infinite',
+        transform: 'translateY(-50%)'
+    });
+    
+    // 🎪 좌측 상단 가나디
+    createGanadiCharacter({
+        position: 'fixed',
+        top: '150px',
+        left: '80px',
+        size: '60px',
+        delay: 600,
+        animation: 'ganadiSpinScale 2s ease-in-out infinite'
+    });
+    
+    // 🎪 중앙 하단 가나디 (큰 것)
+    createGanadiCharacter({
+        position: 'fixed',
+        bottom: '50px',
+        left: '50%',
+        size: '120px',
+        delay: 800,
+        animation: 'ganadiSpinScale 4s ease-in-out infinite',
+        transform: 'translateX(-50%)'
+    });
+}
+
+function createGanadiCharacter(config) {
+    const ganadi = document.createElement('div');
+    ganadi.className = 'ganadi-character';
+    ganadi.style.cssText = `
+        position: ${config.position};
+        top: ${config.top || 'auto'};
+        bottom: ${config.bottom || 'auto'};
+        left: ${config.left || 'auto'};
+        right: ${config.right || 'auto'};
+        width: ${config.size};
+        height: ${config.size};
+        pointer-events: none;
+        z-index: 9998;
+        opacity: 0;
+        transform: ${config.transform || 'scale(0)'};
+        transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        filter: drop-shadow(2px 2px 8px rgba(255, 182, 193, 0.4));
+    `;
+    
+    // ✅ 수정 후 코드
+ganadi.innerHTML = `
+    <div style="
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #B3D9FF 0%, #87CEEB 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: calc(${config.size} * 0.5);
+        position: relative;
+        box-shadow: 0 4px 12px rgba(135, 206, 235, 0.3);
+        border: 3px solid rgba(179, 217, 255, 0.5);
+    ">
+        <span style="position: relative; z-index: 2;">🐶</span>
+        <div style="
+            position: absolute;
+            top: 20%;
+            right: 15%;
+            font-size: calc(${config.size} * 0.3);
+        ">💧</div>
+    </div>
+`;
+    
+    document.body.appendChild(ganadi);
+    
+// ✅ 수정 후 코드
+setTimeout(() => {
+    ganadi.style.opacity = '0.8';
+    
+    // ✨ transform과 animation을 함께 적용
+    if (config.transform) {
+        // translateX나 translateY가 있는 경우
+        ganadi.style.transformOrigin = 'center';
+    }
+    
+    ganadi.style.transform = config.transform || 'scale(1)';
+    ganadi.style.animation = config.animation;
+}, config.delay);
+
+// 호버 효과도 회전 유지하도록 수정
+ganadi.addEventListener('mouseenter', () => {
+    ganadi.style.animationPlayState = 'paused';
+    ganadi.style.transform = (config.transform || '') + ' scale(1.4)';
+    ganadi.style.opacity = '1';
+});
+
+ganadi.addEventListener('mouseleave', () => {
+    ganadi.style.animationPlayState = 'running';
+    ganadi.style.opacity = '0.8';
+});
+    
+    // 호버 효과
+    ganadi.addEventListener('mouseenter', () => {
+        ganadi.style.transform = (config.transform || 'scale(1)') + ' scale(1.2)';
+        ganadi.style.opacity = '1';
+    });
+    
+    ganadi.addEventListener('mouseleave', () => {
+        ganadi.style.transform = config.transform || 'scale(1)';
+        ganadi.style.opacity = '0.8';
+    });
+}
+
+// 💧 가나디 눈물 비 효과
+function createGanadiRainEffect() {
+    console.log('💧 가나디 눈물비 효과 시작!');
+    
+    const rainContainer = document.createElement('div');
+    rainContainer.id = 'ganadiRainContainer';
+    rainContainer.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 9997;
+        overflow: hidden;
+    `;
+    
+    document.body.appendChild(rainContainer);
+    
+    // 30개의 눈물 방울 생성
+    for (let i = 0; i < 30; i++) {
+        createTearDrop(rainContainer, i);
+    }
+    
+    // 20초 후 효과 제거
+    setTimeout(() => {
+        if (rainContainer.parentNode) {
+            rainContainer.style.opacity = '0';
+            rainContainer.style.transition = 'opacity 2s';
+            setTimeout(() => rainContainer.remove(), 2000);
+        }
+    }, 20000);
+}
+
+function createTearDrop(container, index) {
+    const tear = document.createElement('div');
+    tear.className = 'ganadi-tear';
+    
+    const randomLeft = Math.random() * 100;
+    const randomSize = Math.random() * 20 + 15;
+    const randomDuration = Math.random() * 3 + 2;
+    const randomDelay = Math.random() * 2;
+    
+    tear.style.cssText = `
+        position: absolute;
+        left: ${randomLeft}%;
+        top: -50px;
+        font-size: ${randomSize}px;
+        animation: tearFall ${randomDuration}s linear ${randomDelay}s infinite;
+        opacity: 0.7;
+    `;
+    
+    tear.textContent = '💧';
+    container.appendChild(tear);
+}
+
+// 🔊 가나디 사운드 (선택사항)
+function playGanadiSound() {
+    // 간단한 비프음 (Web Audio API 사용)
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // 귀여운 멜로디 재생
+        const notes = [
+            { freq: 523.25, time: 0 },    // C
+            { freq: 659.25, time: 0.2 },  // E
+            { freq: 783.99, time: 0.4 },  // G
+            { freq: 1046.50, time: 0.6 }  // C (높은음)
+        ];
+        
+        notes.forEach(note => {
+            setTimeout(() => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = note.freq;
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            }, note.time * 1000);
+        });
+    } catch (error) {
+        console.log('사운드 재생 불가:', error);
+    }
+}
+
+// ✅ 수정 후 코드
+const style = document.createElement('style');
+style.textContent = `
+    /* 눈물 떨어지는 애니메이션 */
+    @keyframes tearFall {
+        0% {
+            transform: translateY(0) rotate(0deg);
+            opacity: 0.7;
+        }
+        100% {
+            transform: translateY(100vh) rotate(360deg);
+            opacity: 0;
+        }
+    }
+    
+    /* 🎪 가나디 빙빙 돌면서 커졌다 작아졌다 */
+    @keyframes ganadiSpinScale {
+        0% {
+            transform: rotate(0deg) scale(1);
+        }
+        25% {
+            transform: rotate(90deg) scale(1.3);
+        }
+        50% {
+            transform: rotate(180deg) scale(0.8);
+        }
+        75% {
+            transform: rotate(270deg) scale(1.3);
+        }
+        100% {
+            transform: rotate(360deg) scale(1);
+        }
+    }
+    
+    /* 가나디 사라지는 애니메이션 */
+    @keyframes ganadiDisappear {
+        0% {
+            opacity: 0.8;
+            transform: scale(1) rotate(0deg);
+        }
+        100% {
+            opacity: 0;
+            transform: scale(0) rotate(720deg);
+        }
+    }
+    
+    /* 부드러운 바운스 (예비용) */
+    @keyframes gentle-bounce {
+        0%, 100% { 
+            transform: translateY(0) rotate(0deg); 
+        }
+        50% { 
+            transform: translateY(-15px) rotate(5deg); 
+        }
+    }
+`;
+document.head.appendChild(style);
+
+// ✅ 수정: showGanadiEasterEggAlert 함수 교체
+function showGanadiEasterEggAlert() {
+    const existingAlert = document.getElementById('ganadiEasterEggAlert');
+    if (existingAlert) existingAlert.remove();
+    
+    const alertHTML = `
+        <div id="ganadiEasterEggAlert" style="
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #FFB6C1 0%, #B3D9FF 100%);
+            border: 4px solid #FFFFFF;
+            border-radius: 30px;
+            padding: 50px;
+            box-shadow: 0 12px 48px rgba(255, 182, 193, 0.6);
+            z-index: 99999;
+            text-align: center;
+            animation: easterEggPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            max-width: 500px;
+        ">
+            <div style="font-size: 96px; margin-bottom: 20px; animation: wiggle 1s infinite;">
+                🐶
+            </div>
+            <div style="font-size: 28px; font-weight: 900; color: #4A4A4A; margin-bottom: 15px; text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.5);">
+                듀... 이스터에그 발견!
+            </div>
+            <div style="font-size: 18px; color: #4A4A4A; margin-bottom: 25px; line-height: 1.6;">
+                축하합니다! 숨겨진 가나디들을 깨웠어요! 💧<br>
+                <span style="font-size: 14px; opacity: 0.8;">이제 가나디들이 함께할 거예요...</span>
+            </div>
+            <button onclick="closeGanadiEasterEgg()" style="
+                background: white;
+                border: 3px solid #FFB6C1;
+                padding: 15px 35px;
+                border-radius: 15px;
+                font-size: 18px;
+                font-weight: 700;
+                color: #4A4A4A;
+                cursor: pointer;
+                transition: all 0.3s;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            " onmouseover="this.style.background='#FFB6C1'; this.style.color='white'; this.style.transform='scale(1.05)';" 
+               onmouseout="this.style.background='white'; this.style.color='#4A4A4A'; this.style.transform='scale(1)';">
+                확인 💖
+            </button>
+        </div>
+        
+        <style>
+            @keyframes easterEggPop {
+                0% {
+                    transform: translate(-50%, -50%) scale(0) rotate(-180deg);
+                    opacity: 0;
+                }
+                70% {
+                    transform: translate(-50%, -50%) scale(1.1) rotate(10deg);
+                }
+                100% {
+                    transform: translate(-50%, -50%) scale(1) rotate(0deg);
+                    opacity: 1;
+                }
+            }
+            
+            @keyframes wiggle {
+                0%, 100% { transform: rotate(0deg); }
+                25% { transform: rotate(-10deg); }
+                75% { transform: rotate(10deg); }
+            }
+        </style>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', alertHTML);
+    
+    // 자동 닫기 제거 - 사용자가 직접 닫게
+}
+
+window.closeGanadiEasterEgg = function() {
+    const alert = document.getElementById('ganadiEasterEggAlert');
+    if (alert) {
+        alert.style.animation = 'easterEggPop 0.3s reverse';
+        setTimeout(() => alert.remove(), 300);
+    }
+};
+
 // 테마 선택 이벤트 리스너
 function initThemeSelector() {
     console.log('🎨 테마 선택기 초기화 시작');
@@ -5152,35 +5646,47 @@ function initThemeSelector() {
         radio.parentNode.replaceChild(newRadio, radio);
     });
     
-    document.querySelectorAll('input[name="theme"]').forEach(radio => {
-        radio.addEventListener('change', function(e) {
-            const selectedTheme = e.target.value;
-            console.log('🎨 테마 변경:', selectedTheme);
-            
-            saveTheme(selectedTheme);
-            applyTheme(selectedTheme);
-            
-            const messages = {
-                'red-horse': '🐴 붉은 말이 안내하는 새해 테마가 적용되었습니다!',
-                'christmas': '🎄 메리 크리스마스! 눈 내리는 테마가 적용되었습니다!',
-                'ganadi': '🐶 가나디 테마가 적용되었습니다! 듀...',
-                'default': '📰 기본 테마로 돌아왔습니다!'
-            };
-            
-            const message = messages[selectedTheme] || messages['default'];
-            
-            if (typeof showToastNotification === 'function') {
-                showToastNotification('테마 변경', message);
-            }
-            
-            // 인사 배너 초기화
-            if (selectedTheme === 'red-horse') {
-                localStorage.removeItem('horseGreetingDismissed');
-            } else if (selectedTheme === 'ganadi') {
-                localStorage.removeItem('ganadiGreetingDismissed');
-            }
-        });
+    // ✅ 수정 후 코드 (변경 없음 - 이미 올바름)
+document.querySelectorAll('input[name="theme"]').forEach(radio => {
+    radio.addEventListener('change', function(e) {
+        const selectedTheme = e.target.value;
+        console.log('🎨 테마 변경:', selectedTheme);
+        
+        // 테마 저장 및 적용
+        saveTheme(selectedTheme);
+        applyTheme(selectedTheme);
+        
+        // 🎉 이스터에그: 가나디 테마 선택 시에만 카운트
+        if (selectedTheme === 'ganadi') {
+            // 테마 적용 후 카운트 (다음 틱에서)
+            setTimeout(() => {
+                incrementGanadiClick();
+            }, 100);
+        } else {
+            resetGanadiClickCount();
+        }
+        
+        const messages = {
+            'red-horse': '🐴 붉은 말이 안내하는 새해 테마가 적용되었습니다!',
+            'christmas': '🎄 메리 크리스마스! 눈 내리는 테마가 적용되었습니다!',
+            'ganadi': '🐶 가나디 테마가 적용되었습니다! 듀...',
+            'default': '📰 기본 테마로 돌아왔습니다!'
+        };
+        
+        const message = messages[selectedTheme] || messages['default'];
+        
+        if (typeof showToastNotification === 'function') {
+            showToastNotification('테마 변경', message);
+        }
+        
+        // 인사 배너 초기화
+        if (selectedTheme === 'red-horse') {
+            localStorage.removeItem('horseGreetingDismissed');
+        } else if (selectedTheme === 'ganadi') {
+            localStorage.removeItem('ganadiGreetingDismissed');
+        }
     });
+});
     
     console.log('✅ 테마 선택기 초기화 완료!');
 }
