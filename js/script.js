@@ -6134,4 +6134,276 @@ if (document.readyState === 'loading') {
 
 console.log("✅ Part 15: 멀티 테마 시스템 로드 완료");
 
+// ===== Part 16: 점검모드 시스템 =====
+
+console.log("🔧 Part 16: 점검모드 시스템 시작");
+
+// 관리자 계정 목록 (점검모드 예외)
+const ADMIN_EMAILS = ['hyeseongjeong735@gmail.com', '1@gmail.com'];
+
+// 현재 사용자가 관리자인지 확인
+function isMaintenanceAdmin() {
+    const user = auth.currentUser;
+    if (!user) return false;
+    return ADMIN_EMAILS.includes(user.email);
+}
+
+// 점검모드 상태 확인 및 화면 표시
+async function checkMaintenanceMode() {
+    try {
+        const snapshot = await db.ref('maintenanceMode').once('value');
+        const data = snapshot.val();
+        
+        if (!data || !data.enabled) {
+            hideMaintenanceScreen();
+            return;
+        }
+        
+        // 관리자는 점검모드 무시
+        if (isMaintenanceAdmin()) {
+            console.log('✅ 관리자 계정 - 점검모드 무시');
+            hideMaintenanceScreen();
+            showAdminMaintenanceBadge();
+            return;
+        }
+        
+        // 일반 사용자에게 점검 화면 표시
+        showMaintenanceScreen(data);
+        
+    } catch (error) {
+        console.error('❌ 점검모드 확인 실패:', error);
+        hideMaintenanceScreen();
+    }
+}
+
+// 점검 화면 표시
+function showMaintenanceScreen(data) {
+    const screen = document.getElementById('maintenanceScreen');
+    if (!screen) return;
+    
+    const titleEl = document.getElementById('maintenanceTitle');
+    const contentEl = document.getElementById('maintenanceContent');
+    const imageContainer = document.getElementById('maintenanceImageContainer');
+    
+    if (titleEl) titleEl.textContent = data.title || '🔧 점검 중입니다';
+    if (contentEl) contentEl.textContent = data.content || '시스템 점검 중입니다.\n잠시 후 다시 이용해주세요.';
+    
+    if (imageContainer) {
+        if (data.image) {
+            imageContainer.innerHTML = `<img src="${data.image}" style="max-width:100%; height:auto; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1);">`;
+        } else {
+            imageContainer.innerHTML = '';
+        }
+    }
+    
+    screen.style.display = 'block';
+    console.log('🔧 점검 화면 표시');
+}
+
+// 점검 화면 숨기기
+function hideMaintenanceScreen() {
+    const screen = document.getElementById('maintenanceScreen');
+    if (screen) {
+        screen.style.display = 'none';
+    }
+    removeAdminMaintenanceBadge();
+}
+
+// 관리자 점검모드 배지 표시
+function showAdminMaintenanceBadge() {
+    const existingBadge = document.getElementById('adminMaintenanceBadge');
+    if (existingBadge) return;
+    
+    const badge = document.createElement('div');
+    badge.id = 'adminMaintenanceBadge';
+    badge.style.cssText = `
+        position: fixed;
+        top: 70px;
+        right: 20px;
+        background: linear-gradient(135deg, #FF6F00, #c62828);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+        z-index: 9999;
+        box-shadow: 0 4px 12px rgba(198, 40, 40, 0.3);
+        animation: pulse 2s infinite;
+    `;
+    badge.innerHTML = '🔧 점검모드 ON';
+    
+    document.body.appendChild(badge);
+}
+
+// 관리자 배지 제거
+function removeAdminMaintenanceBadge() {
+    const badge = document.getElementById('adminMaintenanceBadge');
+    if (badge) badge.remove();
+}
+
+// 점검모드 관리 모달 열기
+window.showMaintenanceModeManager = async function() {
+    if (!isAdmin()) {
+        alert('🚫 관리자 권한이 필요합니다!');
+        return;
+    }
+    
+    showLoadingIndicator('점검모드 설정 로드 중...');
+    
+    try {
+        const snapshot = await db.ref('maintenanceMode').once('value');
+        const data = snapshot.val() || {};
+        
+        hideLoadingIndicator();
+        
+        const modal = document.getElementById('maintenanceModeModal');
+        if (!modal) {
+            console.error('❌ maintenanceModeModal을 찾을 수 없습니다');
+            return;
+        }
+        
+        // 기존 값 로드
+        const toggleEl = document.getElementById('maintenanceToggle');
+        const titleEl = document.getElementById('maintenanceTitle');
+        const contentEl = document.getElementById('maintenanceContent');
+        const previewEl = document.getElementById('maintenanceImagePreview');
+        const uploadTextEl = document.getElementById('maintenanceImageUploadText');
+        
+        if (toggleEl) toggleEl.checked = data.enabled || false;
+        if (titleEl) titleEl.value = data.title || '';
+        if (contentEl) contentEl.value = data.content || '';
+        
+        if (previewEl && uploadTextEl) {
+            if (data.image) {
+                previewEl.src = data.image;
+                previewEl.style.display = 'block';
+                uploadTextEl.innerHTML = '<i class="fas fa-check"></i><p>기존 이미지</p>';
+            } else {
+                previewEl.style.display = 'none';
+                uploadTextEl.innerHTML = '<i class="fas fa-image"></i><p>클릭하여 이미지 업로드</p>';
+            }
+        }
+        
+        modal.classList.add('active');
+        
+        // 이미지 업로드 이벤트
+        const imageInput = document.getElementById('maintenanceImageInput');
+        if (imageInput) {
+            const newInput = imageInput.cloneNode(true);
+            imageInput.parentNode.replaceChild(newInput, imageInput);
+            
+            newInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        if (previewEl && uploadTextEl) {
+                            previewEl.src = event.target.result;
+                            previewEl.style.display = 'block';
+                            uploadTextEl.innerHTML = '<i class="fas fa-check"></i><p>이미지 선택됨</p>';
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+        
+    } catch (error) {
+        hideLoadingIndicator();
+        console.error('❌ 점검모드 설정 로드 실패:', error);
+        alert('설정을 불러오는데 실패했습니다: ' + error.message);
+    }
+};
+
+// 점검모드 관리 모달 닫기
+window.closeMaintenanceModeModal = function() {
+    const modal = document.getElementById('maintenanceModeModal');
+    if (modal) modal.classList.remove('active');
+};
+
+// 점검모드 설정 저장
+window.saveMaintenanceMode = async function() {
+    if (!isAdmin()) {
+        alert('🚫 관리자 권한이 필요합니다!');
+        return;
+    }
+    
+    const enabled = document.getElementById('maintenanceToggle')?.checked || false;
+    const title = document.getElementById('maintenanceTitle')?.value.trim() || '🔧 점검 중입니다';
+    const content = document.getElementById('maintenanceContent')?.value.trim() || '시스템 점검 중입니다.\n잠시 후 다시 이용해주세요.';
+    const imageInput = document.getElementById('maintenanceImageInput');
+    const previewEl = document.getElementById('maintenanceImagePreview');
+    
+    showLoadingIndicator('점검모드 설정 저장 중...');
+    
+    try {
+        const data = {
+            enabled: enabled,
+            title: title,
+            content: content,
+            image: '',
+            updatedAt: Date.now()
+        };
+        
+        // 이미지 처리
+        if (imageInput && imageInput.files && imageInput.files[0]) {
+            const reader = new FileReader();
+            const imageData = await new Promise((resolve, reject) => {
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(imageInput.files[0]);
+            });
+            data.image = imageData;
+        } else if (previewEl && previewEl.src && !previewEl.src.includes('data:,')) {
+            data.image = previewEl.src;
+        }
+        
+        await db.ref('maintenanceMode').set(data);
+        
+        hideLoadingIndicator();
+        closeMaintenanceModeModal();
+        
+        alert(`✅ 점검모드가 ${enabled ? '활성화' : '비활성화'}되었습니다!`);
+        
+        // 즉시 적용
+        checkMaintenanceMode();
+        
+    } catch (error) {
+        hideLoadingIndicator();
+        console.error('❌ 점검모드 저장 실패:', error);
+        alert('저장 중 오류가 발생했습니다: ' + error.message);
+    }
+};
+
+// 인증 상태 변경 시 점검모드 확인
+auth.onAuthStateChanged(async (user) => {
+    // 기존 onAuthStateChanged 로직 이후에 실행
+    setTimeout(() => {
+        checkMaintenanceMode();
+    }, 500);
+});
+
+// 페이지 로드 시 점검모드 확인
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        checkMaintenanceMode();
+    }, 1000);
+});
+
+// 점검모드 실시간 리스너
+db.ref('maintenanceMode').on('value', (snapshot) => {
+    const data = snapshot.val();
+    
+    if (data && data.enabled && !isMaintenanceAdmin()) {
+        showMaintenanceScreen(data);
+    } else {
+        hideMaintenanceScreen();
+        if (isMaintenanceAdmin() && data && data.enabled) {
+            showAdminMaintenanceBadge();
+        }
+    }
+});
+
+console.log("✅ Part 16: 점검모드 시스템 로드 완료");
+
 console.log("✅ script1.js 최적화 버전 완료 (Parts 1-14 통합)");
