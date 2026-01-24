@@ -34,34 +34,27 @@
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
-      // 🌐 GitHub Pages 베이스 경로 정확하게 감지
       const getBasePath = () => {
         const pathname = window.location.pathname;
         
-        // 1️⃣ 루트 경로인 경우 ('/' 또는 빈 문자열)
         if (!pathname || pathname === '/') {
           return '';
         }
         
-        // 2️⃣ 경로를 분리하여 첫 세그먼트 추출
         const segments = pathname.split('/').filter(Boolean);
         
         if (segments.length === 0) {
           return '';
         }
         
-        // 3️⃣ 첫 번째 세그먼트가 HTML 파일이 아니면 저장소명으로 간주
         const firstSegment = segments[0];
         
-        // HTML 파일 확장자 체크 (.html, .htm)
         if (firstSegment.endsWith('.html') || firstSegment.endsWith('.htm')) {
           return '';
         }
         
-        // 쿼리 파라미터가 있는 경우도 처리
         const cleanSegment = firstSegment.split('?')[0];
         
-        // 4️⃣ 저장소명 반환
         return `/${cleanSegment}`;
       };
       
@@ -69,20 +62,11 @@ if ('serviceWorker' in navigator) {
       const swPath = `${basePath}/firebase-messaging-sw.js`;
       const swScope = `${basePath}/`;
       
-      console.log('🔍 감지된 베이스 경로:', basePath || '(루트)');
-      console.log('🔍 Service Worker 경로:', swPath);
-      console.log('🔍 Service Worker 스코프:', swScope);
-      
-      // 1. Service Worker 등록
       const registration = await navigator.serviceWorker.register(swPath, {
         scope: swScope
       });
       
-      console.log('✅ Service Worker 등록 성공:', registration.scope);
-      
-      // 2. Service Worker가 활성화될 때까지 대기
       if (registration.installing) {
-        console.log('⏳ Service Worker 설치 중...');
         await new Promise(resolve => {
           registration.installing.addEventListener('statechange', function() {
             if (this.state === 'activated') {
@@ -92,28 +76,10 @@ if ('serviceWorker' in navigator) {
         });
       }
       
-      // 3. 전역 변수에 저장 (Firebase Messaging에서 사용)
       window.swRegistration = registration;
-      
-      console.log('✅ Service Worker 준비 완료');
       
     } catch (error) {
       console.error('❌ Service Worker 등록 실패:', error);
-      console.error('📍 현재 URL:', window.location.href);
-      console.error('📍 현재 경로:', window.location.pathname);
-      
-      // 🔧 디버깅 정보
-      const segments = window.location.pathname.split('/').filter(Boolean);
-      console.error('📂 경로 세그먼트:', segments);
-      
-      if (error.message.includes('404')) {
-        console.error('💡 404 오류 해결방법:');
-        console.error('   1. firebase-messaging-sw.js 파일이 저장소 루트에 있는지 확인');
-        console.error('   2. 파일명 철자가 정확한지 확인');
-        console.error('   3. GitHub에서 커밋/푸시가 완료되었는지 확인');
-        console.error('   4. 다음 URL에서 직접 접근 테스트:');
-        console.error(`      ${window.location.origin}${window.location.pathname.split('/').filter(Boolean)[0] ? '/' + window.location.pathname.split('/').filter(Boolean)[0] : ''}/firebase-messaging-sw.js`);
-      }
     }
   });
 } else {
@@ -121,18 +87,14 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 
-
 <style>
 /* ========== Quill 에디터 스타일 ========== */
-
-/* Quill 컨테이너 기본 스타일 */
 #quillEditor {
     background: white;
     min-height: 300px;
     border-radius: 8px;
 }
 
-/* Quill 툴바 스타일 */
 #quillEditor .ql-toolbar {
     background: #f8f9fa;
     border: 1px solid #dee2e6 !important;
@@ -142,7 +104,6 @@ if ('serviceWorker' in navigator) {
     padding: 12px;
 }
 
-/* Quill 에디터 컨테이너 */
 #quillEditor .ql-container {
     border: 1px solid #dee2e6 !important;
     border-bottom-left-radius: 8px;
@@ -152,7 +113,6 @@ if ('serviceWorker' in navigator) {
     font-family: 'Noto Sans KR', sans-serif;
 }
 
-/* Quill 에디터 본문 */
 #quillEditor .ql-editor {
     min-height: 300px;
     max-height: 600px;
@@ -162,36 +122,6 @@ if ('serviceWorker' in navigator) {
     font-size: 16px;
 }
 
-/* Quill 이미지 스타일 */
-#quillEditor .ql-editor img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 8px;
-    margin: 10px 0;
-}
-
-/* Quill iframe 스타일 */
-#quillEditor .ql-editor iframe {
-    max-width: 100%;
-    border-radius: 8px;
-    margin: 10px 0;
-}
-
-/* 툴바 버튼 호버 효과 */
-#quillEditor .ql-toolbar button {
-    transition: all 0.2s;
-}
-
-#quillEditor .ql-toolbar button:hover {
-    background: rgba(0, 55, 107, 0.1);
-}
-
-#quillEditor .ql-toolbar button.ql-active {
-    background: rgba(0, 55, 107, 0.15);
-    color: #00376b;
-}
-
-/* ✅ Quill placeholder 완전 제거 */
 .ql-editor.ql-blank::before,
 .ql-editor::before {
     content: '' !important;
@@ -200,103 +130,22 @@ if ('serviceWorker' in navigator) {
     opacity: 0 !important;
 }
 
-.ql-container .ql-editor[data-placeholder]::before {
-    content: '' !important;
-    display: none !important;
+/* 🎨 테마 옵션 스타일 */
+.theme-option:hover {
+    border-color: #c62828 !important;
+    box-shadow: 0 4px 12px rgba(198, 40, 40, 0.2);
 }
 
-#quillEditor .ql-editor.ql-blank::before,
-#quillEditor .ql-editor::before {
-    content: none !important;
-    display: none !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
+.theme-option input:checked + div {
+    color: #c62828;
 }
 
-/* Quill 툴바 툴팁 스타일 */
-.ql-toolbar button {
-    position: relative;
+.theme-option:has(input:checked) {
+    border-color: #c62828 !important;
+    background: linear-gradient(90deg, rgba(255, 248, 225, 0.3) 0%, transparent 100%);
 }
 
-/* title 속성이 있는 버튼에만 툴팁 표시 */
-.ql-toolbar button[title]:hover::after {
-    content: attr(title);
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 500;
-    white-space: nowrap;
-    z-index: 10000;
-    pointer-events: none;
-    animation: tooltipFadeIn 0.2s ease;
-}
-
-/* 툴팁 화살표 */
-.ql-toolbar button[title]:hover::before {
-    content: '';
-    position: absolute;
-    bottom: calc(100% + 3px);
-    left: 50%;
-    transform: translateX(-50%);
-    border: 5px solid transparent;
-    border-top-color: rgba(0, 0, 0, 0.9);
-    z-index: 10001;
-    pointer-events: none;
-}
-
-/* 툴팁 애니메이션 */
-@keyframes tooltipFadeIn {
-    from { 
-        opacity: 0; 
-        bottom: calc(100% + 4px);
-    }
-    to { 
-        opacity: 1; 
-        bottom: calc(100% + 8px);
-    }
-}
-
-/* 드롭다운 버튼에 대한 툴팁 */
-.ql-toolbar .ql-picker[title]:hover::after {
-    content: attr(title);
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 500;
-    white-space: nowrap;
-    z-index: 10000;
-    pointer-events: none;
-    animation: tooltipFadeIn 0.2s ease;
-}
-
-/* 🐴 테마 옵션 스타일 */
-    .theme-option:hover {
-        border-color: #c62828 !important;
-        box-shadow: 0 4px 12px rgba(198, 40, 40, 0.2);
-    }
-
-    .theme-option input:checked + div {
-        color: #c62828;
-    }
-
-    .theme-option:has(input:checked) {
-        border-color: #c62828 !important;
-        background: linear-gradient(90deg, rgba(255, 248, 225, 0.3) 0%, transparent 100%);
-    }
-
-    /* 댓글 수정 폼 스타일 */
+/* 댓글 수정 폼 스타일 */
 .comment-edit-form {
     margin-top: 10px;
     padding: 10px;
@@ -316,92 +165,84 @@ if ('serviceWorker' in navigator) {
     box-sizing: border-box;
 }
 
-.comment-edit-textarea:focus {
-    outline: none;
-    border-color: #c62828;
+.edited-badge {
+    display: inline-block;
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    margin-left: 8px;
+    font-weight: 600;
 }
 
-.reply-edit-form {
-    margin-top: 5px;
-}
-
-.reply-edit-form input {
+/* ========== 🔧 점검모드 스타일 ========== */
+#maintenanceScreen {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100%;
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 13px;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    z-index: 999999;
+    overflow: auto;
 }
 
-.reply-edit-form input:focus {
-    outline: none;
-    border-color: #c62828;
-}
-
-/* 수정됨 표시 */
-.edited-badge {
-    display: inline-block;
-    background: #e3f2fd;
-    color: #1976d2;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 11px;
-    margin-left: 8px;
-    font-weight: 600;
-}
-
-/* 수정됨 표시 */
-.edited-badge {
-    display: inline-block;
-    background: #e3f2fd;
-    color: #1976d2;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 11px;
-    margin-left: 8px;
-    font-weight: 600;
-}
-
-/* ========== 알림 삭제 UI 스타일 ========== */
-
-/* 선택 모드 활성화된 버튼 */
-#toggleSelectionBtn.active {
-    background: #c62828;
+.maintenance-content {
+    max-width: 600px;
+    margin: 80px auto;
+    padding: 40px;
+    text-align: center;
     color: white;
 }
 
-/* 알림 아이템 체크박스 */
-.notification-checkbox {
-    display: flex;
-    align-items: center;
+.maintenance-icon {
+    font-size: 120px;
+    margin-bottom: 30px;
+    animation: rotate 3s linear infinite;
 }
 
-/* 알림 액션 버튼 호버 */
-.notif-action-btn:hover {
-    opacity: 0.8;
-    transform: scale(1.05);
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
-.notif-action-btn:active {
-    transform: scale(0.95);
+.maintenance-title {
+    font-size: 32px;
+    font-weight: 900;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
 }
 
-/* 페이드아웃 애니메이션 */
-@keyframes fadeOut {
-    to {
-        opacity: 0;
-        transform: translateX(-20px);
-    }
+.maintenance-text {
+    font-size: 18px;
+    line-height: 1.8;
+    margin-bottom: 30px;
+    white-space: pre-wrap;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
 }
 
+.maintenance-image {
+    margin: 30px 0;
+}
 </style>
 
 </head>
 <body>
 
+<!-- 🔧 점검모드 화면 -->
+<div id="maintenanceScreen">
+    <div class="maintenance-content">
+        <div class="maintenance-icon">🔧</div>
+        <h1 class="maintenance-title" id="maintenanceTitle">점검 중입니다</h1>
+        <p class="maintenance-text" id="maintenanceContent">시스템 점검 중입니다.<br>잠시 후 다시 이용해주세요.</p>
+        <div class="maintenance-image" id="maintenanceImageContainer"></div>
+    </div>
+</div>
+
 <header>
- 
-<div class="header-content">
+    <div class="header-content">
         <div class="logo-section">
             <h1 class="logo">📰 해정뉴스</h1>
             <p class="logo-sub">해정이의 개 쩌는 뉴스사이트</p>
@@ -448,7 +289,7 @@ if ('serviceWorker' in navigator) {
             <option value="자유게시판" selected>자유게시판</option>
             <option>논란</option>
             <option>연애</option>
-            <option>정아영</option>
+            <option>정아의</option>
             <option>게넥도</option>
             <option>게임</option>
             <option>마크</option>
@@ -488,7 +329,7 @@ if ('serviceWorker' in navigator) {
                 <option selected>자유게시판</option>
                 <option>논란</option>
                 <option>연애</option>
-                <option>정아영</option>
+                <option>정아의</option>
                 <option>게넥도</option>
                 <option>게임</option>
                 <option>마크</option>
@@ -501,11 +342,11 @@ if ('serviceWorker' in navigator) {
         </div>
         
         <div class="form-group">
-            <label>인네일 이미지 (선택)</label>
+            <label>썸네일 이미지 (선택)</label>
             <div class="image-upload-area" onclick="document.getElementById('thumbnailInput').click()">
                 <div id="uploadText">
                     <i class="fas fa-camera"></i>
-                    <p>클릭하여 인네일 이미지 업로드</p>
+                    <p>클릭하여 썸네일 이미지 업로드</p>
                 </div>
                 <img id="thumbnailPreview" class="image-preview" style="display:none;">
             </div>
@@ -568,7 +409,7 @@ if ('serviceWorker' in navigator) {
     
     <div id="profileNickname" class="profile-card"></div>
 
-        <button onclick="logoutAdmin()" class="btn-secondary btn-block">
+    <button onclick="logoutAdmin()" class="btn-secondary btn-block">
         <i class="fas fa-sign-out-alt"></i> 로그아웃
     </button>
 
@@ -586,7 +427,7 @@ if ('serviceWorker' in navigator) {
         <div id="followUsersSection" style="margin-top:20px;"></div>
     </div>
 
-    <!-- 🐴 테마 설정 섹션 -->
+    <!-- 🎨 테마 설정 섹션 -->
     <div style="background: white; padding: 16px; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
         <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 12px; color: #202124;">
             <i class="fas fa-palette"></i> 테마 설정
@@ -607,50 +448,33 @@ if ('serviceWorker' in navigator) {
                 <div style="width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg, #00376b 0%, #5f6368 100%); border: 2px solid #dadce0;"></div>
             </label>
 
-<!-- 크리스마스 테마 -->
-<label class="theme-option" style="display: flex; align-items: center; padding: 12px; border: 2px solid #dadce0; border-radius: 10px; cursor: pointer; transition: all 0.3s;">
-    <input type="radio" name="theme" value="christmas" id="themeChristmas" style="margin-right: 12px; width: 20px; height: 20px; cursor: pointer;">
-    <div style="flex: 1;">
-        <div style="font-weight: 600; color: #202124; margin-bottom: 4px;">
-            <i class="fas fa-candy-cane"></i> 크리스마스 테마 <span style="background: linear-gradient(135deg, #c41e3a, #0f7f3e); padding: 2px 6px; border-radius: 4px; font-size: 10px; color: white; margin-left: 4px;">SPECIAL</span>
-        </div>
-        <div style="font-size: 12px; color: #5f6368;">
-            🎄 메리 크리스마스! 눈 내리는 특별한 디자인
-        </div>
-    </div>
-    <div style="width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg, #c41e3a 0%, #0f7f3e 50%, #d4af37 100%); border: 2px solid #d4af37; box-shadow: 0 0 10px rgba(196, 30, 58, 0.5);"></div>
-</label>
+            <!-- 크리스마스 테마 -->
+            <label class="theme-option" style="display: flex; align-items: center; padding: 12px; border: 2px solid #dadce0; border-radius: 10px; cursor: pointer; transition: all 0.3s;">
+                <input type="radio" name="theme" value="christmas" id="themeChristmas" style="margin-right: 12px; width: 20px; height: 20px; cursor: pointer;">
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; color: #202124; margin-bottom: 4px;">
+                        <i class="fas fa-candy-cane"></i> 크리스마스 테마 <span style="background: linear-gradient(135deg, #c41e3a, #0f7f3e); padding: 2px 6px; border-radius: 4px; font-size: 10px; color: white; margin-left: 4px;">SPECIAL</span>
+                    </div>
+                    <div style="font-size: 12px; color: #5f6368;">
+                        🎄 메리 크리스마스! 눈 내리는 특별한 디자인
+                    </div>
+                </div>
+                <div style="width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg, #c41e3a 0%, #0f7f3e 50%, #d4af37 100%); border: 2px solid #d4af37; box-shadow: 0 0 10px rgba(196, 30, 58, 0.5);"></div>
+            </label>
 
-<!-- 크리스마스 테마 설명 (선택 시 표시) -->
-<div style="margin-top: 12px; padding: 12px; background: #e8f5e9; border-radius: 8px; border: 2px solid #a5d6a7; display: none;" id="christmasInfo">
-    <div style="font-size: 13px; color: #1b5e20; line-height: 1.6;">
-        <strong>🎄 메리 크리스마스!</strong><br>
-        눈 내리는 효과와 함께하는 따뜻한 크리스마스 테마입니다.<br>
-    </div>
-</div>
-
-    <!-- 크리스마스 테마 아래에 추가 -->
-<label class="theme-option" style="display: flex; align-items: center; padding: 12px; border: 2px solid #dadce0; border-radius: 10px; cursor: pointer; transition: all 0.3s;">
-    <input type="radio" name="theme" value="ganadi" id="themeGanadi" style="margin-right: 12px; width: 20px; height: 20px; cursor: pointer;">
-    <div style="flex: 1;">
-        <div style="font-weight: 600; color: #202124; margin-bottom: 4px;">
-            <i class="fas fa-dog"></i> 가나디 테마 <span style="background: linear-gradient(135deg, #FFB6C1, #B3D9FF); padding: 2px 6px; border-radius: 4px; font-size: 10px; color: white; margin-left: 4px;">듀...</span>
-        </div>
-        <div style="font-size: 12px; color: #5f6368;">
-            🐶 나 안아.. 귀여운 강아지 감성 디자인
-        </div>
-    </div>
-    <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #FFB6C1 0%, #B3D9FF 100%); border: 2px solid #E8E8E8; box-shadow: 0 2px 8px rgba(255, 182, 193, 0.3);"></div>
-</label>
-
-<!-- 가나디 테마 설명 (선택 시 표시) -->
-<div style="margin-top: 12px; padding: 12px; background: #FFF9F0; border-radius: 8px; border: 2px solid #FFB6C1; display: none;" id="ganadiInfo">
-    <div style="font-size: 13px; color: #4A4A4A; line-height: 1.6;">
-        <strong>🐶 듀... 가나디</strong><br>
-        부드러운 파스텔 톤과 귀여운 강아지 감성이 담긴 테마입니다.<br>
-        "듀..? 가나디는 숨어있답니다! 찾아보세요! 💧
-    </div>
-</div>
+            <!-- 가나디 테마 -->
+            <label class="theme-option" style="display: flex; align-items: center; padding: 12px; border: 2px solid #dadce0; border-radius: 10px; cursor: pointer; transition: all 0.3s;">
+                <input type="radio" name="theme" value="ganadi" id="themeGanadi" style="margin-right: 12px; width: 20px; height: 20px; cursor: pointer;">
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; color: #202124; margin-bottom: 4px;">
+                        <i class="fas fa-dog"></i> 가나디 테마 <span style="background: linear-gradient(135deg, #FFB6C1, #B3D9FF); padding: 2px 6px; border-radius: 4px; font-size: 10px; color: white; margin-left: 4px;">듀...</span>
+                    </div>
+                    <div style="font-size: 12px; color: #5f6368;">
+                        🐶 나 안아.. 귀여운 강아지 감성 디자인
+                    </div>
+                </div>
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #FFB6C1 0%, #B3D9FF 100%); border: 2px solid #E8E8E8; box-shadow: 0 2px 8px rgba(255, 182, 193, 0.3);"></div>
+            </label>
             
             <!-- 붉은 말 테마 -->
             <label class="theme-option" style="display: flex; align-items: center; padding: 12px; border: 2px solid #dadce0; border-radius: 10px; cursor: pointer; transition: all 0.3s;">
@@ -666,59 +490,53 @@ if ('serviceWorker' in navigator) {
                 <div style="width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg, #FF6F00 0%, #c62828 50%, #8e0000 100%); border: 2px solid #FFD700; box-shadow: 0 0 10px rgba(198, 40, 40, 0.5);"></div>
             </label>
         </div>
-        
-        <div style="margin-top: 12px; padding: 12px; background: #FFF8E1; border-radius: 8px; border: 2px solid #FFCCBC; display: none;" id="redHorseInfo">
-            <div style="font-size: 13px; color: #3e2723; line-height: 1.6;">
-                <strong>🐴 2026년 병오년(丙午年)</strong><br>
-                불의 말의 해를 기념하는 특별 테마입니다.<br>
-                역동적이고 열정적인 디자인을 경험하세요!
-            </div>
-        </div>
     </div>
     
     <!-- 관리자 전용 섹션 -->
-<div id="adminModeIndicator"></div>
+    <div id="adminModeIndicator"></div>
 
-<!-- ✅ 추가: 조회수 관리 섹션 -->
-<div id="viewsManagementSection" style="display:none;">
-    <div class="settings-divider"></div>
-    
-    <h3 class="section-title">📊 조회수 관리</h3>
-    <div style="background:white; padding:16px; border-radius:12px; margin-bottom:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
-        <p style="color:#6c757d; font-size:14px; margin-bottom:12px;">
-            <i class="fas fa-info-circle"></i> 모든 기사의 조회수를 0으로 초기화합니다.
-        </p>
-        <button onclick="resetAllViews()" class="btn-warning btn-block">
-            <i class="fas fa-redo"></i> 전체 조회수 초기화
-        </button>
+    <!-- ✅ 추가: 조회수 관리 섹션 -->
+    <div id="viewsManagementSection" style="display:none;">
+        <div class="settings-divider"></div>
+        
+        <h3 class="section-title">📊 조회수 관리</h3>
+        <div style="background:white; padding:16px; border-radius:12px; margin-bottom:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+            <p style="color:#6c757d; font-size:14px; margin-bottom:12px;">
+                <i class="fas fa-info-circle"></i> 모든 기사의 조회수를 0으로 초기화합니다.
+            </p>
+            <button onclick="resetAllViews()" class="btn-warning btn-block">
+                <i class="fas fa-redo"></i> 전체 조회수 초기화
+            </button>
+        </div>
+        
+        <div style="background:white; padding:16px; border-radius:12px; margin-bottom:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+            <p style="color:#6c757d; font-size:14px; margin-bottom:12px;">
+                <i class="fas fa-info-circle"></i> 내 브라우저의 조회 기록을 삭제합니다.
+            </p>
+            <button onclick="clearMyViewHistory()" class="btn-secondary btn-block">
+                <i class="fas fa-trash-alt"></i> 내 조회 기록 삭제
+            </button>
+        </div>
     </div>
     
-    <div style="background:white; padding:16px; border-radius:12px; margin-bottom:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
-        <p style="color:#6c757d; font-size:14px; margin-bottom:12px;">
-            <i class="fas fa-info-circle"></i> 내 브라우저의 조회 기록을 삭제합니다.
-        </p>
-        <button onclick="clearMyViewHistory()" class="btn-secondary btn-block">
-            <i class="fas fa-trash-alt"></i> 내 조회 기록 삭제
-        </button>
-    </div>
-</div>
-    
     <div class="settings-divider"></div>
     
-<h3 class="section-title">🛡️ 관리</h3>
-<button onclick="openAdminAuthModal()" class="btn-info btn-block">
-    <i class="fas fa-user-shield"></i> 관리자 로그인
-</button>
-<button onclick="showUserManagement()" class="btn-primary btn-block">
-    <i class="fas fa-users"></i> 사용자 관리
-</button>
-<button onclick="showPinnedArticleManager()" class="btn-success btn-block">
-    <i class="fas fa-thumbtack"></i> 기사 고정 관리
-</button>
-<!-- ✅ 추가 -->
-<button onclick="showMaintenanceModeManager()" class="btn-warning btn-block">
-    <i class="fas fa-tools"></i> 점검모드 관리
-</button>
+    <h3 class="section-title">🛡️ 관리</h3>
+    <button onclick="openAdminAuthModal()" class="btn-info btn-block">
+        <i class="fas fa-user-shield"></i> 관리자 로그인
+    </button>
+    <button onclick="showUserManagement()" class="btn-primary btn-block">
+        <i class="fas fa-users"></i> 사용자 관리
+    </button>
+    <button onclick="showPinnedArticleManager()" class="btn-success btn-block">
+        <i class="fas fa-thumbtack"></i> 기사 고정 관리
+    </button>
+    
+    <!-- 🔧 점검모드 관리 버튼 (관리자 전용) -->
+    <button onclick="showMaintenanceModeManager()" class="btn-warning btn-block" id="maintenanceModeBtn" style="display:none;">
+        <i class="fas fa-tools"></i> 점검모드 관리
+    </button>
+</section>
 
 <!-- 더보기 섹션 -->
 <section class="page-section" id="moreMenuSection">
@@ -779,18 +597,6 @@ if ('serviceWorker' in navigator) {
     
     <div id="patchNotesList"></div>
 </section>
-
-<!-- 점검 모드 화면 -->
-<div id="maintenanceScreen" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#fff; z-index:99999; overflow-y:auto;">
-    <div style="max-width:600px; margin:80px auto; padding:40px 20px; text-align:center;">
-        <div id="maintenanceImageContainer" style="margin-bottom:30px;"></div>
-        <h1 id="maintenanceTitle" style="color:#c62828; font-size:28px; font-weight:900; margin-bottom:20px;">🔧 점검 중입니다</h1>
-        <div id="maintenanceContent" style="font-size:16px; color:#333; line-height:1.8; white-space:pre-wrap; margin-bottom:30px;">
-            시스템 점검 중입니다.<br>잠시 후 다시 이용해주세요.
-        </div>
-        <p style="color:#868e96; font-size:14px;">이용에 불편을 드려 죄송합니다.</p>
-    </div>
-</div>
 
 </main>
 
@@ -876,53 +682,45 @@ if ('serviceWorker' in navigator) {
     </div>
 </div>
 
-<!-- Quill 에디터 JS -->
-<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
-
-<!-- 스크립트 로드 -->
-<script src="./js/script.js"></script>
-<script src="./js/script2.js"></script>
-<script src="./js/ganadi-helper.js"></script>
-
-<!-- ❄️ 눈 내리는 효과 컨테이너 (body 끝에 추가될 부분이지만 여기서 미리 준비) -->
-<!-- 이 부분은 </body> 바로 위에 추가하세요 -->
-<div id="snowfall-container"></div>
-
-<!-- 점검모드 관리 모달 -->
+<!-- 🔧 점검모드 관리 모달 -->
 <div id="maintenanceModeModal" class="modal">
-    <div class="modal-content" style="max-width:600px;">
+    <div class="modal-content" style="max-width: 600px;">
         <div class="modal-header">
-            <h3 style="color:#c62828;">🔧 점검모드 관리</h3>
+            <h3>🔧 점검모드 관리</h3>
             <button onclick="closeMaintenanceModeModal()" class="modal-close">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         
-        <div style="padding:20px;">
-            <div class="form-group">
-                <label class="toggle-label">
+        <div style="padding: 20px;">
+            <!-- 점검모드 토글 -->
+            <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 2px solid #ffc107;">
+                <label class="toggle-label" style="margin: 0;">
                     <input type="checkbox" id="maintenanceToggle">
                     <span class="toggle-slider"></span>
                     <div class="toggle-text">
                         <strong>점검모드 활성화</strong>
-                        <small>활성화 시 관리자를 제외한 모든 사용자가 점검 화면을 보게 됩니다</small>
+                        <small>활성화 시 관리자를 제외한 모든 사용자에게 점검 화면이 표시됩니다</small>
                     </div>
                 </label>
             </div>
             
+            <!-- 제목 -->
             <div class="form-group">
-                <label>점검 안내 제목</label>
-                <input id="maintenanceTitle" class="form-control" placeholder="예: 시스템 점검 중입니다" maxlength="100">
+                <label>점검 화면 제목</label>
+                <input type="text" id="maintenanceTitle" class="form-control" placeholder="🔧 점검 중입니다">
             </div>
             
+            <!-- 내용 -->
             <div class="form-group">
-                <label>점검 안내 내용</label>
-                <textarea id="maintenanceContent" class="form-control" placeholder="점검 사유 및 예상 완료 시간을 입력하세요" rows="5"></textarea>
+                <label>점검 안내 메시지</label>
+                <textarea id="maintenanceContent" class="form-control" rows="4" placeholder="시스템 점검 중입니다.&#10;잠시 후 다시 이용해주세요."></textarea>
             </div>
             
+            <!-- 이미지 업로드 -->
             <div class="form-group">
-                <label>안내 이미지 (선택)</label>
-                <div class="image-upload-area" onclick="document.getElementById('maintenanceImageInput').click()">
+                <label>점검 안내 이미지 (선택)</label>
+                <div class="image-upload-area" onclick="document.getElementById('maintenanceImageInput').click()" style="cursor: pointer;">
                     <div id="maintenanceImageUploadText">
                         <i class="fas fa-image"></i>
                         <p>클릭하여 이미지 업로드</p>
@@ -932,12 +730,39 @@ if ('serviceWorker' in navigator) {
                 <input type="file" id="maintenanceImageInput" accept="image/*" style="display:none;">
             </div>
             
+            <!-- 저장 버튼 -->
             <button onclick="saveMaintenanceMode()" class="btn-primary btn-block">
                 <i class="fas fa-save"></i> 저장하기
             </button>
         </div>
     </div>
 </div>
+
+<!-- ❄️ 눈 내리는 효과 컨테이너 -->
+<div id="snowfall-container"></div>
+
+<!-- Quill 에디터 JS -->
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+
+<!-- 스크립트 로드 -->
+<script src="./js/script.js"></script>
+<script src="./js/script2.js"></script>
+<script src="./js/ganadi-helper.js"></script>
+
+<!-- 🔧 점검모드 버튼 표시 스크립트 -->
+<script>
+// 관리자 로그인 시 점검모드 버튼 표시
+auth.onAuthStateChanged(function(user) {
+    const maintenanceBtn = document.getElementById('maintenanceModeBtn');
+    if (maintenanceBtn) {
+        if (isAdmin()) {
+            maintenanceBtn.style.display = 'block';
+        } else {
+            maintenanceBtn.style.display = 'none';
+        }
+    }
+});
+</script>
 
 </body>
 </html>
