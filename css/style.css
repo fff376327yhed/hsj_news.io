@@ -2345,3 +2345,47 @@ input:checked + .slider:before {
         position: relative;
         z-index: 2;
     }
+
+    /* ========== 점검모드 애니메이션 ========== */
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.9;
+    }
+}
+
+/* 점검모드 화면 스타일 */
+#maintenanceScreen {
+    font-family: 'Noto Sans KR', sans-serif;
+}
+
+#maintenanceScreen h1 {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 점검모드 관리 모달 이미지 업로드 */
+#maintenanceModeModal .image-upload-area {
+    border: 2px dashed #ddd;
+    padding: 30px;
+    border-radius: 8px;
+    cursor: pointer;
+    background: #f8f9fa;
+    text-align: center;
+    transition: all 0.3s;
+}
+
+#maintenanceModeModal .image-upload-area:hover {
+    border-color: #c62828;
+    background: #fff;
+}
+
+#maintenanceModeModal .image-preview {
+    max-width: 100%;
+    border-radius: 8px;
+    margin-top: 10px;
+}
