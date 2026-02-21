@@ -133,7 +133,7 @@ const CHAR_BALL    = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAIA
     {
       char: CHAR_SMILING,
       title: '<em>마크 탭</em>이 생겼어요! 🔖',
-      desc: '카테고리 탭에 새로운 <em style="color:#ffcc00">마크 탭</em>이 추가됐어요!\n북마크한 기사를 한눈에 모아볼 수 있답니다.',
+      desc: '안녕하세요 저는 관리자가 생성한 도우미 혜성이라고 해요!\n카테고리 탭에 새로운 <em style="color:#ffcc00">마크 탭</em>이 추가됐어요!',
       hint: '⬆️',
       hintText: '상단의 <b>카테고리</b> 버튼을 눌러보세요!',
       nextLabel: '카테고리 보러 가기 →',
@@ -143,7 +143,7 @@ const CHAR_BALL    = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAIA
     {
       char: CHAR_BALL,
       title: '<em>마크 탭</em>을 눌러보세요! 👆',
-      desc: '카테고리 탭 안에서 <em style="color:#ffcc00">🔖 마크</em> 탭을 찾아 눌러보세요!\n내가 북마크한 기사가 여기 모여있어요.',
+      desc: '카테고리 탭 안에서 <em style="color:#ffcc00">🔖 마크</em> 탭을 찾아 눌러보세요!\n제 임무는 끝났으니 다음에 만나요 안녕!',
       hint: '👇',
       hintText: '카테고리 안에서 <b>마크 탭</b>을 눌러보세요!',
       nextLabel: '완료! ✨',
