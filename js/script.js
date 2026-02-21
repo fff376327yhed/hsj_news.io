@@ -190,8 +190,32 @@ function isLoggedIn() {
     return auth.currentUser !== null;
 }
 
-function isAdmin(){
-    return getCookie("is_admin") === "true";
+let _cachedAdminStatus = null;
+let _adminCacheTime = 0;
+const ADMIN_CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시
+
+async function isAdminAsync() {
+    const user = auth.currentUser;
+    if (!user) return false;
+    if (_cachedAdminStatus !== null && Date.now() - _adminCacheTime < ADMIN_CACHE_DURATION) {
+        return _cachedAdminStatus;
+    }
+    try {
+        const snap = await db.ref(`users/${user.uid}/isAdmin`).once("value");
+        _cachedAdminStatus = snap.val() === true;
+        _adminCacheTime = Date.now();
+        return _cachedAdminStatus;
+    } catch (e) {
+        return false;
+    }
+}
+
+function isAdmin() {
+    // 캐시가 유효하면 캐시 반환, 아니면 false (안전한 기본값)
+    if (_cachedAdminStatus !== null && Date.now() - _adminCacheTime < ADMIN_CACHE_DURATION) {
+        return _cachedAdminStatus;
+    }
+    return false;
 }
 
 // 쿠키 관리
@@ -208,6 +232,36 @@ function getCookie(n) {
 
 function deleteCookie(n) { 
     document.cookie = n + '=; Max-Age=0; path=/'; 
+}
+
+// ✅ XSS 방어용 함수들
+function escapeHTML(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function sanitizeHTML(dirty) {
+    if (!dirty) return '';
+    if (typeof DOMPurify === 'undefined') {
+        // DOMPurify가 없을 때 안전한 폴백
+        const div = document.createElement('div');
+        div.textContent = dirty;
+        return div.innerHTML;
+    }
+    return DOMPurify.sanitize(dirty, {
+        ALLOWED_TAGS: [
+            'p', 'br', 'strong', 'em', 'u', 's',
+            'h1', 'h2', 'h3', 'ul', 'ol', 'li',
+            'blockquote', 'a', 'img', 'span', 'div', 'pre', 'code'
+        ],
+        ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'style', 'target', 'rel'],
+        ALLOW_DATA_ATTR: false
+    });
 }
 
 // 금지어 관리
@@ -584,16 +638,19 @@ async function handleAdminLogin(e) {
     // ✅ Firebase에 관리자 플래그 저장
     const uid = userCredential.user.uid;
     await db.ref(`users/${uid}`).update({
-        isAdmin: true,
-        lastAdminLogin: Date.now()
-    });
-    
-    setCookie("is_admin", "true", 365);
-    
-    hideLoadingIndicator();
-    closeAdminAuthModal();
-    
-    alert("✅ 관리자 로그인 성공!");
+       isAdmin: true,
+       lastAdminLogin: Date.now()
+   });
+   
+   // ✅ 쿠키 방식 완전 제거 — DB만 사용
+   // ❌ 제거됨: setCookie("is_admin", "true", 365);
+   _cachedAdminStatus = null; // 캐시 무효화
+   await isAdminAsync();      // 즉시 DB에서 재확인
+   
+   hideLoadingIndicator();
+   closeAdminAuthModal();
+   
+   alert("✅ 관리자 로그인 성공!");
         
         setTimeout(() => {
             location.reload();
@@ -1102,9 +1159,15 @@ console.log("✅ Part 4 알림 시스템 완료");
 
 // ===== Part 5: 인증 상태 관리 (간소화) =====
 
-// ✅ 인증 상태 변경
-auth.onAuthStateChanged(async user => {
-    console.log("🔐 인증 상태:", user ? user.email : "로그아웃");
+   auth.onAuthStateChanged(async user => {
+       console.log("🔐 인증 상태:", user ? user.email : "로그아웃");
+       
+       // ✅ 추가: 로그인 상태 변경 시 관리자 캐시 초기화
+       _cachedAdminStatus = null;
+       _adminCacheTime = 0;
+       
+       if (user) {
+           await isAdminAsync(); // 로그인 즉시 캐시 채우기
     
     if (user) {
         showLoadingIndicator("로그인 중...");
@@ -1150,7 +1213,7 @@ auth.onAuthStateChanged(async user => {
         filteredArticles = allArticles;
         renderArticles();
     }
-});
+}});
 
 // ✅ 팔로우 사용자 로드
 async function loadFollowUsers() {
@@ -1894,6 +1957,12 @@ async function getUserProfilePhoto(email) {
         return window.profilePhotoCache.get(email);
     }
     
+    // ✅ 비로그인 시 프로필 사진 로드 건너뜀
+    if (!isLoggedIn()) {
+        window.profilePhotoCache.set(email, null);
+        return null;
+    }
+    
     try {
         const usersSnapshot = await db.ref("users").once("value");
         const usersData = usersSnapshot.val() || {};
@@ -1909,6 +1978,8 @@ async function getUserProfilePhoto(email) {
         window.profilePhotoCache.set(email, null);
         return null;
     } catch (error) {
+        // ✅ 권한 없으면 조용히 null 반환 (화면 깨짐 방지)
+        window.profilePhotoCache.set(email, null);
         return null;
     }
 }
@@ -1975,12 +2046,12 @@ async function renderArticles() {
             
             return `<div class="article-card" onclick="showArticleDetail('${a.id}')" style="border-left:4px solid #ffd700;cursor:pointer;">
                 <div class="article-content">
-                    <span class="category-badge">${a.category}</span>
+                   <span class="category-badge">${escapeHTML(a.category)}</span>
                     <span class="pinned-badge">📌 고정</span>
-                    <h3 class="article-title">${a.title}</h3>
+                    <h3 class="article-title">${escapeHTML(a.title)}</h3>
                     <div class="article-meta" style="display:flex; align-items:center; gap:8px;">
                         ${authorPhotoHTML}
-                        <span style="flex:1;">${a.author}</span>
+                        <span style="flex:1;">${escapeHTML(a.author)}</span>
                     </div>
                 </div>
             </div>`;
@@ -2000,15 +2071,30 @@ async function renderArticles() {
     const uncachedEmails = emails.filter(email => !window.profilePhotoCache.has(email));
 
     if(uncachedEmails.length > 0) {
-        const usersSnapshot = await db.ref("users").once("value");
-        const usersData = usersSnapshot.val() || {};
-        
-        Object.values(usersData).forEach(userData => {
-            if(userData && userData.email && uncachedEmails.includes(userData.email)) {
-                window.profilePhotoCache.set(userData.email, userData.profilePhoto || null);
-            }
+    // ✅ 로그인된 경우에만 프로필 사진 로드 시도
+    if (isLoggedIn()) {
+        try {
+            const usersSnapshot = await db.ref("users").once("value");
+            const usersData = usersSnapshot.val() || {};
+            
+            Object.values(usersData).forEach(userData => {
+                if(userData && userData.email && uncachedEmails.includes(userData.email)) {
+                    window.profilePhotoCache.set(userData.email, userData.profilePhoto || null);
+                }
+            });
+        } catch (error) {
+            // ✅ 권한 없으면 null로 채워서 이후 재시도 방지
+            uncachedEmails.forEach(email => {
+                window.profilePhotoCache.set(email, null);
+            });
+        }
+    } else {
+        // ✅ 비로그인 시 null로 캐시 채움
+        uncachedEmails.forEach(email => {
+            window.profilePhotoCache.set(email, null);
         });
     }
+}
     
     const articlesHTML = displayArticles.map((a) => {
         const views = getArticleViews(a);
@@ -2017,15 +2103,15 @@ async function renderArticles() {
         const authorPhotoHTML = getProfilePlaceholder(photoUrl, 48);
     
         return `<div class="article-card" onclick="showArticleDetail('${a.id}')" style="cursor:pointer;">
-            ${a.thumbnail ? `<img src="${a.thumbnail}" class="article-thumbnail" alt="썸네일">` : ''}
-            <div class="article-content">
-                <span class="category-badge">${a.category}</span>
-                <h3 class="article-title">${a.title}</h3>
-                <p class="article-summary">${a.summary||''}</p>
-                <div class="article-meta" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                    <div style="display:flex; align-items:center; gap:8px; flex:1;">
-                        ${authorPhotoHTML}
-                        <span>${a.author}</span>
+       ${a.thumbnail ? `<img src="${a.thumbnail}" class="article-thumbnail" alt="썸네일">` : ''}
+       <div class="article-content">
+           <span class="category-badge">${escapeHTML(a.category)}</span>
+           <h3 class="article-title">${escapeHTML(a.title)}</h3>
+           <p class="article-summary">${escapeHTML(a.summary||'')}</p>
+           <div class="article-meta" ...>
+               <div ...>
+                   ${authorPhotoHTML}
+                   <span>${escapeHTML(a.author)}</span>
                     </div>
                     <div class="article-stats" style="display:flex; gap:12px;">
                         <span class="stat-item">👁️ ${views}</span>
@@ -2107,22 +2193,22 @@ async function showArticleDetail(id) {
         root.innerHTML = `<div style="background:#fff;padding:20px;border-radius:8px;">
             <span class="category-badge">${A.category}</span>
             <h1 style="font-size:22px;font-weight:700;margin:15px 0;line-height:1.4;">
-                ${A.title}
-                ${editedBadge}
-            </h1>
+       ${escapeHTML(A.title)}
+       ${editedBadge}
+   </h1>
             
             <div class="article-meta" style="border-bottom:1px solid #eee; padding-bottom:15px; margin-bottom:20px; display:flex; align-items:center; gap:12px;">
                 ${authorPhotoHTML}
                 <div style="flex:1;">
-                    <div style="font-weight:600; color:#202124;">${A.author}</div>
-                    <div style="color:#5f6368; font-size:13px;">${A.date}</div>
+                    <div style="font-weight:600; color:#202124;">${escapeHTML(A.author)}</div>
+   <div style="color:#5f6368; font-size:13px;">${escapeHTML(A.date)}</div>
                 </div>
                 <span style="color:#5f6368;" id="viewCountDisplay">👁️ ${views}</span>
             </div>
             
             ${A.thumbnail ? `<img src="${A.thumbnail}" style="width:100%;border-radius:8px;margin-bottom:20px;" alt="이미지">` : ''}
             
-            <div style="font-size:16px;line-height:1.8;color:#333;white-space:pre-wrap;">${A.content}</div>
+            <div style="font-size:16px;line-height:1.8;color:#333;">${sanitizeHTML(A.content)}</div>
             
             <div style="display:flex;gap:10px;padding-top:20px;margin-top:20px;border-top:1px solid #eee; justify-content:center;">
                 <button onclick="toggleVote('${A.id}', 'like')" class="vote-btn ${userVote === 'like' ? 'active' : ''}">
@@ -2434,20 +2520,29 @@ function setupEditForm(article, articleId) {
     });
 }
 
-// ✅ 썸네일 미리보기
-function previewThumbnail(event) {
+async function previewThumbnail(event) {
     const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const preview = document.getElementById('thumbnailPreview');
-            const uploadText = document.getElementById('uploadText');
+    if (!file) return;
+
+    // ✅ 파일 검증 (validateImageFile은 script2.js에 정의됨)
+    const errors = await validateImageFile(file);
+    if (errors.length > 0) {
+        alert('❌ 이미지 오류:\n' + errors.join('\n'));
+        event.target.value = ''; // 파일 선택 초기화
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const preview = document.getElementById('thumbnailPreview');
+        const uploadText = document.getElementById('uploadText');
+        if (preview && uploadText) {
             preview.src = e.target.result;
             preview.style.display = 'block';
             uploadText.innerHTML = '<i class="fas fa-check"></i><p>이미지 선택됨 (클릭하여 변경)</p>';
-        };
-        reader.readAsDataURL(file);
-    }
+        }
+    };
+    reader.readAsDataURL(file);
 }
 
 
@@ -2886,6 +2981,22 @@ function setupArticleForm() {
             return;
         }
         window.isSubmitting = true;
+
+         form.onsubmit = async function(e) {
+       e.preventDefault();
+       
+       if (window.isSubmitting) {
+           console.warn("⚠️ 이미 제출 중입니다!");
+           return;
+       }
+       window.isSubmitting = true;
+       
+       // ✅ 추가: 속도 제한 (10분에 3개)
+       if (!rateLimiter.check('article', 3, 10 * 60 * 1000)) {
+           alert("⚠️ 기사를 너무 빠르게 작성하고 있습니다. 잠시 후 다시 시도해주세요.");
+           window.isSubmitting = false;
+           return;
+       }}
         
         // ✅ 제출 시점에 요소를 다시 찾기
         const titleInput = document.getElementById("title");
@@ -3107,6 +3218,19 @@ console.log("✅ Quill 에디터 시스템 로드 완료");
 
 // ===== Part 9: 댓글 관리 =====
 
+const rateLimiter = {
+    _records: {},
+    check(action, limit, windowMs) {
+        const key = `${getUserId()}_${action}`;
+        const now = Date.now();
+        if (!this._records[key]) this._records[key] = [];
+        this._records[key] = this._records[key].filter(t => now - t < windowMs);
+        if (this._records[key].length >= limit) return false;
+        this._records[key].push(now);
+        return true;
+    }
+};
+
 // ✅ 댓글 로드 (프로필 사진 포함)
 async function loadCommentsWithProfile(id) {
     const currentUser = getNickname();
@@ -3144,6 +3268,9 @@ async function loadCommentsWithProfile(id) {
         const uncachedEmails = uniqueEmails.filter(email => !window.profilePhotoCache.has(email));
 
         if (uncachedEmails.length > 0) {
+    // ✅ 로그인된 경우에만 시도
+    if (isLoggedIn()) {
+        try {
             const usersSnapshot = await db.ref("users").once("value");
             const usersData = usersSnapshot.val() || {};
             
@@ -3152,7 +3279,17 @@ async function loadCommentsWithProfile(id) {
                     window.profilePhotoCache.set(userData.email, userData.profilePhoto || null);
                 }
             });
+        } catch (error) {
+            uncachedEmails.forEach(email => {
+                window.profilePhotoCache.set(email, null);
+            });
         }
+    } else {
+        uncachedEmails.forEach(email => {
+            window.profilePhotoCache.set(email, null);
+        });
+    }
+}
 
         const commentsHTML = displayComments.map(([commentId, comment]) => {
             const isMyComment = isLoggedIn() && ((comment.authorEmail === currentEmail) || isAdmin());
@@ -3180,11 +3317,11 @@ async function loadCommentsWithProfile(id) {
                         <div class="reply-item" id="reply-${commentId}-${replyId}">
                             <div class="reply-header">
                                 ${replyPhotoHTML}
-                                <span class="reply-author">↳ ${reply.author}</span>
-                                <span class="reply-time">${reply.timestamp}</span>
+                               <span class="reply-author">↳ ${escapeHTML(reply.author)}</span>
+   <span class="reply-time">${escapeHTML(reply.timestamp)}</span>
                                 ${replyEditedBadge}
                             </div>
-                            <div class="reply-content" id="replyContent-${commentId}-${replyId}">${reply.text}</div>
+                            <div class="reply-content" id="replyContent-${commentId}-${replyId}">${escapeHTML(reply.text)}</div>
                             <div class="reply-edit-form" id="replyEditForm-${commentId}-${replyId}" style="display:none;">
                                 <input type="text" id="replyEditInput-${commentId}-${replyId}" class="reply-input" value="${reply.text.replace(/"/g, '&quot;')}" onkeypress="if(event.key==='Enter') saveReplyEdit('${id}', '${commentId}', '${replyId}')">
                                 <div style="display:flex; gap:5px; margin-top:5px;">
@@ -3207,11 +3344,11 @@ async function loadCommentsWithProfile(id) {
                 <div class="comment-card" id="comment-${commentId}">
                     <div class="comment-header">
                         ${authorPhotoHTML}
-                        <span class="comment-author">${comment.author}</span>
-                        <span class="comment-time">${comment.timestamp}</span>
+                        <span class="comment-author">${escapeHTML(comment.author)}</span>
+   <span class="comment-time">${escapeHTML(comment.timestamp)}</span>
                         ${commentEditedBadge}
                     </div>
-                    <div class="comment-body" id="commentBody-${commentId}">${comment.text}</div>
+                    <div class="comment-body" id="commentBody-${commentId}">${escapeHTML(comment.text)}</div>
                     
                     <div class="comment-edit-form" id="commentEditForm-${commentId}" style="display:none;">
                         <textarea id="commentEditInput-${commentId}" class="comment-edit-textarea" onkeypress="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); saveCommentEdit('${id}', '${commentId}'); }">${comment.text}</textarea>
@@ -3275,38 +3412,64 @@ window.editComment = function(commentId) {
     }
 };
 
-// ✅ 댓글 수정 저장
 window.saveCommentEdit = async function(articleId, commentId) {
+    if (!isLoggedIn()) {
+        alert("로그인이 필요합니다.");
+        return;
+    }
+
     const input = document.getElementById(`commentEditInput-${commentId}`);
-    if(!input) return;
-    
+    if (!input) return;
+
     const newText = input.value.trim();
-    
-    if(!newText) {
+    if (!newText) {
         alert("댓글 내용을 입력해주세요!");
         return;
     }
-    
-    // 금지어 체크
-    const foundWord = checkBannedWords(newText);
-    if(foundWord) {
-        alert(`⚠️ 금지어("${foundWord}")가 포함되어 있습니다.`);
-        addWarningToCurrentUser();
+
+    // ✅ 길이 제한
+    if (newText.length > 1000) {
+        alert("댓글은 1000자 이하로 입력해주세요.");
         return;
     }
-    
+
+    // ✅ 수정 전 DB에서 소유자 재확인 (클라이언트 신뢰 불가)
     try {
-        // Firebase에 업데이트
-        await db.ref(`comments/${articleId}/${commentId}/text`).set(newText);
-        await db.ref(`comments/${articleId}/${commentId}/edited`).set(true);
-        await db.ref(`comments/${articleId}/${commentId}/editedAt`).set(new Date().toLocaleString());
-        
-        // 화면 새로고침
+        const snap = await db.ref(`comments/${articleId}/${commentId}`).once('value');
+        const commentData = snap.val();
+
+        if (!commentData) {
+            alert("댓글을 찾을 수 없습니다.");
+            return;
+        }
+
+        const currentEmail = getUserEmail();
+        const isOwner = commentData.authorEmail === currentEmail;
+        const adminStatus = await isAdminAsync(); // ✅ 쿠키 대신 DB 확인
+
+        if (!isOwner && !adminStatus) {
+            alert("🚫 수정 권한이 없습니다.");
+            return;
+        }
+
+        // 금지어 체크
+        const foundWord = checkBannedWords(newText);
+        if (foundWord) {
+            alert(`⚠️ 금지어("${foundWord}")가 포함되어 있습니다.`);
+            addWarningToCurrentUser();
+            return;
+        }
+
+        // ✅ 개별 필드 3번 호출 → update 1번으로 변경 (원자적 처리)
+        await db.ref(`comments/${articleId}/${commentId}`).update({
+            text: newText,
+            edited: true,
+            editedAt: new Date().toLocaleString()
+        });
+
         loadComments(articleId);
-        
-        console.log("✅ 댓글 수정 완료");
-        
-    } catch(error) {
+
+    } catch (error) {
         console.error("댓글 수정 실패:", error);
         alert("댓글 수정 중 오류가 발생했습니다: " + error.message);
     }
@@ -3407,16 +3570,27 @@ function submitCommentFromDetail() {
     submitComment(currentArticleId);
 }
 
-// ✅ 댓글 제출
 async function submitComment(id){
     if(!isLoggedIn()) {
         alert("댓글 작성은 로그인 후 가능합니다!");
         return;
     }
-    
+
+    // ✅ 속도 제한: 30초 안에 5개 초과 시 차단
+    if (!rateLimiter.check('comment', 5, 30 * 1000)) {
+        alert("⚠️ 댓글을 너무 빠르게 작성하고 있습니다. 잠시 후 다시 시도해주세요.");
+        return;
+    }
+
     const txt = document.getElementById("commentInput").value.trim();
     if(!txt) return alert("댓글 내용을 입력해주세요!");
-    
+
+    // ✅ 길이 제한
+    if (txt.length > 1000) {
+        alert("댓글은 1000자 이하로 입력해주세요.");
+        return;
+    }
+
     const foundWord = checkBannedWords(txt);
     if (foundWord) {
         alert(`⚠️ 금지어("${foundWord}")가 포함되어 등록할 수 없으며, 경고 1회가 누적됩니다.`);
@@ -6138,15 +6312,10 @@ console.log("✅ Part 15: 멀티 테마 시스템 로드 완료");
 
 console.log("🔧 Part 16: 점검모드 시스템 시작");
 
-// 관리자 계정 목록 (점검모드 예외)
-const ADMIN_EMAILS = ['hyeseongjeong735@gmail.com', '1@gmail.com'];
-
-// 현재 사용자가 관리자인지 확인
-function isMaintenanceAdmin() {
-    const user = auth.currentUser;
-    if (!user) return false;
-    return ADMIN_EMAILS.includes(user.email);
-}
+// ✅ 하드코딩 이메일 완전 제거 — DB 기반으로만 확인
+   async function isMaintenanceAdmin() {
+       return await isAdminAsync(); // ② 에서 추가한 isAdminAsync 함수 사용
+   }
 
 // 점검모드 상태 확인 및 화면 표시
 async function checkMaintenanceMode() {
@@ -6160,7 +6329,7 @@ async function checkMaintenanceMode() {
         }
         
         // 관리자는 점검모드 무시
-        if (isMaintenanceAdmin()) {
+        if (await isMaintenanceAdmin()) {
             console.log('✅ 관리자 계정 - 점검모드 무시');
             hideMaintenanceScreen();
             showAdminMaintenanceBadge();
