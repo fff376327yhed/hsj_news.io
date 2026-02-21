@@ -2190,16 +2190,16 @@ async function renderArticles() {
            <span class="category-badge">${escapeHTML(a.category)}</span>
            <h3 class="article-title">${escapeHTML(a.title)}</h3>
            <p class="article-summary">${escapeHTML(a.summary||'')}</p>
-           <div class="article-meta" ...>
-               <div ...>
-                   ${authorPhotoHTML}
-                   <span>${escapeHTML(a.author)}</span>
-                    </div>
-                    <div class="article-stats" style="display:flex; gap:12px;">
-                        <span class="stat-item">👁️ ${views}</span>
-                        <span class="stat-item">👍 ${votes.likes}</span>
-                    </div>
-                </div>
+           <div class="article-meta" style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+    <div style="display:flex; align-items:center; gap:8px;">
+        ${authorPhotoHTML}
+        <span>${escapeHTML(a.author)}</span>
+    </div>
+    <div class="article-stats" style="display:flex; gap:12px;">
+        <span class="stat-item">👁️ ${views}</span>
+        <span class="stat-item">👍 ${votes.likes}</span>
+    </div>
+</div>
             </div>
         </div>`;
     });
