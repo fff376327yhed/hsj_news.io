@@ -4397,13 +4397,11 @@ function saveArticle(article, callback) {
 
 // ✅ 기사 삭제
 function deleteArticleFromDB(articleId, callback) {
-    const updates = {
-        [`articles/${articleId}`]: null,
-        [`votes/${articleId}`]: null,
-        [`comments/${articleId}`]: null
-    };
-    
-    db.ref().update(updates).then(() => {
+    Promise.all([
+        db.ref('articles/' + articleId).remove(),
+        db.ref('votes/' + articleId).remove(),
+        db.ref('comments/' + articleId).remove()
+    ]).then(() => {
         if(callback) callback();
     }).catch(error => {
         alert("삭제 실패: " + error.message);
@@ -6628,10 +6626,9 @@ window.saveMaintenanceMode = async function() {
 
 // 인증 상태 변경 시 점검모드 확인
 auth.onAuthStateChanged(async (user) => {
-    // 기존 onAuthStateChanged 로직 이후에 실행
-    setTimeout(() => {
-        checkMaintenanceMode();
-    }, 500);
+    setTimeout(async () => {
+        await checkMaintenanceMode();
+    }, 800); // 캐시 초기화 대기 시간 늘림
 });
 
 // 페이지 로드 시 점검모드 확인
@@ -6641,15 +6638,16 @@ window.addEventListener('load', () => {
     }, 1000);
 });
 
-// 점검모드 실시간 리스너
-db.ref('maintenanceMode').on('value', (snapshot) => {
+// 점검모드 실시간 리스너 (async 처리 수정)
+db.ref('maintenanceMode').on('value', async (snapshot) => {
     const data = snapshot.val();
-    
-    if (data && data.enabled && !isMaintenanceAdmin()) {
+    const adminStatus = await isAdminAsync(); // ← await 필수
+
+    if (data && data.enabled && !adminStatus) {
         showMaintenanceScreen(data);
     } else {
         hideMaintenanceScreen();
-        if (isMaintenanceAdmin() && data && data.enabled) {
+        if (adminStatus && data && data.enabled) {
             showAdminMaintenanceBadge();
         }
     }
