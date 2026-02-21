@@ -2021,14 +2021,13 @@ console.log("✅ QnA 및 패치노트 기능 로드 완료");
 
 // ===== Part 7: 기사 렌더링 =====
 
-// ✅ 프로필 플레이스홀더
 function getProfilePlaceholder(photoUrl, size) {
     if (photoUrl) {
-        return `<img src="${photoUrl}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;border:2px solid #dadce0;">`;
+        return `<img src="${photoUrl}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;border:2px solid #dadce0;flex-shrink:0;">`;
     }
-    return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:#f1f3f4;display:inline-flex;align-items:center;justify-content:center;border:2px solid #dadce0;">
+    return `<span style="width:${size}px;height:${size}px;border-radius:50%;background:#f1f3f4;display:inline-flex;align-items:center;justify-content:center;border:2px solid #dadce0;flex-shrink:0;">
         <i class="fas fa-user" style="font-size:${size/2}px;color:#9aa0a6;"></i>
-    </div>`;
+    </span>`;
 }
 
 // ✅ 사용자 프로필 사진 가져오기
