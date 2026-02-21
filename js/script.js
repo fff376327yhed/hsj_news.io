@@ -1056,7 +1056,7 @@ function setupNotificationListener(uid) {
     notificationListenerActive = true;
 }
 
-// ✅ 알림 전송 함수 (핵심만)
+// ✅ 알림 전송 함수 (알림 타입 설정 반영)
 async function sendNotification(type, data) {
     console.log("📤 알림 전송:", type, data);
     
@@ -1066,25 +1066,34 @@ async function sendNotification(type, data) {
         const usersData = usersSnapshot.val() || {};
         
         if (type === 'article') {
-            const authorEmailKey = btoa(data.authorEmail).replace(/=/g, '');
+            // 기사 알림: article 타입 허용한 사용자 전원에게
             Object.entries(usersData).forEach(([uid, userData]) => {
-                if(userData.notificationsEnabled !== false) {
-                    const following = userData.following || {};
-                    if(following[authorEmailKey]) {
-                        targetUsers.push(uid);
-                    }
+                if(userData.notificationsEnabled === false) return;
+                if(userData.email === data.authorEmail) return; // 자기 자신 제외
+                const types = userData.notificationTypes || {};
+                const articleEnabled = types.article !== false; // 기본 true
+                if(articleEnabled) {
+                    targetUsers.push(uid);
                 }
             });
         } 
         else if (type === 'myArticleComment') {
+            // 댓글 알림: 글 작성자 본인, comment 타입 허용 시에만
             Object.entries(usersData).forEach(([uid, userData]) => {
-                if(userData.email === data.articleAuthorEmail && userData.notificationsEnabled !== false) {
+                if(userData.email !== data.articleAuthorEmail) return;
+                if(userData.notificationsEnabled === false) return;
+                const types = userData.notificationTypes || {};
+                const commentEnabled = types.comment !== false; // 기본 true
+                if(commentEnabled) {
                     targetUsers.push(uid);
                 }
             });
         }
         
-        if(targetUsers.length === 0) return;
+        if(targetUsers.length === 0) {
+            console.log("🔭 알림 받을 대상이 없습니다");
+            return;
+        }
         
         const timestamp = Date.now();
         const updates = {};
@@ -1093,11 +1102,12 @@ async function sendNotification(type, data) {
             type: type,
             timestamp: timestamp,
             read: false,
-            articleId: data.articleId,
-            title: type === 'article' ? '📰 새 기사' : '💭 내 기사에 새 댓글',
+            pushed: false,          // ← FCM 미전송 플래그 (send-notifications.js가 이걸 보고 전송)
+            articleId: data.articleId || '',
+            title: type === 'article' ? '📰 새 기사' : '💬 내 기사에 새 댓글',
             text: type === 'article' ? 
                 `${data.authorName}님이 새 기사를 작성했습니다: "${data.title}"` :
-                `${data.commenterName}님이 댓글을 남겼습니다: "${data.content.substring(0, 50)}..."`
+                `${data.commenterName}님이 댓글을 남겼습니다: "${(data.content || '').substring(0, 50)}..."`
         };
         
         targetUsers.forEach(uid => {
@@ -1106,7 +1116,7 @@ async function sendNotification(type, data) {
         });
         
         await db.ref().update(updates);
-        console.log(`✅ ${targetUsers.length}개의 알림 전송 완료`);
+        console.log(`✅ ${targetUsers.length}개의 알림 DB 저장 완료`);
         
     } catch(error) {
         console.error("❌ 알림 전송 실패:", error);
@@ -1344,8 +1354,9 @@ async function updateSettings() {
                 notificationToggle.checked = notificationsEnabled;
                 if(notificationsEnabled) {
                     document.getElementById("notificationStatus").innerHTML = '<p style="color:var(--success-color);margin-top:10px;">✅ 알림이 활성화되었습니다.</p>';
-                    loadFollowUsers();
                 }
+                // 알림 타입 체크박스 로드
+                await loadNotificationTypeSettings();
             }
         } catch(error) {
             console.error("설정 로드 오류:", error);
@@ -1398,15 +1409,86 @@ async function toggleNotifications() {
     
     if(isEnabled) {
         statusDiv.innerHTML = '<p style="color:var(--success-color);margin-top:10px;">✅ 알림이 활성화되었습니다.</p>';
-        loadFollowUsers();
         setupNotificationListener(uid);
+        await loadNotificationTypeSettings();
     } else {
         statusDiv.innerHTML = '<p style="color:var(--text-secondary);margin-top:10px;">알림이 비활성화되었습니다.</p>';
-        document.getElementById("followUsersSection").innerHTML = '';
+        const typeSection = document.getElementById("notificationTypeSection");
+        if(typeSection) typeSection.innerHTML = '';
         db.ref("notifications/" + uid).off();
         notificationListenerActive = false;
     }
 }
+
+// ✅ 알림 타입 설정 로드 및 렌더링
+async function loadNotificationTypeSettings() {
+    if(!isLoggedIn()) return;
+    const uid = getUserId();
+    const section = document.getElementById("notificationTypeSection");
+    if(!section) return;
+    
+    // Firebase에서 타입 설정 읽기 (없으면 기본값 true)
+    const snap = await db.ref("users/" + uid + "/notificationTypes").once("value");
+    const types = snap.val() || {};
+    
+    const articleEnabled = types.article !== false;  // 기본 true
+    const commentEnabled = types.comment !== false;  // 기본 true
+    
+    section.innerHTML = `
+        <div style="background:#fff; border:1px solid #dadce0; padding:20px; border-radius:8px; margin-top:16px;">
+            <h4 style="margin:0 0 14px 0; color:#202124; font-size:15px;">📋 알림 받을 항목</h4>
+            
+            <label style="display:flex; align-items:center; gap:12px; padding:12px; background:#f8f9fa; border-radius:6px; margin-bottom:10px; cursor:pointer;">
+                <input type="checkbox" id="notifType_article"
+                    ${articleEnabled ? 'checked' : ''}
+                    onchange="saveNotificationTypes()"
+                    style="width:18px; height:18px; cursor:pointer; accent-color:#c62828;">
+                <div>
+                    <div style="font-weight:600; color:#202124;">📰 새 기사 알림</div>
+                    <div style="font-size:12px; color:#5f6368; margin-top:2px;">누군가 새 기사를 올렸을 때</div>
+                </div>
+            </label>
+            
+            <label style="display:flex; align-items:center; gap:12px; padding:12px; background:#f8f9fa; border-radius:6px; cursor:pointer;">
+                <input type="checkbox" id="notifType_comment"
+                    ${commentEnabled ? 'checked' : ''}
+                    onchange="saveNotificationTypes()"
+                    style="width:18px; height:18px; cursor:pointer; accent-color:#c62828;">
+                <div>
+                    <div style="font-weight:600; color:#202124;">💬 댓글 알림</div>
+                    <div style="font-size:12px; color:#5f6368; margin-top:2px;">내 기사에 댓글이 달렸을 때</div>
+                </div>
+            </label>
+        </div>
+    `;
+}
+
+// ✅ 알림 타입 설정 저장
+window.saveNotificationTypes = async function() {
+    if(!isLoggedIn()) return;
+    const uid = getUserId();
+    
+    const articleEl = document.getElementById("notifType_article");
+    const commentEl = document.getElementById("notifType_comment");
+    
+    const types = {
+        article: articleEl ? articleEl.checked : true,
+        comment: commentEl ? commentEl.checked : true
+    };
+    
+    await db.ref("users/" + uid + "/notificationTypes").set(types);
+    
+    // 저장 피드백
+    const statusDiv = document.getElementById("notificationStatus");
+    if(statusDiv) {
+        statusDiv.innerHTML = '<p style="color:var(--success-color);margin-top:10px;">✅ 알림 설정이 저장되었습니다.</p>';
+        setTimeout(() => {
+            statusDiv.innerHTML = '<p style="color:var(--success-color);margin-top:10px;">✅ 알림이 활성화되었습니다.</p>';
+        }, 2000);
+    }
+    
+    console.log("✅ 알림 타입 저장:", types);
+};
 
 // ✅ 헤더 프로필 버튼 업데이트
 async function updateHeaderProfileButton(user) {
