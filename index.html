@@ -756,14 +756,31 @@ if ('serviceWorker' in navigator) {
 <!-- 🔧 점검모드 버튼 표시 스크립트 -->
 <script>
 // 관리자 로그인 시 점검모드 버튼 표시
-auth.onAuthStateChanged(function(user) {
+// isAdmin()이 Firebase 데이터 로드 후에 정확한 값을 반환하도록 딜레이 적용
+auth.onAuthStateChanged(async function(user) {
     const maintenanceBtn = document.getElementById('maintenanceModeBtn');
-    if (maintenanceBtn) {
-        if (isAdmin()) {
-            maintenanceBtn.style.display = 'block';
-        } else {
-            maintenanceBtn.style.display = 'none';
-        }
+    if (!maintenanceBtn) return;
+
+    if (!user) {
+        // 로그아웃 상태면 즉시 숨김
+        maintenanceBtn.style.display = 'none';
+        return;
+    }
+
+    // Firebase에서 관리자 정보 로드 대기 (1초)
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    try {
+        // isAdmin이 async 함수인 경우와 sync인 경우 모두 대응
+        const adminResult = isAdmin();
+        const isAdminUser = (adminResult instanceof Promise)
+            ? await adminResult
+            : adminResult;
+
+        maintenanceBtn.style.display = isAdminUser ? 'block' : 'none';
+    } catch(e) {
+        console.warn('관리자 확인 오류:', e);
+        maintenanceBtn.style.display = 'none';
     }
 });
 </script>
