@@ -2,6 +2,52 @@
 
 console.log("🔄 script2.js 로딩 시작...");
 
+// ✅ 이미지 파일 매직 바이트 검증 함수들
+function readMagicBytes(file, byteCount) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = (e) => resolve(new Uint8Array(e.target.result));
+        reader.readAsArrayBuffer(file.slice(0, byteCount));
+    });
+}
+
+function checkImageSignature(bytes, mimeType) {
+    if (mimeType === 'image/webp') {
+        return bytes[0] === 0x52 && bytes[1] === 0x49 &&
+               bytes[8] === 0x57 && bytes[9] === 0x45 &&
+               bytes[10] === 0x42 && bytes[11] === 0x50;
+    }
+    const signatures = {
+        'image/jpeg': [0xFF, 0xD8, 0xFF],
+        'image/jpg':  [0xFF, 0xD8, 0xFF],
+        'image/png':  [0x89, 0x50, 0x4E, 0x47],
+        'image/gif':  [0x47, 0x49, 0x46, 0x38]
+    };
+    const sig = signatures[mimeType];
+    if (!sig) return false;
+    return sig.every((byte, i) => bytes[i] === byte);
+}
+
+async function validateImageFile(file) {
+    const errors = [];
+    const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+        errors.push('JPG, PNG, GIF, WEBP 형식만 허용됩니다.');
+    }
+    if (file.size > MAX_SIZE) {
+        errors.push('이미지 크기는 5MB 이하여야 합니다.');
+    }
+    if (errors.length === 0) {
+        const bytes = await readMagicBytes(file, 12);
+        if (!checkImageSignature(bytes, file.type)) {
+            errors.push('올바른 이미지 파일이 아닙니다. (파일 형식 위조 감지)');
+        }
+    }
+    return errors;
+}
+
 // ===== 1. 프로필 사진 변경 기능 =====
 
 window.openProfilePhotoModal = function() {
@@ -91,49 +137,57 @@ async function loadCurrentProfilePhotoInModal() {
 
 window.saveProfilePhoto = async function() {
     const user = auth.currentUser;
-    if(!user) {
+    if (!user) {
         alert("로그인이 필요합니다!");
         return;
     }
-    
+
     const fileInput = document.getElementById('profilePhotoInputModal');
     const file = fileInput ? fileInput.files[0] : null;
-    
-    if(!file) {
+
+    if (!file) {
         alert("사진을 선택해주세요!");
         return;
     }
-    
+
+    // ✅ 파일 검증 추가
+    const errors = await validateImageFile(file);
+    if (errors.length > 0) {
+        alert('❌ 이미지 오류:\n' + errors.join('\n'));
+        if (fileInput) fileInput.value = '';
+        return;
+    }
+
     showLoadingIndicator("사진 업로드 중...");
-    
+
     const reader = new FileReader();
     reader.onload = async function(e) {
         const photoData = e.target.result;
-        
+
         try {
             await db.ref("users/" + user.uid).update({
                 profilePhoto: photoData,
                 photoUpdatedAt: Date.now()
             });
-            
-            if(window.profilePhotoCache) {
+
+            if (window.profilePhotoCache) {
                 window.profilePhotoCache.set(user.email, photoData);
             }
-            
+
             hideLoadingIndicator();
             closeProfilePhotoModal();
             alert("프로필 사진이 변경되었습니다!");
-            
-            if(typeof updateSettings === 'function') updateSettings();
-            if(typeof updateHeaderProfileButton === 'function') updateHeaderProfileButton(user);
-            
-        } catch(error) {
+
+            if (typeof updateSettings === 'function') updateSettings();
+            if (typeof updateHeaderProfileButton === 'function') updateHeaderProfileButton(user);
+
+        } catch (error) {
             hideLoadingIndicator();
             console.error("업로드 실패:", error);
             alert("업로드 실패: " + error.message);
         }
     };
-    
+
     reader.readAsDataURL(file);
 };
 
