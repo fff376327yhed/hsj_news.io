@@ -928,23 +928,31 @@ window.showAdminNotificationSender = async function () {
             .join('');
 
         const modalHTML = `
-        <div id="adminNotifSenderModal" class="modal active" style="z-index:10001;
+        <div id="adminNotifSenderModal" style="
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.55);
+            z-index: 10001;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
             overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
+            padding: 20px 16px;
+            box-sizing: border-box;
         ">
-            <div class="modal-content" style="
+            <div style="
+                width: 100%;
                 max-width: 540px;
                 border-radius: 16px;
                 overflow: hidden;
-                padding: 0;
-                box-shadow: 0 24px 64px rgba(0,0,0,0.22);
-                max-height: 90vh;
-                display: flex;
-                flex-direction: column;
-                margin: 20px auto;
+                box-shadow: 0 24px 64px rgba(0,0,0,0.3);
+                background: #fff;
+                flex-shrink: 0;
+                margin: auto;
             ">
 
-                <!-- 헤더 -->
+                <!-- 헤더 (고정 안 함, 그냥 위에 배치) -->
                 <div style="
                     background: linear-gradient(135deg, #b71c1c 0%, #c62828 60%, #e53935 100%);
                     padding: 24px 28px 20px;
@@ -979,8 +987,8 @@ window.showAdminNotificationSender = async function () {
                        onmouseout="this.style.background='rgba(255,255,255,0.15)'">×</button>
                 </div>
 
-                <!-- 본문 -->
-                <div style="padding: 24px 28px 28px; background: #fff; overflow-y: auto; flex: 1;">
+                <!-- 본문 (스크롤 없이 그냥 전체 표시) -->
+                <div style="padding: 24px 28px 28px; background: #fff;">
 
                     <!-- 수신 대상 -->
                     <div style="margin-bottom: 18px;">
@@ -1012,7 +1020,6 @@ window.showAdminNotificationSender = async function () {
                             </label>
                         </div>
 
-                        <!-- 특정 사용자 선택 (기본 숨김) -->
                         <div id="specificUserArea" style="display:none; margin-top:10px;">
                             <select id="targetUserSelect" style="
                                 width: 100%;
@@ -1024,12 +1031,13 @@ window.showAdminNotificationSender = async function () {
                                 background: white;
                                 outline: none;
                                 cursor: pointer;
+                                box-sizing: border-box;
                             ">
                                 <option value="">-- 사용자 선택 --</option>
-                                ${userOptions}
+                                \${userOptions}
                             </select>
                             <div style="font-size:11px; color:#868e96; margin-top:5px; padding-left:4px;">
-                                FCM 토큰이 등록된 사용자만 표시됩니다 (${eligibleUsers.length}명)
+                                FCM 토큰이 등록된 사용자만 표시됩니다 (\${eligibleUsers.length}명)
                             </div>
                         </div>
                     </div>
@@ -1083,8 +1091,8 @@ window.showAdminNotificationSender = async function () {
                         </div>
                     </div>
 
-                    <!-- 연결 기사 ID (선택) -->
-                    <div style="margin-bottom: 22px;">
+                    <!-- 연결 기사 ID -->
+                    <div style="margin-bottom: 20px;">
                         <label style="display:block; font-size:12px; font-weight:700; color:#6c757d; letter-spacing:0.8px; text-transform:uppercase; margin-bottom:8px;">연결 기사 ID <span style="font-weight:400; text-transform:none; letter-spacing:0; color:#adb5bd;">(선택)</span></label>
                         <input id="adminNotifArticleId" type="text"
                             placeholder="기사 ID (없으면 비워두세요)"
@@ -1106,7 +1114,7 @@ window.showAdminNotificationSender = async function () {
                         </div>
                     </div>
 
-                    <!-- 전송 방식 안내 -->
+                    <!-- 안내 -->
                     <div style="
                         background: #fff8e1;
                         border: 1px solid #ffe082;
@@ -1128,7 +1136,7 @@ window.showAdminNotificationSender = async function () {
                     <div style="display:flex; gap:10px;">
                         <button onclick="closeAdminNotifSenderModal()" style="
                             flex: 1;
-                            padding: 12px;
+                            padding: 13px;
                             border: 1.5px solid #dee2e6;
                             border-radius: 8px;
                             background: white;
@@ -1142,7 +1150,7 @@ window.showAdminNotificationSender = async function () {
 
                         <button onclick="sendAdminNotification()" style="
                             flex: 2;
-                            padding: 12px;
+                            padding: 13px;
                             border: none;
                             border-radius: 8px;
                             background: linear-gradient(135deg, #c62828, #e53935);
@@ -1152,17 +1160,21 @@ window.showAdminNotificationSender = async function () {
                             cursor: pointer;
                             transition: all 0.2s;
                             box-shadow: 0 4px 12px rgba(198,40,40,0.3);
-                            display: flex; align-items: center; justify-content: center; gap: 8px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 8px;
                         " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(198,40,40,0.4)'"
                            onmouseout="this.style.transform=''; this.style.boxShadow='0 4px 12px rgba(198,40,40,0.3)'">
                             <span>📤</span> 알림 전송
                         </button>
                     </div>
-                </div>
-            </div>
-        </div>`;
 
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
+                </div><!-- /본문 -->
+            </div><!-- /modal-content -->
+        </div><!-- /modal -->`;
+
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
 
         // 글자수 카운터
         document.getElementById('adminNotifText').addEventListener('input', function () {
