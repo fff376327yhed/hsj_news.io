@@ -932,69 +932,164 @@ console.log("✅ Part 3 프로필 관리 완료");
 
 // ===== Part 4: 알림 시스템 (간소화) =====
 
+// ===================================================
+// ⚠️ script.js 의 registerFCMToken 함수를 아래로 교체하세요
+// ===================================================
+
 async function registerFCMToken() {
-    if (!messaging) {
-        console.warn("⚠️ Firebase Messaging이 초기화되지 않았습니다.");
+    console.log('📱 FCM 토큰 등록 시작...');
+
+    // 1. 브라우저 지원 확인
+    if (!('serviceWorker' in navigator)) {
+        console.warn('⚠️ Service Worker 미지원 브라우저');
         return;
     }
-    
+    if (!('Notification' in window)) {
+        console.warn('⚠️ 알림 미지원 브라우저');
+        return;
+    }
+
+    // 2. 로그인 확인
     if (!isLoggedIn()) {
-        console.log("ℹ️ 로그인되지 않아 FCM 토큰 등록을 건너뜁니다.");
+        console.log('ℹ️ 비로그인 상태 - FCM 등록 건너뜀');
         return;
     }
-    
+
+    // 3. messaging 초기화 대기 (최대 10초)
+    let attempts = 0;
+    while (!window.messaging && attempts < 50) {
+        await new Promise(r => setTimeout(r, 200));
+        attempts++;
+    }
+    if (!window.messaging) {
+        console.warn('⚠️ Firebase Messaging 초기화 실패 - FCM 등록 불가');
+        return;
+    }
+
     try {
-        // 1. Service Worker 준비 확인
-        let swRegistration = window.swRegistration;
-        
-        if (!swRegistration) {
-            console.log('⏳ Service Worker 준비 대기 중...');
-            swRegistration = await navigator.serviceWorker.ready;
-            window.swRegistration = swRegistration;
+        // 4. 알림 권한 확인/요청
+        let permission = Notification.permission;
+        console.log('🔔 현재 알림 권한:', permission);
+
+        if (permission === 'default') {
+            permission = await Notification.requestPermission();
+            console.log('🔔 권한 요청 결과:', permission);
         }
-        
-        console.log('✅ Service Worker 준비 완료:', swRegistration.scope);
-        
-        // 2. 알림 권한 요청
-        const permission = await Notification.requestPermission();
-        
+
         if (permission !== 'granted') {
-            console.log('❌ 알림 권한 거부됨');
+            console.log('❌ 알림 권한 거부됨 - FCM 토큰 등록 불가');
             return;
         }
-        
-        console.log('✅ 알림 권한 승인됨');
-        
-        // 3. FCM 토큰 가져오기
-        const token = await messaging.getToken({
+
+        // 5. Service Worker 준비 대기
+        const swRegistration = await navigator.serviceWorker.ready;
+        console.log('✅ Service Worker 준비:', swRegistration.scope);
+
+        // 6. FCM 토큰 가져오기
+        const token = await window.messaging.getToken({
             vapidKey: 'BFJBBAv_qOw_aklFbE89r_cuCArMJkMK56Ryj9M1l1a3qv8CuHCJ-fKALtOn4taF7Pjwo2bjfoOuewEKBqRBtCo',
             serviceWorkerRegistration: swRegistration
         });
-        
-        if (token) {
-            console.log('📱 FCM 토큰 획득:', token.substring(0, 50) + '...');
-            
-            // 4. Firebase Database에 저장
-            const uid = getUserId();
-            const tokenKey = btoa(token).substring(0, 20).replace(/[^a-zA-Z0-9]/g, '');
-            
+
+        if (!token) {
+            console.warn('⚠️ FCM 토큰을 가져올 수 없습니다');
+            return;
+        }
+
+        console.log('📱 FCM 토큰 획득 완료 (앞 30자):', token.substring(0, 30) + '...');
+
+        // 7. DB에 저장 (이미 저장된 토큰인지 확인)
+        const uid = getUserId();
+        const tokenKey = btoa(token).substring(0, 20).replace(/[^a-zA-Z0-9]/g, '');
+
+        const existingSnap = await db.ref(`users/${uid}/fcmTokens/${tokenKey}`).once('value');
+        if (existingSnap.exists()) {
+            console.log('ℹ️ 이미 등록된 FCM 토큰 - 업데이트만 함');
+            // lastSeen 업데이트만
+            await db.ref(`users/${uid}/fcmTokens/${tokenKey}`).update({
+                lastSeen: Date.now()
+            });
+        } else {
             await db.ref(`users/${uid}/fcmTokens/${tokenKey}`).set({
                 token: token,
                 createdAt: Date.now(),
-                userAgent: navigator.userAgent,
+                lastSeen: Date.now(),
+                userAgent: navigator.userAgent.substring(0, 100),
                 browser: getBrowserInfo()
             });
-            
-            console.log('✅ FCM 토큰 저장 완료');
-        } else {
-            console.warn('⚠️ FCM 토큰을 가져올 수 없습니다');
+            console.log('✅ FCM 토큰 새로 저장 완료');
         }
-        
+
+        // 8. notificationsEnabled 확인 및 자동 활성화
+        const userSnap = await db.ref(`users/${uid}/notificationsEnabled`).once('value');
+        if (userSnap.val() === null) {
+            // 처음 등록 시 자동으로 활성화
+            await db.ref(`users/${uid}`).update({ notificationsEnabled: true });
+            console.log('✅ 알림 자동 활성화');
+        }
+
     } catch (error) {
-        console.error('❌ FCM 토큰 등록 실패:', error);
-        console.error('오류 상세:', error.code, error.message);
+        console.error('❌ FCM 토큰 등록 실패:', error.code, error.message);
+
+        // 흔한 오류 안내
+        if (error.code === 'messaging/permission-blocked') {
+            console.warn('💡 브라우저 설정에서 이 사이트의 알림을 허용해주세요.');
+        } else if (error.code === 'messaging/unsupported-browser') {
+            console.warn('💡 이 브라우저는 웹 푸시를 지원하지 않습니다.');
+        }
     }
 }
+
+// ===================================================
+// ⚠️ firebase-messaging-sw.js 파일을 아래 내용으로 만들거나 교체하세요
+//    (루트 경로에 위치해야 합니다)
+// ===================================================
+/*
+파일명: firebase-messaging-sw.js
+경로: / (루트, index.html과 같은 위치)
+
+importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
+
+firebase.initializeApp({
+  apiKey: "AIzaSyDgooYtVr8-jm15-fx_WvGLCDxonLpNPuU",
+  authDomain: "hsj-news.firebaseapp.com",
+  databaseURL: "https://hsj-news-default-rtdb.firebaseio.com",
+  projectId: "hsj-news",
+  storageBucket: "hsj-news.firebasestorage.app",
+  messagingSenderId: "437842430700",
+  appId: "1:437842430700:web:e3822bde4cfecdc04633c9"
+});
+
+const messaging = firebase.messaging();
+
+// 백그라운드 메시지 수신
+messaging.onBackgroundMessage((payload) => {
+  console.log('[SW] 백그라운드 메시지:', payload);
+
+  const title = payload.data?.title || payload.notification?.title || '📰 해정뉴스';
+  const body  = payload.data?.body  || payload.data?.text || payload.notification?.body || '새로운 알림';
+  const link  = payload.data?.articleId
+    ? `https://fff376327yhed.github.io/hsj_news.io/?page=article&id=${payload.data.articleId}`
+    : 'https://fff376327yhed.github.io/hsj_news.io/';
+
+  self.registration.showNotification(title, {
+    body:    body,
+    icon:    '/favicon/android-icon-192x192.png',
+    badge:   '/favicon/favicon-16x16.png',
+    tag:     payload.data?.notificationId || 'hsj-news',
+    renotify: true,
+    data:    { link }
+  });
+});
+
+// 알림 클릭 시 해당 페이지 열기
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const link = event.notification.data?.link || 'https://fff376327yhed.github.io/hsj_news.io/';
+  event.waitUntil(clients.openWindow(link));
+});
+*/
 
 // 브라우저 정보 가져오기 (옵션)
 function getBrowserInfo() {
