@@ -893,6 +893,512 @@ window.showLoginRequired = function(feature = "이 기능") {
 
 console.log("✅ 로그인 UX 개선 완료");
 
+// ===== 관리자 수동 알림 전송 시스템 =====
+// script2.js 맨 끝에 추가하세요
+
+console.log("📢 관리자 알림 전송 시스템 로딩...");
+
+// ─────────────────────────────────────────
+// 1. 관리자 알림 전송 모달 열기
+// ─────────────────────────────────────────
+window.showAdminNotificationSender = async function () {
+    if (!isAdmin()) {
+        alert('🚫 관리자 권한이 필요합니다!');
+        return;
+    }
+
+    showLoadingIndicator('사용자 목록 불러오는 중...');
+
+    try {
+        const usersSnapshot = await db.ref('users').once('value');
+        const usersData = usersSnapshot.val() || {};
+
+        // FCM 토큰이 있는 유저만
+        const eligibleUsers = Object.entries(usersData)
+            .filter(([uid, data]) => data.fcmTokens && data.notificationsEnabled !== false)
+            .map(([uid, data]) => ({ uid, email: data.email || uid }));
+
+        hideLoadingIndicator();
+
+        const existingModal = document.getElementById('adminNotifSenderModal');
+        if (existingModal) existingModal.remove();
+
+        const userOptions = eligibleUsers
+            .map(u => `<option value="${u.uid}">${u.email}</option>`)
+            .join('');
+
+        const modalHTML = `
+        <div id="adminNotifSenderModal" class="modal active" style="z-index:10001;">
+            <div class="modal-content" style="
+                max-width: 540px;
+                border-radius: 16px;
+                overflow: hidden;
+                padding: 0;
+                box-shadow: 0 24px 64px rgba(0,0,0,0.22);
+            ">
+
+                <!-- 헤더 -->
+                <div style="
+                    background: linear-gradient(135deg, #b71c1c 0%, #c62828 60%, #e53935 100%);
+                    padding: 24px 28px 20px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                ">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="
+                            width: 42px; height: 42px;
+                            background: rgba(255,255,255,0.18);
+                            border-radius: 10px;
+                            display: flex; align-items: center; justify-content: center;
+                            font-size: 20px;
+                        ">📢</div>
+                        <div>
+                            <div style="color:white; font-size:18px; font-weight:800; letter-spacing:-0.3px;">알림 전송</div>
+                            <div style="color:rgba(255,255,255,0.75); font-size:12px; margin-top:1px;">관리자 전용 · 즉시 전송</div>
+                        </div>
+                    </div>
+                    <button onclick="closeAdminNotifSenderModal()" style="
+                        background: rgba(255,255,255,0.15);
+                        border: none;
+                        color: white;
+                        width: 34px; height: 34px;
+                        border-radius: 50%;
+                        cursor: pointer;
+                        font-size: 18px;
+                        display: flex; align-items: center; justify-content: center;
+                        transition: background 0.2s;
+                    " onmouseover="this.style.background='rgba(255,255,255,0.28)'"
+                       onmouseout="this.style.background='rgba(255,255,255,0.15)'">×</button>
+                </div>
+
+                <!-- 본문 -->
+                <div style="padding: 24px 28px 28px; background: #fff;">
+
+                    <!-- 수신 대상 -->
+                    <div style="margin-bottom: 18px;">
+                        <label style="display:block; font-size:12px; font-weight:700; color:#6c757d; letter-spacing:0.8px; text-transform:uppercase; margin-bottom:8px;">수신 대상</label>
+                        <div style="display:flex; gap:8px;">
+                            <label id="targetAllLabel" onclick="toggleTargetMode('all')" style="
+                                flex:1; display:flex; align-items:center; gap:8px;
+                                padding: 10px 14px;
+                                border: 2px solid #c62828;
+                                border-radius: 8px;
+                                cursor: pointer;
+                                background: #fff5f5;
+                                transition: all 0.2s;
+                                font-weight: 600; color: #c62828; font-size: 14px;
+                            ">
+                                <span style="font-size:16px;">👥</span> 전체 사용자
+                            </label>
+                            <label id="targetSpecificLabel" onclick="toggleTargetMode('specific')" style="
+                                flex:1; display:flex; align-items:center; gap:8px;
+                                padding: 10px 14px;
+                                border: 2px solid #dee2e6;
+                                border-radius: 8px;
+                                cursor: pointer;
+                                background: #f8f9fa;
+                                transition: all 0.2s;
+                                font-weight: 600; color: #495057; font-size: 14px;
+                            ">
+                                <span style="font-size:16px;">👤</span> 특정 사용자
+                            </label>
+                        </div>
+
+                        <!-- 특정 사용자 선택 (기본 숨김) -->
+                        <div id="specificUserArea" style="display:none; margin-top:10px;">
+                            <select id="targetUserSelect" style="
+                                width: 100%;
+                                padding: 10px 14px;
+                                border: 1.5px solid #dee2e6;
+                                border-radius: 8px;
+                                font-size: 14px;
+                                color: #333;
+                                background: white;
+                                outline: none;
+                                cursor: pointer;
+                            ">
+                                <option value="">-- 사용자 선택 --</option>
+                                ${userOptions}
+                            </select>
+                            <div style="font-size:11px; color:#868e96; margin-top:5px; padding-left:4px;">
+                                FCM 토큰이 등록된 사용자만 표시됩니다 (${eligibleUsers.length}명)
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 알림 제목 -->
+                    <div style="margin-bottom: 16px;">
+                        <label style="display:block; font-size:12px; font-weight:700; color:#6c757d; letter-spacing:0.8px; text-transform:uppercase; margin-bottom:8px;">알림 제목</label>
+                        <input id="adminNotifTitle" type="text"
+                            placeholder="예) 📢 긴급 공지"
+                            maxlength="80"
+                            style="
+                                width: 100%;
+                                padding: 11px 14px;
+                                border: 1.5px solid #dee2e6;
+                                border-radius: 8px;
+                                font-size: 15px;
+                                box-sizing: border-box;
+                                outline: none;
+                                transition: border-color 0.2s;
+                            "
+                            onfocus="this.style.borderColor='#c62828'"
+                            onblur="this.style.borderColor='#dee2e6'"
+                        >
+                    </div>
+
+                    <!-- 알림 내용 -->
+                    <div style="margin-bottom: 16px;">
+                        <label style="display:block; font-size:12px; font-weight:700; color:#6c757d; letter-spacing:0.8px; text-transform:uppercase; margin-bottom:8px;">알림 내용</label>
+                        <textarea id="adminNotifText"
+                            placeholder="알림 내용을 입력하세요..."
+                            maxlength="300"
+                            rows="3"
+                            style="
+                                width: 100%;
+                                padding: 11px 14px;
+                                border: 1.5px solid #dee2e6;
+                                border-radius: 8px;
+                                font-size: 14px;
+                                box-sizing: border-box;
+                                outline: none;
+                                resize: vertical;
+                                transition: border-color 0.2s;
+                                font-family: inherit;
+                                line-height: 1.5;
+                            "
+                            onfocus="this.style.borderColor='#c62828'"
+                            onblur="this.style.borderColor='#dee2e6'"
+                        ></textarea>
+                        <div style="text-align:right; font-size:11px; color:#adb5bd; margin-top:4px;">
+                            <span id="adminNotifTextCount">0</span>/300
+                        </div>
+                    </div>
+
+                    <!-- 연결 기사 ID (선택) -->
+                    <div style="margin-bottom: 22px;">
+                        <label style="display:block; font-size:12px; font-weight:700; color:#6c757d; letter-spacing:0.8px; text-transform:uppercase; margin-bottom:8px;">연결 기사 ID <span style="font-weight:400; text-transform:none; letter-spacing:0; color:#adb5bd;">(선택)</span></label>
+                        <input id="adminNotifArticleId" type="text"
+                            placeholder="기사 ID (없으면 비워두세요)"
+                            style="
+                                width: 100%;
+                                padding: 11px 14px;
+                                border: 1.5px solid #dee2e6;
+                                border-radius: 8px;
+                                font-size: 14px;
+                                box-sizing: border-box;
+                                outline: none;
+                                transition: border-color 0.2s;
+                            "
+                            onfocus="this.style.borderColor='#c62828'"
+                            onblur="this.style.borderColor='#dee2e6'"
+                        >
+                        <div style="font-size:11px; color:#868e96; margin-top:5px; padding-left:4px;">
+                            입력 시 알림 클릭 → 해당 기사로 이동
+                        </div>
+                    </div>
+
+                    <!-- 전송 방식 안내 -->
+                    <div style="
+                        background: #fff8e1;
+                        border: 1px solid #ffe082;
+                        border-radius: 8px;
+                        padding: 12px 14px;
+                        margin-bottom: 20px;
+                        display: flex;
+                        gap: 10px;
+                        align-items: flex-start;
+                    ">
+                        <span style="font-size:16px; flex-shrink:0; margin-top:1px;">⚡</span>
+                        <div style="font-size:12px; color:#795548; line-height:1.6;">
+                            <strong>즉시 DB 저장</strong> → GitHub Actions가 <strong>최대 5분 내</strong> FCM 푸시 전송<br>
+                            <span style="opacity:0.8;">앱/브라우저가 꺼져 있어도 알림이 도달합니다.</span>
+                        </div>
+                    </div>
+
+                    <!-- 버튼 -->
+                    <div style="display:flex; gap:10px;">
+                        <button onclick="closeAdminNotifSenderModal()" style="
+                            flex: 1;
+                            padding: 12px;
+                            border: 1.5px solid #dee2e6;
+                            border-radius: 8px;
+                            background: white;
+                            color: #495057;
+                            font-size: 15px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        " onmouseover="this.style.background='#f8f9fa'"
+                           onmouseout="this.style.background='white'">취소</button>
+
+                        <button onclick="sendAdminNotification()" style="
+                            flex: 2;
+                            padding: 12px;
+                            border: none;
+                            border-radius: 8px;
+                            background: linear-gradient(135deg, #c62828, #e53935);
+                            color: white;
+                            font-size: 15px;
+                            font-weight: 700;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                            box-shadow: 0 4px 12px rgba(198,40,40,0.3);
+                            display: flex; align-items: center; justify-content: center; gap: 8px;
+                        " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(198,40,40,0.4)'"
+                           onmouseout="this.style.transform=''; this.style.boxShadow='0 4px 12px rgba(198,40,40,0.3)'">
+                            <span>📤</span> 알림 전송
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+        // 글자수 카운터
+        document.getElementById('adminNotifText').addEventListener('input', function () {
+            document.getElementById('adminNotifTextCount').textContent = this.value.length;
+        });
+
+        // 기본: 전체 모드
+        window._adminNotifTargetMode = 'all';
+
+    } catch (err) {
+        hideLoadingIndicator();
+        console.error('❌ 알림 전송 모달 오류:', err);
+        alert('오류가 발생했습니다: ' + err.message);
+    }
+};
+
+// ─────────────────────────────────────────
+// 2. 수신 대상 모드 전환
+// ─────────────────────────────────────────
+window.toggleTargetMode = function (mode) {
+    window._adminNotifTargetMode = mode;
+
+    const allLabel      = document.getElementById('targetAllLabel');
+    const specificLabel = document.getElementById('targetSpecificLabel');
+    const specificArea  = document.getElementById('specificUserArea');
+
+    if (mode === 'all') {
+        allLabel.style.cssText      += 'border-color:#c62828; background:#fff5f5; color:#c62828;';
+        specificLabel.style.cssText += 'border-color:#dee2e6; background:#f8f9fa; color:#495057;';
+        specificArea.style.display  = 'none';
+    } else {
+        specificLabel.style.cssText += 'border-color:#c62828; background:#fff5f5; color:#c62828;';
+        allLabel.style.cssText      += 'border-color:#dee2e6; background:#f8f9fa; color:#495057;';
+        specificArea.style.display  = 'block';
+    }
+};
+
+// ─────────────────────────────────────────
+// 3. 모달 닫기
+// ─────────────────────────────────────────
+window.closeAdminNotifSenderModal = function () {
+    const modal = document.getElementById('adminNotifSenderModal');
+    if (modal) {
+        modal.style.opacity    = '0';
+        modal.style.transition = 'opacity 0.2s';
+        setTimeout(() => modal.remove(), 200);
+    }
+};
+
+// ─────────────────────────────────────────
+// 4. 알림 전송 실행 (Firebase DB에 저장)
+// ─────────────────────────────────────────
+window.sendAdminNotification = async function () {
+    if (!isAdmin()) {
+        alert('🚫 관리자 권한이 필요합니다!');
+        return;
+    }
+
+    const title     = document.getElementById('adminNotifTitle')?.value.trim();
+    const text      = document.getElementById('adminNotifText')?.value.trim();
+    const articleId = document.getElementById('adminNotifArticleId')?.value.trim() || '';
+    const mode      = window._adminNotifTargetMode || 'all';
+
+    // 유효성 검사
+    if (!title) { alert('알림 제목을 입력해주세요.'); return; }
+    if (!text)  { alert('알림 내용을 입력해주세요.'); return; }
+
+    let targetUids = [];
+
+    showLoadingIndicator('알림 전송 중...');
+
+    try {
+        const usersSnapshot = await db.ref('users').once('value');
+        const usersData = usersSnapshot.val() || {};
+
+        if (mode === 'all') {
+            // 알림 활성화 + FCM 토큰 보유 사용자 전체
+            targetUids = Object.entries(usersData)
+                .filter(([uid, data]) => data.fcmTokens && data.notificationsEnabled !== false)
+                .map(([uid]) => uid);
+
+            if (targetUids.length === 0) {
+                hideLoadingIndicator();
+                alert('FCM 토큰이 등록된 사용자가 없습니다.');
+                return;
+            }
+
+            if (!confirm(`📢 ${targetUids.length}명의 사용자에게 알림을 전송하시겠습니까?\n\n제목: ${title}\n내용: ${text}`)) {
+                hideLoadingIndicator();
+                return;
+            }
+
+        } else {
+            const selectedUid = document.getElementById('targetUserSelect')?.value;
+            if (!selectedUid) {
+                hideLoadingIndicator();
+                alert('사용자를 선택해주세요.');
+                return;
+            }
+
+            const selectedUserData = usersData[selectedUid];
+            const selectedEmail = selectedUserData?.email || selectedUid;
+
+            if (!confirm(`📢 [${selectedEmail}]에게 알림을 전송하시겠습니까?\n\n제목: ${title}\n내용: ${text}`)) {
+                hideLoadingIndicator();
+                return;
+            }
+
+            targetUids = [selectedUid];
+        }
+
+        // Firebase에 알림 데이터 저장 (pushed: false → GitHub Actions가 FCM 전송)
+        const timestamp = Date.now();
+        const updates   = {};
+
+        targetUids.forEach(uid => {
+            const notifId = `admin_notif_${timestamp}_${Math.random().toString(36).substr(2, 8)}`;
+            updates[`notifications/${uid}/${notifId}`] = {
+                type:      'admin',
+                title:     title,
+                text:      text,
+                articleId: articleId,
+                timestamp: timestamp,
+                read:      false,
+                pushed:    false,
+                sentBy:    getUserEmail() || 'admin',
+                sentAt:    timestamp
+            };
+        });
+
+        await db.ref().update(updates);
+
+        hideLoadingIndicator();
+        closeAdminNotifSenderModal();
+
+        // 성공 토스트
+        if (typeof showToastNotification === 'function') {
+            showToastNotification(
+                '✅ 알림 전송 완료',
+                `${targetUids.length}명에게 알림이 저장되었습니다. 최대 5분 내 FCM 발송됩니다.`
+            );
+        }
+
+        console.log(`✅ 관리자 알림 전송 완료 - ${targetUids.length}명`);
+
+    } catch (err) {
+        hideLoadingIndicator();
+        console.error('❌ 관리자 알림 전송 실패:', err);
+        alert('전송 중 오류가 발생했습니다: ' + err.message);
+    }
+};
+
+// ─────────────────────────────────────────
+// 5. 관리자 설정 버튼 자동 추가 (updateSettings 후킹)
+// ─────────────────────────────────────────
+// updateSettings가 실행된 뒤 adminModeIndicator 안에 버튼 삽입
+const _origUpdateSettings = window.updateSettings;
+window.updateSettings = async function () {
+    if (typeof _origUpdateSettings === 'function') {
+        await _origUpdateSettings.apply(this, arguments);
+    }
+
+    // 관리자일 때만 버튼 추가
+    if (!isAdmin()) return;
+
+    const adminIndicator = document.getElementById('adminModeIndicator');
+    if (!adminIndicator) return;
+
+    // 중복 방지
+    if (document.getElementById('adminNotifSenderBtn')) return;
+
+    const btn = document.createElement('button');
+    btn.id = 'adminNotifSenderBtn';
+    btn.onclick = window.showAdminNotificationSender;
+    btn.style.cssText = `
+        width: 100%;
+        margin-top: 10px;
+        padding: 11px 16px;
+        background: linear-gradient(135deg, #c62828, #e53935);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-shadow: 0 3px 10px rgba(198,40,40,0.25);
+        transition: all 0.2s;
+    `;
+    btn.innerHTML = '📢 &nbsp;수동 알림 전송';
+    btn.onmouseover = () => { btn.style.transform = 'translateY(-1px)'; btn.style.boxShadow = '0 5px 14px rgba(198,40,40,0.35)'; };
+    btn.onmouseout  = () => { btn.style.transform = ''; btn.style.boxShadow = '0 3px 10px rgba(198,40,40,0.25)'; };
+
+    adminIndicator.appendChild(btn);
+};
+
+// ─────────────────────────────────────────
+// 6. 더보기 메뉴에도 관리자 섹션 추가
+// ─────────────────────────────────────────
+const _origShowMoreMenu = window.showMoreMenu;
+window.showMoreMenu = function () {
+    if (typeof _origShowMoreMenu === 'function') {
+        _origShowMoreMenu.apply(this, arguments);
+    }
+
+    if (!isAdmin()) return;
+
+    const container = document.querySelector('.more-menu-container');
+    if (!container || document.getElementById('adminNotifMoreBtn')) return;
+
+    const adminSection = document.createElement('div');
+    adminSection.className = 'menu-section';
+    adminSection.style.cssText = `
+        background: #fff5f5;
+        border: 1.5px solid #ffcdd2;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(198,40,40,0.08);
+    `;
+    adminSection.innerHTML = `
+        <h3 style="color:#c62828; margin:0 0 15px 0; font-size:16px; font-weight:700;">
+            🛡️ 관리자 도구
+        </h3>
+        <div style="display:grid; gap:10px;">
+            <button id="adminNotifMoreBtn"
+                onclick="showAdminNotificationSender()"
+                class="more-menu-btn"
+                style="background:#c62828; color:white; border-color:#c62828;">
+                <i class="fas fa-paper-plane" style="color:white;"></i>
+                수동 알림 전송
+            </button>
+        </div>
+    `;
+
+    container.insertBefore(adminSection, container.firstChild);
+};
+
+console.log("✅ 관리자 수동 알림 전송 시스템 로드 완료");
+
 // ===== 초기화 완료 =====
 
 console.log("✅ script2.js 모든 기능 로드 완료");
