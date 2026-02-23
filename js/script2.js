@@ -928,13 +928,20 @@ window.showAdminNotificationSender = async function () {
             .join('');
 
         const modalHTML = `
-        <div id="adminNotifSenderModal" class="modal active" style="z-index:10001;">
+        <div id="adminNotifSenderModal" class="modal active" style="z-index:10001;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        ">
             <div class="modal-content" style="
                 max-width: 540px;
                 border-radius: 16px;
                 overflow: hidden;
                 padding: 0;
                 box-shadow: 0 24px 64px rgba(0,0,0,0.22);
+                max-height: 90vh;
+                display: flex;
+                flex-direction: column;
+                margin: 20px auto;
             ">
 
                 <!-- 헤더 -->
@@ -973,7 +980,7 @@ window.showAdminNotificationSender = async function () {
                 </div>
 
                 <!-- 본문 -->
-                <div style="padding: 24px 28px 28px; background: #fff;">
+                <div style="padding: 24px 28px 28px; background: #fff; overflow-y: auto; flex: 1;">
 
                     <!-- 수신 대상 -->
                     <div style="margin-bottom: 18px;">
