@@ -1314,9 +1314,8 @@ console.log("✅ Part 4 알림 시스템 완료");
 
     updateSettings();
     
-    if(document.getElementById("articlesSection")?.classList.contains("active")) {
-        filteredArticles = allArticles;
-        renderArticles();
+   if(document.getElementById("articlesSection")?.classList.contains("active")) {
+        searchArticles(false);   // ← 현재 카테고리로 필터링 후 렌더
     }
 }});
 
@@ -2189,14 +2188,11 @@ async function renderArticles() {
     const unpinnedArticles = [];
 
     list.forEach(article => {
+        if (article.category !== currentCategory) return;   // ← 카테고리 가드 추가
+        
         if (pinnedIds.includes(article.id)) {
-            // ✅ 수정: 고정 기사가 현재 카테고리와 일치하는 경우만 표시
-            if (article.category === currentCategory) {
-                article.pinnedAt = pinnedData[article.id].pinnedAt;
-                pinnedArticles.push(article);
-            } else {
-                unpinnedArticles.push(article);
-            }
+            article.pinnedAt = pinnedData[article.id].pinnedAt;
+            pinnedArticles.push(article);
         } else {
             unpinnedArticles.push(article);
         }
@@ -2272,9 +2268,18 @@ async function renderArticles() {
     }
 }
     
+// ✅ 댓글 수 가져오기
+    const commentsSnapshot = await db.ref("comments").once("value");
+    const commentsData = commentsSnapshot.val() || {};
+    const commentCounts = {};
+    Object.entries(commentsData).forEach(([articleId, articleComments]) => {
+        commentCounts[articleId] = Object.keys(articleComments).length;
+    });
+
     const articlesHTML = displayArticles.map((a) => {
         const views = getArticleViews(a);
         const votes = getArticleVoteCounts(a);
+        const commentCount = commentCounts[a.id] || 0;   // ← 이 줄 추가
         const photoUrl = window.profilePhotoCache.get(a.authorEmail) || null;
         const authorPhotoHTML = getProfilePlaceholder(photoUrl, 48);
     
@@ -2291,6 +2296,7 @@ async function renderArticles() {
     </div>
     <div class="article-stats" style="display:flex; gap:12px;">
         <span class="stat-item">👁️ ${views}</span>
+        <span class="stat-item">💬 ${commentCount}</span>
         <span class="stat-item">👍 ${votes.likes}</span>
     </div>
 </div>
