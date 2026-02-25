@@ -108,28 +108,23 @@ self.addEventListener('notificationclick', (event) => {
       type: 'window', 
       includeUncontrolled: true 
     }).then((clientList) => {
-      // 이미 열린 창이 있으면 포커스
+      // 이미 열린 창이 있으면 해당 탭에서 이동
       for (const client of clientList) {
         const clientUrl = new URL(client.url);
         const targetUrl = new URL(urlToOpen, self.location.origin);
         
-        // 같은 오리진이면 포커스하고 메시지 전송
         if (clientUrl.origin === targetUrl.origin) {
-          console.log('[SW] ✅ 기존 창 포커스');
+          console.log('[SW] ✅ 기존 창에서 이동:', urlToOpen);
           return client.focus().then(() => {
-            // 페이지에 메시지 전송 (라우팅용)
-            client.postMessage({
-              type: 'NOTIFICATION_CLICK',
-              url: urlToOpen,
-              articleId: event.notification.data?.articleId
-            });
+            // ✅ 실제 페이지 이동 (postMessage만으로는 이동 안 됨)
+            return client.navigate(urlToOpen);
           });
         }
       }
       
       // 열린 창이 없으면 새 창 열기
       if (clients.openWindow) {
-        console.log('[SW] 🆕 새 창 열기');
+        console.log('[SW] 🆕 새 창 열기:', urlToOpen);
         return clients.openWindow(urlToOpen);
       }
     })
