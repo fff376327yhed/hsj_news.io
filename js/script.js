@@ -2378,6 +2378,15 @@ async function showArticleDetail(id) {
        ${escapeHTML(A.title)}
        ${editedBadge}
    </h1>
+   ${isAdmin() ? `
+       <div style="display:inline-flex; align-items:center; gap:6px; background:#e8f0fe; border:1px solid #c5d4f5; padding:4px 10px; border-radius:6px; margin-bottom:10px; cursor:pointer;"
+            onclick="copyArticleLink('${A.id}')"
+            title="클릭하면 링크 복사">
+           <span style="font-size:11px; color:#1967d2; font-weight:700;">🔑 기사 링크 ID</span>
+           <code style="font-size:11px; color:#1967d2; font-family:monospace;">${A.id}</code>
+           <span style="font-size:10px; color:#5f6368;">📋</span>
+       </div>
+   ` : ''}
             
             <div class="article-meta" style="border-bottom:1px solid #eee; padding-bottom:15px; margin-bottom:20px; display:flex; align-items:center; gap:12px;">
                 ${authorPhotoHTML}
