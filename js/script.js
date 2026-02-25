@@ -312,6 +312,34 @@ function addWarningToCurrentUser() {
 
 console.log("✅ Part 1 초기화 완료");
 
+// ✅ [PATCH 1 추가 시작]
+// 마지막 접속 시간 포맷 함수
+function formatLastSeen(timestamp) {
+    if (!timestamp) return '⚫ 기록 없음';
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours   = Math.floor(diff / 3600000);
+    const days    = Math.floor(diff / 86400000);
+
+    if (minutes < 3)   return '<span style="color:#1aab1a;font-weight:700;">🟢 현재 활동중</span>';
+    if (minutes < 60)  return `<span style="color:#f59f00;">🟡 ${minutes}분 전</span>`;
+    if (hours   < 24)  return `<span style="color:#f59f00;">🟡 ${hours}시간 전</span>`;
+    if (days    < 2)   return `<span style="color:#868e96;">⚫ 1일 전</span>`;
+    if (days    < 100) return `<span style="color:#868e96;">⚫ ${days}일 전</span>`;
+    return '<span style="color:#c62828;font-weight:700;">👻 실종됨</span>';
+}
+
+async function updateLastSeen() {
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+        await db.ref(`users/${user.uid}/lastSeen`).set(Date.now());
+    } catch(e) {}
+}
+// ✅ [PATCH 1 추가 끝]
+
+
 // ===== Part 2: URL 관리 및 라우팅 =====
 
 // 민감한 페이지 암호화
@@ -1297,6 +1325,7 @@ console.log("✅ Part 4 알림 시스템 완료");
 
         setupNotificationListener(user.uid);
         updateHeaderProfileButton(user);
+        updateLastSeen(); // ✅ [PATCH 2] 로그인 시 lastSeen 즉시 기록
         
         hideLoadingIndicator();
         
@@ -1774,8 +1803,12 @@ function showMoreMenu() {
                     <button onclick="showPatchNotesPage()" class="more-menu-btn">
                         <i class="fas fa-file-alt"></i> 패치노트
                     </button>
+                    <button onclick="showActivityStatus()" class="more-menu-btn">
+                        <i class="fas fa-users"></i> 활동중
+                    </button>
                 </div>
             </div>
+            
         </div>
         
         <style>
@@ -4143,7 +4176,11 @@ window.showUserManagement = async function(){
                     📧 이메일: <strong>${u.email}</strong><br>
                     📰 기사: <strong>${u.articles.length}</strong> | 💬 댓글: <strong>${u.comments.length}</strong><br>
                     ⚠️ 누적 경고: <strong>${warningCount}회</strong><br>
-                    🕐 마지막 활동: ${u.lastActivity}
+                    🕐 마지막 활동: ${u.lastActivity}<br>
+                    🔵 접속: ${userData && userData.lastSeen
+                        ? formatLastSeen(userData.lastSeen)
+                        : '<span style="color:#adb5bd;">기록 없음</span>'}
+
                 </div>
                 <div class="user-actions">
                     <button onclick="showUserDetail('${u.nickname}')" class="btn-info">상세</button>
@@ -4769,6 +4806,99 @@ function loadMoreArticles() {
     }, 100);
 }
 
+window.showActivityStatus = async function() {
+    hideAll();
+    window.scrollTo(0, 0);
+
+    let section = document.getElementById('activityStatusSection');
+    if (!section) {
+        section = document.createElement('section');
+        section.id = 'activityStatusSection';
+        section.className = 'page-section';
+        document.querySelector('main').appendChild(section);
+    }
+    section.classList.add('active');
+
+    section.innerHTML = `
+        <div style="max-width:700px; margin:0 auto; padding:20px;">
+            <div style="background:white; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,0.09); overflow:hidden;">
+                <div style="background:linear-gradient(135deg,#1565c0,#1976d2); padding:18px 20px; display:flex; align-items:center; justify-content:space-between;">
+                    <h2 style="color:white; margin:0; font-size:20px; font-weight:800; display:flex; align-items:center; gap:10px;">
+                        <i class="fas fa-users"></i> 사용자 활동 현황
+                    </h2>
+                    <button onclick="showMoreMenu()" style="background:rgba(255,255,255,0.18); border:none; color:white; padding:8px 14px; border-radius:20px; cursor:pointer; font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px;">
+                        <i class="fas fa-arrow-left"></i> 뒤로
+                    </button>
+                </div>
+                <div style="padding:11px 18px; background:#f8f9fa; border-bottom:1px solid #eee; display:flex; gap:16px; flex-wrap:wrap; font-size:12px; color:#6c757d;">
+                    <span>🟢 현재 활동중 (3분 이내)</span>
+                    <span>🟡 하루 이내</span>
+                    <span>⚫ 오래 됨</span>
+                    <span>👻 실종됨 (100일+)</span>
+                </div>
+                <div id="activityUserList" style="padding:8px 0;">
+                    <div style="text-align:center; padding:40px; color:#868e96;">
+                        <i class="fas fa-spinner fa-spin" style="font-size:28px;"></i>
+                        <p style="margin-top:12px;">불러오는 중...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    updateURL('activity');
+
+    try {
+        const usersSnapshot = await db.ref('users').once('value');
+        const usersData = usersSnapshot.val() || {};
+
+        const users = Object.entries(usersData)
+            .filter(([uid, data]) => data.email)
+            .map(([uid, data]) => ({
+                uid,
+                email:    data.email,
+                nickname: data.newNickname || data.displayName || data.email.split('@')[0],
+                lastSeen: data.lastSeen || null,
+                isBanned: data.isBanned || false
+            }))
+            .sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0));
+
+        if (users.length === 0) {
+            document.getElementById('activityUserList').innerHTML =
+                '<p style="text-align:center;color:#adb5bd;padding:40px;">사용자 정보가 없습니다.</p>';
+            return;
+        }
+
+        document.getElementById('activityUserList').innerHTML = users.map(u => {
+            const lastSeenHTML = formatLastSeen(u.lastSeen);
+            const bannedBadge  = u.isBanned
+                ? '<span style="background:#343a40;color:white;padding:2px 7px;border-radius:10px;font-size:10px;margin-left:6px;">차단</span>'
+                : '';
+            return `
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid #f0f0f0;"
+                     onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">
+                    <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+                        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#e3f2fd,#bbdefb);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fas fa-user" style="color:#1976d2;font-size:14px;"></i>
+                        </div>
+                        <div style="min-width:0;">
+                            <div style="font-weight:600;color:#212529;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                                ${escapeHTML(u.nickname)}${bannedBadge}
+                            </div>
+                            <div style="font-size:11px;color:#adb5bd;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHTML(u.email)}</div>
+                        </div>
+                    </div>
+                    <div style="font-size:13px;white-space:nowrap;margin-left:12px;">${lastSeenHTML}</div>
+                </div>
+            `;
+        }).join('');
+
+    } catch(err) {
+        document.getElementById('activityUserList').innerHTML =
+            `<p style="color:#f44336;text-align:center;padding:30px;">로드 실패: ${err.message}</p>`;
+    }
+};
+
 console.log("✅ Part 13 Firebase 리스너 완료");
 
 // ===== Part 23: 메신저 시스템 (1대1 채팅) =====
@@ -4797,34 +4927,35 @@ window.showMessenger = async function() {
     
 section.innerHTML = `
     <div style="max-width:800px; margin:0 auto; padding:20px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h2 style="color:#c62828; margin:0;">
-                <i class="fas fa-bell"></i> 알림
-            </h2>
-            <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <!-- ✅ 선택 모드 토글 버튼 -->
-                <button onclick="toggleSelectionMode()" class="btn-secondary" id="toggleSelectionBtn">
-                    <i class="fas fa-check-square"></i> 선택
-                </button>
-                
-                <!-- ✅ 선택 삭제 버튼 (선택 모드일 때만 표시) -->
-                <button onclick="deleteSelectedNotifications()" class="btn-danger" id="deleteSelectedBtn" style="display:none;">
-                    <i class="fas fa-trash"></i> 선택 삭제
-                </button>
-                
-                <!-- ✅ 관리자 전용 전체 알림 삭제 -->
-                ${isAdmin() ? `
-                    <button onclick="showAdminNotificationManager()" class="btn-warning">
-                        <i class="fas fa-shield-alt"></i> 관리자 삭제
-                    </button>
-                ` : ''}
-                
-                <button onclick="markAllNotificationsAsRead()" class="btn-secondary">
-                    <i class="fas fa-check-double"></i> 모두 읽음
-                </button>
-                <button onclick="showMoreMenu()" class="btn-secondary">
+
+        <div style="background:white; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,0.09); margin-bottom:20px; overflow:hidden;">
+            <div style="background:linear-gradient(135deg,#c62828,#e53935); padding:18px 20px; display:flex; align-items:center; justify-content:space-between;">
+                <h2 style="color:white; margin:0; font-size:20px; font-weight:800; display:flex; align-items:center; gap:10px;">
+                    <i class="fas fa-bell" style="font-size:18px;"></i> 알림
+                </h2>
+                <button onclick="showMoreMenu()" style="background:rgba(255,255,255,0.18); border:none; color:white; padding:8px 14px; border-radius:20px; cursor:pointer; font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px;">
                     <i class="fas fa-arrow-left"></i> 뒤로
                 </button>
+            </div>
+            <div style="padding:12px 16px; display:flex; gap:8px; flex-wrap:wrap; border-top:1px solid #f0f0f0; background:#fafafa; align-items:center;">
+                <button onclick="toggleSelectionMode()" id="toggleSelectionBtn"
+                    style="background:white; border:1.5px solid #dee2e6; color:#495057; padding:7px 14px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px;">
+                    <i class="fas fa-check-square"></i> 선택
+                </button>
+                <button onclick="deleteSelectedNotifications()" id="deleteSelectedBtn"
+                    style="display:none; background:#ffebee; border:1.5px solid #ef9a9a; color:#c62828; padding:7px 14px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; align-items:center; gap:6px;">
+                    <i class="fas fa-trash"></i> 선택 삭제
+                </button>
+                <button onclick="markAllNotificationsAsRead()"
+                    style="background:white; border:1.5px solid #dee2e6; color:#495057; padding:7px 14px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px;">
+                    <i class="fas fa-check-double"></i> 모두 읽음
+                </button>
+                ${isAdmin() ? `
+                <button onclick="showAdminNotificationManager()"
+                    style="background:#fff8e1; border:1.5px solid #ffe082; color:#856404; padding:7px 14px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; margin-left:auto;">
+                    <i class="fas fa-shield-alt"></i> 관리자 삭제
+                </button>
+                ` : ''}
             </div>
         </div>
             
@@ -5496,6 +5627,12 @@ window.addEventListener("load", () => {
     
     setupArticleForm();
     
+    // ✅ [PATCH 3] 3분마다 lastSeen 갱신
+    setInterval(updateLastSeen, 3 * 60 * 1000);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') updateLastSeen();
+    });
+
     // ✅ 카테고리 자동 적용 리스너 등록
     setupCategoryChangeListener();
     
