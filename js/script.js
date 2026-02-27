@@ -1030,23 +1030,15 @@ async function registerFCMToken() {
         const uid = getUserId();
         const tokenKey = btoa(token).substring(0, 20).replace(/[^a-zA-Z0-9]/g, '');
 
-        const existingSnap = await db.ref(`users/${uid}/fcmTokens/${tokenKey}`).once('value');
-        if (existingSnap.exists()) {
-            console.log('ℹ️ 이미 등록된 FCM 토큰 - 업데이트만 함');
-            // lastSeen 업데이트만
-            await db.ref(`users/${uid}/fcmTokens/${tokenKey}`).update({
-                lastSeen: Date.now()
-            });
-        } else {
-            await db.ref(`users/${uid}/fcmTokens/${tokenKey}`).set({
-                token: token,
-                createdAt: Date.now(),
-                lastSeen: Date.now(),
-                userAgent: navigator.userAgent.substring(0, 100),
-                browser: getBrowserInfo()
-            });
-            console.log('✅ FCM 토큰 새로 저장 완료');
-        }
+        // ✅ 항상 set()으로 덮어씀 (토큰이 서버에서 삭제된 경우도 복구됨)
+        await db.ref(`users/${uid}/fcmTokens/${tokenKey}`).set({
+            token: token,
+            createdAt: Date.now(),
+            lastSeen: Date.now(),
+            userAgent: navigator.userAgent.substring(0, 100),
+            browser: getBrowserInfo()
+        });
+        console.log('✅ FCM 토큰 저장/갱신 완료');
 
         // 8. notificationsEnabled 확인 및 자동 활성화
         const userSnap = await db.ref(`users/${uid}/notificationsEnabled`).once('value');
@@ -1148,8 +1140,8 @@ let notificationListenerActive = false;
 function setupNotificationListener(uid) {
     if (!uid || notificationListenerActive) return;
     
-    // FCM 토큰 등록 (최초 1회)
-    registerFCMToken();
+    // ✅ registerFCMToken()을 여기서 호출하지 않음
+    // onAuthStateChanged에서 직접 호출하므로 중복/누락 없이 항상 실행됨
     
     db.ref("notifications/" + uid).off();
     
@@ -1318,24 +1310,22 @@ console.log("✅ Part 4 알림 시스템 완료");
 
 // ===== Part 5: 인증 상태 관리 (간소화) =====
 
-   auth.onAuthStateChanged(async user => {
-       console.log("🔐 인증 상태:", user ? user.email : "로그아웃");
-       
-       // ✅ 추가: 로그인 상태 변경 시 관리자 캐시 초기화
-       _cachedAdminStatus = null;
-       _adminCacheTime = 0;
-       
-       if (user) {
-           await isAdminAsync(); // 로그인 즉시 캐시 채우기
+  auth.onAuthStateChanged(async user => {
+    console.log("🔐 인증 상태:", user ? user.email : "로그아웃");
+    
+    _cachedAdminStatus = null;
+    _adminCacheTime = 0;
     
     if (user) {
+        await isAdminAsync();
+
         showLoadingIndicator("로그인 중...");
 
         const userRef = db.ref("users/" + user.uid);
         const snap = await userRef.once("value");
         let data = snap.val() || {};
         
-        if(!data.email) {
+        if (!data.email) {
             await userRef.update({
                 email: user.email,
                 createdAt: Date.now()
@@ -1350,29 +1340,31 @@ console.log("✅ Part 4 알림 시스템 완료");
         }
 
         setupNotificationListener(user.uid);
+        registerFCMToken(); // ✅ 로그인마다 FCM 토큰 갱신
         updateHeaderProfileButton(user);
-        updateLastSeen(); // ✅ [PATCH 2] 로그인 시 lastSeen 즉시 기록
+        updateLastSeen();
         
         hideLoadingIndicator();
         
-        if(!sessionStorage.getItem('login_shown')) {
+        if (!sessionStorage.getItem('login_shown')) {
             showToastNotification("✅ 로그인 완료", `환영합니다, ${getNickname()}님!`, null);
             sessionStorage.setItem('login_shown', 'true');
         }
     } else {
+        // ✅ 로그아웃 처리 (기존코드는 if(user) 안에 중첩돼 절대 실행 안 됐음)
         notificationListenerActive = false;
         const headerBtn = document.getElementById("headerProfileBtn");
-        if(headerBtn) {
+        if (headerBtn) {
             headerBtn.innerHTML = `<i class="fas fa-user-circle"></i>`;
         }
     }
 
     updateSettings();
     
-   if(document.getElementById("articlesSection")?.classList.contains("active")) {
-        searchArticles(false);   // ← 현재 카테고리로 필터링 후 렌더
+    if (document.getElementById("articlesSection")?.classList.contains("active")) {
+        searchArticles(false);
     }
-}});
+});
 
 // ✅ 팔로우 사용자 로드
 async function loadFollowUsers() {
@@ -3617,7 +3609,8 @@ function setupArticleForm() {
                     authorEmail: article.authorEmail,
                     authorName: article.author,
                     title: article.title,
-                    articleId: article.id
+                    articleId: article.id,
+                    category: article.category  // ✅ 카테고리 필터 동작에 필요
                 });
                 
                 showArticles();
