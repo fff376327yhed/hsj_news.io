@@ -1,15 +1,12 @@
 // ===== Firebase Cloud Messaging Service Worker =====
-// ⚠️ index.html과 동일한 버전 사용! (8.10.0)
 
 console.log('[SW] 🔧 Service Worker 로딩 시작');
 
-// ✅ index.html과 동일한 버전으로 변경
 importScripts('https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js');
 
 console.log('[SW] 📦 Firebase SDK 로드 완료');
 
-// Firebase 설정 (index.html과 동일)
 firebase.initializeApp({
   apiKey: "AIzaSyDgooYtVr8-jm15-fx_WvGLCDxonLpNPuU",
   authDomain: "hsj-news.firebaseapp.com",
@@ -24,53 +21,44 @@ const messaging = firebase.messaging();
 
 console.log('[SW] ✅ Firebase Messaging 초기화 완료');
 
+// ✅ 사이트 고정 베이스 URL
+const BASE_URL = 'https://fff376327yhed.github.io/hsj_news.io';
+
 // ===== 백그라운드 메시지 수신 =====
 messaging.onBackgroundMessage((payload) => {
   console.log('[SW] 📨 백그라운드 메시지 수신:', payload);
   
-  // data 필드에서 정보 추출 (send-notifications.js에서 보낸 형식)
   const notificationTitle = payload.data?.title || '📰 해정뉴스';
   const notificationBody = payload.data?.body || payload.data?.text || '새로운 알림';
   const articleId = payload.data?.articleId || '';
   const notificationId = payload.data?.notificationId || '';
   
-  // GitHub Pages 베이스 경로 감지
-  const getBasePath = () => {
-    const scope = self.registration.scope;
-    const url = new URL(scope);
-    const pathname = url.pathname;
-    
-    // /hsj_news.io/ 같은 패턴 감지
-    const match = pathname.match(/^\/([^\/]+)\/?$/);
-    if (match && match[1] && match[1] !== '') {
-      return `/${match[1]}`;
-    }
-    return '';
-  };
+  // ✅ articleId 유무에 따라 URL 결정
+  const targetUrl = articleId
+    ? `${BASE_URL}/?page=article&id=${articleId}`
+    : `${BASE_URL}/?page=home`;
   
-  const basePath = getBasePath();
-  console.log('[SW] 🌐 베이스 경로:', basePath || '(루트)');
+  console.log('[SW] 🔗 알림 클릭 시 이동 URL:', targetUrl);
   
-  // 알림 옵션
   const notificationOptions = {
     body: notificationBody,
-    icon: `${basePath}/favicon/android-icon-192x192.png`,
-    badge: `${basePath}/favicon/favicon-16x16.png`,
-    tag: notificationId || `notif-${Date.now()}`, // 같은 tag는 덮어씀
-    renotify: false, // 같은 tag여도 다시 알림 안 울림
-    requireInteraction: false, // 자동으로 사라짐
+    icon: `${BASE_URL}/favicon/android-icon-192x192.png`,
+    badge: `${BASE_URL}/favicon/favicon-16x16.png`,
+    tag: notificationId || `notif-${Date.now()}`,
+    renotify: false,
+    requireInteraction: false,
     vibrate: [200, 100, 200],
     timestamp: Date.now(),
     data: {
+      // ✅ targetUrl을 data에 저장해 notificationclick에서 사용
+      targetUrl: targetUrl,
       articleId: articleId,
-      url: articleId ? `${basePath}/?page=article&id=${articleId}` : `${basePath}/`,
       notificationId: notificationId
     },
     actions: [
       {
         action: 'open',
-        title: '📰 보기',
-        icon: `${basePath}/favicon/favicon-32x32.png`
+        title: '📰 보기'
       },
       {
         action: 'close',
@@ -80,8 +68,6 @@ messaging.onBackgroundMessage((payload) => {
   };
   
   console.log('[SW] 🔔 알림 표시:', notificationTitle);
-  
-  // 알림 표시
   return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
@@ -89,52 +75,43 @@ messaging.onBackgroundMessage((payload) => {
 self.addEventListener('notificationclick', (event) => {
   console.log('[SW] 👆 알림 클릭:', event.action);
   
-  event.notification.close(); // 알림 닫기
+  event.notification.close();
   
-  // "닫기" 버튼 클릭 시 아무것도 안 함
+  // "닫기" 버튼이면 아무것도 안 함
   if (event.action === 'close') {
     console.log('[SW] ❌ 닫기 버튼 클릭');
     return;
   }
+
+  // ✅ data에 저장된 targetUrl 사용, 없으면 홈으로 fallback
+  const targetUrl = event.notification.data?.targetUrl || `${BASE_URL}/?page=home`;
   
-  // 기사로 이동할 URL
-  const urlToOpen = event.notification.data?.url || '/';
-  
-  console.log('[SW] 🔗 이동할 URL:', urlToOpen);
-  
-  // 페이지 열기/포커스
+  console.log('[SW] 🔗 이동할 URL:', targetUrl);
+
   event.waitUntil(
     clients.matchAll({ 
       type: 'window', 
       includeUncontrolled: true 
     }).then((clientList) => {
-      // 이미 열린 창이 있으면 해당 탭에서 이동
+      // 이미 열린 해정뉴스 탭이 있으면 포커스 후 이동
       for (const client of clientList) {
-        const clientUrl = new URL(client.url);
-        const targetUrl = new URL(urlToOpen, self.location.origin);
-        
-        if (clientUrl.origin === targetUrl.origin) {
-          console.log('[SW] ✅ 기존 창에서 이동:', urlToOpen);
-          return client.focus().then(() => {
-            // ✅ 실제 페이지 이동 (postMessage만으로는 이동 안 됨)
-            return client.navigate(urlToOpen);
-          });
+        if (client.url.startsWith(BASE_URL)) {
+          console.log('[SW] ✅ 기존 탭에서 이동:', targetUrl);
+          return client.focus().then(() => client.navigate(targetUrl));
         }
       }
       
-      // 열린 창이 없으면 새 창 열기
-      if (clients.openWindow) {
-        console.log('[SW] 🆕 새 창 열기:', urlToOpen);
-        return clients.openWindow(urlToOpen);
-      }
+      // 열린 탭이 없으면 새 탭으로 열기
+      console.log('[SW] 🆕 새 탭 열기:', targetUrl);
+      return clients.openWindow(targetUrl);
     })
   );
 });
 
 // ===== Service Worker 설치 =====
 self.addEventListener('install', (event) => {
-  console.log('[SW] 📥 설치 시작');
-  self.skipWaiting(); // 즉시 활성화
+  console.log('[SW] 📥 설치');
+  self.skipWaiting();
 });
 
 // ===== Service Worker 활성화 =====
@@ -147,10 +124,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// ===== 페이지에서 보낸 메시지 처리 (옵션) =====
 self.addEventListener('message', (event) => {
-  console.log('[SW] 💬 메시지 수신:', event.data);
-  
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
