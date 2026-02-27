@@ -1189,27 +1189,53 @@ async function sendNotification(type, data) {
         const usersData = usersSnapshot.val() || {};
         
         if (type === 'article') {
-            // 기사 알림: article 타입 허용한 사용자 전원에게
+            // 기사 알림: 수신자별 [사용자 필터 + 카테고리 필터] 종합 판단
+            const authorUid    = Object.keys(usersData).find(id => usersData[id]?.email === data.authorEmail);
+            const articleCat   = data.category || '';
+
             Object.entries(usersData).forEach(([uid, userData]) => {
                 if(userData.notificationsEnabled === false) return;
                 if(userData.email === data.authorEmail) return; // 자기 자신 제외
+
                 const types = userData.notificationTypes || {};
-                const articleEnabled = types.article !== false; // 기본 true
-                if(articleEnabled) {
-                    targetUsers.push(uid);
-                }
+
+                // ① 기사 알림 켜져 있는지 확인
+                if(types.article === false) return;
+
+                // ② 사용자 필터: null이면 전체 허용 (기본값)
+                const filterUsers = types.articleFilterUsers || null;
+                if(filterUsers !== null && authorUid && filterUsers[authorUid] === false) return;
+
+                // ③ 카테고리 필터: null이면 전체 허용 (기본값)
+                const filterCats = types.articleFilterCategories || null;
+                if(filterCats !== null && articleCat && filterCats[articleCat] === false) return;
+
+                targetUsers.push(uid);
             });
         } 
         else if (type === 'myArticleComment') {
-            // 댓글 알림: 글 작성자 본인, comment 타입 허용 시에만
+            // 댓글 알림: 글 작성자에게, [사용자 필터 + 카테고리 필터] 종합 판단
+            const commenterUid = Object.keys(usersData).find(id => usersData[id]?.email === data.commenterEmail);
+            const articleCat   = data.articleCategory || '';
+
             Object.entries(usersData).forEach(([uid, userData]) => {
                 if(userData.email !== data.articleAuthorEmail) return;
                 if(userData.notificationsEnabled === false) return;
+
                 const types = userData.notificationTypes || {};
-                const commentEnabled = types.comment !== false; // 기본 true
-                if(commentEnabled) {
-                    targetUsers.push(uid);
-                }
+
+                // ① 댓글 알림 켜져 있는지 확인
+                if(types.comment === false) return;
+
+                // ② 사용자 필터: null이면 전체 허용 (기본값)
+                const filterUsers = types.commentFilterUsers || null;
+                if(filterUsers !== null && commenterUid && filterUsers[commenterUid] === false) return;
+
+                // ③ 카테고리 필터: null이면 전체 허용 (기본값)
+                const filterCats = types.commentFilterCategories || null;
+                if(filterCats !== null && articleCat && filterCats[articleCat] === false) return;
+
+                targetUsers.push(uid);
             });
         }
         
@@ -1550,38 +1576,123 @@ async function loadNotificationTypeSettings() {
     const section = document.getElementById("notificationTypeSection");
     if(!section) return;
     
-    // Firebase에서 타입 설정 읽기 (없으면 기본값 true)
     const snap = await db.ref("users/" + uid + "/notificationTypes").once("value");
     const types = snap.val() || {};
     
-    const articleEnabled = types.article !== false;  // 기본 true
-    const commentEnabled = types.comment !== false;  // 기본 true
+    const articleEnabled = types.article !== false;
+    const commentEnabled = types.comment !== false;
     
     section.innerHTML = `
         <div style="background:#fff; border:1px solid #dadce0; padding:20px; border-radius:8px; margin-top:16px;">
             <h4 style="margin:0 0 14px 0; color:#202124; font-size:15px;">📋 알림 받을 항목</h4>
             
-            <label style="display:flex; align-items:center; gap:12px; padding:12px; background:#f8f9fa; border-radius:6px; margin-bottom:10px; cursor:pointer;">
-                <input type="checkbox" id="notifType_article"
-                    ${articleEnabled ? 'checked' : ''}
-                    onchange="saveNotificationTypes()"
-                    style="width:18px; height:18px; cursor:pointer; accent-color:#c62828;">
-                <div>
-                    <div style="font-weight:600; color:#202124;">📰 새 기사 알림</div>
-                    <div style="font-size:12px; color:#5f6368; margin-top:2px;">누군가 새 기사를 올렸을 때</div>
+            <!-- 새 기사 알림 -->
+            <div style="margin-bottom:10px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:12px; background:#f8f9fa; border-radius:6px;">
+                    <label style="display:flex; align-items:center; gap:12px; cursor:pointer; flex:1;">
+                        <input type="checkbox" id="notifType_article"
+                            ${articleEnabled ? 'checked' : ''}
+                            onchange="saveNotificationTypes()"
+                            style="width:18px; height:18px; cursor:pointer; accent-color:#c62828;">
+                        <div>
+                            <div style="font-weight:600; color:#202124;">📰 새 기사 알림</div>
+                            <div style="font-size:12px; color:#5f6368; margin-top:2px;">누군가 새 기사를 올렸을 때</div>
+                        </div>
+                    </label>
+                    <button onclick="toggleNotifDetail('article')" id="notifDetailBtn_article"
+                        style="padding:5px 12px; font-size:12px; font-weight:600; border:1.5px solid #c62828;
+                               background:white; color:#c62828; border-radius:5px; cursor:pointer; white-space:nowrap; margin-left:10px;"
+                        onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='white'">
+                        자세히 ▾
+                    </button>
                 </div>
-            </label>
+                <!-- 기사 알림 사용자 필터 패널 -->
+                <div id="notifDetail_article" style="display:none; border:1.5px solid #e9ecef; border-top:none; border-radius:0 0 6px 6px; background:#fff; padding:12px;">
+                    
+                    <!-- ① 카테고리 필터 -->
+                    <div style="margin-bottom:14px;">
+                        <div style="font-size:12px; font-weight:700; color:#495057; margin-bottom:6px;">📂 카테고리 필터</div>
+                        <div style="font-size:11px; color:#868e96; margin-bottom:8px;">체크한 카테고리의 새 기사만 알림을 받습니다. (기본: 전체 선택)</div>
+                        <div style="display:flex; gap:6px; margin-bottom:8px;">
+                            <button onclick="selectAllNotifCategoryFilter('article', true)" style="padding:3px 10px; font-size:11px; font-weight:600; border:1.5px solid #c62828; background:white; color:#c62828; border-radius:5px; cursor:pointer;" onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='white'">전체선택</button>
+                            <button onclick="selectAllNotifCategoryFilter('article', false)" style="padding:3px 10px; font-size:11px; font-weight:600; border:1.5px solid #dee2e6; background:white; color:#868e96; border-radius:5px; cursor:pointer;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">전체해제</button>
+                        </div>
+                        <div id="notifCategoryFilterList_article" style="display:flex; flex-wrap:wrap; gap:6px; padding:8px; border:1px solid #e9ecef; border-radius:6px; background:#fafafa;">
+                            <div style="font-size:12px; color:#adb5bd;">불러오는 중...</div>
+                        </div>
+                    </div>
+
+                    <hr style="border:none; border-top:1px solid #e9ecef; margin:0 0 12px 0;">
+
+                    <!-- ② 사용자 필터 -->
+                    <div>
+                        <div style="font-size:12px; font-weight:700; color:#495057; margin-bottom:6px;">👤 사용자 필터</div>
+                        <div style="font-size:11px; color:#868e96; margin-bottom:8px;">체크한 사용자가 <b>새 기사를 올릴 때만</b> 알림을 받습니다. (기본: 전체 선택)</div>
+                        <div style="display:flex; gap:6px; margin-bottom:8px;">
+                            <button onclick="selectAllNotifFilter('article', true)" style="padding:3px 10px; font-size:11px; font-weight:600; border:1.5px solid #c62828; background:white; color:#c62828; border-radius:5px; cursor:pointer;" onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='white'">전체선택</button>
+                            <button onclick="selectAllNotifFilter('article', false)" style="padding:3px 10px; font-size:11px; font-weight:600; border:1.5px solid #dee2e6; background:white; color:#868e96; border-radius:5px; cursor:pointer;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">전체해제</button>
+                            <span style="margin-left:auto; font-size:11px; color:#adb5bd; align-self:center;">선택: <span id="notifFilterCount_article" style="font-weight:700; color:#adb5bd;">0</span>명</span>
+                        </div>
+                        <div id="notifFilterList_article" style="max-height:200px; overflow-y:auto; border:1px solid #e9ecef; border-radius:6px; padding:4px; background:#fafafa;">
+                            <div style="padding:20px; text-align:center; color:#adb5bd; font-size:13px;">불러오는 중...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             
-            <label style="display:flex; align-items:center; gap:12px; padding:12px; background:#f8f9fa; border-radius:6px; cursor:pointer;">
-                <input type="checkbox" id="notifType_comment"
-                    ${commentEnabled ? 'checked' : ''}
-                    onchange="saveNotificationTypes()"
-                    style="width:18px; height:18px; cursor:pointer; accent-color:#c62828;">
-                <div>
-                    <div style="font-weight:600; color:#202124;">💬 댓글 알림</div>
-                    <div style="font-size:12px; color:#5f6368; margin-top:2px;">내 기사에 댓글이 달렸을 때</div>
+            <!-- 새 댓글 알림 -->
+            <div>
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:12px; background:#f8f9fa; border-radius:6px;">
+                    <label style="display:flex; align-items:center; gap:12px; cursor:pointer; flex:1;">
+                        <input type="checkbox" id="notifType_comment"
+                            ${commentEnabled ? 'checked' : ''}
+                            onchange="saveNotificationTypes()"
+                            style="width:18px; height:18px; cursor:pointer; accent-color:#c62828;">
+                        <div>
+                            <div style="font-weight:600; color:#202124;">💬 댓글 알림</div>
+                            <div style="font-size:12px; color:#5f6368; margin-top:2px;">내 기사에 댓글이 달렸을 때</div>
+                        </div>
+                    </label>
+                    <button onclick="toggleNotifDetail('comment')" id="notifDetailBtn_comment"
+                        style="padding:5px 12px; font-size:12px; font-weight:600; border:1.5px solid #c62828;
+                               background:white; color:#c62828; border-radius:5px; cursor:pointer; white-space:nowrap; margin-left:10px;"
+                        onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='white'">
+                        자세히 ▾
+                    </button>
                 </div>
-            </label>
+                <!-- 댓글 알림 사용자 필터 패널 -->
+                <div id="notifDetail_comment" style="display:none; border:1.5px solid #e9ecef; border-top:none; border-radius:0 0 6px 6px; background:#fff; padding:12px;">
+
+                    <!-- ① 카테고리 필터 -->
+                    <div style="margin-bottom:14px;">
+                        <div style="font-size:12px; font-weight:700; color:#495057; margin-bottom:6px;">📂 카테고리 필터</div>
+                        <div style="font-size:11px; color:#868e96; margin-bottom:8px;">체크한 카테고리의 기사에 달린 댓글만 알림을 받습니다. (기본: 전체 선택)</div>
+                        <div style="display:flex; gap:6px; margin-bottom:8px;">
+                            <button onclick="selectAllNotifCategoryFilter('comment', true)" style="padding:3px 10px; font-size:11px; font-weight:600; border:1.5px solid #c62828; background:white; color:#c62828; border-radius:5px; cursor:pointer;" onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='white'">전체선택</button>
+                            <button onclick="selectAllNotifCategoryFilter('comment', false)" style="padding:3px 10px; font-size:11px; font-weight:600; border:1.5px solid #dee2e6; background:white; color:#868e96; border-radius:5px; cursor:pointer;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">전체해제</button>
+                        </div>
+                        <div id="notifCategoryFilterList_comment" style="display:flex; flex-wrap:wrap; gap:6px; padding:8px; border:1px solid #e9ecef; border-radius:6px; background:#fafafa;">
+                            <div style="font-size:12px; color:#adb5bd;">불러오는 중...</div>
+                        </div>
+                    </div>
+
+                    <hr style="border:none; border-top:1px solid #e9ecef; margin:0 0 12px 0;">
+
+                    <!-- ② 사용자 필터 -->
+                    <div>
+                        <div style="font-size:12px; font-weight:700; color:#495057; margin-bottom:6px;">👤 사용자 필터</div>
+                        <div style="font-size:11px; color:#868e96; margin-bottom:8px;">체크한 사용자가 <b>내 기사에 댓글을 달 때만</b> 알림을 받습니다. (기본: 전체 선택)</div>
+                        <div style="display:flex; gap:6px; margin-bottom:8px;">
+                            <button onclick="selectAllNotifFilter('comment', true)" style="padding:3px 10px; font-size:11px; font-weight:600; border:1.5px solid #c62828; background:white; color:#c62828; border-radius:5px; cursor:pointer;" onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='white'">전체선택</button>
+                            <button onclick="selectAllNotifFilter('comment', false)" style="padding:3px 10px; font-size:11px; font-weight:600; border:1.5px solid #dee2e6; background:white; color:#868e96; border-radius:5px; cursor:pointer;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">전체해제</button>
+                            <span style="margin-left:auto; font-size:11px; color:#adb5bd; align-self:center;">선택: <span id="notifFilterCount_comment" style="font-weight:700; color:#adb5bd;">0</span>명</span>
+                        </div>
+                        <div id="notifFilterList_comment" style="max-height:200px; overflow-y:auto; border:1px solid #e9ecef; border-radius:6px; padding:4px; background:#fafafa;">
+                            <div style="padding:20px; text-align:center; color:#adb5bd; font-size:13px;">불러오는 중...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     `;
 }
@@ -1610,7 +1721,189 @@ window.saveNotificationTypes = async function() {
         }, 2000);
     }
     
-    console.log("✅ 알림 타입 저장:", types);
+   console.log("✅ 알림 타입 저장:", types);
+};
+
+// ✅ 알림 자세히 패널 토글
+window.toggleNotifDetail = async function(type) {
+    const panel = document.getElementById(`notifDetail_${type}`);
+    const btn   = document.getElementById(`notifDetailBtn_${type}`);
+    if(!panel) return;
+
+    const isOpen = panel.style.display !== 'none';
+    if(isOpen) {
+        panel.style.display = 'none';
+        btn.textContent = '자세히 ▾';
+    } else {
+        panel.style.display = 'block';
+        btn.textContent = '닫기 ▴';
+        // 사용자 필터 + 카테고리 필터 동시 로드
+        await Promise.all([
+            loadNotifFilterUsers(type),
+            loadNotifCategoryFilter(type)
+        ]);
+    }
+};
+
+// ✅ 알림 필터 사용자 목록 불러오기 및 체크박스 렌더링
+window.loadNotifFilterUsers = async function(type) {
+    if(!isLoggedIn()) return;
+    const uid = getUserId();
+    const myEmail = getUserEmail();
+    const listEl = document.getElementById(`notifFilterList_${type}`);
+    if(!listEl) return;
+
+    listEl.innerHTML = '<div style="padding:20px; text-align:center; color:#adb5bd; font-size:13px;">불러오는 중...</div>';
+
+    const [usersSnap, filterSnap] = await Promise.all([
+        db.ref("users").once("value"),
+        db.ref(`users/${uid}/notificationTypes/${type}FilterUsers`).once("value")
+    ]);
+
+    const usersData   = usersSnap.val()  || {};
+    const savedFilter = filterSnap.val() || null; // null = 미설정 (기본: 전체)
+
+    // 이메일 기준 중복 제거
+    const emailMap = new Map();
+    Object.entries(usersData)
+        .filter(([, d]) => d.email && d.email !== myEmail)
+        .forEach(([id, d]) => {
+            const existing = emailMap.get(d.email);
+            if(!existing || (d.lastSeen || 0) > (existing.lastSeen || 0)) {
+                emailMap.set(d.email, { uid: id, email: d.email,
+                    nickname: d.newNickname || d.displayName || d.email.split('@')[0] });
+            }
+        });
+
+    const users = Array.from(emailMap.values()).sort((a,b) => a.email.localeCompare(b.email));
+
+    if(users.length === 0) {
+        listEl.innerHTML = '<div style="padding:20px; text-align:center; color:#adb5bd; font-size:13px;">표시할 사용자가 없습니다.</div>';
+        return;
+    }
+
+    listEl.innerHTML = users.map(u => {
+        // savedFilter가 null이면 기본 전체 체크, 아니면 저장된 값 사용
+        const isChecked = savedFilter === null ? true : (savedFilter[u.uid] !== false);
+        return `
+            <label style="display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:5px; cursor:pointer;"
+                   onmouseover="this.style.background='#f1f3f5'" onmouseout="this.style.background=''">
+                <input type="checkbox"
+                    class="notifFilter_${type}_cb"
+                    value="${u.uid}"
+                    ${isChecked ? 'checked' : ''}
+                    onchange="saveNotifFilterUsers('${type}')"
+                    style="width:15px; height:15px; cursor:pointer; accent-color:#c62828; flex-shrink:0;">
+                <span style="font-size:13px; color:#333;">
+                    <b>${u.nickname}</b>
+                    <span style="color:#868e96; font-size:11px; margin-left:4px;">${u.email}</span>
+                </span>
+            </label>
+        `;
+    }).join('');
+
+    updateNotifFilterCount(type);
+};
+
+// ✅ 알림 필터 사용자 선택 저장
+window.saveNotifFilterUsers = async function(type) {
+    if(!isLoggedIn()) return;
+    const uid = getUserId();
+    const checkboxes = document.querySelectorAll(`.notifFilter_${type}_cb`);
+    const filterMap = {};
+    checkboxes.forEach(cb => {
+        filterMap[cb.value] = cb.checked;
+    });
+    await db.ref(`users/${uid}/notificationTypes/${type}FilterUsers`).set(filterMap);
+    updateNotifFilterCount(type);
+};
+
+// ✅ 선택된 사용자 수 카운터
+function updateNotifFilterCount(type) {
+    const countEl = document.getElementById(`notifFilterCount_${type}`);
+    if(!countEl) return;
+    const total   = document.querySelectorAll(`.notifFilter_${type}_cb`).length;
+    const checked = document.querySelectorAll(`.notifFilter_${type}_cb:checked`).length;
+    countEl.textContent = checked;
+    countEl.style.color = checked > 0 ? '#c62828' : '#adb5bd';
+}
+
+// ✅ 알림 필터 전체선택 / 전체해제
+window.selectAllNotifFilter = async function(type, checked) {
+    document.querySelectorAll(`.notifFilter_${type}_cb`).forEach(cb => { cb.checked = checked; });
+    await saveNotifFilterUsers(type);
+};
+
+// ✅ 카테고리 필터 불러오기 및 렌더링
+const ALL_CATEGORIES = ['자유게시판', '논란', '연애', '정아영', '게넥도', '게임', '마크'];
+
+window.loadNotifCategoryFilter = async function(type) {
+    if(!isLoggedIn()) return;
+    const uid = getUserId();
+    const listEl = document.getElementById(`notifCategoryFilterList_${type}`);
+    if(!listEl) return;
+
+    const snap = await db.ref(`users/${uid}/notificationTypes/${type}FilterCategories`).once("value");
+    const savedFilter = snap.val() || null; // null = 미설정 (기본: 전체 선택)
+
+    listEl.innerHTML = ALL_CATEGORIES.map(cat => {
+        const isChecked = savedFilter === null ? true : (savedFilter[cat] !== false);
+        return `
+            <label style="display:inline-flex; align-items:center; gap:5px; padding:5px 10px;
+                           background:${isChecked ? '#fff0f0' : '#f8f9fa'}; border:1.5px solid ${isChecked ? '#c62828' : '#dee2e6'};
+                           border-radius:20px; cursor:pointer; font-size:12px; font-weight:600;
+                           color:${isChecked ? '#c62828' : '#adb5bd'}; transition:all 0.15s;"
+                   id="notifCatLabel_${type}_${cat.replace(/\s/g,'_')}">
+                <input type="checkbox"
+                    class="notifCatFilter_${type}_cb"
+                    value="${cat}"
+                    ${isChecked ? 'checked' : ''}
+                    onchange="onNotifCategoryChange('${type}', '${cat}', this)"
+                    style="display:none;">
+                ${cat}
+            </label>
+        `;
+    }).join('');
+};
+
+// ✅ 카테고리 체크 변경 시 스타일 업데이트 + 저장
+window.onNotifCategoryChange = async function(type, cat, cb) {
+    const labelId = `notifCatLabel_${type}_${cat.replace(/\s/g,'_')}`;
+    const label = document.getElementById(labelId);
+    if(label) {
+        label.style.background    = cb.checked ? '#fff0f0' : '#f8f9fa';
+        label.style.border        = `1.5px solid ${cb.checked ? '#c62828' : '#dee2e6'}`;
+        label.style.color         = cb.checked ? '#c62828' : '#adb5bd';
+    }
+    await saveNotifFilterCategories(type);
+};
+
+// ✅ 카테고리 필터 저장
+window.saveNotifFilterCategories = async function(type) {
+    if(!isLoggedIn()) return;
+    const uid = getUserId();
+    const checkboxes = document.querySelectorAll(`.notifCatFilter_${type}_cb`);
+    const filterMap = {};
+    checkboxes.forEach(cb => {
+        filterMap[cb.value] = cb.checked;
+    });
+    await db.ref(`users/${uid}/notificationTypes/${type}FilterCategories`).set(filterMap);
+};
+
+// ✅ 카테고리 필터 전체선택 / 전체해제
+window.selectAllNotifCategoryFilter = async function(type, checked) {
+    document.querySelectorAll(`.notifCatFilter_${type}_cb`).forEach(cb => {
+        cb.checked = checked;
+        const cat = cb.value;
+        const labelId = `notifCatLabel_${type}_${cat.replace(/\s/g,'_')}`;
+        const label = document.getElementById(labelId);
+        if(label) {
+            label.style.background = checked ? '#fff0f0' : '#f8f9fa';
+            label.style.border     = `1.5px solid ${checked ? '#c62828' : '#dee2e6'}`;
+            label.style.color      = checked ? '#c62828' : '#adb5bd';
+        }
+    });
+    await saveNotifFilterCategories(type);
 };
 
 // ✅ 헤더 프로필 버튼 업데이트
@@ -3843,7 +4136,8 @@ async function submitComment(id){
                     commenterEmail: C.authorEmail,
                     commenterName: C.author,
                     content: txt,
-                    articleId: id
+                    articleId: id,
+                    articleCategory: article.category || '' // ✅ 카테고리 필터에 사용
                 });
             }
         }
@@ -4848,19 +5142,43 @@ window.showActivityStatus = async function() {
 
     updateURL('activity');
 
+    // ===== 수정 후 코드 =====
     try {
-        const usersSnapshot = await db.ref('users').once('value');
+        const [usersSnapshot, articlesSnapshot] = await Promise.all([
+            db.ref('users').once('value'),
+            db.ref('articles').once('value')
+        ]);
         const usersData = usersSnapshot.val() || {};
 
-        const users = Object.entries(usersData)
+        // articles의 author 필드로 이메일 → 닉네임 맵 구성
+        const emailToNickname = {};
+        const articlesData = articlesSnapshot.val() || {};
+        Object.values(articlesData).forEach(article => {
+            if (article.authorEmail && article.author) {
+                emailToNickname[article.authorEmail] = article.author;
+            }
+        });
+
+        // ✅ 이메일 기준 중복 제거 (lastSeen이 가장 최신인 항목만 유지)
+        const emailMap = new Map();
+        Object.entries(usersData)
             .filter(([uid, data]) => data.email)
-            .map(([uid, data]) => ({
-                uid,
-                email:    data.email,
-                nickname: data.newNickname || data.displayName || data.email.split('@')[0],
-                lastSeen: data.lastSeen || null,
-                isBanned: data.isBanned || false
-            }))
+            .forEach(([uid, data]) => {
+                const email = data.email;
+                const thisLastSeen = data.lastSeen || 0;
+                const existing = emailMap.get(email);
+                if (!existing || thisLastSeen > (existing.lastSeen || 0)) {
+                    emailMap.set(email, {
+                        uid,
+                        email,
+                        nickname: data.newNickname || data.displayName || emailToNickname[email] || email.split('@')[0],
+                        lastSeen: data.lastSeen || null,
+                        isBanned: data.isBanned || false
+                    });
+                }
+            });
+
+        const users = Array.from(emailMap.values())
             .sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0));
 
         if (users.length === 0) {
