@@ -7212,4 +7212,316 @@ db.ref('maintenanceMode').on('value', async (snapshot) => {
 
 console.log("✅ Part 16: 점검모드 시스템 로드 완료");
 
+// ================================================================
+// 관리자 전용 모바일 콘솔
+// script.js 맨 끝에 추가하세요
+// ================================================================
+
+(function() {
+    'use strict';
+
+    // ── 로그 저장소 ──
+    const MAX_LOGS = 300;
+    const logs = [];
+    let isConsoleOpen = false;
+    let filterType = 'all';
+    let searchKeyword = '';
+
+    // ── 원본 콘솔 가로채기 ──
+    const _orig = {
+        log:   console.log.bind(console),
+        warn:  console.warn.bind(console),
+        error: console.error.bind(console),
+        info:  console.info.bind(console)
+    };
+
+    function capture(type, args) {
+        const text = args.map(a => {
+            if (a === null) return 'null';
+            if (a === undefined) return 'undefined';
+            if (typeof a === 'object') {
+                try { return JSON.stringify(a, null, 2); } catch { return String(a); }
+            }
+            return String(a);
+        }).join(' ');
+
+        logs.push({ type, text, time: new Date().toLocaleTimeString('ko-KR') });
+        if (logs.length > MAX_LOGS) logs.shift();
+
+        if (isConsoleOpen) renderLogs();
+
+        // 에러는 FAB 배지 표시
+        if (type === 'error') updateFabBadge();
+    }
+
+    console.log   = (...a) => { _orig.log(...a);   capture('log',   a); };
+    console.warn  = (...a) => { _orig.warn(...a);  capture('warn',  a); };
+    console.error = (...a) => { _orig.error(...a); capture('error', a); };
+    console.info  = (...a) => { _orig.info(...a);  capture('info',  a); };
+
+    window.addEventListener('error', e => {
+        capture('error', [`[Uncaught] ${e.message}`, `${e.filename}:${e.lineno}`]);
+    });
+    window.addEventListener('unhandledrejection', e => {
+        capture('error', [`[Promise] ${e.reason}`]);
+    });
+
+    // ── 에러 카운트 배지 ──
+    let errorCount = 0;
+    function updateFabBadge() {
+        errorCount++;
+        const badge = document.getElementById('_mcBadge');
+        if (badge) {
+            badge.textContent = errorCount > 99 ? '99+' : errorCount;
+            badge.style.display = 'flex';
+        }
+    }
+
+    // ── 로그 색상 ──
+    const TYPE_STYLE = {
+        log:   { color: '#e2e8f0', bg: 'transparent',  icon: '›', label: 'LOG'  },
+        info:  { color: '#63b3ed', bg: 'rgba(99,179,237,0.08)', icon: 'ℹ', label: 'INF'  },
+        warn:  { color: '#f6ad55', bg: 'rgba(246,173,85,0.08)',  icon: '⚠', label: 'WRN'  },
+        error: { color: '#fc8181', bg: 'rgba(252,129,129,0.10)', icon: '✕', label: 'ERR'  },
+    };
+
+    // ── 로그 렌더링 ──
+    function renderLogs() {
+        const container = document.getElementById('_mcLogs');
+        if (!container) return;
+
+        const filtered = logs.filter(l => {
+            if (filterType !== 'all' && l.type !== filterType) return false;
+            if (searchKeyword && !l.text.toLowerCase().includes(searchKeyword)) return false;
+            return true;
+        });
+
+        if (filtered.length === 0) {
+            container.innerHTML = `<div style="color:#4a5568;text-align:center;padding:40px 0;font-size:13px;">로그 없음</div>`;
+            return;
+        }
+
+        container.innerHTML = filtered.map((l, i) => {
+            const s = TYPE_STYLE[l.type] || TYPE_STYLE.log;
+            const escaped = l.text
+                .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            return `<div style="
+                display:flex;gap:8px;align-items:flex-start;
+                padding:6px 10px;border-bottom:1px solid rgba(255,255,255,0.04);
+                background:${s.bg};animation:_mcFadeIn 0.15s ease;
+            ">
+                <span style="color:${s.color};font-size:11px;font-weight:700;
+                    flex-shrink:0;margin-top:1px;font-family:monospace;">${s.label}</span>
+                <span style="color:#718096;font-size:10px;flex-shrink:0;margin-top:2px;
+                    font-family:monospace;">${l.time}</span>
+                <pre style="color:${s.color};font-size:11px;font-family:monospace;
+                    margin:0;white-space:pre-wrap;word-break:break-all;flex:1;
+                    line-height:1.5;">${escaped}</pre>
+            </div>`;
+        }).join('');
+
+        // 맨 아래로 스크롤
+        container.scrollTop = container.scrollHeight;
+    }
+
+    // ── UI 삽입 ──
+    function injectConsoleUI() {
+        if (document.getElementById('_mcFab')) return;
+
+        const css = document.createElement('style');
+        css.textContent = `
+            @keyframes _mcFadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+            @keyframes _mcSlideUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:none} }
+            #_mcPanel {
+                animation: _mcSlideUp 0.25s cubic-bezier(.16,1,.3,1);
+                font-family: 'SF Mono', 'Fira Code', monospace;
+            }
+            #_mcFab { transition: transform 0.2s, box-shadow 0.2s; }
+            #_mcFab:active { transform: scale(0.92) !important; }
+            ._mcFilterBtn { transition: all 0.15s; }
+            ._mcFilterBtn:hover { opacity:1 !important; }
+            #_mcSearch {
+                background: rgba(255,255,255,0.06);
+                border: 1px solid rgba(255,255,255,0.12);
+                border-radius: 6px;
+                color: #e2e8f0;
+                font-size: 12px;
+                padding: 5px 10px;
+                outline: none;
+                width: 100%;
+                box-sizing: border-box;
+                font-family: monospace;
+            }
+            #_mcSearch::placeholder { color: #4a5568; }
+            #_mcSearch:focus { border-color: rgba(255,255,255,0.3); }
+        `;
+        document.head.appendChild(css);
+
+        // FAB 버튼
+        const fab = document.createElement('div');
+        fab.id = '_mcFab';
+        fab.style.cssText = `
+            position:fixed;bottom:80px;right:16px;z-index:99990;
+            width:46px;height:46px;border-radius:14px;
+            background:linear-gradient(135deg,#1a202c,#2d3748);
+            box-shadow:0 4px 16px rgba(0,0,0,0.5);
+            display:flex;align-items:center;justify-content:center;
+            cursor:pointer;user-select:none;
+        `;
+        fab.innerHTML = `
+            <span style="font-size:18px;line-height:1;">⌨️</span>
+            <div id="_mcBadge" style="
+                display:none;position:absolute;top:-4px;right:-4px;
+                background:#fc8181;color:white;font-size:9px;font-weight:700;
+                border-radius:8px;padding:2px 5px;min-width:16px;
+                text-align:center;font-family:monospace;
+                border:2px solid #0d0d0d;
+            "></div>
+        `;
+        fab.addEventListener('click', toggleConsole);
+        document.body.appendChild(fab);
+
+        // 패널
+        const panel = document.createElement('div');
+        panel.id = '_mcPanel';
+        panel.style.cssText = `
+            display:none;position:fixed;bottom:0;left:0;right:0;z-index:99991;
+            height:65vh;background:#0d1117;
+            border-top:1px solid rgba(255,255,255,0.1);
+            border-radius:20px 20px 0 0;
+            box-shadow:0 -8px 40px rgba(0,0,0,0.6);
+            flex-direction:column;overflow:hidden;
+        `;
+        panel.innerHTML = `
+            <!-- 드래그 핸들 -->
+            <div style="text-align:center;padding:10px 0 6px;cursor:grab;" id="_mcHandle">
+                <div style="width:36px;height:4px;border-radius:2px;
+                    background:rgba(255,255,255,0.2);display:inline-block;"></div>
+            </div>
+
+            <!-- 헤더 -->
+            <div style="display:flex;align-items:center;gap:10px;
+                padding:0 14px 8px;border-bottom:1px solid rgba(255,255,255,0.07);">
+                <span style="color:#e2e8f0;font-size:13px;font-weight:700;letter-spacing:1px;">
+                    🛡️ ADMIN CONSOLE
+                </span>
+                <span id="_mcCount" style="color:#4a5568;font-size:11px;margin-left:auto;"></span>
+                <button onclick="window._mcClear()" style="
+                    background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);
+                    color:#718096;font-size:11px;border-radius:6px;padding:4px 10px;
+                    cursor:pointer;font-family:monospace;">CLR</button>
+                <button onclick="window._mcCopy()" style="
+                    background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);
+                    color:#718096;font-size:11px;border-radius:6px;padding:4px 10px;
+                    cursor:pointer;font-family:monospace;">CPY</button>
+                <button onclick="window._mcClose()" style="
+                    background:rgba(252,129,129,0.15);border:1px solid rgba(252,129,129,0.2);
+                    color:#fc8181;font-size:13px;border-radius:6px;padding:4px 10px;
+                    cursor:pointer;font-family:monospace;">✕</button>
+            </div>
+
+            <!-- 검색 + 필터 -->
+            <div style="padding:8px 14px;border-bottom:1px solid rgba(255,255,255,0.05);
+                display:flex;flex-direction:column;gap:6px;">
+                <input id="_mcSearch" placeholder="🔍 로그 검색..." autocomplete="off"
+                    oninput="window._mcFilter(this.value)">
+                <div style="display:flex;gap:6px;">
+                    ${['all','log','info','warn','error'].map(t => `
+                        <button class="_mcFilterBtn" data-type="${t}" onclick="window._mcSetFilter('${t}')"
+                            style="flex:1;background:rgba(255,255,255,0.05);
+                            border:1px solid rgba(255,255,255,0.1);
+                            color:${t==='all'?'#e2e8f0':TYPE_STYLE[t]?.color||'#718096'};
+                            font-size:10px;font-weight:700;letter-spacing:0.5px;
+                            border-radius:6px;padding:4px 0;cursor:pointer;
+                            font-family:monospace;text-transform:uppercase;">
+                            ${t==='all'?'ALL':t}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+
+            <!-- 로그 목록 -->
+            <div id="_mcLogs" style="flex:1;overflow-y:auto;overscroll-behavior:contain;"></div>
+        `;
+        document.body.appendChild(panel);
+        renderLogs();
+    }
+
+    function toggleConsole() {
+        isConsoleOpen = !isConsoleOpen;
+        const panel = document.getElementById('_mcPanel');
+        const fab   = document.getElementById('_mcFab');
+        if (!panel) return;
+
+        if (isConsoleOpen) {
+            panel.style.display = 'flex';
+            // 에러 배지 초기화
+            errorCount = 0;
+            const badge = document.getElementById('_mcBadge');
+            if (badge) badge.style.display = 'none';
+        } else {
+            panel.style.display = 'none';
+        }
+        renderLogs();
+        updateCount();
+    }
+
+    function updateCount() {
+        const el = document.getElementById('_mcCount');
+        if (el) el.textContent = `${logs.length}/${MAX_LOGS}`;
+    }
+
+    // 전역 함수
+    window._mcClose  = () => { isConsoleOpen = false; const p = document.getElementById('_mcPanel'); if(p) p.style.display='none'; };
+    window._mcClear  = () => { logs.length = 0; renderLogs(); updateCount(); };
+    window._mcCopy   = () => {
+        const text = logs.map(l => `[${l.time}][${l.type.toUpperCase()}] ${l.text}`).join('\n');
+        navigator.clipboard.writeText(text).then(() => alert('✅ 로그 복사 완료!')).catch(() => prompt('로그:', text));
+    };
+    window._mcFilter = (kw) => { searchKeyword = kw.toLowerCase(); renderLogs(); };
+    window._mcSetFilter = (type) => {
+        filterType = type;
+        document.querySelectorAll('._mcFilterBtn').forEach(btn => {
+            const isActive = btn.dataset.type === type;
+            btn.style.background    = isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)';
+            btn.style.borderColor   = isActive ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.1)';
+            btn.style.opacity       = isActive ? '1' : '0.6';
+        });
+        renderLogs();
+    };
+
+    // ── 관리자 확인 후 삽입 ──
+    function tryInject() {
+        if (typeof isAdmin === 'function' && isAdmin()) {
+            injectConsoleUI();
+            return;
+        }
+        // isAdminAsync 시도
+        if (typeof isAdminAsync === 'function') {
+            isAdminAsync().then(ok => { if (ok) injectConsoleUI(); });
+        }
+    }
+
+    // 인증 상태 변경 감지
+    if (typeof auth !== 'undefined' && auth.onAuthStateChanged) {
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                // 캐시 채워질 때까지 잠깐 대기
+                setTimeout(tryInject, 1000);
+            } else {
+                // 로그아웃 시 콘솔 UI 제거
+                const fab   = document.getElementById('_mcFab');
+                const panel = document.getElementById('_mcPanel');
+                if (fab)   fab.remove();
+                if (panel) panel.remove();
+                isConsoleOpen = false;
+            }
+        });
+    } else {
+        // auth 없으면 DOM 로드 후 시도
+        window.addEventListener('load', () => setTimeout(tryInject, 2000));
+    }
+
+})();
+
 console.log("✅ script1.js 최적화 버전 완료 (Parts 1-14 통합)");
