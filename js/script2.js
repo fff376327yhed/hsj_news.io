@@ -924,9 +924,28 @@ window.showAdminNotificationSender = async function () {
         const existingModal = document.getElementById('adminNotifSenderModal');
         if (existingModal) existingModal.remove();
 
+        // ✅ 체크박스 목록으로 변경 (다중 선택 지원)
         const userOptions = eligibleUsers
-            .map(u => `<option value="${u.uid}">${u.email}</option>`)
-            .join('');
+            .map(u => `
+                <label style="
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    padding: 8px 10px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    transition: background 0.15s;
+                " onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">
+                    <input type="checkbox"
+                        class="admin-notif-user-checkbox"
+                        value="${u.uid}"
+                        onchange="updateAdminNotifSelectedCount()"
+                        style="width:16px; height:16px; cursor:pointer; accent-color:#c62828; flex-shrink:0;">
+                    <span style="font-size:13px; color:#333; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        ${u.email}
+                    </span>
+                </label>
+            `).join('');
 
         const modalHTML = `
         <div id="adminNotifSenderModal" style="
@@ -1022,23 +1041,37 @@ window.showAdminNotificationSender = async function () {
                         </div>
 
                         <div id="specificUserArea" style="display:none; margin-top:10px;">
-                            <select id="targetUserSelect" style="
-                                width: 100%;
-                                padding: 10px 14px;
+                            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+                                <div style="font-size:11px; color:#868e96; padding-left:2px;">
+                                    FCM 토큰이 등록된 사용자만 표시됩니다 (${eligibleUsers.length}명)
+                                </div>
+                                <div style="display:flex; gap:6px;">
+                                    <button type="button" onclick="selectAllAdminNotifUsers(true)" style="
+                                        padding:3px 10px; font-size:11px; font-weight:600;
+                                        border:1.5px solid #c62828; background:white;
+                                        color:#c62828; border-radius:5px; cursor:pointer;"
+                                        onmouseover="this.style.background='#fff5f5'"
+                                        onmouseout="this.style.background='white'">전체선택</button>
+                                    <button type="button" onclick="selectAllAdminNotifUsers(false)" style="
+                                        padding:3px 10px; font-size:11px; font-weight:600;
+                                        border:1.5px solid #dee2e6; background:white;
+                                        color:#868e96; border-radius:5px; cursor:pointer;"
+                                        onmouseover="this.style.background='#f8f9fa'"
+                                        onmouseout="this.style.background='white'">전체해제</button>
+                                </div>
+                            </div>
+                            <div id="targetUserCheckboxList" style="
+                                max-height: 180px;
+                                overflow-y: auto;
                                 border: 1.5px solid #dee2e6;
                                 border-radius: 8px;
-                                font-size: 14px;
-                                color: #333;
+                                padding: 4px;
                                 background: white;
-                                outline: none;
-                                cursor: pointer;
-                                box-sizing: border-box;
                             ">
-                                <option value="">-- 사용자 선택 --</option>
-                                \${userOptions}
-                            </select>
-                            <div style="font-size:11px; color:#868e96; margin-top:5px; padding-left:4px;">
-                                FCM 토큰이 등록된 사용자만 표시됩니다 (\${eligibleUsers.length}명)
+                                ${userOptions}
+                            </div>
+                            <div style="font-size:11px; color:#adb5bd; margin-top:5px; padding-left:2px;">
+                                선택된 사용자: <span id="selectedUserCount" style="font-weight:700; color:#adb5bd;">0</span>명
                             </div>
                         </div>
                     </div>
@@ -1225,6 +1258,23 @@ window.closeAdminNotifSenderModal = function () {
     }
 };
 
+// ✅ 체크박스 전체선택 / 전체해제
+window.selectAllAdminNotifUsers = function (checked) {
+    document.querySelectorAll('.admin-notif-user-checkbox').forEach(cb => {
+        cb.checked = checked;
+    });
+    updateAdminNotifSelectedCount();
+};
+
+// ✅ 선택된 사용자 수 카운터 업데이트
+window.updateAdminNotifSelectedCount = function () {
+    const countEl = document.getElementById('selectedUserCount');
+    if (!countEl) return;
+    const count = document.querySelectorAll('.admin-notif-user-checkbox:checked').length;
+    countEl.textContent = count;
+    countEl.style.color = count > 0 ? '#c62828' : '#adb5bd';
+};
+
 // ─────────────────────────────────────────
 // 4. 알림 전송 실행 (Firebase DB에 저장)
 // ─────────────────────────────────────────
@@ -1270,22 +1320,25 @@ window.sendAdminNotification = async function () {
             }
 
         } else {
-            const selectedUid = document.getElementById('targetUserSelect')?.value;
-            if (!selectedUid) {
+            // ✅ 체크박스에서 선택된 UID 다중 수집
+            const checkedBoxes = document.querySelectorAll('.admin-notif-user-checkbox:checked');
+            if (checkedBoxes.length === 0) {
                 hideLoadingIndicator();
-                alert('사용자를 선택해주세요.');
+                alert('사용자를 1명 이상 선택해주세요.');
                 return;
             }
 
-            const selectedUserData = usersData[selectedUid];
-            const selectedEmail = selectedUserData?.email || selectedUid;
+            targetUids = Array.from(checkedBoxes).map(cb => cb.value);
 
-            if (!confirm(`📢 [${selectedEmail}]에게 알림을 전송하시겠습니까?\n\n제목: ${title}\n내용: ${text}`)) {
+            const selectedEmails = targetUids.map(uid => usersData[uid]?.email || uid);
+            const previewLabel = selectedEmails.length > 3
+                ? selectedEmails.slice(0, 3).join(', ') + ` 외 ${selectedEmails.length - 3}명`
+                : selectedEmails.join(', ');
+
+            if (!confirm(`📢 ${targetUids.length}명에게 알림을 전송하시겠습니까?\n대상: ${previewLabel}\n\n제목: ${title}\n내용: ${text}`)) {
                 hideLoadingIndicator();
                 return;
             }
-
-            targetUids = [selectedUid];
         }
 
         // Firebase에 알림 데이터 저장 (pushed: false → GitHub Actions가 FCM 전송)
