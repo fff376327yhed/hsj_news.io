@@ -77,41 +77,33 @@ self.addEventListener('notificationclick', (event) => {
   
   event.notification.close();
   
-  // "닫기" 버튼이면 아무것도 안 함
   if (event.action === 'close') {
     console.log('[SW] ❌ 닫기 버튼 클릭');
     return;
   }
 
-  // ✅ data에 저장된 targetUrl 사용, 없으면 홈으로 fallback
   const targetUrl = event.notification.data?.targetUrl || `${BASE_URL}/?page=home`;
   
   console.log('[SW] 🔗 이동할 URL:', targetUrl);
 
+  // ✅ 액션 버튼('open')과 본체 클릭 모두 openWindow로 통일
+  // client.navigate()는 액션 버튼 클릭 시 브라우저 권한 문제로 조용히 실패함
   event.waitUntil(
     clients.matchAll({ 
       type: 'window', 
       includeUncontrolled: true 
     }).then((clientList) => {
-      for (const client of clientList) {
-        if (client.url.startsWith(BASE_URL) && 'focus' in client) {
-          console.log('[SW] ✅ 기존 탭 포커스 후 이동:', targetUrl);
-          return client.focus().then((focusedClient) => {
-            if (focusedClient && 'navigate' in focusedClient) {
-              return focusedClient.navigate(targetUrl);
-            }
-            // navigate 미지원 시 postMessage로 앱에 URL 전달
-            focusedClient?.postMessage({ type: 'SW_NAVIGATE', url: targetUrl });
-          }).catch(() => {
-            return clients.openWindow(targetUrl);
-          });
-        }
+      const existingClient = clientList.find(c => c.url.startsWith(BASE_URL));
+      
+      if (existingClient) {
+        console.log('[SW] ✅ 기존 탭 포커스 후 openWindow:', targetUrl);
+        // focus 후 openWindow — navigate보다 액션 버튼에서 훨씬 안정적
+        return existingClient.focus().then(() => clients.openWindow(targetUrl));
       }
       
       console.log('[SW] 🆕 새 탭 열기:', targetUrl);
       return clients.openWindow(targetUrl);
-    }).catch((err) => {
-      console.error('[SW] ❌ 탭 이동 실패, 새 탭으로 fallback:', err);
+    }).catch(() => {
       return clients.openWindow(targetUrl);
     })
   );
