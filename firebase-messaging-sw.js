@@ -93,16 +93,25 @@ self.addEventListener('notificationclick', (event) => {
       type: 'window', 
       includeUncontrolled: true 
     }).then((clientList) => {
-      // 이미 열린 해정뉴스 탭이 있으면 포커스 후 이동
       for (const client of clientList) {
-        if (client.url.startsWith(BASE_URL)) {
-          console.log('[SW] ✅ 기존 탭에서 이동:', targetUrl);
-          return client.focus().then(() => client.navigate(targetUrl));
+        if (client.url.startsWith(BASE_URL) && 'focus' in client) {
+          console.log('[SW] ✅ 기존 탭 포커스 후 이동:', targetUrl);
+          return client.focus().then((focusedClient) => {
+            if (focusedClient && 'navigate' in focusedClient) {
+              return focusedClient.navigate(targetUrl);
+            }
+            // navigate 미지원 시 postMessage로 앱에 URL 전달
+            focusedClient?.postMessage({ type: 'SW_NAVIGATE', url: targetUrl });
+          }).catch(() => {
+            return clients.openWindow(targetUrl);
+          });
         }
       }
       
-      // 열린 탭이 없으면 새 탭으로 열기
       console.log('[SW] 🆕 새 탭 열기:', targetUrl);
+      return clients.openWindow(targetUrl);
+    }).catch((err) => {
+      console.error('[SW] ❌ 탭 이동 실패, 새 탭으로 fallback:', err);
       return clients.openWindow(targetUrl);
     })
   );
