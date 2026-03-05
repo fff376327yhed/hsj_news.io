@@ -499,47 +499,9 @@ if ('serviceWorker' in navigator) {
     <!-- 관리자 전용 섹션 -->
     <div id="adminModeIndicator"></div>
 
-    <!-- ✅ 추가: 조회수 관리 섹션 -->
-    <div id="viewsManagementSection" style="display:none;">
-        <div class="settings-divider"></div>
-        
-        <h3 class="section-title">📊 조회수 관리</h3>
-        <div style="background:white; padding:16px; border-radius:12px; margin-bottom:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
-            <p style="color:#6c757d; font-size:14px; margin-bottom:12px;">
-                <i class="fas fa-info-circle"></i> 모든 기사의 조회수를 0으로 초기화합니다.
-            </p>
-            <button onclick="resetAllViews()" class="btn-warning btn-block">
-                <i class="fas fa-redo"></i> 전체 조회수 초기화
-            </button>
-        </div>
-        
-        <div style="background:white; padding:16px; border-radius:12px; margin-bottom:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
-            <p style="color:#6c757d; font-size:14px; margin-bottom:12px;">
-                <i class="fas fa-info-circle"></i> 내 브라우저의 조회 기록을 삭제합니다.
-            </p>
-            <button onclick="clearMyViewHistory()" class="btn-secondary btn-block">
-                <i class="fas fa-trash-alt"></i> 내 조회 기록 삭제
-            </button>
-        </div>
-    </div>
     
-    <div class="settings-divider"></div>
     
-    <h3 class="section-title">🛡️ 관리</h3>
-    <button onclick="openAdminAuthModal()" class="btn-info btn-block">
-        <i class="fas fa-user-shield"></i> 관리자 로그인
-    </button>
-    <button onclick="showUserManagement()" class="btn-primary btn-block">
-        <i class="fas fa-users"></i> 사용자 관리
-    </button>
-    <button onclick="showPinnedArticleManager()" class="btn-success btn-block">
-        <i class="fas fa-thumbtack"></i> 기사 고정 관리
-    </button>
-    
-    <!-- 🔧 점검모드 관리 버튼 (관리자 전용) -->
-    <button onclick="showMaintenanceModeManager()" class="btn-warning btn-block" id="maintenanceModeBtn" style="display:none;">
-        <i class="fas fa-tools"></i> 점검모드 관리
-    </button>
+    <!-- 관리자 기능은 더보기 > 관리자 섹션으로 이동됨 -->
 </section>
 
 <!-- 더보기 섹션 -->
