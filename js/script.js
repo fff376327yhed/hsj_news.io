@@ -964,8 +964,21 @@ console.log("✅ Part 3 프로필 관리 완료");
 // ⚠️ script.js 의 registerFCMToken 함수를 아래로 교체하세요
 // ===================================================
 
+let _fcmRegistering = false;
+let _fcmRegistered = false;
+
 async function registerFCMToken() {
     console.log('📱 FCM 토큰 등록 시작...');
+
+    if (_fcmRegistering) {
+        console.log('⏳ FCM 등록 이미 진행 중 - 중복 실행 방지');
+        return;
+    }
+    if (_fcmRegistered) {
+        console.log('✅ FCM 토큰 이미 등록됨 - 건너뜀');
+        return;
+    }
+    _fcmRegistering = true;
 
     // 1. 브라우저 지원 확인
     if (!('serviceWorker' in navigator)) {
@@ -1039,6 +1052,7 @@ async function registerFCMToken() {
             browser: getBrowserInfo()
         });
         console.log('✅ FCM 토큰 저장/갱신 완료');
+        _fcmRegistered = true;
 
         // 8. notificationsEnabled 확인 및 자동 활성화
         const userSnap = await db.ref(`users/${uid}/notificationsEnabled`).once('value');
@@ -1057,6 +1071,8 @@ async function registerFCMToken() {
         } else if (error.code === 'messaging/unsupported-browser') {
             console.warn('💡 이 브라우저는 웹 푸시를 지원하지 않습니다.');
         }
+    } finally {
+        _fcmRegistering = false;
     }
 }
 
@@ -1340,7 +1356,17 @@ console.log("✅ Part 4 알림 시스템 완료");
         }
 
         setupNotificationListener(user.uid);
+        _fcmRegistered = false; // 로그인마다 재등록 허용
         registerFCMToken(); // ✅ 로그인마다 FCM 토큰 갱신
+
+        // ✅ 타이밍 문제로 첫 등록 실패한 경우 탭 포커스 시 재시도
+        document.addEventListener('visibilitychange', function _fcmRetryOnVisible() {
+            if (document.visibilityState === 'visible' && !_fcmRegistered && isLoggedIn()) {
+                console.log('👁️ 탭 포커스 복귀 - FCM 등록 재시도');
+                registerFCMToken();
+            }
+        });
+
         updateHeaderProfileButton(user);
         updateLastSeen();
         
@@ -2720,12 +2746,7 @@ async function showArticleDetail(id) {
             <div style="font-size:16px;line-height:1.8;color:#333;">${sanitizeHTML(A.content)}</div>
             
             <div style="display:flex;gap:10px;padding-top:20px;margin-top:20px;border-top:1px solid #eee; justify-content:center;">
-                <button onclick="toggleVote('${A.id}', 'like')" class="vote-btn ${userVote === 'like' ? 'active' : ''}">
-                    👍 추천 ${votes.likes}
-                </button>
-                <button onclick="toggleVote('${A.id}', 'dislike')" class="vote-btn dislike ${userVote === 'dislike' ? 'active' : ''}">
-                    👎 비추천 ${votes.dislikes}
-                </button>
+                <button id=\"like-btn-${A.id}\" onclick=\"toggleVote('${A.id}', 'like')\" class=\"vote-btn ${userVote === 'like' ? 'active' : ''}\">\n                    👍 추천 ${votes.likes}\n                </button>\n                <button id=\"dislike-btn-${A.id}\" onclick=\"toggleVote('${A.id}', 'dislike')\" class=\"vote-btn dislike ${userVote === 'dislike' ? 'active' : ''}\">\n                    👎 비추천 ${votes.dislikes}\n                </button>
             </div>
             
             ${canEdit ? `<div style="margin-top:20px;text-align:right;">
@@ -5006,10 +5027,25 @@ function toggleVote(articleId, voteType) {
                 voteRef.set(voteType); 
             }
             return article;
-        }).then(() => {
-            if (document.getElementById("articleDetailSection")?.classList.contains("active")) {
-                showArticleDetail(articleId);
-            }
+        }).then((result) => {
+            if (!result.committed) return;
+            const updated = result.snapshot.val();
+            if (!updated) return;
+
+            const likeBtn = document.getElementById(`like-btn-${articleId}`);
+            const dislikeBtn = document.getElementById(`dislike-btn-${articleId}`);
+
+            voteRef.once('value').then(snap => {
+                const newVote = snap.val();
+                if (likeBtn) {
+                    likeBtn.className = `vote-btn${newVote === 'like' ? ' active' : ''}`;
+                    likeBtn.innerHTML = `👍 추천 ${updated.likeCount || 0}`;
+                }
+                if (dislikeBtn) {
+                    dislikeBtn.className = `vote-btn dislike${newVote === 'dislike' ? ' active' : ''}`;
+                    dislikeBtn.innerHTML = `👎 비추천 ${updated.dislikeCount || 0}`;
+                }
+            });
         });
     });
 }
