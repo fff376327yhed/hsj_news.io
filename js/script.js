@@ -420,7 +420,7 @@ function updateURL(page, articleId = null, section = null) {
 
 // 라우팅 함수
 function routeToPage(page, articleId = null, section = null) {
-    const adminPages = ['users', 'adminSettings', 'eventManager', 'management'];
+    const adminPages = ['users', 'adminSettings', 'eventManager', 'management', 'errorlogs'];
     
     if (adminPages.includes(page) && !isAdmin()) {
         alert("🚫 관리자 권한이 필요합니다.");
@@ -438,14 +438,15 @@ function routeToPage(page, articleId = null, section = null) {
         'profile': () => section ? (typeof showUserProfile === 'function' ? showUserProfile(section) : showArticles()) : showArticles(),
         'qna': () => typeof showQnA === 'function' ? showQnA() : showSettings(),
         'patchnotes': () => typeof showPatchNotesPage === 'function' ? showPatchNotesPage() : showSettings(),
-        'users': () => typeof showUserManagement === 'function' ? showUserManagement() : showArticles(),
+        'users': () => typeof showUserManagement === 'function' ? showUserManagement() : showMoreMenu(),
         'admin': () => typeof showAdminEvent === 'function' ? showAdminEvent() : showArticles(),
         'more': () => showMoreMenu(),
         'messenger': () => typeof showMessenger === 'function' ? showMessenger() : showMoreMenu(),
         'friends': () => typeof showFriendsPage === 'function' ? showFriendsPage() : showMoreMenu(),
         'friendRequests': () => typeof showFriendRequestsPage === 'function' ? showFriendRequestsPage() : showMoreMenu(),
         'bugreport': () => typeof showBugReportPage === 'function' ? showBugReportPage() : showMoreMenu(),
-        'notification-settings': () => typeof showNotificationSettings === 'function' ? showNotificationSettings() : showSettings()
+        'notification-settings': () => typeof showNotificationSettings === 'function' ? showNotificationSettings() : showSettings(),
+        'errorlogs': () => showErrorLogs()
     };
     
     const routeFunction = routes[page];
@@ -1136,6 +1137,67 @@ function getBrowserInfo() {
     if (ua.includes('Edge')) return 'Edge';
     return 'Unknown';
 }
+
+function getDeviceType() {
+    const ua = navigator.userAgent;
+    if (/Mobi|Android|iPhone|iPad|iPod/i.test(ua)) {
+        if (/iPad/i.test(ua)) return '태블릿';
+        return '모바일';
+    }
+    return 'PC';
+}
+
+function getOSInfo() {
+    const ua = navigator.userAgent;
+    if (ua.includes('Windows')) return 'Windows';
+    if (ua.includes('Mac')) return 'macOS';
+    if (ua.includes('Android')) return 'Android';
+    if (ua.includes('iPhone') || ua.includes('iPad')) return 'iOS';
+    if (ua.includes('Linux')) return 'Linux';
+    return 'Unknown';
+}
+
+// ✅ 오류 Firebase에 저장
+async function logErrorToFirebase(errorInfo) {
+    try {
+        const user = auth?.currentUser;
+        const logEntry = {
+            message: errorInfo.message || '알 수 없는 오류',
+            stack: (errorInfo.stack || '').substring(0, 1000),
+            type: errorInfo.type || 'runtime',
+            page: window.location.href,
+            timestamp: Date.now(),
+            uid: user ? user.uid : 'anonymous',
+            email: user ? (user.email || '이메일 없음') : '비로그인',
+            device: getDeviceType(),
+            browser: getBrowserInfo(),
+            os: getOSInfo(),
+            userAgent: navigator.userAgent.substring(0, 150),
+            screenSize: `${window.screen.width}x${window.screen.height}`
+        };
+        await db.ref('errorLogs').push(logEntry);
+    } catch (e) {
+        // 로깅 자체 실패는 무시
+    }
+}
+
+// ✅ 전역 오류 자동 감지
+window.onerror = function(message, source, lineno, colno, error) {
+    logErrorToFirebase({
+        message: message,
+        stack: error?.stack || `${source} ${lineno}:${colno}`,
+        type: 'uncaught'
+    });
+    return false;
+};
+
+window.onunhandledrejection = function(event) {
+    logErrorToFirebase({
+        message: event.reason?.message || String(event.reason) || 'Promise rejection',
+        stack: event.reason?.stack || '',
+        type: 'unhandledrejection'
+    });
+};
 
 // 포그라운드 메시지 수신 핸들러
 if (messaging) {
@@ -2119,6 +2181,39 @@ function showMoreMenu() {
                     </button>
                 </div>
             </div>
+            
+            ${isAdmin() ? `
+            <div class="menu-section" style="background:#fff8f8; border:1px solid #ffcdd2; border-radius:12px; padding:20px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                <h3 style="color:#c62828; margin:0 0 15px 0; font-size:16px; font-weight:700;">
+                    <i class="fas fa-shield-alt"></i> 관리자
+                </h3>
+                <div style="display:grid; gap:10px;">
+                    <button onclick="showUserManagement()" class="more-menu-btn" style="border-color:#ffcdd2;">
+                        <i class="fas fa-users-cog" style="color:#c62828;"></i> 유저 관리
+                    </button>
+                    <button onclick="showPinnedArticleManager()" class="more-menu-btn" style="border-color:#ffcdd2;">
+                        <i class="fas fa-thumbtack" style="color:#c62828;"></i> 기사 고정 관리
+                    </button>
+                    <button onclick="showMaintenanceModeManager()" class="more-menu-btn" style="border-color:#ffcdd2;">
+                        <i class="fas fa-tools" style="color:#c62828;"></i> 점검모드 관리
+                    </button>
+                    <button onclick="showBannedWordManager()" class="more-menu-btn" style="border-color:#ffcdd2;">
+                        <i class="fas fa-ban" style="color:#c62828;"></i> 금지어 관리
+                    </button>
+                    <button onclick="showErrorLogs()" class="more-menu-btn" style="border-color:#ffcdd2;">
+                        <i class="fas fa-bug" style="color:#c62828;"></i> 오류 로그
+                    </button>
+                    <button onclick="resetAllViews()" class="more-menu-btn" style="border-color:#ffcdd2;">
+                        <i class="fas fa-redo" style="color:#c62828;"></i> 전체 조회수 초기화
+                    </button>
+                    <button onclick="clearMyViewHistory()" class="more-menu-btn" style="border-color:#ffcdd2;">
+                        <i class="fas fa-trash-alt" style="color:#c62828;"></i> 내 조회 기록 삭제
+                    </button>
+                    <button onclick="showManualNotificationSender()" class="more-menu-btn" style="border-color:#ffcdd2;">
+                        <i class="fas fa-paper-plane" style="color:#c62828;"></i> 수동 알림 전송
+                    </button>
+                </div>
+            </div>` : ''}
             
         </div>
         
@@ -7559,5 +7654,493 @@ console.log("✅ Part 16: 점검모드 시스템 로드 완료");
     }
 
 })();
+
+// ===== 관리자 오류 로그 페이지 =====
+async function showErrorLogs() {
+    if (!isAdmin()) {
+        alert('🚫 관리자 권한이 필요합니다.');
+        showArticles();
+        return;
+    }
+
+    document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+
+    let section = document.getElementById('errorLogsSection');
+    if (!section) {
+        section = document.createElement('div');
+        section.id = 'errorLogsSection';
+        section.className = 'page-section';
+        document.querySelector('main')?.appendChild(section);
+    }
+    section.classList.add('active');
+
+    section.innerHTML = `
+        <div style="max-width:1100px;margin:0 auto;padding:20px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:gap;">
+                <h2 style="margin:0;font-size:22px;font-weight:700;">🛠️ 오류 로그</h2>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <select id="errFilterDevice" onchange="renderErrorLogs()" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;">
+                        <option value="">전체 디바이스</option>
+                        <option value="PC">PC</option>
+                        <option value="모바일">모바일</option>
+                        <option value="태블릿">태블릿</option>
+                    </select>
+                    <select id="errFilterType" onchange="renderErrorLogs()" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;">
+                        <option value="">전체 타입</option>
+                        <option value="uncaught">uncaught</option>
+                        <option value="unhandledrejection">promise</option>
+                        <option value="runtime">runtime</option>
+                    </select>
+                    <input id="errFilterUser" oninput="renderErrorLogs()" placeholder="이메일 검색" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:160px;">
+                    <button onclick="clearErrorLogs()" style="padding:6px 14px;background:#c62828;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;">🗑️ 전체 삭제</button>
+                </div>
+            </div>
+            <div id="errSummary" style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;"></div>
+            <div id="errTableWrap" style="overflow-x:auto;">
+                <div style="text-align:center;padding:40px;color:#999;">⏳ 불러오는 중...</div>
+            </div>
+        </div>`;
+
+    try {
+        const snap = await db.ref('errorLogs').orderByChild('timestamp').once('value');
+        const raw = snap.val() || {};
+        window._errorLogsData = Object.entries(raw)
+            .map(([id, v]) => ({ id, ...v }))
+            .sort((a, b) => b.timestamp - a.timestamp);
+        renderErrorLogs();
+    } catch (e) {
+        document.getElementById('errTableWrap').innerHTML = `<p style="color:red;">오류 로드 실패: ${e.message}</p>`;
+    }
+}
+
+function renderErrorLogs() {
+    const data = window._errorLogsData || [];
+    const filterDevice = document.getElementById('errFilterDevice')?.value || '';
+    const filterType   = document.getElementById('errFilterType')?.value || '';
+    const filterUser   = (document.getElementById('errFilterUser')?.value || '').toLowerCase();
+
+    const filtered = data.filter(e =>
+        (!filterDevice || e.device === filterDevice) &&
+        (!filterType   || e.type === filterType) &&
+        (!filterUser   || (e.email || '').toLowerCase().includes(filterUser))
+    );
+
+    // 요약
+    const summary = document.getElementById('errSummary');
+    if (summary) {
+        const total   = filtered.length;
+        const pc      = filtered.filter(e => e.device === 'PC').length;
+        const mobile  = filtered.filter(e => e.device === '모바일').length;
+        const today   = filtered.filter(e => e.timestamp > Date.now() - 86400000).length;
+        summary.innerHTML = [
+            ['전체', total, '#1565c0'],
+            ['오늘', today, '#2e7d32'],
+            ['PC', pc, '#6a1b9a'],
+            ['모바일', mobile, '#e65100']
+        ].map(([label, count, color]) => `
+            <div style="background:#fff;border:1px solid #eee;border-radius:8px;padding:12px 20px;min-width:80px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.06);">
+                <div style="font-size:22px;font-weight:700;color:${color};">${count}</div>
+                <div style="font-size:12px;color:#666;margin-top:2px;">${label}</div>
+            </div>`).join('');
+    }
+
+    const wrap = document.getElementById('errTableWrap');
+    if (!wrap) return;
+
+    if (filtered.length === 0) {
+        wrap.innerHTML = `<div style="text-align:center;padding:60px;color:#999;">오류 로그가 없습니다.</div>`;
+        return;
+    }
+
+    const rows = filtered.map(e => {
+        const date = new Date(e.timestamp);
+        const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}:${String(date.getSeconds()).padStart(2,'0')}`;
+        const deviceIcon = e.device === 'PC' ? '🖥️' : e.device === '모바일' ? '📱' : '📟';
+        const typeColor = e.type === 'uncaught' ? '#c62828' : e.type === 'unhandledrejection' ? '#e65100' : '#1565c0';
+        const shortStack = (e.stack || '').split('\n')[0] || '-';
+        return `
+            <tr style="border-bottom:1px solid #f0f0f0;" onclick="toggleErrDetail('${e.id}')" style="cursor:pointer;">
+                <td style="padding:10px 12px;font-size:12px;color:#555;white-space:nowrap;">${dateStr}</td>
+                <td style="padding:10px 12px;font-size:12px;">${deviceIcon} ${e.device || '-'}</td>
+                <td style="padding:10px 12px;font-size:12px;">${e.os || '-'} / ${e.browser || '-'}</td>
+                <td style="padding:10px 12px;font-size:12px;color:#333;">${e.email || '비로그인'}</td>
+                <td style="padding:10px 12px;"><span style="font-size:11px;padding:2px 7px;border-radius:4px;background:${typeColor}20;color:${typeColor};font-weight:600;">${e.type || '-'}</span></td>
+                <td style="padding:10px 12px;font-size:12px;color:#c62828;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.message || '-'}</td>
+                <td style="padding:10px 12px;">
+                    <button onclick="event.stopPropagation();deleteErrorLog('${e.id}')" style="padding:3px 8px;background:#ffebee;color:#c62828;border:none;border-radius:4px;cursor:pointer;font-size:11px;">삭제</button>
+                </td>
+            </tr>
+            <tr id="errDetail-${e.id}" style="display:none;background:#fafafa;">
+                <td colspan="7" style="padding:12px 20px;">
+                    <div style="font-size:12px;color:#333;">
+                        <strong>📍 페이지:</strong> ${e.page || '-'}<br>
+                        <strong>📐 화면:</strong> ${e.screenSize || '-'}<br>
+                        <strong>🔑 UID:</strong> ${e.uid || '-'}<br>
+                        <strong>📋 스택:</strong><br>
+                        <pre style="margin:6px 0 0;padding:10px;background:#f5f5f5;border-radius:4px;font-size:11px;overflow-x:auto;white-space:pre-wrap;">${(e.stack || '-').substring(0, 800)}</pre>
+                    </div>
+                </td>
+            </tr>`;
+    }).join('');
+
+    wrap.innerHTML = `
+        <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+            <thead>
+                <tr style="background:#f8f9fa;border-bottom:2px solid #eee;">
+                    <th style="padding:10px 12px;text-align:left;font-size:12px;color:#555;">시간</th>
+                    <th style="padding:10px 12px;text-align:left;font-size:12px;color:#555;">디바이스</th>
+                    <th style="padding:10px 12px;text-align:left;font-size:12px;color:#555;">OS / 브라우저</th>
+                    <th style="padding:10px 12px;text-align:left;font-size:12px;color:#555;">계정</th>
+                    <th style="padding:10px 12px;text-align:left;font-size:12px;color:#555;">타입</th>
+                    <th style="padding:10px 12px;text-align:left;font-size:12px;color:#555;">오류 메시지</th>
+                    <th style="padding:10px 12px;"></th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>`;
+}
+
+function toggleErrDetail(id) {
+    const row = document.getElementById(`errDetail-${id}`);
+    if (!row) return;
+    row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+}
+
+async function deleteErrorLog(id) {
+    if (!confirm('이 오류 로그를 삭제할까요?')) return;
+    await db.ref(`errorLogs/${id}`).remove();
+    window._errorLogsData = (window._errorLogsData || []).filter(e => e.id !== id);
+    renderErrorLogs();
+}
+
+async function clearErrorLogs() {
+    if (!confirm('⚠️ 모든 오류 로그를 삭제할까요?')) return;
+    await db.ref('errorLogs').remove();
+    window._errorLogsData = [];
+    renderErrorLogs();
+}
+
+// ===== 수동 알림 전송 =====
+async function showManualNotificationSender() {
+    if (!isAdmin()) { alert('🚫 관리자 권한이 필요합니다.'); return; }
+
+    // 기존 모달 제거
+    document.getElementById('_manualNotifModal')?.remove();
+
+    // 유저 목록 로드
+    const usersSnap = await db.ref('users').once('value');
+    const usersData = usersSnap.val() || {};
+    const userOptions = Object.entries(usersData)
+        .filter(([_, u]) => u && u.email)
+        .map(([uid, u]) => `<option value="${uid}">${u.email}</option>`)
+        .join('');
+
+    const modal = document.createElement('div');
+    modal.id = '_manualNotifModal';
+    modal.style.cssText = `
+        position:fixed; top:0; left:0; width:100%; height:100%;
+        background:rgba(0,0,0,0.5); z-index:99999;
+        display:flex; align-items:center; justify-content:center; padding:16px;
+    `;
+    modal.innerHTML = `
+        <div style="background:#fff; border-radius:14px; padding:28px; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+                <h3 style="margin:0; font-size:18px; font-weight:700;">📢 수동 알림 전송</h3>
+                <button onclick="document.getElementById('_manualNotifModal').remove()"
+                    style="background:none; border:none; font-size:22px; cursor:pointer; color:#888; line-height:1;">✕</button>
+            </div>
+
+            <!-- 대상 -->
+            <div style="margin-bottom:16px;">
+                <label style="font-size:13px; font-weight:600; color:#333; display:block; margin-bottom:6px;">📌 전송 대상</label>
+                <select id="_notifTarget" onchange="toggleManualNotifUserSelect()" style="width:100%; padding:9px 12px; border:1px solid #ddd; border-radius:8px; font-size:14px;">
+                    <option value="all">전체 유저</option>
+                    <option value="specific">특정 유저 선택</option>
+                </select>
+            </div>
+            <div id="_notifUserSelectWrap" style="display:none; margin-bottom:16px;">
+                <label style="font-size:13px; font-weight:600; color:#333; display:block; margin-bottom:6px;">👤 유저 선택</label>
+                <select id="_notifTargetUser" style="width:100%; padding:9px 12px; border:1px solid #ddd; border-radius:8px; font-size:14px;">
+                    ${userOptions}
+                </select>
+            </div>
+
+            <!-- 제목 -->
+            <div style="margin-bottom:16px;">
+                <label style="font-size:13px; font-weight:600; color:#333; display:block; margin-bottom:6px;">📋 제목</label>
+                <input id="_notifTitle" type="text" placeholder="알림 제목을 입력하세요"
+                    style="width:100%; padding:9px 12px; border:1px solid #ddd; border-radius:8px; font-size:14px; box-sizing:border-box;">
+            </div>
+
+            <!-- 내용 -->
+            <div style="margin-bottom:16px;">
+                <label style="font-size:13px; font-weight:600; color:#333; display:block; margin-bottom:6px;">💬 내용</label>
+                <textarea id="_notifBody" placeholder="알림 내용을 입력하세요" rows="3"
+                    style="width:100%; padding:9px 12px; border:1px solid #ddd; border-radius:8px; font-size:14px; resize:vertical; box-sizing:border-box;"></textarea>
+            </div>
+
+            <!-- 링크 기사 (선택) -->
+            <div style="margin-bottom:20px;">
+                <label style="font-size:13px; font-weight:600; color:#333; display:block; margin-bottom:6px;">🔗 기사 ID <span style="font-weight:400; color:#999;">(선택, 클릭 시 이동)</span></label>
+                <input id="_notifArticleId" type="text" placeholder="기사 ID (없으면 홈으로 이동)"
+                    style="width:100%; padding:9px 12px; border:1px solid #ddd; border-radius:8px; font-size:14px; box-sizing:border-box;">
+            </div>
+
+            <div id="_notifResult" style="margin-bottom:12px; font-size:13px;"></div>
+
+            <button onclick="sendManualNotification()"
+                style="width:100%; padding:12px; background:#c62828; color:#fff; border:none; border-radius:8px; font-size:15px; font-weight:700; cursor:pointer;">
+                📢 알림 전송
+            </button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    // 모달 외부 클릭 시 닫기
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+    });
+}
+
+function toggleManualNotifUserSelect() {
+    const target = document.getElementById('_notifTarget')?.value;
+    const wrap = document.getElementById('_notifUserSelectWrap');
+    if (wrap) wrap.style.display = target === 'specific' ? 'block' : 'none';
+}
+
+async function sendManualNotification() {
+    const target    = document.getElementById('_notifTarget')?.value;
+    const title     = document.getElementById('_notifTitle')?.value.trim();
+    const body      = document.getElementById('_notifBody')?.value.trim();
+    const articleId = document.getElementById('_notifArticleId')?.value.trim();
+    const resultEl  = document.getElementById('_notifResult');
+
+    if (!title) { resultEl.innerHTML = '<span style="color:#c62828;">⚠️ 제목을 입력해주세요.</span>'; return; }
+    if (!body)  { resultEl.innerHTML = '<span style="color:#c62828;">⚠️ 내용을 입력해주세요.</span>'; return; }
+
+    resultEl.innerHTML = '<span style="color:#888;">⏳ 전송 중...</span>';
+
+    try {
+        const usersSnap = await db.ref('users').once('value');
+        const usersData = usersSnap.val() || {};
+
+        let targetUids = [];
+
+        if (target === 'all') {
+            targetUids = Object.keys(usersData).filter(uid => usersData[uid]);
+        } else {
+            const specificUid = document.getElementById('_notifTargetUser')?.value;
+            if (specificUid) targetUids = [specificUid];
+        }
+
+        if (targetUids.length === 0) {
+            resultEl.innerHTML = '<span style="color:#c62828;">⚠️ 전송 대상이 없습니다.</span>';
+            return;
+        }
+
+        const timestamp = Date.now();
+        const updates = {};
+
+        targetUids.forEach(uid => {
+            const notifId = `notif_${timestamp}_${Math.random().toString(36).substr(2, 9)}`;
+            updates[`notifications/${uid}/${notifId}`] = {
+                type: 'admin',
+                title: title,
+                text: body,
+                articleId: articleId || '',
+                timestamp: timestamp,
+                read: false,
+                pushed: false
+            };
+        });
+
+        await db.ref().update(updates);
+
+        resultEl.innerHTML = `<span style="color:#2e7d32;">✅ ${targetUids.length}명에게 알림 전송 완료!</span>`;
+
+    } catch (error) {
+        console.error('수동 알림 전송 실패:', error);
+        resultEl.innerHTML = `<span style="color:#c62828;">❌ 전송 실패: ${error.message}</span>`;
+    }
+}
+
+// ===== 수동 알림 전송 =====
+async function showManualNotificationSender() {
+    if (!isAdmin()) { alert('🚫 관리자 권한이 필요합니다.'); return; }
+
+    document.getElementById('_manualNotifModal')?.remove();
+
+    const usersSnap = await db.ref('users').once('value');
+    const usersData = usersSnap.val() || {};
+
+    // FCM 토큰이 등록된 유저만 필터링
+    const fcmUsers = Object.entries(usersData)
+        .filter(([_, u]) => u && u.email && u.fcmTokens && Object.keys(u.fcmTokens).length > 0)
+        .map(([uid, u]) => ({ uid, email: u.email }));
+
+    const modal = document.createElement('div');
+    modal.id = '_manualNotifModal';
+    modal.style.cssText = `
+        position:fixed; top:0; left:0; width:100%; height:100%;
+        background:rgba(0,0,0,0.5); z-index:99999;
+        display:flex; align-items:center; justify-content:center; padding:16px;
+    `;
+    modal.innerHTML = `
+        <div style="background:#fff; border-radius:14px; padding:28px; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+                <h3 style="margin:0; font-size:18px; font-weight:700;">📢 수동 알림 전송</h3>
+                <button onclick="document.getElementById('_manualNotifModal').remove()"
+                    style="background:none; border:none; font-size:22px; cursor:pointer; color:#888; line-height:1;">✕</button>
+            </div>
+
+            <!-- 대상 -->
+            <div style="margin-bottom:16px;">
+                <label style="font-size:13px; font-weight:600; color:#333; display:block; margin-bottom:6px;">📌 전송 대상</label>
+                <select id="_notifTarget" onchange="toggleManualNotifUserSelect()" style="width:100%; padding:9px 12px; border:1px solid #ddd; border-radius:8px; font-size:14px;">
+                    <option value="all">전체 유저</option>
+                    <option value="specific">특정 유저 선택</option>
+                </select>
+            </div>
+
+            <!-- 특정 유저 선택 (체크박스) -->
+            <div id="_notifUserSelectWrap" style="display:none; margin-bottom:16px;">
+                <label style="font-size:13px; font-weight:600; color:#333; display:block; margin-bottom:6px;">
+                    👤 유저 선택
+                    <span style="font-weight:400; color:#999;">(FCM 등록 유저만 표시 · 복수 선택 가능)</span>
+                </label>
+                <div style="display:flex; gap:6px; margin-bottom:8px; align-items:center;">
+                    <button type="button" onclick="selectAllNotifUsers(true)"
+                        style="padding:4px 10px; font-size:12px; border:1px solid #c62828; background:#fff; color:#c62828; border-radius:5px; cursor:pointer;">전체 선택</button>
+                    <button type="button" onclick="selectAllNotifUsers(false)"
+                        style="padding:4px 10px; font-size:12px; border:1px solid #ddd; background:#fff; color:#888; border-radius:5px; cursor:pointer;">전체 해제</button>
+                    <span id="_notifSelectedCount" style="font-size:12px; color:#888; margin-left:4px;">0명 선택됨</span>
+                </div>
+                <div id="_notifUserCheckList"
+                    style="max-height:200px; overflow-y:auto; border:1px solid #ddd; border-radius:8px; padding:8px; background:#fafafa; display:flex; flex-direction:column; gap:2px;">
+                    ${fcmUsers.length === 0
+                        ? `<p style="color:#999; font-size:13px; text-align:center; margin:10px 0;">FCM 토큰이 등록된 유저가 없습니다.</p>`
+                        : fcmUsers.map(u => `
+                            <label style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:13px; background:transparent; transition:background 0.15s;"
+                                onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">
+                                <input type="checkbox" value="${u.uid}" onchange="updateNotifSelectedCount()"
+                                    style="width:15px; height:15px; accent-color:#c62828; cursor:pointer; flex-shrink:0;">
+                                <span style="color:#333;">${u.email}</span>
+                            </label>`).join('')
+                    }
+                </div>
+            </div>
+
+            <!-- 제목 -->
+            <div style="margin-bottom:16px;">
+                <label style="font-size:13px; font-weight:600; color:#333; display:block; margin-bottom:6px;">📋 제목</label>
+                <input id="_notifTitle" type="text" placeholder="알림 제목을 입력하세요"
+                    style="width:100%; padding:9px 12px; border:1px solid #ddd; border-radius:8px; font-size:14px; box-sizing:border-box;">
+            </div>
+
+            <!-- 내용 -->
+            <div style="margin-bottom:16px;">
+                <label style="font-size:13px; font-weight:600; color:#333; display:block; margin-bottom:6px;">💬 내용</label>
+                <textarea id="_notifBody" placeholder="알림 내용을 입력하세요" rows="3"
+                    style="width:100%; padding:9px 12px; border:1px solid #ddd; border-radius:8px; font-size:14px; resize:vertical; box-sizing:border-box;"></textarea>
+            </div>
+
+            <!-- 기사 ID (선택) -->
+            <div style="margin-bottom:20px;">
+                <label style="font-size:13px; font-weight:600; color:#333; display:block; margin-bottom:6px;">
+                    🔗 기사 ID
+                    <span style="font-weight:400; color:#999;">(선택 · 클릭 시 해당 기사로 이동)</span>
+                </label>
+                <input id="_notifArticleId" type="text" placeholder="기사 ID (없으면 홈으로 이동)"
+                    style="width:100%; padding:9px 12px; border:1px solid #ddd; border-radius:8px; font-size:14px; box-sizing:border-box;">
+            </div>
+
+            <div id="_notifResult" style="margin-bottom:12px; font-size:13px; min-height:20px;"></div>
+
+            <button onclick="sendManualNotification()"
+                style="width:100%; padding:12px; background:#c62828; color:#fff; border:none; border-radius:8px; font-size:15px; font-weight:700; cursor:pointer;">
+                📢 알림 전송
+            </button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+    });
+}
+
+function toggleManualNotifUserSelect() {
+    const target = document.getElementById('_notifTarget')?.value;
+    const wrap = document.getElementById('_notifUserSelectWrap');
+    if (wrap) wrap.style.display = target === 'specific' ? 'block' : 'none';
+    updateNotifSelectedCount();
+}
+
+function selectAllNotifUsers(selectAll) {
+    document.querySelectorAll('#_notifUserCheckList input[type="checkbox"]')
+        .forEach(cb => cb.checked = selectAll);
+    updateNotifSelectedCount();
+}
+
+function updateNotifSelectedCount() {
+    const count = document.querySelectorAll('#_notifUserCheckList input[type="checkbox"]:checked').length;
+    const el = document.getElementById('_notifSelectedCount');
+    if (el) el.textContent = `${count}명 선택됨`;
+}
+
+async function sendManualNotification() {
+    const target    = document.getElementById('_notifTarget')?.value;
+    const title     = document.getElementById('_notifTitle')?.value.trim();
+    const body      = document.getElementById('_notifBody')?.value.trim();
+    const articleId = document.getElementById('_notifArticleId')?.value.trim();
+    const resultEl  = document.getElementById('_notifResult');
+
+    if (!title) { resultEl.innerHTML = '<span style="color:#c62828;">⚠️ 제목을 입력해주세요.</span>'; return; }
+    if (!body)  { resultEl.innerHTML = '<span style="color:#c62828;">⚠️ 내용을 입력해주세요.</span>'; return; }
+
+    resultEl.innerHTML = '<span style="color:#888;">⏳ 전송 중...</span>';
+
+    try {
+        let targetUids = [];
+
+        if (target === 'all') {
+            const usersSnap = await db.ref('users').once('value');
+            const usersData = usersSnap.val() || {};
+            targetUids = Object.keys(usersData).filter(uid => usersData[uid]);
+        } else {
+            const checkboxes = document.querySelectorAll('#_notifUserCheckList input[type="checkbox"]:checked');
+            targetUids = Array.from(checkboxes).map(cb => cb.value);
+            if (targetUids.length === 0) {
+                resultEl.innerHTML = '<span style="color:#c62828;">⚠️ 유저를 1명 이상 선택해주세요.</span>';
+                return;
+            }
+        }
+
+        const timestamp = Date.now();
+        const updates = {};
+
+        targetUids.forEach(uid => {
+            const notifId = `notif_${timestamp}_${Math.random().toString(36).substr(2, 9)}`;
+            updates[`notifications/${uid}/${notifId}`] = {
+                type: 'admin',
+                title: title,
+                text: body,
+                articleId: articleId || '',
+                timestamp: timestamp,
+                read: false,
+                pushed: false
+            };
+        });
+
+        await db.ref().update(updates);
+
+        resultEl.innerHTML = `<span style="color:#2e7d32;">✅ ${targetUids.length}명에게 알림 전송 완료! (5분 내 FCM 푸시 예정)</span>`;
+
+    } catch (error) {
+        console.error('수동 알림 전송 실패:', error);
+        resultEl.innerHTML = `<span style="color:#c62828;">❌ 전송 실패: ${error.message}</span>`;
+        logErrorToFirebase({ message: error.message, stack: error.stack, type: 'manual-notification' });
+    }
+}
 
 console.log("✅ script1.js 최적화 버전 완료 (Parts 1-14 통합)");
