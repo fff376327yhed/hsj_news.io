@@ -788,6 +788,11 @@ window.sendChatMessage = async function (roomId) {
             if (targetMainUid) await sendChatNotification(targetMainUid, myName, preview, roomId, auth.currentUser?.uid);
         }));
 
+        // ✅ 백그라운드 FCM 푸시 트리거 (GitHub Actions)
+        if (notifTargets.length > 0 && typeof triggerGithubNotification === 'function') {
+            triggerGithubNotification(true);
+        }
+
         updateChatBadge();
     } catch (e) {
         console.error('전송 실패:', e);
@@ -1315,6 +1320,137 @@ window.startNewGroup = async function () {
     }
 };
 
+// ===== 그룹 초대 모달 =====
+window.showGroupInviteModal = async function (roomId) {
+    document.getElementById('_groupInviteModal')?.remove();
+
+    const [roomSnap, usersSnap] = await Promise.all([
+        getChatDb().ref(`chats/${roomId}`).once('value'),
+        db.ref('users').once('value')
+    ]);
+    const roomData     = roomSnap.val() || {};
+    const participants = roomData.participants || {};
+    const mainUids     = roomData.mainUids || {};
+    const usersData    = usersSnap.val() || {};
+    const myMainUid    = auth.currentUser?.uid;
+    const myUid        = getChatUserId();
+
+    // 현재 참여자의 mainUid 목록
+    const existingMainUids = new Set(Object.values(mainUids));
+
+    // 초대 가능한 유저 (chatUid 있고, 이미 참여 중이 아닌)
+    const emailBestMap = new Map();
+    for (const [uid, u] of Object.entries(usersData)) {
+        if (uid === myMainUid || !u || !u.email || !u.chatUid) continue;
+        if (existingMainUids.has(uid)) continue; // 이미 참여 중
+        const key = u.email.toLowerCase();
+        const ex  = emailBestMap.get(key);
+        if (!ex || (!ex[1].chatUid && u.chatUid)) emailBestMap.set(key, [uid, u]);
+    }
+
+    const userItems = Array.from(emailBestMap.values())
+        .filter(([, u]) => u.chatUid !== myUid)
+        .sort(([, a], [, b]) => resolveNickname(a).localeCompare(resolveNickname(b), 'ko'))
+        .map(([uid, u]) => {
+            const name  = resolveNickname(u);
+            const photo = u.profilePhoto;
+            const photoHTML = photo
+                ? `<img src="${photo}" style="width:38px;height:38px;min-width:38px;border-radius:50%;object-fit:cover;border:1.5px solid #dadce0;">`
+                : `<div style="width:38px;height:38px;min-width:38px;border-radius:50%;background:#f1f3f4;display:flex;align-items:center;justify-content:center;border:1.5px solid #dadce0;"><i class="fas fa-user" style="color:#9aa0a6;font-size:15px;"></i></div>`;
+            return `
+                <label data-name="${name.toLowerCase()}" data-email="${u.email.toLowerCase()}"
+                    style="display:flex;align-items:center;gap:12px;padding:11px 16px;cursor:pointer;
+                    border-bottom:1px solid #f5f5f5;transition:background 0.15s;"
+                    onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
+                    <input type="checkbox" value="${u.chatUid}" data-mainuid="${uid}" data-name="${escapeHTML(name)}"
+                        style="width:18px;height:18px;cursor:pointer;accent-color:#c62828;flex-shrink:0;">
+                    ${photoHTML}
+                    <div>
+                        <div style="font-weight:600;font-size:14px;color:#212529;">${escapeHTML(name)}</div>
+                        <div style="font-size:12px;color:#adb5bd;">${escapeHTML(u.email)}</div>
+                    </div>
+                </label>`;
+        }).join('');
+
+    const modal = document.createElement('div');
+    modal.id = '_groupInviteModal';
+    modal.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;
+        background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;
+        justify-content:center;padding:16px;`;
+    modal.innerHTML = `
+        <div style="background:white;border-radius:16px;width:100%;max-width:420px;
+            max-height:85vh;overflow:hidden;display:flex;flex-direction:column;
+            box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+            <div style="background:linear-gradient(135deg,#c62828,#e53935);
+                padding:16px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+                <h3 style="color:white;margin:0;font-size:16px;font-weight:700;">
+                    <i class="fas fa-user-plus"></i> 멤버 초대
+                </h3>
+                <button onclick="document.getElementById('_groupInviteModal').remove()"
+                    style="background:none;border:none;color:white;font-size:22px;cursor:pointer;line-height:1;">✕</button>
+            </div>
+            <div style="padding:12px 16px;border-bottom:1px solid #f0f0f0;flex-shrink:0;">
+                <input id="_inviteSearch" type="text" placeholder="멤버 검색..."
+                    oninput="filterInviteUsers(this.value)"
+                    style="width:100%;padding:10px 16px;border:1.5px solid #dee2e6;
+                    border-radius:22px;font-size:14px;outline:none;box-sizing:border-box;"
+                    onfocus="this.style.borderColor='#c62828'" onblur="this.style.borderColor='#dee2e6'">
+            </div>
+            <div id="_inviteUserList" style="overflow-y:auto;flex:1;">
+                ${userItems || '<p style="text-align:center;color:#adb5bd;padding:30px;">초대할 수 있는 유저가 없습니다.</p>'}
+            </div>
+            <div style="padding:12px 16px;border-top:1px solid #f0f0f0;flex-shrink:0;">
+                <button onclick="confirmGroupInvite('${roomId}')"
+                    style="width:100%;background:#c62828;color:white;border:none;
+                    padding:12px;border-radius:22px;cursor:pointer;font-size:15px;font-weight:700;">
+                    <i class="fas fa-check"></i> 초대하기
+                </button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    setTimeout(() => document.getElementById('_inviteSearch')?.focus(), 50);
+};
+
+window.filterInviteUsers = function (kw) {
+    const q = kw.toLowerCase();
+    document.querySelectorAll('#_inviteUserList > label').forEach(el => {
+        el.style.display =
+            ((el.dataset.name || '').includes(q) || (el.dataset.email || '').includes(q)) ? 'flex' : 'none';
+    });
+};
+
+window.confirmGroupInvite = async function (roomId) {
+    const checked = [...document.querySelectorAll('#_inviteUserList input[type=checkbox]:checked')];
+    if (checked.length === 0) { showChatToast('⚠️ 초대할 멤버를 선택해주세요.'); return; }
+
+    document.getElementById('_groupInviteModal').remove();
+    try {
+        const updates = {};
+        checked.forEach(cb => {
+            updates[`chats/${roomId}/participants/${cb.value}`]    = true;
+            updates[`chats/${roomId}/mainUids/${cb.value}`]        = cb.dataset.mainuid;
+            updates[`userChats/${cb.value}/${roomId}`]             = true;
+        });
+        await getChatDb().ref().update(updates);
+        const names = checked.map(cb => cb.dataset.name).join(', ');
+        showChatToast(`✅ ${names}님을 초대했습니다`);
+        // 시스템 메시지
+        const myName = getMyNickname();
+        await getChatDb().ref(`chats/${roomId}/messages`).push({
+            senderId: '__system__', senderName: '시스템',
+            text: `${myName}님이 ${names}님을 초대했습니다.`,
+            timestamp: Date.now(), read: false
+        });
+        await getChatDb().ref(`chats/${roomId}`).update({
+            lastMessage: `${myName}님이 ${names}님을 초대했습니다.`,
+            lastMessageAt: Date.now()
+        });
+    } catch (e) {
+        showChatToast('❌ 초대 실패: ' + e.message);
+    }
+};
+
 // ===== 그룹 나가기 =====
 window.leaveGroupChat = async function (roomId) {
     if (!confirm('그룹에서 나가시겠습니까?\n(내 채팅 목록에서만 제거됩니다)')) return;
@@ -1346,6 +1482,54 @@ window.showRoomMenu = async function (roomId, isGroupStr) {
     const notifSnap = await db.ref(`users/${myMainUid}/notificationTypes/chatRooms/${roomId}`).once('value');
     const roomNotifOn = notifSnap.val() !== false; // 기본 true
 
+    // 그룹이면 멤버 목록 로드
+    let memberListHTML = '';
+    if (isGroup) {
+        try {
+            const [roomSnap, usersSnap] = await Promise.all([
+                getChatDb().ref(`chats/${roomId}`).once('value'),
+                db.ref('users').once('value')
+            ]);
+            const roomData = roomSnap.val() || {};
+            const mainUids = roomData.mainUids || {};
+            const participants = Object.keys(roomData.participants || {});
+            const usersData = usersSnap.val() || {};
+
+            const memberItems = participants.map(chatUid => {
+                const mainUid = mainUids[chatUid];
+                const u = usersData[mainUid] || {};
+                const name = resolveNickname(u) || '알 수 없음';
+                const photo = u.profilePhoto;
+                const isMe = chatUid === myUid;
+                const photoHTML = photo
+                    ? `<img src="${photo}" style="width:32px;height:32px;min-width:32px;border-radius:50%;object-fit:cover;border:1.5px solid #dadce0;">`
+                    : `<div style="width:32px;height:32px;min-width:32px;border-radius:50%;background:#f1f3f4;display:flex;align-items:center;justify-content:center;border:1.5px solid #dadce0;"><i class="fas fa-user" style="color:#9aa0a6;font-size:13px;"></i></div>`;
+                return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;">
+                    ${photoHTML}
+                    <span style="font-size:14px;font-weight:600;color:#212529;">${escapeHTML(name)}</span>
+                    ${isMe ? '<span style="font-size:11px;color:#aaa;margin-left:4px;">(나)</span>' : ''}
+                </div>`;
+            }).join('');
+
+            memberListHTML = `
+                <div style="padding:14px 0;border-bottom:1px solid #f5f5f5;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                        <span style="font-size:13px;font-weight:700;color:#6c757d;">
+                            <i class="fas fa-users" style="color:#c62828;margin-right:6px;"></i>멤버 (${participants.length}명)
+                        </span>
+                        <button onclick="document.getElementById('_roomMenu').remove();showGroupInviteModal('${roomId}')"
+                            style="background:#c62828;border:none;color:white;padding:5px 12px;
+                            border-radius:14px;cursor:pointer;font-size:12px;font-weight:600;">
+                            <i class="fas fa-user-plus"></i> 초대
+                        </button>
+                    </div>
+                    <div style="max-height:160px;overflow-y:auto;">${memberItems}</div>
+                </div>`;
+        } catch (e) {
+            console.warn('멤버 로드 실패:', e);
+        }
+    }
+
     const menu = document.createElement('div');
     menu.id = '_roomMenu';
     menu.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;
@@ -1355,6 +1539,7 @@ window.showRoomMenu = async function (roomId, isGroupStr) {
             box-shadow:0 -4px 24px rgba(0,0,0,0.15);max-width:600px;margin:0 auto;">
             <div style="width:40px;height:4px;background:#dee2e6;border-radius:2px;margin:0 auto 20px;"></div>
             <div style="padding:0 20px;">
+                ${memberListHTML}
                 <div onclick="document.getElementById('_roomMenu').remove();showChatSearch('${roomId}')"
                     style="display:flex;align-items:center;gap:12px;padding:14px 0;
                     border-bottom:1px solid #f5f5f5;cursor:pointer;">
@@ -1913,7 +2098,10 @@ async function updateChatBadge() {
     try {
         const myRoomsSnap = await getChatDb().ref(`userChats/${myUid}`).once('value');
         const myRoomIds   = Object.keys(myRoomsSnap.val() || {});
-        if (!myRoomIds.length) return;
+        if (!myRoomIds.length) {
+            _applyNavDot(0);
+            return;
+        }
         const snaps = await Promise.all(myRoomIds.map(id => getChatDb().ref(`chats/${id}`).once('value')));
         let total = 0;
         for (const s of snaps) {
@@ -1921,12 +2109,56 @@ async function updateChatBadge() {
             if (c?.messages)
                 total += Object.values(c.messages).filter(m => !m.read && m.senderId !== myUid).length;
         }
+        // 더보기 메뉴 내 배지
         const badge = document.getElementById('chatBadgeMore');
         if (badge) {
             badge.textContent   = total > 99 ? '99+' : total;
             badge.style.display = total > 0 ? 'inline-block' : 'none';
         }
+        _applyNavDot(total);
     } catch (e) {}
+}
+
+// 하단 채팅 탭 + 더보기 탭에 파란 점 표시
+function _applyNavDot(total) {
+    // 채팅 탭 nav-btn
+    const chatNavBtn = document.querySelector('.nav-btn[onclick*="showChatPage"]');
+    if (chatNavBtn) {
+        let dot = chatNavBtn.querySelector('.chat-unread-dot');
+        if (!dot) {
+            dot = document.createElement('span');
+            dot.className = 'chat-unread-dot';
+            dot.style.cssText = [
+                'position:absolute', 'top:6px', 'right:10px',
+                'width:9px', 'height:9px',
+                'background:#2196F3', 'border-radius:50%',
+                'border:2px solid white',
+                'pointer-events:none', 'display:none'
+            ].join(';');
+            chatNavBtn.style.position = 'relative';
+            chatNavBtn.appendChild(dot);
+        }
+        dot.style.display = total > 0 ? 'block' : 'none';
+    }
+    // 더보기 탭 nav-btn
+    const moreNavBtn = document.querySelector('.nav-btn[onclick*="showMoreMenu"]');
+    if (moreNavBtn) {
+        let dot = moreNavBtn.querySelector('.chat-unread-dot');
+        if (!dot) {
+            dot = document.createElement('span');
+            dot.className = 'chat-unread-dot';
+            dot.style.cssText = [
+                'position:absolute', 'top:6px', 'right:10px',
+                'width:9px', 'height:9px',
+                'background:#2196F3', 'border-radius:50%',
+                'border:2px solid white',
+                'pointer-events:none', 'display:none'
+            ].join(';');
+            moreNavBtn.style.position = 'relative';
+            moreNavBtn.appendChild(dot);
+        }
+        dot.style.display = total > 0 ? 'block' : 'none';
+    }
 }
 
 // ===== 시간 포맷 =====
