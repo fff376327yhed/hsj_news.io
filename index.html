@@ -277,10 +277,11 @@ if ('serviceWorker' in navigator) {
         <i class="fas fa-cog"></i>
         <span>설정</span>
     </button>
-    <button class="nav-btn" onclick="showMoreMenu()">
-        <i class="fas fa-ellipsis-h"></i>
-        <span>더보기</span>
-    </button>
+    <button class="nav-btn" onclick="showMoreMenu()" style="position:relative;">
+    <i class="fas fa-ellipsis-h"></i>
+    <span>더보기</span>
+    <span id="moreMenuDot" style="display:none; position:absolute; top:4px; right:6px; width:13px; height:13px; background:#dc3545; border-radius:50%; border:2px solid white; box-shadow:0 0 4px rgba(220,53,69,0.6);"></span>
+</button>
 </nav>
 
 <main>
@@ -391,16 +392,35 @@ if ('serviceWorker' in navigator) {
     <div id="articleDetail"></div>
     
     <div class="comments-section">
-        <h3>💬 댓글 <span id="commentCount"></span></h3>
-        <div id="comments"></div>
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <h3 style="margin:0;">💬 댓글 <span id="commentCount"></span></h3>
+        <select id="commentSortSelect" onchange="setCommentSort(this.value)" style="font-size:12px; padding:4px 8px; border:1px solid #ddd; border-radius:8px; background:#fff; color:#555; cursor:pointer;">
+            <option value="latest">최신순</option>
+            <option value="oldest">오래된 순</option>
+            <option value="likes">좋아요 순</option>
+        </select>
+    </div>
+    <div class="comment-input-wrapper" style="flex-direction:column; gap:8px; align-items:stretch; margin-bottom:16px;">
+    <div id="commentImagePreview" style="display:none; position:relative; margin-bottom:4px;">
+        <img id="commentImagePreviewImg" style="max-height:120px; max-width:100%; border-radius:10px; object-fit:contain; border:1px solid #dee2e6;">
+        <button onclick="clearCommentImage()" style="position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.55); color:white; border:none; border-radius:50%; width:22px; height:22px; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center;"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="display:flex; gap:8px; align-items:flex-end;">
+        <textarea id="commentInput" placeholder="댓글 입력 (Shift+Enter: 줄바꿈)" class="comment-input" rows="1"
+            style="resize:none; overflow:hidden; min-height:42px; max-height:140px; line-height:1.4; padding:10px 12px; border-radius:20px;"
+            onkeydown="handleCommentKey(event)"
+            oninput="autoResizeTextarea(this)"></textarea>
+        <input type="file" id="commentImageInput" accept="image/*" style="display:none;" onchange="previewCommentImage(this)">
+        <button onclick="document.getElementById('commentImageInput').click()" class="comment-submit-btn" style="flex-shrink:0; background:#f0f4f8; color:#495057;">
+            <i class="fas fa-camera"></i>
+        </button>
+        <button onclick="submitCommentFromDetail()" class="comment-submit-btn" style="flex-shrink:0;">
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </div>
+</div>
+    <div id="comments"></div>
         <div id="loadMoreComments" class="load-more"></div>
-        
-        <div class="comment-input-wrapper">
-            <input id="commentInput" placeholder="댓글 입력" class="comment-input">
-            <button onclick="submitCommentFromDetail()" class="comment-submit-btn">
-                <i class="fas fa-paper-plane"></i>
-            </button>
-        </div>
     </div>
 </section>
 
@@ -516,6 +536,11 @@ if ('serviceWorker' in navigator) {
 
 <!-- 알림 섹션 -->
 <section class="page-section" id="messengerSection">
+    <!-- JavaScript로 동적 생성됨 -->
+</section>
+
+<!-- 채팅 섹션 -->
+<section class="page-section" id="chatSection">
     <!-- JavaScript로 동적 생성됨 -->
 </section>
 
@@ -720,6 +745,7 @@ if ('serviceWorker' in navigator) {
 <script src="./js/script2.js"></script>
 <script src="./js/ganadi-helper.js"></script>
 <script src="./js/category-tutorial.js"></script>
+<script src="./js/chat.js"></script>
 
 <!-- 🔧 점검모드 버튼 표시 스크립트 -->
 <script>
