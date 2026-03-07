@@ -1179,19 +1179,32 @@ function getOSInfo() {
 async function logErrorToFirebase(errorInfo) {
     try {
         const user = auth?.currentUser;
+        const nav  = window.navigator;
+        const conn = nav.connection || nav.mozConnection || nav.webkitConnection;
+
         const logEntry = {
-            message: errorInfo.message || '알 수 없는 오류',
-            stack: (errorInfo.stack || '').substring(0, 1000),
-            type: errorInfo.type || 'runtime',
-            page: window.location.href,
-            timestamp: Date.now(),
-            uid: user ? user.uid : 'anonymous',
-            email: user ? (user.email || '이메일 없음') : '비로그인',
-            device: getDeviceType(),
-            browser: getBrowserInfo(),
-            os: getOSInfo(),
-            userAgent: navigator.userAgent.substring(0, 150),
-            screenSize: `${window.screen.width}x${window.screen.height}`
+            message:       errorInfo.message || '알 수 없는 오류',
+            stack:         (errorInfo.stack || '').substring(0, 3000),
+            type:          errorInfo.type || 'runtime',
+            level:         errorInfo.level || 'error',  // 'error' | 'warn'
+            page:          window.location.href,
+            referrer:      document.referrer || '-',
+            timestamp:     Date.now(),
+            uid:           user ? user.uid : 'anonymous',
+            email:         user ? (user.email || '이메일 없음') : '비로그인',
+            device:        getDeviceType(),
+            browser:       getBrowserInfo(),
+            os:            getOSInfo(),
+            userAgent:     nav.userAgent.substring(0, 300),
+            screenSize:    `${window.screen.width}x${window.screen.height}`,
+            viewport:      `${window.innerWidth}x${window.innerHeight}`,
+            language:      nav.language || '-',
+            online:        nav.onLine,
+            networkType:   conn ? (conn.effectiveType || conn.type || '-') : '-',
+            memoryMB:      window.performance?.memory
+                ? Math.round(window.performance.memory.usedJSHeapSize / 1048576)
+                : null,
+            context:       errorInfo.context || null,   // 추가 컨텍스트 (선택)
         };
         await db.ref('errorLogs').push(logEntry);
     } catch (e) {
@@ -1213,9 +1226,28 @@ window.onunhandledrejection = function(event) {
     logErrorToFirebase({
         message: event.reason?.message || String(event.reason) || 'Promise rejection',
         stack: event.reason?.stack || '',
-        type: 'unhandledrejection'
+        type: 'unhandledrejection',
+        level: 'error'
     });
 };
+
+// ✅ console.warn 가로채서 경고도 로그에 기록
+(function interceptConsole() {
+    const _warn = console.warn.bind(console);
+    console.warn = function (...args) {
+        _warn(...args);
+        const msg = args.map(a => {
+            try { return typeof a === 'object' ? JSON.stringify(a) : String(a); }
+            catch { return String(a); }
+        }).join(' ');
+        // Firebase 내부 경고 등 노이즈 필터링
+        if (msg.includes('@firebase') || msg.includes('FIREBASE WARNING')) return;
+        try {
+            const stack = new Error().stack || '';
+            logErrorToFirebase({ message: msg, stack, type: 'console.warn', level: 'warn' });
+        } catch {}
+    };
+})();
 
 // 포그라운드 메시지 수신 핸들러
 if (messaging) {
@@ -1259,7 +1291,7 @@ function setupNotificationListener(uid) {
                 showToastNotification(notification.title, notification.text, notification.articleId);
                 
                 setTimeout(() => {
-                    db.ref("notifications/" + uid + "/" + notifId).update({ read: true });
+                    db.ref("notifications/" + uid + "/" + notifId).remove();
                 }, 5000);
             }
         });
@@ -1326,6 +1358,26 @@ async function sendNotification(type, data) {
                 targetUsers.push(uid);
             });
         }
+        else if (type === 'replyToComment') {
+            // 답글 알림: 댓글 작성자에게
+            Object.entries(usersData).forEach(([uid, userData]) => {
+                if(userData.email !== data.targetEmail) return;
+                if(userData.notificationsEnabled === false) return;
+                const types = userData.notificationTypes || {};
+                if(types.comment === false) return;
+                targetUsers.push(uid);
+            });
+        }
+        else if (type === 'replyToReply') {
+            // 대댓글 알림: 부모 답글 작성자에게
+            Object.entries(usersData).forEach(([uid, userData]) => {
+                if(userData.email !== data.targetEmail) return;
+                if(userData.notificationsEnabled === false) return;
+                const types = userData.notificationTypes || {};
+                if(types.comment === false) return;
+                targetUsers.push(uid);
+            });
+        }
         
         if(targetUsers.length === 0) {
             console.log("🔭 알림 받을 대상이 없습니다");
@@ -1334,17 +1386,33 @@ async function sendNotification(type, data) {
         
         const timestamp = Date.now();
         const updates = {};
-        
+
+        let notifTitle, notifText;
+        if (type === 'article') {
+            notifTitle = '📰 새 기사';
+            notifText  = `${data.authorName}님이 새 기사를 작성했습니다: "${data.title}"`;
+        } else if (type === 'myArticleComment') {
+            notifTitle = '💬 내 기사에 새 댓글';
+            notifText  = `${data.commenterName}님이 댓글을 남겼습니다: "${(data.content || '').substring(0, 50)}"`;
+        } else if (type === 'replyToComment') {
+            notifTitle = '↩️ 내 댓글에 답글';
+            notifText  = `${data.replierName}님이 답글을 달았습니다: "${(data.content || '').substring(0, 50)}"`;
+        } else if (type === 'replyToReply') {
+            notifTitle = '↩️ 내 답글에 대댓글';
+            notifText  = `${data.replierName}님이 대댓글을 달았습니다: "${(data.content || '').substring(0, 50)}"`;
+        } else {
+            notifTitle = '🔔 알림';
+            notifText  = '';
+        }
+
         const notificationData = {
             type: type,
             timestamp: timestamp,
             read: false,
-            pushed: false,          // ← FCM 미전송 플래그 (send-notifications.js가 이걸 보고 전송)
+            pushed: false,
             articleId: data.articleId || '',
-            title: type === 'article' ? '📰 새 기사' : '💬 내 기사에 새 댓글',
-            text: type === 'article' ? 
-                `${data.authorName}님이 새 기사를 작성했습니다: "${data.title}"` :
-                `${data.commenterName}님이 댓글을 남겼습니다: "${(data.content || '').substring(0, 50)}..."`
+            title: notifTitle,
+            text:  notifText
         };
         
         targetUsers.forEach(uid => {
@@ -1392,7 +1460,7 @@ function startNotificationListener(uid) {
                 showToastNotification(notification.title, notification.text, notification.articleId);
                 
                 setTimeout(() => {
-                    db.ref("notifications/" + uid + "/" + notifId).update({ read: true });
+                    db.ref("notifications/" + uid + "/" + notifId).remove();
                 }, 5000);
             }
         });
@@ -3666,21 +3734,20 @@ function setupArticleForm() {
         }
         window.isSubmitting = true;
 
-         form.onsubmit = async function(e) {
-       e.preventDefault();
-       
-       if (window.isSubmitting) {
-           console.warn("⚠️ 이미 제출 중입니다!");
-           return;
-       }
-       window.isSubmitting = true;
-       
-       // ✅ 추가: 속도 제한 (10분에 3개)
-       if (!rateLimiter.check('article', 3, 10 * 60 * 1000)) {
-           alert("⚠️ 기사를 너무 빠르게 작성하고 있습니다. 잠시 후 다시 시도해주세요.");
-           window.isSubmitting = false;
-           return;
-       }}
+        form.onsubmit = async function(e) {
+        e.preventDefault();
+        if (window.isSubmitting) {
+            console.warn("⚠️ 이미 제출 중입니다!");
+            return;
+        }
+        window.isSubmitting = true;
+
+        // ✅ 속도 제한 (10분에 3개)
+        if (!rateLimiter.check('article', 3, 10 * 60 * 1000)) {
+            alert("⚠️ 기사를 너무 빠르게 작성하고 있습니다. 잠시 후 다시 시도해주세요.");
+            window.isSubmitting = false;
+            return;
+        }}
         
         // ✅ 제출 시점에 요소를 다시 찾기
         const titleInput = document.getElementById("title");
@@ -3986,9 +4053,16 @@ if (currentCommentSort === 'oldest') {
         }
 
         // ── 답글 트리 렌더 헬퍼 (재귀) ──
-        function renderReplies(repliesObj, commentId, depth) {
+        function renderReplies(repliesObj, commentId) {
             if (!repliesObj) return '';
+            // 전체 flat 정렬
             const all = Object.entries(repliesObj).sort((a,b) => new Date(a[1].timestamp) - new Date(b[1].timestamp));
+
+            // replyId → author 이름 빠른 조회용
+            const replyAuthorMap = {};
+            all.forEach(([rid, r]) => { replyAuthorMap[rid] = r.author; });
+
+            // 트리 구조: 루트 + childMap 구성 (렌더 순서용)
             const roots = all.filter(([_, r]) => !r.parentReplyId);
             const childMap = {};
             all.forEach(([rid, r]) => {
@@ -3998,23 +4072,38 @@ if (currentCommentSort === 'oldest') {
                 }
             });
 
-            function renderNode([replyId, reply], depth) {
+            // 재귀적으로 트리 순서로 flat 배열로 펼침
+            const ordered = [];
+            function flatten([replyId, reply]) {
+                ordered.push([replyId, reply]);
+                (childMap[replyId] || []).forEach(flatten);
+            }
+            roots.forEach(flatten);
+
+            return ordered.map(([replyId, reply]) => {
                 const isMyReply = isLoggedIn() && (reply.authorEmail === currentEmail || isAdmin());
                 const rPhotoHTML = getProfilePlaceholder(window.profilePhotoCache.get(reply.authorEmail)||null, 24);
                 const editedBadge = reply.edited ? `<span class="edited-badge"><i class="fas fa-edit"></i> 수정됨</span>` : '';
-                const indent = Math.min(depth, 4) * 14;
-                const children = (childMap[replyId] || []).map(n => renderNode(n, depth+1)).join('');
-                const prefix = depth > 0 ? '↳ ' : '↳ ';
+
+                // depth 무관하게 들여쓰기 고정: 최대 1단계(20px)만
+                const isChild = !!reply.parentReplyId;
+                const indent = isChild ? 20 : 0;
+
+                // 누구에게 답한 건지 @멘션 표시
+                const mentionName = isChild ? (replyAuthorMap[reply.parentReplyId] || null) : null;
+                const mentionBadge = mentionName
+                    ? `<span style="color:#c62828;font-size:12px;font-weight:600;margin-right:4px;">@${escapeHTML(mentionName)}</span>`
+                    : '';
 
                 return `
                     <div class="reply-item" id="reply-${commentId}-${replyId}" style="margin-left:${indent}px;">
                         <div class="reply-header">
                             ${rPhotoHTML}
-                            <span class="reply-author">${prefix}${escapeHTML(reply.author)}</span>
+                            <span class="reply-author">↳ ${escapeHTML(reply.author)}</span>
                             <span class="reply-time">${escapeHTML(reply.timestamp)}</span>
                             ${editedBadge}
                         </div>
-                       <div class="reply-content" id="replyContent-${commentId}-${replyId}" style="white-space: pre-wrap;">${escapeHTML(reply.text)}</div>
+                        <div class="reply-content" id="replyContent-${commentId}-${replyId}" style="white-space:pre-wrap;">${mentionBadge}${escapeHTML(reply.text)}</div>
 ${reply.imageBase64 ? `
     <div style="margin-top:6px;">
         <img src="${reply.imageBase64}" onclick="openImageModal('${reply.imageBase64}')" style="max-width:100%; max-height:200px; border-radius:8px; cursor:pointer; object-fit:cover;">
@@ -4040,7 +4129,7 @@ ${reply.imageBase64 ? `
         <button onclick="clearNestedReplyImage('${commentId}','${replyId}')" style="position:absolute; top:3px; right:3px; background:rgba(0,0,0,0.55); color:white; border:none; border-radius:50%; width:20px; height:20px; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center;"><i class="fas fa-times"></i></button>
     </div>
     <div style="display:flex; align-items:flex-end; gap:6px;">
-        <textarea id="nestedReplyInput-${commentId}-${replyId}" class="reply-input" placeholder="답글 입력... (Shift+Enter: 줄바꿈)" rows="1"
+        <textarea id="nestedReplyInput-${commentId}-${replyId}" class="reply-input" placeholder="답글 입력..." rows="1"
             style="resize:none; overflow:hidden; min-height:36px; max-height:100px; line-height:1.4; flex:1; border-radius:16px; padding:8px 12px;"
             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitNestedReply('${id}','${commentId}','${replyId}')}"
             oninput="autoResizeTextarea(this)"></textarea>
@@ -4049,14 +4138,10 @@ ${reply.imageBase64 ? `
         <button onclick="submitNestedReply('${id}', '${commentId}', '${replyId}')" class="btn-reply-submit"><i class="fas fa-paper-plane"></i></button>
     </div>
 </div>
-
-                        ${children}
                     </div>
                 `;
-            }
-            return roots.map(n => renderNode(n, 0)).join('');
+            }).join('');
         }
-
         const commentsHTML = displayComments.map(([commentId, comment]) => {
             const isMyComment = isLoggedIn() && (comment.authorEmail === currentEmail || isAdmin());
             const photoUrl = window.profilePhotoCache.get(comment.authorEmail) || null;
@@ -4070,7 +4155,7 @@ ${reply.imageBase64 ? `
             const likeActive = myCommentVote === 'like' ? 'background:#e3f2fd; color:#1565c0; border-color:#1565c0;' : '';
             const dislikeActive = myCommentVote === 'dislike' ? 'background:#fce4ec; color:#c62828; border-color:#c62828;' : '';
 
-            const repliesHTML = renderReplies(comment.replies, commentId, 0);
+            const repliesHTML = renderReplies(comment.replies, commentId);
 
             return `
                 <div class="comment-card" id="comment-${commentId}">
@@ -4489,6 +4574,22 @@ window.submitReply = async function(articleId, commentId) {
 
         await db.ref(`comments/${articleId}/${commentId}/replies`).push(reply);
 
+        // ✅ 댓글 작성자에게 답글 알림 전송
+        try {
+            const commentSnap = await db.ref(`comments/${articleId}/${commentId}`).once('value');
+            const commentData = commentSnap.val();
+            if (commentData && commentData.authorEmail && commentData.authorEmail !== reply.authorEmail) {
+                await sendNotification('replyToComment', {
+                    targetEmail: commentData.authorEmail,
+                    replierName: reply.author,
+                    content: text || '[이미지]',
+                    articleId: articleId
+                });
+            }
+        } catch(notifError) {
+            console.warn("답글 알림 전송 실패:", notifError);
+        }
+
         input.value = "";
         if (imageInput) imageInput.value = "";
         clearReplyImage(commentId);
@@ -4605,7 +4706,26 @@ window.submitNestedReply = async function(articleId, commentId, parentReplyId) {
         };
         if (imageBase64) reply.imageBase64 = imageBase64;
 
-        await db.ref(`comments/${articleId}/${commentId}/replies`).push(reply);
+       await db.ref(`comments/${articleId}/${commentId}/replies`).push(reply);
+
+        // ✅ 부모 답글 작성자에게 대댓글 알림 전송
+        try {
+            const parentSnap = await db.ref(`comments/${articleId}/${commentId}/replies/${parentReplyId}`).once('value');
+            const parentReply = parentSnap.val();
+            if (parentReply && parentReply.authorEmail && parentReply.authorEmail !== reply.authorEmail) {
+                await sendNotification('replyToReply', {
+                    targetEmail: parentReply.authorEmail,
+                    replierName: reply.author,
+                    content: text || '[이미지]',
+                    articleId: articleId
+                });
+            }
+        } catch(notifError) {
+            console.warn("대댓글 알림 전송 실패:", notifError);
+        }
+
+        triggerGithubNotification(true); // ✅ 누락 수정
+
         if (input) input.value = '';
         if (imageInput) imageInput.value = '';
         clearNestedReplyImage(commentId, parentReplyId);
@@ -5935,7 +6055,10 @@ function getTimeAgo(timestamp) {
 
 // ⭐ 알림 클릭 처리
 window.handleNotificationClick = async function(notificationId, articleId) {
-    await markNotificationAsRead(notificationId);
+    const myUid = getUserId();
+    await db.ref(`notifications/${myUid}/${notificationId}`).remove();
+    await updateMessengerBadge();
+    await loadNotificationsList(currentFilter);
     
     if (articleId) {
         showArticleDetail(articleId);
@@ -6092,7 +6215,7 @@ window.toggleSelectionMode = function() {
 
 // ⭐ 개별 알림 삭제
 window.deleteNotification = async function(notificationId) {
-    if (!confirm('이 알림을 삭제하시겠습니까?')) return;
+    // ✅ confirm 제거 - 즉시 삭제
     
     const myUid = getUserId();
     
@@ -7974,13 +8097,19 @@ async function showErrorLogs() {
                         <option value="모바일">모바일</option>
                         <option value="태블릿">태블릿</option>
                     </select>
+                   <select id="errFilterLevel" onchange="renderErrorLogs()" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;">
+                        <option value="">오류+경고</option>
+                        <option value="error">🔴 오류만</option>
+                        <option value="warn">🟡 경고만</option>
+                    </select>
                     <select id="errFilterType" onchange="renderErrorLogs()" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;">
                         <option value="">전체 타입</option>
                         <option value="uncaught">uncaught</option>
                         <option value="unhandledrejection">promise</option>
                         <option value="runtime">runtime</option>
+                        <option value="console.warn">console.warn</option>
                     </select>
-                    <input id="errFilterUser" oninput="renderErrorLogs()" placeholder="이메일 검색" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:160px;">
+                    <input id="errFilterUser" oninput="renderErrorLogs()" placeholder="이메일/메시지 검색" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:180px;">
                     <button onclick="clearErrorLogs()" style="padding:6px 14px;background:#c62828;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;">🗑️ 전체 삭제</button>
                 </div>
             </div>
@@ -8003,31 +8132,37 @@ async function showErrorLogs() {
 }
 
 function renderErrorLogs() {
-    const data = window._errorLogsData || [];
+    const data        = window._errorLogsData || [];
     const filterDevice = document.getElementById('errFilterDevice')?.value || '';
     const filterType   = document.getElementById('errFilterType')?.value || '';
+    const filterLevel  = document.getElementById('errFilterLevel')?.value || '';
     const filterUser   = (document.getElementById('errFilterUser')?.value || '').toLowerCase();
 
     const filtered = data.filter(e =>
         (!filterDevice || e.device === filterDevice) &&
         (!filterType   || e.type === filterType) &&
-        (!filterUser   || (e.email || '').toLowerCase().includes(filterUser))
+        (!filterLevel  || (e.level || 'error') === filterLevel) &&
+        (!filterUser   || (e.email || '').toLowerCase().includes(filterUser)
+                       || (e.message || '').toLowerCase().includes(filterUser))
     );
 
-    // 요약
+    // 요약 카드
     const summary = document.getElementById('errSummary');
     if (summary) {
         const total   = filtered.length;
-        const pc      = filtered.filter(e => e.device === 'PC').length;
-        const mobile  = filtered.filter(e => e.device === '모바일').length;
+        const errors  = filtered.filter(e => (e.level || 'error') === 'error').length;
+        const warns   = filtered.filter(e => e.level === 'warn').length;
         const today   = filtered.filter(e => e.timestamp > Date.now() - 86400000).length;
+        const mobile  = filtered.filter(e => e.device === '모바일').length;
         summary.innerHTML = [
-            ['전체', total, '#1565c0'],
-            ['오늘', today, '#2e7d32'],
-            ['PC', pc, '#6a1b9a'],
-            ['모바일', mobile, '#e65100']
+            ['전체',   total,  '#1565c0'],
+            ['오류',   errors, '#c62828'],
+            ['경고',   warns,  '#e65100'],
+            ['오늘',   today,  '#2e7d32'],
+            ['모바일', mobile, '#6a1b9a']
         ].map(([label, count, color]) => `
-            <div style="background:#fff;border:1px solid #eee;border-radius:8px;padding:12px 20px;min-width:80px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.06);">
+            <div style="background:#fff;border:1px solid #eee;border-radius:8px;padding:12px 20px;
+                min-width:72px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.06);">
                 <div style="font-size:22px;font-weight:700;color:${color};">${count}</div>
                 <div style="font-size:12px;color:#666;margin-top:2px;">${label}</div>
             </div>`).join('');
@@ -8037,51 +8172,95 @@ function renderErrorLogs() {
     if (!wrap) return;
 
     if (filtered.length === 0) {
-        wrap.innerHTML = `<div style="text-align:center;padding:60px;color:#999;">오류 로그가 없습니다.</div>`;
+        wrap.innerHTML = `<div style="text-align:center;padding:60px;color:#999;">로그가 없습니다.</div>`;
         return;
     }
 
+    const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
     const rows = filtered.map(e => {
-        const date = new Date(e.timestamp);
-        const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}:${String(date.getSeconds()).padStart(2,'0')}`;
-        const deviceIcon = e.device === 'PC' ? '🖥️' : e.device === '모바일' ? '📱' : '📟';
-        const typeColor = e.type === 'uncaught' ? '#c62828' : e.type === 'unhandledrejection' ? '#e65100' : '#1565c0';
-        const shortStack = (e.stack || '').split('\n')[0] || '-';
+        const date    = new Date(e.timestamp);
+        const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}<br>
+            <span style="color:#adb5bd;">${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}:${String(date.getSeconds()).padStart(2,'0')}</span>`;
+
+        const isWarn      = e.level === 'warn';
+        const rowBg       = isWarn ? '#fffde7' : '#fff';
+        const levelBadge  = isWarn
+            ? `<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:#fff3e0;color:#e65100;font-weight:700;margin-right:4px;">WARN</span>`
+            : `<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:#ffebee;color:#c62828;font-weight:700;margin-right:4px;">ERR</span>`;
+
+        const typeColors = {
+            uncaught: '#c62828', unhandledrejection: '#e65100',
+            runtime: '#1565c0', 'console.warn': '#e65100'
+        };
+        const typeColor   = typeColors[e.type] || '#555';
+        const deviceIcon  = e.device === 'PC' ? '🖥️' : e.device === '모바일' ? '📱' : '📟';
+
+        // 스택 첫 줄만 미리보기
+        const stackLines  = (e.stack || '').split('\n').filter(l => l.trim());
+        const stackPrev   = stackLines[0] || '-';
+
         return `
-            <tr style="border-bottom:1px solid #f0f0f0;" onclick="toggleErrDetail('${e.id}')" style="cursor:pointer;">
-                <td style="padding:10px 12px;font-size:12px;color:#555;white-space:nowrap;">${dateStr}</td>
-                <td style="padding:10px 12px;font-size:12px;">${deviceIcon} ${e.device || '-'}</td>
-                <td style="padding:10px 12px;font-size:12px;">${e.os || '-'} / ${e.browser || '-'}</td>
-                <td style="padding:10px 12px;font-size:12px;color:#333;">${e.email || '비로그인'}</td>
-                <td style="padding:10px 12px;"><span style="font-size:11px;padding:2px 7px;border-radius:4px;background:${typeColor}20;color:${typeColor};font-weight:600;">${e.type || '-'}</span></td>
-                <td style="padding:10px 12px;font-size:12px;color:#c62828;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.message || '-'}</td>
+            <tr style="border-bottom:1px solid #f0f0f0;background:${rowBg};cursor:pointer;"
+                onclick="toggleErrDetail('${e.id}')">
+                <td style="padding:10px 12px;font-size:11px;color:#555;white-space:nowrap;">${dateStr}</td>
+                <td style="padding:10px 12px;font-size:12px;">${levelBadge}<br>
+                    <span style="font-size:11px;padding:2px 6px;border-radius:4px;
+                    background:${typeColor}18;color:${typeColor};font-weight:600;">${e.type||'-'}</span></td>
+                <td style="padding:10px 12px;font-size:12px;">${deviceIcon} ${e.device||'-'}<br>
+                    <span style="font-size:11px;color:#888;">${e.os||'-'}</span></td>
+                <td style="padding:10px 12px;font-size:11px;color:#555;">${e.browser||'-'}<br>
+                    <span style="color:#adb5bd;">${e.networkType||'-'} ${e.online===false?'🔴오프라인':''}</span></td>
+                <td style="padding:10px 12px;font-size:12px;color:#333;">${esc(e.email)||'비로그인'}</td>
+                <td style="padding:10px 12px;font-size:12px;max-width:260px;">
+                    <div style="color:${isWarn?'#e65100':'#c62828'};font-weight:600;
+                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px;"
+                        title="${esc(e.message)}">${esc(e.message)||'-'}</div>
+                    <div style="font-size:10px;color:#aaa;margin-top:2px;
+                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px;"
+                        title="${esc(stackPrev)}">${esc(stackPrev)}</div>
+                </td>
                 <td style="padding:10px 12px;">
-                    <button onclick="event.stopPropagation();deleteErrorLog('${e.id}')" style="padding:3px 8px;background:#ffebee;color:#c62828;border:none;border-radius:4px;cursor:pointer;font-size:11px;">삭제</button>
+                    <button onclick="event.stopPropagation();deleteErrorLog('${e.id}')"
+                        style="padding:3px 8px;background:#ffebee;color:#c62828;border:none;
+                        border-radius:4px;cursor:pointer;font-size:11px;">삭제</button>
                 </td>
             </tr>
-            <tr id="errDetail-${e.id}" style="display:none;background:#fafafa;">
-                <td colspan="7" style="padding:12px 20px;">
-                    <div style="font-size:12px;color:#333;">
-                        <strong>📍 페이지:</strong> ${e.page || '-'}<br>
-                        <strong>📐 화면:</strong> ${e.screenSize || '-'}<br>
-                        <strong>🔑 UID:</strong> ${e.uid || '-'}<br>
-                        <strong>📋 스택:</strong><br>
-                        <pre style="margin:6px 0 0;padding:10px;background:#f5f5f5;border-radius:4px;font-size:11px;overflow-x:auto;white-space:pre-wrap;">${(e.stack || '-').substring(0, 800)}</pre>
+            <tr id="errDetail-${e.id}" style="display:none;background:#f8f9fa;">
+                <td colspan="7" style="padding:16px 20px;">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:12px;color:#333;margin-bottom:12px;">
+                        <div><strong>📍 페이지</strong><br><span style="color:#1565c0;word-break:break-all;">${esc(e.page)||'-'}</span></div>
+                        <div><strong>🔗 레퍼러</strong><br><span style="color:#555;">${esc(e.referrer)||'-'}</span></div>
+                        <div><strong>🔑 UID</strong><br><code style="font-size:11px;">${esc(e.uid)||'-'}</code></div>
+                        <div><strong>📐 화면 / 뷰포트</strong><br>${esc(e.screenSize)||'-'} / ${esc(e.viewport)||'-'}</div>
+                        <div><strong>🌐 언어</strong><br>${esc(e.language)||'-'}</div>
+                        <div><strong>💾 메모리 사용</strong><br>${e.memoryMB != null ? e.memoryMB + ' MB' : '-'}</div>
+                        <div><strong>📶 네트워크</strong><br>${esc(e.networkType)||'-'} · ${e.online===false?'<span style="color:#c62828;">오프라인</span>':'온라인'}</div>
+                        <div><strong>🕐 타임스탬프</strong><br>${new Date(e.timestamp).toLocaleString('ko-KR')}</div>
                     </div>
+                    <div style="margin-bottom:8px;font-size:12px;font-weight:700;color:#333;">🖥️ User-Agent</div>
+                    <pre style="margin:0 0 12px;padding:8px 12px;background:#f0f0f0;border-radius:4px;
+                        font-size:10px;overflow-x:auto;white-space:pre-wrap;color:#444;">${esc(e.userAgent)||'-'}</pre>
+                    <div style="margin-bottom:8px;font-size:12px;font-weight:700;color:#333;">📋 스택 트레이스</div>
+                    <pre style="margin:0;padding:12px;background:#1e1e1e;color:#d4d4d4;border-radius:6px;
+                        font-size:11px;overflow-x:auto;white-space:pre-wrap;line-height:1.6;">${esc(e.stack||'-')}</pre>
+                    ${e.context ? `<div style="margin-top:12px;font-size:12px;font-weight:700;color:#333;">🔍 컨텍스트</div>
+                    <pre style="margin:4px 0 0;padding:10px;background:#f5f5f5;border-radius:4px;font-size:11px;overflow-x:auto;">${esc(JSON.stringify(e.context,null,2))}</pre>` : ''}
                 </td>
             </tr>`;
     }).join('');
 
     wrap.innerHTML = `
-        <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+        <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:10px;
+            overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08);">
             <thead>
                 <tr style="background:#f8f9fa;border-bottom:2px solid #eee;">
-                    <th style="padding:10px 12px;text-align:left;font-size:12px;color:#555;">시간</th>
-                    <th style="padding:10px 12px;text-align:left;font-size:12px;color:#555;">디바이스</th>
-                    <th style="padding:10px 12px;text-align:left;font-size:12px;color:#555;">OS / 브라우저</th>
-                    <th style="padding:10px 12px;text-align:left;font-size:12px;color:#555;">계정</th>
-                    <th style="padding:10px 12px;text-align:left;font-size:12px;color:#555;">타입</th>
-                    <th style="padding:10px 12px;text-align:left;font-size:12px;color:#555;">오류 메시지</th>
+                    <th style="padding:10px 12px;text-align:left;font-size:11px;color:#555;white-space:nowrap;">시간</th>
+                    <th style="padding:10px 12px;text-align:left;font-size:11px;color:#555;">레벨 / 타입</th>
+                    <th style="padding:10px 12px;text-align:left;font-size:11px;color:#555;">디바이스 / OS</th>
+                    <th style="padding:10px 12px;text-align:left;font-size:11px;color:#555;">브라우저 / 네트워크</th>
+                    <th style="padding:10px 12px;text-align:left;font-size:11px;color:#555;">계정</th>
+                    <th style="padding:10px 12px;text-align:left;font-size:11px;color:#555;">메시지 / 스택 미리보기</th>
                     <th style="padding:10px 12px;"></th>
                 </tr>
             </thead>
@@ -8571,15 +8750,18 @@ console.log("✅ script1.js 최적화 버전 완료 (Parts 1-14 통합)");
 
 // ===== 버그 제보 시스템 =====
 
-// 유저 - 버그 제보 페이지
+// 유저 - 버그 제보 페이지 (다중 제보 지원)
+window._bugReportList = [];
+
 window.showBugReportPage = function() {
     hideAll();
     window.scrollTo(0, 0);
+    window._bugReportList = [];
     const section = document.getElementById('moreMenuSection');
     if (!section) return;
     section.classList.add('active');
 
-    const deviceInfo = `${navigator.platform} / ${navigator.userAgent.match(/(Chrome|Safari|Firefox|Edge|Opera)[\/\s][\d.]+/)?.[0] || '알 수 없음'}`;
+    const deviceInfo = `${navigator.platform} / ${navigator.userAgent.match(/(Chrome|Safari|Firefox|Edge|Opera)[\\/\\s][\\d.]+/)?.[0] || '알 수 없음'}`;
     const now = new Date().toLocaleString('ko-KR');
 
     section.innerHTML = `
@@ -8594,56 +8776,134 @@ window.showBugReportPage = function() {
             </div>
 
             <div style="background:#fff3cd; border:1px solid #ffc107; border-radius:10px; padding:12px 16px; margin-bottom:20px; font-size:13px; color:#856404;">
-                <i class="fas fa-info-circle"></i> 발견하신 버그를 제보해주시면 빠르게 수정하겠습니다!
+                <i class="fas fa-info-circle"></i> 버그를 여러 개 추가한 뒤 한 번에 전송할 수 있어요!
             </div>
 
-            <div style="background:white; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.08); display:flex; flex-direction:column; gap:16px;">
-
-                <div>
-                    <label style="font-size:13px; font-weight:600; color:#495057; display:block; margin-bottom:6px;">📱 기기 정보 (자동)</label>
-                    <input type="text" id="bugDevice" value="${deviceInfo}" readonly
-                        style="width:100%; padding:10px 12px; border:1px solid #e0e0e0; border-radius:8px; font-size:13px; background:#f8f9fa; color:#666; box-sizing:border-box;">
-                </div>
-
-                <div>
-                    <label style="font-size:13px; font-weight:600; color:#495057; display:block; margin-bottom:6px;">🕐 발생 시간 (자동)</label>
-                    <input type="text" id="bugTime" value="${now}" readonly
-                        style="width:100%; padding:10px 12px; border:1px solid #e0e0e0; border-radius:8px; font-size:13px; background:#f8f9fa; color:#666; box-sizing:border-box;">
-                </div>
+            <div style="background:white; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.08); display:flex; flex-direction:column; gap:14px; margin-bottom:16px;">
+                <input type="hidden" id="bugDevice" value="${deviceInfo}">
+                <input type="hidden" id="bugTime" value="${now}">
 
                 <div>
                     <label style="font-size:13px; font-weight:600; color:#495057; display:block; margin-bottom:6px;">📝 제목 <span style="color:#dc3545;">*</span></label>
                     <input type="text" id="bugTitle" placeholder="버그를 간단히 설명해주세요" maxlength="100"
-                        style="width:100%; padding:10px 12px; border:1px solid #dee2e6; border-radius:8px; font-size:14px; box-sizing:border-box;">
+                        style="width:100%; padding:10px 12px; border:1px solid #dee2e6; border-radius:8px; font-size:14px; box-sizing:border-box; outline:none;"
+                        onfocus="this.style.borderColor='#00376b'" onblur="this.style.borderColor='#dee2e6'">
                 </div>
 
                 <div>
                     <label style="font-size:13px; font-weight:600; color:#495057; display:block; margin-bottom:6px;">📄 상세 내용 <span style="color:#dc3545;">*</span></label>
-                    <textarea id="bugContent" placeholder="버그가 발생한 상황, 재현 방법 등을 자세히 적어주세요" rows="5"
-                        style="width:100%; padding:10px 12px; border:1px solid #dee2e6; border-radius:8px; font-size:14px; resize:vertical; font-family:inherit; box-sizing:border-box;"></textarea>
+                    <textarea id="bugContent" placeholder="버그가 발생한 상황, 재현 방법 등을 자세히 적어주세요" rows="4"
+                        style="width:100%; padding:10px 12px; border:1px solid #dee2e6; border-radius:8px; font-size:14px; resize:vertical; font-family:inherit; box-sizing:border-box; outline:none;"
+                        onfocus="this.style.borderColor='#00376b'" onblur="this.style.borderColor='#dee2e6'"></textarea>
                 </div>
 
                 <div>
                     <label style="font-size:13px; font-weight:600; color:#495057; display:block; margin-bottom:6px;">📷 스크린샷 (선택)</label>
                     <div id="bugImagePreviewArea" onclick="document.getElementById('bugImageInput').click()"
-                        style="border:2px dashed #dee2e6; border-radius:8px; padding:20px; text-align:center; cursor:pointer; background:#fafafa; transition:all 0.2s;"
+                        style="border:2px dashed #dee2e6; border-radius:8px; padding:16px; text-align:center; cursor:pointer; background:#fafafa; transition:all 0.2s;"
                         onmouseover="this.style.borderColor='#00376b'" onmouseout="this.style.borderColor='#dee2e6'">
-                        <i class="fas fa-camera" style="font-size:24px; color:#adb5bd;"></i>
-                        <p style="margin:8px 0 0; font-size:13px; color:#adb5bd;">클릭하여 이미지 첨부</p>
+                        <i class="fas fa-camera" style="font-size:22px; color:#adb5bd;"></i>
+                        <p style="margin:6px 0 0; font-size:13px; color:#adb5bd;">클릭하여 이미지 첨부</p>
                     </div>
                     <input type="file" id="bugImageInput" accept="image/*" style="display:none;" onchange="previewBugImage(this)">
                 </div>
 
-                <button onclick="submitBugReport()"
-                    style="background:linear-gradient(135deg, #00376b, #005fa3); color:white; border:none; padding:14px; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; width:100%;">
-                    <i class="fas fa-paper-plane"></i> 제보 전송
+                <button onclick="addBugToList()"
+                    style="background:linear-gradient(135deg,#00376b,#005fa3); color:white; border:none; padding:12px; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; width:100%;">
+                    <i class="fas fa-plus-circle"></i> 목록에 추가
                 </button>
             </div>
 
-            <div id="bugSubmitMsg" style="margin-top:12px; text-align:center;"></div>
+            <div id="bugQueueArea" style="display:none; margin-bottom:16px;">
+                <div style="font-size:13px; font-weight:700; color:#495057; margin-bottom:8px;">
+                    📋 제보 목록 <span id="bugQueueCount" style="background:#00376b; color:white; border-radius:10px; padding:1px 8px; font-size:12px;">0</span>
+                </div>
+                <div id="bugQueueList" style="display:flex; flex-direction:column; gap:8px;"></div>
+            </div>
+
+            <button id="bugSubmitAllBtn" onclick="submitBugReport()" style="display:none;
+                background:linear-gradient(135deg,#c62828,#e53935); color:white; border:none; padding:14px;
+                border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; width:100%; margin-bottom:8px;">
+                <i class="fas fa-paper-plane"></i> 전체 전송 (<span id="bugSubmitCount">0</span>건)
+            </button>
+
+            <div id="bugSubmitMsg" style="margin-top:8px; text-align:center;"></div>
         </div>
     `;
     updateURL('bugreport');
+};
+
+// 버그 목록에 추가
+window.addBugToList = async function() {
+    const title = document.getElementById('bugTitle').value.trim();
+    const content = document.getElementById('bugContent').value.trim();
+    const imageInput = document.getElementById('bugImageInput');
+
+    if (!title) { alert('제목을 입력해주세요.'); return; }
+    if (!content) { alert('상세 내용을 입력해주세요.'); return; }
+
+    let imageBase64 = null;
+    if (imageInput.files && imageInput.files[0]) {
+        imageBase64 = await compressImageToBase64(imageInput.files[0], 800, 0.72);
+    }
+
+    window._bugReportList.push({
+        id: Date.now(),
+        title,
+        content,
+        device: document.getElementById('bugDevice').value,
+        time: document.getElementById('bugTime').value,
+        imageBase64
+    });
+
+    // 입력 초기화
+    document.getElementById('bugTitle').value = '';
+    document.getElementById('bugContent').value = '';
+    imageInput.value = '';
+    document.getElementById('bugImagePreviewArea').innerHTML = '<i class="fas fa-camera" style="font-size:22px; color:#adb5bd;"></i><p style="margin:6px 0 0; font-size:13px; color:#adb5bd;">클릭하여 이미지 첨부</p>';
+
+    renderBugQueue();
+};
+
+// 큐 렌더링
+window.renderBugQueue = function() {
+    const list = window._bugReportList;
+    const area = document.getElementById('bugQueueArea');
+    const queueList = document.getElementById('bugQueueList');
+    const submitBtn = document.getElementById('bugSubmitAllBtn');
+    if (!area || !queueList) return;
+
+    if (list.length === 0) {
+        area.style.display = 'none';
+        submitBtn.style.display = 'none';
+        return;
+    }
+
+    area.style.display = 'block';
+    submitBtn.style.display = 'block';
+    document.getElementById('bugQueueCount').textContent = list.length;
+    document.getElementById('bugSubmitCount').textContent = list.length;
+
+    queueList.innerHTML = list.map((item, idx) => `
+        <div style="background:white; border-radius:10px; padding:12px 14px; box-shadow:0 1px 4px rgba(0,0,0,0.08);
+            display:flex; align-items:flex-start; gap:10px; border-left:3px solid #00376b;">
+            <div style="flex:1; min-width:0;">
+                <div style="font-size:14px; font-weight:700; color:#202124; margin-bottom:2px;">${escapeHTML(item.title)}</div>
+                <div style="font-size:12px; color:#868e96; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(item.content)}</div>
+                ${item.imageBase64 ? '<div style="font-size:11px; color:#00376b; margin-top:3px;"><i class="fas fa-image"></i> 이미지 첨부됨</div>' : ''}
+            </div>
+            <button onclick="removeBugFromList(${idx})"
+                style="background:#fff0f0; border:none; color:#dc3545; border-radius:6px; padding:4px 8px; cursor:pointer; font-size:12px; flex-shrink:0;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `).join('');
+};
+
+// 목록에서 제거
+window.removeBugFromList = function(idx) {
+    window._bugReportList.splice(idx, 1);
+    renderBugQueue();
 };
 
 // 이미지 미리보기
@@ -8660,58 +8920,52 @@ window.previewBugImage = function(input) {
     reader.readAsDataURL(input.files[0]);
 };
 
-// 버그 제보 전송
+// 버그 제보 전체 전송
 window.submitBugReport = async function() {
-    if (!isLoggedIn()) {
-        alert('로그인 후 이용해주세요.');
-        return;
-    }
-    const title = document.getElementById('bugTitle').value.trim();
-    const content = document.getElementById('bugContent').value.trim();
-    const device = document.getElementById('bugDevice').value;
-    const time = document.getElementById('bugTime').value;
-    const imageInput = document.getElementById('bugImageInput');
+    if (!isLoggedIn()) { alert('로그인 후 이용해주세요.'); return; }
+    const list = window._bugReportList || [];
+    if (list.length === 0) { alert('제보할 버그를 먼저 추가해주세요.'); return; }
+
+    const btn = document.getElementById('bugSubmitAllBtn');
     const msgEl = document.getElementById('bugSubmitMsg');
-
-    if (!title) { alert('제목을 입력해주세요.'); return; }
-    if (!content) { alert('상세 내용을 입력해주세요.'); return; }
-
-    const btn = document.querySelector('#moreMenuSection button[onclick="submitBugReport()"]');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 전송 중...'; }
 
     try {
-        let imageBase64 = null;
-        if (imageInput.files && imageInput.files[0]) {
-            imageBase64 = await compressImageToBase64(imageInput.files[0], 800, 0.72);
+        const user = auth.currentUser;
+        const authorName = getNickname();
+        const authorEmail = getUserEmail();
+        const baseTime = Date.now();
+
+        for (let i = 0; i < list.length; i++) {
+            const item = list[i];
+            await db.ref('bugReports').push({
+                title: item.title,
+                content: item.content,
+                device: item.device,
+                time: item.time,
+                authorName,
+                authorEmail,
+                authorUid: user.uid,
+                imageBase64: item.imageBase64 || null,
+                status: 'pending',
+                createdAt: baseTime + i
+            });
         }
 
-        const user = auth.currentUser;
-        const reportData = {
-            title,
-            content,
-            device,
-            time,
-            authorName: getNickname(),
-            authorEmail: getUserEmail(),
-            authorUid: user.uid,
-            imageBase64: imageBase64 || null,
-            status: 'pending',
-            createdAt: Date.now()
-        };
-
-        await db.ref('bugReports').push(reportData);
-
-        showToastNotification('🐛 버그 제보 완료', '소중한 제보 감사합니다! 빠르게 수정할게요 🙏');
+        window._bugReportList = [];
+        showToastNotification('🐛 버그 제보 완료', `${list.length}건 제보 감사합니다! 빠르게 수정할게요 🙏`);
         setTimeout(() => showMoreMenu(), 1200);
 
     } catch(e) {
         console.error(e);
-        if (msgEl) msgEl.innerHTML = `<div style="background:#f8d7da; color:#721c24; padding:12px 16px; border-radius:8px; font-size:14px;"><i class="fas fa-exclamation-circle"></i> 전송 실패. 다시 시도해주세요.</div>`;
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> 제보 전송'; }
+        if (msgEl) msgEl.innerHTML = '<div style="background:#f8d7da; color:#721c24; padding:12px 16px; border-radius:8px; font-size:14px;"><i class="fas fa-exclamation-circle"></i> 전송 실패. 다시 시도해주세요.</div>';
+        if (btn) { btn.disabled = false; btn.innerHTML = `<i class="fas fa-paper-plane"></i> 전체 전송 (${list.length}건)`; }
     }
 };
 
 // 관리자 - 버그 제보 목록 보기
+window._allBugReports = [];
+
 window.showAdminBugReports = async function() {
     if (!isAdmin()) { alert('관리자만 접근 가능합니다.'); return; }
     hideAll();
@@ -8721,13 +8975,26 @@ window.showAdminBugReports = async function() {
 
     section.innerHTML = `
         <div style="max-width:700px; margin:0 auto; padding:20px;">
-            <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
                 <button onclick="showMoreMenu()" style="background:none; border:none; font-size:20px; cursor:pointer; color:#495057;">
                     <i class="fas fa-arrow-left"></i>
                 </button>
-                <h2 style="margin:0; font-size:20px; font-weight:800; color:#c62828;">
+                <h2 style="margin:0; font-size:20px; font-weight:800; color:#c62828; flex:1;">
                     <i class="fas fa-bug"></i> 버그 제보 관리
                 </h2>
+                <span id="bugTotalCount" style="font-size:13px; color:#868e96;"></span>
+            </div>
+            <div style="display:flex; gap:8px; margin-bottom:16px;">
+                <input id="bugSearchInput" type="text" placeholder="제목, 내용, 작성자 검색..."
+                    oninput="filterAdminBugs()"
+                    style="flex:1; padding:10px 14px; border:1.5px solid #dee2e6; border-radius:10px; font-size:14px; outline:none; box-sizing:border-box;"
+                    onfocus="this.style.borderColor='#c62828'" onblur="this.style.borderColor='#dee2e6'">
+                <select id="bugStatusFilter" onchange="filterAdminBugs()"
+                    style="padding:10px 12px; border:1.5px solid #dee2e6; border-radius:10px; font-size:14px; outline:none; background:white; cursor:pointer;">
+                    <option value="all">전체</option>
+                    <option value="pending">대기중</option>
+                    <option value="fixed">수정완료</option>
+                </select>
             </div>
             <div id="adminBugList" style="display:flex; flex-direction:column; gap:14px;">
                 <div style="text-align:center; padding:40px; color:#adb5bd;">
@@ -8739,72 +9006,78 @@ window.showAdminBugReports = async function() {
     `;
 
     try {
-        const snap = await db.ref('bugReports').orderByChild('createdAt').once('value');
-        const listEl = document.getElementById('adminBugList');
-        if (!listEl) return;
-
+        const snap = await db.ref('bugReports').once('value');
         const reports = [];
-        snap.forEach(child => reports.push({ id: child.key, ...child.val() }));
-        reports.reverse();
+        snap.forEach(child => { reports.push({ id: child.key, ...child.val() }); });
+        reports.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
-        if (reports.length === 0) {
-            listEl.innerHTML = `<div style="text-align:center; padding:60px 20px; color:#adb5bd;"><i class="fas fa-inbox" style="font-size:40px;"></i><p style="margin-top:12px;">접수된 버그 제보가 없습니다</p></div>`;
-            return;
-        }
+        window._allBugReports = reports;
+        const countEl = document.getElementById('bugTotalCount');
+        if (countEl) countEl.textContent = `총 ${reports.length}건`;
 
-        listEl.innerHTML = reports.map(r => {
-            const statusBadge = r.status === 'fixed'
-                ? `<span style="background:#d4edda; color:#155724; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700;"><i class="fas fa-check"></i> 수정완료</span>`
-                : `<span style="background:#fff3cd; color:#856404; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700;"><i class="fas fa-clock"></i> 대기중</span>`;
-
-            const date = new Date(r.createdAt).toLocaleString('ko-KR');
-
-            return `
-                <div id="bugCard-${r.id}" style="background:white; border-radius:12px; padding:18px; box-shadow:0 2px 8px rgba(0,0,0,0.08); border-left:4px solid ${r.status === 'fixed' ? '#28a745' : '#ffc107'};">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; gap:8px;">
-                        <div style="flex:1;">
-                            <div style="font-size:15px; font-weight:700; color:#202124; margin-bottom:4px;">${escapeHTML(r.title)}</div>
-                            <div style="font-size:12px; color:#868e96;">
-                                👤 ${escapeHTML(r.authorName)} &nbsp;|&nbsp; 🕐 ${escapeHTML(r.time)}
-                            </div>
-                        </div>
-                        ${statusBadge}
-                    </div>
-
-                    <div style="font-size:13px; color:#495057; white-space:pre-wrap; background:#f8f9fa; border-radius:8px; padding:10px 12px; margin-bottom:10px; line-height:1.6;">${escapeHTML(r.content)}</div>
-
-                    <div style="font-size:12px; color:#adb5bd; margin-bottom:10px;">
-                        📱 ${escapeHTML(r.device)} &nbsp;|&nbsp; 📅 접수: ${date}
-                    </div>
-
-                    ${r.imageBase64 ? `
-                    <div style="margin-bottom:12px;">
-                        <img src="${r.imageBase64}" onclick="openImageModal('${r.imageBase64}')" style="max-width:100%; max-height:200px; border-radius:8px; cursor:pointer; object-fit:contain; border:1px solid #dee2e6;">
-                    </div>` : ''}
-
-                   ${r.status !== 'fixed' ? `
-                    <button onclick="markBugFixed('${r.id}', '${r.authorUid}', '${escapeHTML(r.title).replace(/'/g, "\\'")}')"
-                        style="background:linear-gradient(135deg, #28a745, #20c997); color:white; border:none; padding:10px 20px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; width:100%;">
-                        <i class="fas fa-check-circle"></i> 수정 완료 처리 & 유저 알림
-                    </button>` : `
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <div style="flex:1; text-align:center; font-size:13px; color:#28a745; font-weight:600; padding:8px;">
-                            <i class="fas fa-check-circle"></i> 수정 완료됨
-                        </div>
-                        <button onclick="deleteBugReport('${r.id}')"
-                            style="background:#dc3545; color:white; border:none; padding:8px 16px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
-                            <i class="fas fa-trash"></i> 삭제
-                        </button>
-                    </div>`}
-                </div>
-            `;
-        }).join('');
-
+        renderAdminBugList(reports);
     } catch(e) {
         console.error(e);
         const listEl = document.getElementById('adminBugList');
-        if (listEl) listEl.innerHTML = `<p style="color:#dc3545; text-align:center;">불러오기 실패</p>`;
+        if (listEl) listEl.innerHTML = `<p style="color:#dc3545; text-align:center;">불러오기 실패: ${e.message}</p>`;
     }
+};
+
+window.filterAdminBugs = function() {
+    const kw = (document.getElementById('bugSearchInput')?.value || '').toLowerCase();
+    const status = document.getElementById('bugStatusFilter')?.value || 'all';
+    const filtered = (window._allBugReports || []).filter(r => {
+        const matchStatus = status === 'all' || r.status === status || (status === 'pending' && !r.status);
+        const matchKw = !kw
+            || (r.title || '').toLowerCase().includes(kw)
+            || (r.content || '').toLowerCase().includes(kw)
+            || (r.authorName || '').toLowerCase().includes(kw)
+            || (r.authorEmail || '').toLowerCase().includes(kw);
+        return matchStatus && matchKw;
+    });
+    renderAdminBugList(filtered);
+};
+
+window.renderAdminBugList = function(reports) {
+    const listEl = document.getElementById('adminBugList');
+    if (!listEl) return;
+
+    if (reports.length === 0) {
+        listEl.innerHTML = `<div style="text-align:center; padding:60px 20px; color:#adb5bd;"><i class="fas fa-inbox" style="font-size:40px;"></i><p style="margin-top:12px;">검색 결과가 없습니다</p></div>`;
+        return;
+    }
+
+    listEl.innerHTML = reports.map(r => {
+        const statusBadge = r.status === 'fixed'
+            ? `<span style="background:#d4edda; color:#155724; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700;"><i class="fas fa-check"></i> 수정완료</span>`
+            : `<span style="background:#fff3cd; color:#856404; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700;"><i class="fas fa-clock"></i> 대기중</span>`;
+        const date = new Date(r.createdAt).toLocaleString('ko-KR');
+        return `
+            <div id="bugCard-${r.id}" style="background:white; border-radius:12px; padding:18px; box-shadow:0 2px 8px rgba(0,0,0,0.08); border-left:4px solid ${r.status === 'fixed' ? '#28a745' : '#ffc107'};">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; gap:8px;">
+                    <div style="flex:1;">
+                        <div style="font-size:15px; font-weight:700; color:#202124; margin-bottom:4px;">${escapeHTML(r.title || '')}</div>
+                        <div style="font-size:12px; color:#868e96;">👤 ${escapeHTML(r.authorName || '알 수 없음')} &nbsp;|&nbsp; 🕐 ${escapeHTML(r.time || '')}</div>
+                    </div>
+                    ${statusBadge}
+                </div>
+                <div style="font-size:13px; color:#495057; white-space:pre-wrap; background:#f8f9fa; border-radius:8px; padding:10px 12px; margin-bottom:10px; line-height:1.6;">${escapeHTML(r.content || '')}</div>
+                <div style="font-size:12px; color:#adb5bd; margin-bottom:10px;">📱 ${escapeHTML(r.device || '')} &nbsp;|&nbsp; 📅 접수: ${date}</div>
+                ${r.imageBase64 ? `<div style="margin-bottom:12px;"><img src="${r.imageBase64}" onclick="openImageModal('${r.imageBase64}')" style="max-width:100%; max-height:200px; border-radius:8px; cursor:pointer; object-fit:contain; border:1px solid #dee2e6;"></div>` : ''}
+                ${r.status !== 'fixed' ? `
+                <button onclick="markBugFixed('${r.id}', '${r.authorUid || ''}', '${(r.title || '').replace(/'/g, "\\'")}')"
+                    style="background:linear-gradient(135deg, #28a745, #20c997); color:white; border:none; padding:10px 20px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; width:100%;">
+                    <i class="fas fa-check-circle"></i> 수정 완료 처리 & 유저 알림
+                </button>` : `
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <div style="flex:1; text-align:center; font-size:13px; color:#28a745; font-weight:600; padding:8px;"><i class="fas fa-check-circle"></i> 수정 완료됨</div>
+                    <button onclick="deleteBugReport('${r.id}')"
+                        style="background:#dc3545; color:white; border:none; padding:8px 16px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
+                        <i class="fas fa-trash"></i> 삭제
+                    </button>
+                </div>`}
+            </div>`;
+    }).join('');
 };
 
 // 관리자 - 수정 완료 처리 및 유저 알림
@@ -8816,7 +9089,6 @@ window.markBugFixed = async function(reportId, authorUid, reportTitle) {
         await db.ref(`bugReports/${reportId}/status`).set('fixed');
         await db.ref(`bugReports/${reportId}/fixedAt`).set(Date.now());
 
-        // 해당 유저에게 알림 전송
         if (authorUid) {
             const notifId = `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             await db.ref(`notifications/${authorUid}/${notifId}`).set({
@@ -8828,15 +9100,10 @@ window.markBugFixed = async function(reportId, authorUid, reportTitle) {
             });
         }
 
-        // 카드 UI 업데이트
-        const card = document.getElementById(`bugCard-${reportId}`);
-        if (card) {
-            card.style.borderLeftColor = '#28a745';
-            const btn = card.querySelector('button');
-            if (btn) btn.outerHTML = `<div style="text-align:center; font-size:13px; color:#28a745; font-weight:600; padding:8px;"><i class="fas fa-check-circle"></i> 수정 완료됨</div>`;
-            const badge = card.querySelector('span');
-            if (badge) badge.outerHTML = `<span style="background:#d4edda; color:#155724; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700;"><i class="fas fa-check"></i> 수정완료</span>`;
-        }
+        // ✅ 배열 상태 업데이트 후 재렌더링
+        const target = (window._allBugReports || []).find(r => r.id === reportId);
+        if (target) target.status = 'fixed';
+        filterAdminBugs();
 
         alert('✅ 수정 완료 처리 및 유저 알림 전송 완료!');
 
@@ -8852,13 +9119,13 @@ window.deleteBugReport = async function(reportId) {
     if (!confirm('이 버그 제보를 삭제하시겠습니까?')) return;
     try {
         await db.ref(`bugReports/${reportId}`).remove();
-        const card = document.getElementById(`bugCard-${reportId}`);
-        if (card) {
-            card.style.transition = 'all 0.3s';
-            card.style.opacity = '0';
-            card.style.transform = 'translateX(30px)';
-            setTimeout(() => card.remove(), 300);
-        }
+
+        // ✅ 배열에서도 제거 후 즉시 재렌더링
+        window._allBugReports = (window._allBugReports || []).filter(r => r.id !== reportId);
+        const countEl = document.getElementById('bugTotalCount');
+        if (countEl) countEl.textContent = `총 ${window._allBugReports.length}건`;
+        filterAdminBugs();
+
     } catch(e) {
         console.error(e);
         alert('삭제 중 오류가 발생했습니다.');
