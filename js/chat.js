@@ -263,9 +263,23 @@ window.showChatPage = async function () {
 };
 
 // ===== 채팅방 목록 로드 =====
+// ===== 채팅방 순서 저장/로드 (메인DB users/{mainUid}/chatRoomOrder) =====
+async function loadChatRoomOrder(mainUid) {
+    try {
+        const snap = await db.ref(`users/${mainUid}/chatRoomOrder`).once('value');
+        return snap.val() || null; // null = 저장된 순서 없음
+    } catch (e) { return null; }
+}
+async function saveChatRoomOrder(mainUid, roomIds) {
+    try {
+        await db.ref(`users/${mainUid}/chatRoomOrder`).set(roomIds);
+    } catch (e) { console.warn('순서 저장 실패:', e); }
+}
+
 async function loadChatRoomList() {
-    const myUid  = getChatUserId();
-    const listEl = document.getElementById('chatRoomList');
+    const myUid    = getChatUserId();
+    const mainUid  = auth.currentUser?.uid;
+    const listEl   = document.getElementById('chatRoomList');
     if (!listEl) return;
 
     try {
@@ -286,16 +300,30 @@ async function loadChatRoomList() {
             return;
         }
 
-        const [chatSnaps, usersSnap] = await Promise.all([
+        const [chatSnaps, usersSnap, savedOrder] = await Promise.all([
             Promise.all(myRoomIds.map(id => getChatDb().ref(`chats/${id}`).once('value'))),
-            db.ref('users').once('value')
+            db.ref('users').once('value'),
+            loadChatRoomOrder(mainUid)
         ]);
 
         const usersData = usersSnap.val() || {};
-        const rooms = chatSnaps
+
+        // 기본 정렬: lastMessageAt 내림차순
+        let rooms = chatSnaps
             .map(s => [s.key, s.val()])
             .filter(([_, c]) => c !== null)
             .sort((a, b) => (b[1].lastMessageAt || 0) - (a[1].lastMessageAt || 0));
+
+        // 저장된 순서가 있으면 적용 (목록에 없는 새 방은 맨 뒤에 추가)
+        if (savedOrder && savedOrder.length > 0) {
+            const orderMap = new Map(savedOrder.map((id, i) => [id, i]));
+            rooms.sort((a, b) => {
+                const ia = orderMap.has(a[0]) ? orderMap.get(a[0]) : 9999;
+                const ib = orderMap.has(b[0]) ? orderMap.get(b[0]) : 9999;
+                if (ia !== ib) return ia - ib;
+                return (b[1].lastMessageAt || 0) - (a[1].lastMessageAt || 0);
+            });
+        }
 
         listEl.innerHTML = '';
 
@@ -336,11 +364,23 @@ async function loadChatRoomList() {
             const lastMsg = chat.lastMessage || '대화를 시작해보세요';
 
             const item = document.createElement('div');
-            item.style.cssText = 'display:flex;align-items:center;padding:14px 16px;gap:12px;cursor:pointer;border-bottom:1px solid #f5f5f5;transition:background 0.15s;background:white;';
-            item.onmouseover = () => item.style.background = '#f8f9fa';
-            item.onmouseout  = () => item.style.background = 'white';
-            item.onclick     = () => openChatRoom(roomId, friendUid, friendName, null, friendMainUid);
-            item.innerHTML   = `
+            item.dataset.roomId = roomId;
+            item.style.cssText = 'display:flex;align-items:center;padding:12px 16px;gap:12px;border-bottom:1px solid #f5f5f5;background:white;transition:background 0.15s,opacity 0.15s,transform 0.15s;touch-action:none;';
+
+            // ── 드래그 핸들 (왼쪽 세로 점 3개)
+            const handle = document.createElement('div');
+            handle.className = '_chatDragHandle';
+            handle.style.cssText = 'color:#ccc;font-size:14px;cursor:grab;flex-shrink:0;padding:4px 2px;display:flex;align-items:center;user-select:none;-webkit-user-select:none;';
+            handle.innerHTML = '<i class="fas fa-grip-vertical"></i>';
+            handle.title = '길게 눌러 순서 변경';
+
+            // ── 클릭 영역 (핸들 제외)
+            const body = document.createElement('div');
+            body.style.cssText = 'display:flex;align-items:center;gap:12px;flex:1;min-width:0;cursor:pointer;';
+            body.onclick = () => openChatRoom(roomId, friendUid, friendName, null, friendMainUid);
+            body.onmouseover = () => { item.style.background = '#f8f9fa'; };
+            body.onmouseout  = () => { item.style.background = 'white'; };
+            body.innerHTML = `
                 ${photoHTML}
                 <div style="flex:1;min-width:0;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
@@ -349,7 +389,7 @@ async function loadChatRoomList() {
                     </div>
                     <div style="display:flex;justify-content:space-between;align-items:center;">
                         <span style="font-size:13px;color:#6c757d;white-space:nowrap;overflow:hidden;
-                            text-overflow:ellipsis;max-width:220px;">${escapeHTML(lastMsg)}</span>
+                            text-overflow:ellipsis;max-width:210px;">${escapeHTML(lastMsg)}</span>
                         ${unread > 0
                             ? `<span style="background:#c62828;color:white;border-radius:12px;
                                 padding:2px 7px;font-size:11px;font-weight:700;flex-shrink:0;
@@ -357,12 +397,188 @@ async function loadChatRoomList() {
                             : ''}
                     </div>
                 </div>`;
+
+            item.appendChild(handle);
+            item.appendChild(body);
             listEl.appendChild(item);
         }
+
+        // ── 드래그 앤 드롭 초기화
+        _initChatRoomDnD(listEl, mainUid);
+
     } catch (err) {
         console.error('채팅 목록 로드 실패:', err);
         listEl.innerHTML = `<div style="text-align:center;padding:40px;color:#c62828;">❌ 로드 실패: ${err.message}</div>`;
     }
+}
+
+// ===== 드래그 앤 드롭 초기화 (마우스 + 터치 통합) =====
+function _initChatRoomDnD(listEl, mainUid) {
+    let dragging    = null;   // 현재 드래그 중인 item el
+    let placeholder = null;   // 삽입 위치 표시 div
+    let startY      = 0;
+    let offsetY     = 0;      // 터치 시작 시 손가락과 아이템 상단의 차이
+    let longPressTimer = null;
+    let isDragging  = false;
+    let ghost       = null;   // 드래그 중 따라다니는 복사본
+
+    function getItems() {
+        return [...listEl.querySelectorAll('[data-room-id]')];
+    }
+
+    function createPlaceholder(height) {
+        const ph = document.createElement('div');
+        ph.style.cssText = `height:${height}px;background:linear-gradient(90deg,#ffebee,#fff);
+            border-left:3px solid #c62828;border-radius:4px;margin:2px 0;
+            transition:height 0.15s;pointer-events:none;`;
+        return ph;
+    }
+
+    function insertPlaceholderAt(clientY) {
+        const items = getItems().filter(el => el !== dragging);
+        let inserted = false;
+        for (const el of items) {
+            const rect = el.getBoundingClientRect();
+            const mid  = rect.top + rect.height / 2;
+            if (clientY < mid) {
+                listEl.insertBefore(placeholder, el);
+                inserted = true;
+                break;
+            }
+        }
+        if (!inserted) listEl.appendChild(placeholder);
+    }
+
+    function finalizeOrder() {
+        if (!dragging || !placeholder) return;
+        listEl.insertBefore(dragging, placeholder);
+        placeholder.remove();
+        placeholder = null;
+
+        dragging.style.opacity    = '1';
+        dragging.style.transform  = '';
+        dragging.style.zIndex     = '';
+        dragging.style.position   = '';
+        dragging.style.pointerEvents = '';
+        dragging.style.boxShadow  = '';
+        dragging.style.background = 'white';
+        dragging = null;
+        isDragging = false;
+
+        if (ghost) { ghost.remove(); ghost = null; }
+
+        // 새 순서 저장
+        const newOrder = getItems().map(el => el.dataset.roomId);
+        saveChatRoomOrder(mainUid, newOrder);
+    }
+
+    function cancelDrag() {
+        if (placeholder) { placeholder.remove(); placeholder = null; }
+        if (dragging) {
+            dragging.style.opacity    = '1';
+            dragging.style.transform  = '';
+            dragging.style.zIndex     = '';
+            dragging.style.position   = '';
+            dragging.style.pointerEvents = '';
+            dragging.style.boxShadow  = '';
+            dragging = null;
+        }
+        isDragging = false;
+        if (ghost) { ghost.remove(); ghost = null; }
+    }
+
+    // ── 마우스 이벤트 (드래그 핸들에만)
+    listEl.addEventListener('mousedown', (e) => {
+        const handle = e.target.closest('._chatDragHandle');
+        if (!handle) return;
+        const item = handle.closest('[data-room-id]');
+        if (!item) return;
+
+        e.preventDefault();
+        dragging = item;
+        startY   = e.clientY;
+        const rect = item.getBoundingClientRect();
+        offsetY  = e.clientY - rect.top;
+        placeholder = createPlaceholder(rect.height);
+        isDragging  = true;
+
+        item.style.opacity    = '0.4';
+        item.style.pointerEvents = 'none';
+
+        // 유령 복사본
+        ghost = item.cloneNode(true);
+        ghost.style.cssText += `position:fixed;left:${rect.left}px;top:${rect.top}px;
+            width:${rect.width}px;z-index:99999;pointer-events:none;opacity:0.92;
+            box-shadow:0 8px 24px rgba(0,0,0,0.18);border-radius:10px;background:white;`;
+        document.body.appendChild(ghost);
+
+        listEl.insertBefore(placeholder, item.nextSibling);
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging || !ghost) return;
+        ghost.style.top = (e.clientY - offsetY) + 'px';
+        insertPlaceholderAt(e.clientY);
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (!isDragging) return;
+        finalizeOrder();
+    });
+
+    // ── 터치 이벤트 (꾹 누르기 → 드래그)
+    listEl.addEventListener('touchstart', (e) => {
+        const handle = e.target.closest('._chatDragHandle');
+        if (!handle) return;
+        const item = handle.closest('[data-room-id]');
+        if (!item) return;
+
+        const touch = e.touches[0];
+        startY = touch.clientY;
+        const rect = item.getBoundingClientRect();
+        offsetY = touch.clientY - rect.top;
+
+        // 300ms 꾹 누르기로 드래그 시작
+        longPressTimer = setTimeout(() => {
+            dragging    = item;
+            placeholder = createPlaceholder(rect.height);
+            isDragging  = true;
+
+            item.style.opacity    = '0.4';
+            item.style.pointerEvents = 'none';
+
+            ghost = item.cloneNode(true);
+            ghost.style.cssText += `position:fixed;left:${rect.left}px;top:${rect.top}px;
+                width:${rect.width}px;z-index:99999;pointer-events:none;opacity:0.92;
+                box-shadow:0 8px 24px rgba(0,0,0,0.18);border-radius:10px;background:white;`;
+            document.body.appendChild(ghost);
+
+            listEl.insertBefore(placeholder, item.nextSibling);
+
+            // 진동 피드백 (지원 기기)
+            if (navigator.vibrate) navigator.vibrate(40);
+        }, 300);
+    }, { passive: true });
+
+    listEl.addEventListener('touchmove', (e) => {
+        if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+        if (!isDragging || !ghost) return;
+        e.preventDefault();
+        const touch = e.touches[0];
+        ghost.style.top = (touch.clientY - offsetY) + 'px';
+        insertPlaceholderAt(touch.clientY);
+    }, { passive: false });
+
+    listEl.addEventListener('touchend', () => {
+        if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+        if (!isDragging) return;
+        finalizeOrder();
+    });
+
+    listEl.addEventListener('touchcancel', () => {
+        if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+        cancelDrag();
+    });
 }
 
 // ===== 채팅방 열기 =====
@@ -805,6 +1021,9 @@ window.sendChatMessage = async function (roomId) {
 
 // ===== 채팅 알림 전송 (메인 DB) =====
 // toUid: 수신자의 메인앱 UID, senderMainUid: 발신자의 메인앱 UID
+// ===== 채팅 알림 전송 — 같은 방의 미발송 알림은 묶어서 갱신 =====
+// pushed:false & read:false 인 같은 roomId 알림이 있으면 덮어쓰고
+// count(메시지 수)를 누적해 "N개의 새 메시지" 형태로 표시합니다.
 async function sendChatNotification(toUid, fromName, text, roomId, senderMainUid) {
     try {
         const [globalSnap, roomSnap, filterSnap] = await Promise.all([
@@ -815,19 +1034,51 @@ async function sendChatNotification(toUid, fromName, text, roomId, senderMainUid
                 : Promise.resolve({ val: () => null })
         ]);
 
-        // 전체 채팅 알림 꺼짐
         if (globalSnap.val() === false) return;
-        // 이 방 알림 꺼짐
-        if (roomSnap.val() === false) return;
-        // 이 발신자 알림 꺼짐
+        if (roomSnap.val() === false)   return;
         if (filterSnap.val() === false) return;
 
-        const notifId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-        await db.ref(`notifications/${toUid}/${notifId}`).set({
-            type: 'chat', title: `💬 ${fromName}`,
-            text: text.length > 50 ? text.substring(0, 50) + '...' : text,
-            timestamp: Date.now(), read: false, pushed: false, roomId
+        const shortText = text.length > 50 ? text.substring(0, 50) + '...' : text;
+        const now       = Date.now();
+
+        // ── 같은 방의 미발송(pushed:false) & 미읽음(read:false) 알림이 이미 있으면 묶기
+        const existingSnap = await db.ref(`notifications/${toUid}`)
+            .orderByChild('roomId').equalTo(roomId).once('value');
+
+        let existingKey = null;
+        let existingCount = 0;
+        existingSnap.forEach(child => {
+            const d = child.val();
+            if (d.pushed === false && d.read === false && d.type === 'chat') {
+                existingKey   = child.key;
+                existingCount = d.count || 1;
+            }
         });
+
+        if (existingKey) {
+            // 기존 알림 갱신: 최신 메시지 + 누적 카운트
+            const newCount = existingCount + 1;
+            await db.ref(`notifications/${toUid}/${existingKey}`).update({
+                title:     `💬 ${fromName}`,
+                text:      newCount > 1 ? `메시지 ${newCount}개` : shortText,
+                count:     newCount,
+                timestamp: now,
+                pushed:    false   // 아직 발송 전으로 유지
+            });
+        } else {
+            // 새 알림 생성
+            const notifId = `chat_${now}_${Math.random().toString(36).substr(2, 6)}`;
+            await db.ref(`notifications/${toUid}/${notifId}`).set({
+                type:      'chat',
+                title:     `💬 ${fromName}`,
+                text:      shortText,
+                count:     1,
+                timestamp: now,
+                read:      false,
+                pushed:    false,
+                roomId
+            });
+        }
     } catch (e) { console.warn('채팅 알림 전송 실패:', e.message); }
 }
 
