@@ -160,35 +160,31 @@ window.saveProfilePhoto = async function() {
 
     showLoadingIndicator("사진 업로드 중...");
 
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-        const photoData = e.target.result;
+    try {
+        // ✅ 프로필 사진 압축 (최대 200px, 고품질)
+        const photoData = await compressImageToBase64(file, 200, 0.92);
 
-        try {
-            await db.ref("users/" + user.uid).update({
-                profilePhoto: photoData,
-                photoUpdatedAt: Date.now()
-            });
+        await db.ref("users/" + user.uid).update({
+            profilePhoto: photoData,
+            photoUpdatedAt: Date.now()
+        });
 
-            if (window.profilePhotoCache) {
-                window.profilePhotoCache.set(user.email, photoData);
-            }
-
-            hideLoadingIndicator();
-            closeProfilePhotoModal();
-            alert("프로필 사진이 변경되었습니다!");
-
-            if (typeof updateSettings === 'function') updateSettings();
-            if (typeof updateHeaderProfileButton === 'function') updateHeaderProfileButton(user);
-
-        } catch (error) {
-            hideLoadingIndicator();
-            console.error("업로드 실패:", error);
-            alert("업로드 실패: " + error.message);
+        if (window.profilePhotoCache) {
+            window.profilePhotoCache.set(user.email, photoData);
         }
-    };
 
-    reader.readAsDataURL(file);
+        hideLoadingIndicator();
+        closeProfilePhotoModal();
+        alert("프로필 사진이 변경되었습니다!");
+
+        if (typeof updateSettings === 'function') updateSettings();
+        if (typeof updateHeaderProfileButton === 'function') updateHeaderProfileButton(user);
+
+    } catch (error) {
+        hideLoadingIndicator();
+        console.error("업로드 실패:", error);
+        alert("업로드 실패: " + error.message);
+    }
 };
 
 console.log("✅ 프로필 사진 변경 기능 로드 완료");
