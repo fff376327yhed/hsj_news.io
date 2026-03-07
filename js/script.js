@@ -135,6 +135,7 @@ let currentArticlePage = 1;
 const ARTICLES_PER_PAGE = 5;
 let currentCommentPage = 1;
 const COMMENTS_PER_PAGE = 10;
+let currentCommentSort = 'latest'; // 댓글 정렬 방식
 let currentArticleId = null;
 let currentSortMethod = 'latest';
 let filteredArticles = [];
@@ -442,6 +443,7 @@ function routeToPage(page, articleId = null, section = null) {
         'admin': () => typeof showAdminEvent === 'function' ? showAdminEvent() : showArticles(),
         'more': () => showMoreMenu(),
         'messenger': () => typeof showMessenger === 'function' ? showMessenger() : showMoreMenu(),
+        'chat': () => typeof showChatPage === 'function' ? showChatPage() : showMoreMenu(),
         'friends': () => typeof showFriendsPage === 'function' ? showFriendsPage() : showMoreMenu(),
         'friendRequests': () => typeof showFriendRequestsPage === 'function' ? showFriendRequestsPage() : showMoreMenu(),
         'bugreport': () => typeof showBugReportPage === 'function' ? showBugReportPage() : showMoreMenu(),
@@ -568,11 +570,27 @@ auth.getRedirectResult()
     });
 
 // 관리자 모드 해제
-function disableAdminMode() {
+async function disableAdminMode() {
     if(!confirm("관리자 모드를 해제하시겠습니까?\n\n일반 사용자 모드로 전환됩니다.")) return;
-    deleteCookie("is_admin");
-    alert("관리자 모드가 해제되었습니다.");
-    location.reload();
+    
+    const user = auth.currentUser;
+    if (!user) return;
+    
+    try {
+        // DB에서 isAdmin 직접 false로 기록
+        await db.ref(`users/${user.uid}/isAdmin`).set(false);
+        
+        // 메모리 캐시 즉시 초기화
+        _cachedAdminStatus = null;
+        _adminCacheTime = 0;
+        
+        deleteCookie("is_admin");
+        alert("관리자 모드가 해제되었습니다.");
+        location.reload();
+    } catch(error) {
+        console.error("관리자 해제 실패:", error);
+        alert("해제 실패: " + error.message);
+    }
 }
 
 // 공유 가능한 링크 복사
@@ -789,7 +807,7 @@ async function createProfilePhoto(photoUrl, size) {
         </div>`;
     }
     
-    return `<img src="${photoUrl}" style="width:${size}px; height:${size}px; border-radius:50%; object-fit:cover; border:2px solid #dadce0;">`;
+    return `<img src="${photoUrl}" style="width:${size}px; height:${size}px; min-width:${size}px; min-height:${size}px; border-radius:50%; object-fit:cover; object-position:center; border:2px solid #dadce0; flex-shrink:0; image-rendering:auto; -webkit-transform:translateZ(0); transform:translateZ(0);">`;
 }
 
 // 프로필 드롭다운 토글
@@ -1349,7 +1367,7 @@ async function createProfilePhoto(photoUrl, size) {
             <i class="fas fa-user" style="font-size:${size/2}px; color:#9aa0a6;"></i>
         </div>`;
     }
-    return `<img src="${photoUrl}" style="width:${size}px; height:${size}px; border-radius:50%; object-fit:cover; border:2px solid #dadce0;">`;
+    return `<img src="${photoUrl}" style="width:${size}px; height:${size}px; min-width:${size}px; min-height:${size}px; border-radius:50%; object-fit:cover; object-position:center; border:2px solid #dadce0; flex-shrink:0; image-rendering:auto; -webkit-transform:translateZ(0); transform:translateZ(0);">`;
 }
 
     // ✅ 알림 리스너 시작
@@ -2159,8 +2177,12 @@ function showMoreMenu() {
                         <i class="fas fa-cube"></i> 마크
                     </button>
                     <button onclick="showMessenger()" class="more-menu-btn">
-                        <i class="fas fa-envelope"></i> 메신저
+                        <i class="fas fa-envelope"></i> 알림함
                         <span class="notification-badge" id="messengerBadgeMore" style="display:none; position:absolute; right:12px; top:12px; background:#dc3545; color:white; border-radius:12px; padding:2px 6px; font-size:10px; font-weight:700; min-width:18px; text-align:center;"></span>
+                    </button>
+                    <button onclick="showChatPage()" class="more-menu-btn" style="position:relative;">
+                        <i class="fas fa-comment-dots"></i> 채팅
+                        <span class="notification-badge" id="chatBadgeMore" style="display:none; position:absolute; right:12px; top:12px; background:#dc3545; color:white; border-radius:12px; padding:2px 6px; font-size:10px; font-weight:700; min-width:18px; text-align:center;"></span>
                     </button>
                 </div>
             </div>
@@ -2179,9 +2201,25 @@ function showMoreMenu() {
                     <button onclick="showActivityStatus()" class="more-menu-btn">
                         <i class="fas fa-users"></i> 활동중
                     </button>
+                    <button onclick="showBugReportPage()" class="more-menu-btn">
+                        <i class="fas fa-bug"></i> 버그 제보
+                    </button>
                 </div>
             </div>
-            
+
+            ${isLoggedIn() ? `
+            <div class="menu-section" style="background:white; border-radius:12px; padding:20px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                <h3 style="color:#495057; margin:0 0 15px 0; font-size:16px; font-weight:700;">
+                    <i class="fas fa-bell"></i> 알림
+                </h3>
+                <div style="display:grid; gap:10px;">
+                    <button onclick="manualTriggerPush(this)" class="more-menu-btn">
+                        <i class="fas fa-paper-plane"></i> 푸쉬 알림 즉시 전송
+                        <span style="font-size:11px; color:#999; margin-left:auto;">읽지 않은 알림을 지금 전송</span>
+                    </button>
+                </div>
+            </div>` : ''}
+
             ${isAdmin() ? `
             <div class="menu-section" style="background:#fff8f8; border:1px solid #ffcdd2; border-radius:12px; padding:20px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.08);">
                 <h3 style="color:#c62828; margin:0 0 15px 0; font-size:16px; font-weight:700;">
@@ -2211,6 +2249,12 @@ function showMoreMenu() {
                     </button>
                     <button onclick="showManualNotificationSender()" class="more-menu-btn" style="border-color:#ffcdd2;">
                         <i class="fas fa-paper-plane" style="color:#c62828;"></i> 수동 알림 전송
+                    </button>
+                    <button onclick="showAdminBugReports()" class="more-menu-btn" style="border-color:#ffcdd2;">
+                        <i class="fas fa-bug" style="color:#c62828;"></i> 버그 제보 관리
+                    </button>
+                    <button onclick="showAdminMemo()" class="more-menu-btn" style="border-color:#ffcdd2;">
+                        <i class="fas fa-sticky-note" style="color:#c62828;"></i> 관리자 메모장
                     </button>
                 </div>
             </div>` : ''}
@@ -2250,6 +2294,21 @@ function showMoreMenu() {
     
     updateURL('more');
     updateMessengerBadge();
+}
+
+// 더보기 - 수동 푸쉬 트리거 버튼 핸들러
+async function manualTriggerPush(btn) {
+    if (!isLoggedIn()) { alert('로그인이 필요합니다.'); return; }
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 전송 요청 중...';
+    const ok = await triggerGithubNotification(false);
+    if (ok) {
+        btn.innerHTML = '<i class="fas fa-check" style="color:#2e7d32;"></i> 전송 요청 완료!';
+    } else {
+        btn.innerHTML = '<i class="fas fa-clock" style="color:#888;"></i> 잠시 후 자동 전송 예정';
+    }
+    setTimeout(() => { btn.innerHTML = original; btn.disabled = false; }, 3000);
 }
 
 // 6. 카테고리별 기사 표시
@@ -2556,7 +2615,7 @@ console.log("✅ QnA 및 패치노트 기능 로드 완료");
 
 function getProfilePlaceholder(photoUrl, size) {
     if (photoUrl) {
-        return `<img src="${photoUrl}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;border:2px solid #dadce0;flex-shrink:0;">`;
+        return `<img src="${photoUrl}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;object-position:center;border:2px solid #dadce0;flex-shrink:0;image-rendering:auto;-webkit-transform:translateZ(0);transform:translateZ(0);">`;
     }
     return `<span style="width:${size}px;height:${size}px;border-radius:50%;background:#f1f3f4;display:inline-flex;align-items:center;justify-content:center;border:2px solid #dadce0;flex-shrink:0;">
         <i class="fas fa-user" style="font-size:${size/2}px;color:#9aa0a6;"></i>
@@ -3712,6 +3771,7 @@ function setupArticleForm() {
                         articleId: article.id
                     });
                     
+                    triggerGithubNotification(true); // 기사 작성 시 자동 트리거
                     showArticles();
                 });
             };
@@ -3726,9 +3786,10 @@ function setupArticleForm() {
                     authorName: article.author,
                     title: article.title,
                     articleId: article.id,
-                    category: article.category  // ✅ 카테고리 필터 동작에 필요
+                    category: article.category
                 });
                 
+                triggerGithubNotification(true); // 기사 작성 시 자동 트리거
                 showArticles();
             });
         }
@@ -3861,11 +3922,28 @@ const rateLimiter = {
 async function loadCommentsWithProfile(id) {
     const currentUser = getNickname();
     const currentEmail = getUserEmail();
+    const myUid = getUserId();
     
     try {
-        const snapshot = await db.ref("comments/" + id).once("value");
-        const val = snapshot.val() || {};
-        const commentsList = Object.entries(val).sort((a,b) => new Date(b[1].timestamp) - new Date(a[1].timestamp));
+        const [commentsSnap, votesSnap] = await Promise.all([
+            db.ref("comments/" + id).once("value"),
+            isLoggedIn() ? db.ref(`commentVotes/${id}`).once("value") : Promise.resolve(null)
+        ]);
+
+        const val = commentsSnap.val() || {};
+        const votesData = votesSnap ? (votesSnap.val() || {}) : {};
+
+        let commentsList = Object.entries(val);
+
+        // 정렬
+        // commentsList의 key가 Date.now() 기반이라 숫자 비교로 정렬
+if (currentCommentSort === 'oldest') {
+    commentsList.sort((a,b) => Number(a[0]) - Number(b[0]));
+} else if (currentCommentSort === 'likes') {
+    commentsList.sort((a,b) => (b[1].likeCount||0) - (a[1].likeCount||0));
+} else {
+    commentsList.sort((a,b) => Number(b[0]) - Number(a[0]));
+}
         
         const root = document.getElementById("comments");
         const countEl = document.getElementById("commentCount");
@@ -3880,111 +3958,153 @@ async function loadCommentsWithProfile(id) {
         const endIdx = currentCommentPage * COMMENTS_PER_PAGE;
         const displayComments = commentsList.slice(0, endIdx);
 
-        const emails = [...new Set(displayComments.map(([_, comment]) => comment.authorEmail).filter(Boolean))];
-        
+        // 프로필 사진 캐시
+        const emails = [...new Set(displayComments.map(([_, c]) => c.authorEmail).filter(Boolean))];
         displayComments.forEach(([_, comment]) => {
             if (comment.replies) {
-                Object.values(comment.replies).forEach(reply => {
-                    if (reply.authorEmail) emails.push(reply.authorEmail);
-                });
+                Object.values(comment.replies).forEach(r => { if (r.authorEmail) emails.push(r.authorEmail); });
             }
         });
-
         const uniqueEmails = [...new Set(emails)];
-        const uncachedEmails = uniqueEmails.filter(email => !window.profilePhotoCache.has(email));
-
+        const uncachedEmails = uniqueEmails.filter(e => !window.profilePhotoCache.has(e));
         if (uncachedEmails.length > 0) {
-    // ✅ 로그인된 경우에만 시도
-    if (isLoggedIn()) {
-        try {
-            const usersSnapshot = await db.ref("users").once("value");
-            const usersData = usersSnapshot.val() || {};
-            
-            Object.values(usersData).forEach(userData => {
-                if (userData && userData.email && uncachedEmails.includes(userData.email)) {
-                    window.profilePhotoCache.set(userData.email, userData.profilePhoto || null);
+            if (isLoggedIn()) {
+                try {
+                    const usersSnapshot = await db.ref("users").once("value");
+                    const usersData = usersSnapshot.val() || {};
+                    Object.values(usersData).forEach(u => {
+                        if (u && u.email && uncachedEmails.includes(u.email)) {
+                            window.profilePhotoCache.set(u.email, u.profilePhoto || null);
+                        }
+                    });
+                } catch(e) {
+                    uncachedEmails.forEach(email => window.profilePhotoCache.set(email, null));
+                }
+            } else {
+                uncachedEmails.forEach(email => window.profilePhotoCache.set(email, null));
+            }
+        }
+
+        // ── 답글 트리 렌더 헬퍼 (재귀) ──
+        function renderReplies(repliesObj, commentId, depth) {
+            if (!repliesObj) return '';
+            const all = Object.entries(repliesObj).sort((a,b) => new Date(a[1].timestamp) - new Date(b[1].timestamp));
+            const roots = all.filter(([_, r]) => !r.parentReplyId);
+            const childMap = {};
+            all.forEach(([rid, r]) => {
+                if (r.parentReplyId) {
+                    if (!childMap[r.parentReplyId]) childMap[r.parentReplyId] = [];
+                    childMap[r.parentReplyId].push([rid, r]);
                 }
             });
-        } catch (error) {
-            uncachedEmails.forEach(email => {
-                window.profilePhotoCache.set(email, null);
-            });
-        }
-    } else {
-        uncachedEmails.forEach(email => {
-            window.profilePhotoCache.set(email, null);
-        });
-    }
-}
 
-        const commentsHTML = displayComments.map(([commentId, comment]) => {
-            const isMyComment = isLoggedIn() && ((comment.authorEmail === currentEmail) || isAdmin());
-            const photoUrl = window.profilePhotoCache.get(comment.authorEmail) || null;
-            const authorPhotoHTML = getProfilePlaceholder(photoUrl, 32);
-            
-            // ✅ 수정됨 표시
-            const commentEditedBadge = comment.edited ? 
-                `<span class="edited-badge"><i class="fas fa-edit"></i> 수정됨</span>` : '';
-            
-            let repliesHTML = '';
-            if (comment.replies) {
-                const replies = Object.entries(comment.replies).sort((a, b) => new Date(a[1].timestamp) - new Date(b[1].timestamp));
-                
-                repliesHTML = replies.map(([replyId, reply]) => {
-                    const isMyReply = isLoggedIn() && ((reply.authorEmail === currentEmail) || isAdmin());
-                    const replyPhotoUrl = window.profilePhotoCache.get(reply.authorEmail) || null;
-                    const replyPhotoHTML = getProfilePlaceholder(replyPhotoUrl, 24);
-                    
-                    // ✅ 답글 수정됨 표시
-                    const replyEditedBadge = reply.edited ? 
-                        `<span class="edited-badge"><i class="fas fa-edit"></i> 수정됨</span>` : '';
-                    
-                    return `
-                        <div class="reply-item" id="reply-${commentId}-${replyId}">
-                            <div class="reply-header">
-                                ${replyPhotoHTML}
-                               <span class="reply-author">↳ ${escapeHTML(reply.author)}</span>
-   <span class="reply-time">${escapeHTML(reply.timestamp)}</span>
-                                ${replyEditedBadge}
+            function renderNode([replyId, reply], depth) {
+                const isMyReply = isLoggedIn() && (reply.authorEmail === currentEmail || isAdmin());
+                const rPhotoHTML = getProfilePlaceholder(window.profilePhotoCache.get(reply.authorEmail)||null, 24);
+                const editedBadge = reply.edited ? `<span class="edited-badge"><i class="fas fa-edit"></i> 수정됨</span>` : '';
+                const indent = Math.min(depth, 4) * 14;
+                const children = (childMap[replyId] || []).map(n => renderNode(n, depth+1)).join('');
+                const prefix = depth > 0 ? '↳ ' : '↳ ';
+
+                return `
+                    <div class="reply-item" id="reply-${commentId}-${replyId}" style="margin-left:${indent}px;">
+                        <div class="reply-header">
+                            ${rPhotoHTML}
+                            <span class="reply-author">${prefix}${escapeHTML(reply.author)}</span>
+                            <span class="reply-time">${escapeHTML(reply.timestamp)}</span>
+                            ${editedBadge}
+                        </div>
+                       <div class="reply-content" id="replyContent-${commentId}-${replyId}" style="white-space: pre-wrap;">${escapeHTML(reply.text)}</div>
+${reply.imageBase64 ? `
+    <div style="margin-top:6px;">
+        <img src="${reply.imageBase64}" onclick="openImageModal('${reply.imageBase64}')" style="max-width:100%; max-height:200px; border-radius:8px; cursor:pointer; object-fit:cover;">
+    </div>
+` : ''}
+                        <div class="reply-edit-form" id="replyEditForm-${commentId}-${replyId}" style="display:none;">
+                            <textarea id="replyEditInput-${commentId}-${replyId}" class="reply-input" style="resize:none; overflow:hidden; min-height:36px; max-height:100px; line-height:1.4; border-radius:16px; padding:8px 12px; width:100%; box-sizing:border-box;" onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); saveReplyEdit('${id}', '${commentId}', '${replyId}'); }" oninput="autoResizeTextarea(this)">${reply.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+                            <div style="display:flex; gap:5px; margin-top:5px;">
+                                <button onclick="saveReplyEdit('${id}', '${commentId}', '${replyId}')" class="btn-text" style="color:#1976d2;">저장</button>
+                                <button onclick="cancelReplyEdit('${commentId}', '${replyId}')" class="btn-text">취소</button>
                             </div>
-                            <div class="reply-content" id="replyContent-${commentId}-${replyId}">${escapeHTML(reply.text)}</div>
-                            <div class="reply-edit-form" id="replyEditForm-${commentId}-${replyId}" style="display:none;">
-                                <input type="text" id="replyEditInput-${commentId}-${replyId}" class="reply-input" value="${reply.text.replace(/"/g, '&quot;')}" onkeypress="if(event.key==='Enter') saveReplyEdit('${id}', '${commentId}', '${replyId}')">
-                                <div style="display:flex; gap:5px; margin-top:5px;">
-                                    <button onclick="saveReplyEdit('${id}', '${commentId}', '${replyId}')" class="btn-text" style="color:#1976d2;">저장</button>
-                                    <button onclick="cancelReplyEdit('${commentId}', '${replyId}')" class="btn-text">취소</button>
-                                </div>
-                            </div>
+                        </div>
+                        <div class="reply-actions">
+                            <button onclick="toggleNestedReplyForm('${commentId}', '${replyId}')" class="btn-text" style="font-size:11px;">💬 답글</button>
                             ${isMyReply ? `
-                                <div class="reply-actions">
-                                    <button onclick="editReply('${commentId}', '${replyId}')" class="btn-text">수정</button>
-                                    <button onclick="deleteReply('${id}', '${commentId}', '${replyId}')" class="btn-text-danger">삭제</button>
-                                </div>
+                                <button onclick="editReply('${commentId}', '${replyId}')" class="btn-text" style="font-size:11px;">✏️ 수정</button>
+                                <button onclick="deleteReply('${id}', '${commentId}', '${replyId}')" class="btn-text-danger" style="font-size:11px;">삭제</button>
                             ` : ''}
                         </div>
-                    `;
-                }).join('');
+                        <div id="nestedReplyForm-${commentId}-${replyId}" class="reply-input-area" style="display:none; margin-left:8px; flex-direction:column; gap:6px;">
+    <div id="nestedReplyImagePreview-${commentId}-${replyId}" style="display:none; position:relative;">
+        <img id="nestedReplyImagePreviewImg-${commentId}-${replyId}" style="max-height:100px; max-width:100%; border-radius:8px; object-fit:contain; border:1px solid #dee2e6;">
+        <button onclick="clearNestedReplyImage('${commentId}','${replyId}')" style="position:absolute; top:3px; right:3px; background:rgba(0,0,0,0.55); color:white; border:none; border-radius:50%; width:20px; height:20px; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center;"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="display:flex; align-items:flex-end; gap:6px;">
+        <textarea id="nestedReplyInput-${commentId}-${replyId}" class="reply-input" placeholder="답글 입력... (Shift+Enter: 줄바꿈)" rows="1"
+            style="resize:none; overflow:hidden; min-height:36px; max-height:100px; line-height:1.4; flex:1; border-radius:16px; padding:8px 12px;"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitNestedReply('${id}','${commentId}','${replyId}')}"
+            oninput="autoResizeTextarea(this)"></textarea>
+        <input type="file" id="nestedReplyImageInput-${commentId}-${replyId}" accept="image/*" style="display:none;" onchange="previewNestedReplyImage(this,'${commentId}','${replyId}')">
+        <button onclick="document.getElementById('nestedReplyImageInput-${commentId}-${replyId}').click()" class="btn-reply-submit" style="background:#f0f4f8; color:#495057;"><i class="fas fa-camera"></i></button>
+        <button onclick="submitNestedReply('${id}', '${commentId}', '${replyId}')" class="btn-reply-submit"><i class="fas fa-paper-plane"></i></button>
+    </div>
+</div>
+
+                        ${children}
+                    </div>
+                `;
             }
+            return roots.map(n => renderNode(n, 0)).join('');
+        }
+
+        const commentsHTML = displayComments.map(([commentId, comment]) => {
+            const isMyComment = isLoggedIn() && (comment.authorEmail === currentEmail || isAdmin());
+            const photoUrl = window.profilePhotoCache.get(comment.authorEmail) || null;
+            const authorPhotoHTML = getProfilePlaceholder(photoUrl, 32);
+            const commentEditedBadge = comment.edited ? `<span class="edited-badge"><i class="fas fa-edit"></i> 수정됨</span>` : '';
+
+            // 댓글 좋아요/싫어요
+            const myCommentVote = votesData[commentId] ? (votesData[commentId][myUid] || null) : null;
+            const likeCount = comment.likeCount || 0;
+            const dislikeCount = comment.dislikeCount || 0;
+            const likeActive = myCommentVote === 'like' ? 'background:#e3f2fd; color:#1565c0; border-color:#1565c0;' : '';
+            const dislikeActive = myCommentVote === 'dislike' ? 'background:#fce4ec; color:#c62828; border-color:#c62828;' : '';
+
+            const repliesHTML = renderReplies(comment.replies, commentId, 0);
 
             return `
                 <div class="comment-card" id="comment-${commentId}">
                     <div class="comment-header">
                         ${authorPhotoHTML}
                         <span class="comment-author">${escapeHTML(comment.author)}</span>
-   <span class="comment-time">${escapeHTML(comment.timestamp)}</span>
+                        <span class="comment-time">${escapeHTML(comment.timestamp)}</span>
                         ${commentEditedBadge}
                     </div>
-                    <div class="comment-body" id="commentBody-${commentId}">${escapeHTML(comment.text)}</div>
+                   <div class="comment-body" id="commentBody-${commentId}" style="white-space: pre-wrap;">${escapeHTML(comment.text)}</div>
+${comment.imageBase64 ? `
+    <div class="comment-media" style="margin-top:8px;">
+        <img src="${comment.imageBase64}" onclick="openImageModal('${comment.imageBase64}')" style="max-width:100%; max-height:300px; border-radius:8px; cursor:pointer; object-fit:cover;">
+    </div>
+` : comment.mediaUrl ? `
+    <div class="comment-media" style="margin-top:8px;">
+        ${comment.mediaType === 'video'
+            ? `<video src="${comment.mediaUrl}" controls style="max-width:100%; max-height:300px; border-radius:8px;"></video>`
+            : `<img src="${comment.mediaUrl}" onclick="openImageModal('${comment.mediaUrl}')" style="max-width:100%; max-height:300px; border-radius:8px; cursor:pointer; object-fit:cover;">`
+        }
+    </div>
+` : ''}
                     
                     <div class="comment-edit-form" id="commentEditForm-${commentId}" style="display:none;">
-                        <textarea id="commentEditInput-${commentId}" class="comment-edit-textarea" onkeypress="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); saveCommentEdit('${id}', '${commentId}'); }">${comment.text}</textarea>
+                        <textarea id="commentEditInput-${commentId}" class="comment-edit-textarea" onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); saveCommentEdit('${id}', '${commentId}'); }">${comment.text}</textarea>
                         <div style="display:flex; gap:10px; margin-top:10px;">
                             <button onclick="saveCommentEdit('${id}', '${commentId}')" class="btn-primary" style="padding:8px 16px; font-size:13px;">저장</button>
                             <button onclick="cancelCommentEdit('${commentId}')" class="btn-secondary" style="padding:8px 16px; font-size:13px;">취소</button>
                         </div>
                     </div>
                     
-                    <div class="comment-footer">
+                    <div class="comment-footer" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <button id="clike-${commentId}" onclick="toggleCommentVote('${id}','${commentId}','like')" style="border:1px solid #ddd; border-radius:20px; padding:3px 10px; font-size:12px; background:#fff; cursor:pointer; ${likeActive}">👍 ${likeCount}</button>
+                        <button id="cdislike-${commentId}" onclick="toggleCommentVote('${id}','${commentId}','dislike')" style="border:1px solid #ddd; border-radius:20px; padding:3px 10px; font-size:12px; background:#fff; cursor:pointer; ${dislikeActive}">👎 ${dislikeCount}</button>
                         <button onclick="toggleReplyForm('${commentId}')" class="btn-text">💬 답글</button>
                         ${isMyComment ? `
                             <button onclick="editComment('${commentId}')" class="btn-text">✏️ 수정</button>
@@ -3996,10 +4116,21 @@ async function loadCommentsWithProfile(id) {
                         ${repliesHTML}
                     </div>
 
-                    <div id="replyForm-${commentId}" class="reply-input-area" style="display:none;">
-                        <input type="text" id="replyInput-${commentId}" class="reply-input" placeholder="답글을 입력하세요..." onkeypress="if(event.key==='Enter') submitReply('${id}', '${commentId}')">
-                        <button onclick="submitReply('${id}', '${commentId}')" class="btn-reply-submit"><i class="fas fa-paper-plane"></i></button>
-                    </div>
+                    <div id="replyForm-${commentId}" class="reply-input-area" style="display:none; flex-direction:column; gap:6px;">
+    <div id="replyImagePreview-${commentId}" style="display:none; position:relative;">
+        <img id="replyImagePreviewImg-${commentId}" style="max-height:100px; max-width:100%; border-radius:8px; object-fit:contain; border:1px solid #dee2e6;">
+        <button onclick="clearReplyImage('${commentId}')" style="position:absolute; top:3px; right:3px; background:rgba(0,0,0,0.55); color:white; border:none; border-radius:50%; width:20px; height:20px; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center;"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="display:flex; align-items:flex-end; gap:6px;">
+        <textarea id="replyInput-${commentId}" class="reply-input" placeholder="답글 입력... (Shift+Enter: 줄바꿈)" rows="1"
+            style="resize:none; overflow:hidden; min-height:36px; max-height:100px; line-height:1.4; flex:1; border-radius:16px; padding:8px 12px;"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitReply('${id}','${commentId}')}"
+            oninput="autoResizeTextarea(this)"></textarea>
+        <input type="file" id="replyImageInput-${commentId}" accept="image/*" style="display:none;" onchange="previewReplyImage(this,'${commentId}')">
+        <button onclick="document.getElementById('replyImageInput-${commentId}').click()" class="btn-reply-submit" style="background:#f0f4f8; color:#495057;"><i class="fas fa-camera"></i></button>
+        <button onclick="submitReply('${id}', '${commentId}')" class="btn-reply-submit"><i class="fas fa-paper-plane"></i></button>
+    </div>
+</div>
                 </div>
             `;
         }).join('');
@@ -4191,6 +4322,21 @@ function loadMoreComments() {
     loadComments(currentArticleId);
 }
 
+// ✅ 댓글 입력창 자동 높이 조절
+window.autoResizeTextarea = function(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+};
+
+// ✅ 댓글 Enter 키 핸들러 (Enter=전송, Shift+Enter=줄바꿈)
+window.handleCommentKey = function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        submitCommentFromDetail();
+    }
+    // Shift+Enter는 기본 동작(줄바꿈) 그대로
+};
+
 // ✅ 댓글 제출
 function submitCommentFromDetail() {
     submitComment(currentArticleId);
@@ -4202,62 +4348,80 @@ async function submitComment(id){
         return;
     }
 
-    // ✅ 속도 제한: 30초 안에 5개 초과 시 차단
     if (!rateLimiter.check('comment', 5, 30 * 1000)) {
         alert("⚠️ 댓글을 너무 빠르게 작성하고 있습니다. 잠시 후 다시 시도해주세요.");
         return;
     }
 
     const txt = document.getElementById("commentInput").value.trim();
-    if(!txt) return alert("댓글 내용을 입력해주세요!");
+    const imageInput = document.getElementById("commentImageInput");
 
-    // ✅ 길이 제한
+    if (!txt && (!imageInput || !imageInput.files || !imageInput.files[0])) {
+        alert("댓글 내용 또는 이미지를 입력해주세요.");
+        return;
+    }
+
     if (txt.length > 1000) {
         alert("댓글은 1000자 이하로 입력해주세요.");
         return;
     }
 
-    const foundWord = checkBannedWords(txt);
-    if (foundWord) {
-        alert(`⚠️ 금지어("${foundWord}")가 포함되어 등록할 수 없으며, 경고 1회가 누적됩니다.`);
-        addWarningToCurrentUser();
-        return;
+    if (txt) {
+        const foundWord = checkBannedWords(txt);
+        if (foundWord) {
+            alert(`⚠️ 금지어("${foundWord}")가 포함되어 등록할 수 없으며, 경고 1회가 누적됩니다.`);
+            addWarningToCurrentUser();
+            return;
+        }
     }
 
-    const cid = Date.now().toString();
-    const C = {
-        author: getNickname(),
-        authorEmail: getUserEmail(),
-        text: txt,
-        timestamp: new Date().toLocaleString()
-    };
-    
+    const submitBtns = document.querySelectorAll('.comment-submit-btn');
+    submitBtns.forEach(b => b.disabled = true);
+
     try {
+        let imageBase64 = null;
+        if (imageInput && imageInput.files && imageInput.files[0]) {
+            imageBase64 = await compressImageToBase64(imageInput.files[0], 800, 0.72);
+        }
+
+        const cid = Date.now().toString();
+        const C = {
+            author: getNickname(),
+            authorEmail: getUserEmail(),
+            text: txt,
+            timestamp: new Date().toLocaleString(),
+        };
+        if (imageBase64) C.imageBase64 = imageBase64;
+
         await db.ref("comments/" + id + "/" + cid).set(C);
-        
+
         const articleSnapshot = await db.ref("articles/" + id).once("value");
         const article = articleSnapshot.val();
-        
-        if(article) {
-            if(article.authorEmail !== C.authorEmail) {
-                await sendNotification('myArticleComment', {
-                    articleAuthorEmail: article.authorEmail,
-                    commenterEmail: C.authorEmail,
-                    commenterName: C.author,
-                    content: txt,
-                    articleId: id,
-                    articleCategory: article.category || '' // ✅ 카테고리 필터에 사용
-                });
-            }
+
+        if(article && article.authorEmail !== C.authorEmail) {
+            await sendNotification('myArticleComment', {
+                articleAuthorEmail: article.authorEmail,
+                commenterEmail: C.authorEmail,
+                commenterName: C.author,
+                content: txt || '[이미지]',
+                articleId: id,
+                articleCategory: article.category || ''
+            });
         }
-        
+
         document.getElementById("commentInput").value = "";
+        autoResizeTextarea(document.getElementById("commentInput"));
+        if (imageInput) imageInput.value = "";
+        clearCommentImage();
         currentCommentPage = 1;
+        triggerGithubNotification(true); // 댓글 작성 시 자동 트리거
         loadComments(id);
-        
+
     } catch(error) {
         console.error("댓글 작성 실패:", error);
-        alert("댓글 작성 중 오류가 발생했습니다.");
+        alert("댓글 작성 중 오류가 발생했습니다: " + error.message);
+    } finally {
+        submitBtns.forEach(b => b.disabled = false);
     }
 }
 
@@ -4294,32 +4458,44 @@ window.toggleReplyForm = function(commentId) {
 // ✅ 답글 등록
 window.submitReply = async function(articleId, commentId) {
     if(!isLoggedIn()) return alert("로그인이 필요합니다.");
-    
+
     const input = document.getElementById(`replyInput-${commentId}`);
     const text = input.value.trim();
-    
-    if(!text) return;
-    
-    const foundWord = checkBannedWords(text);
-    if(foundWord) {
-        alert(`금지어("${foundWord}")가 포함되어 있습니다.`);
-        return;
+    const imageInput = document.getElementById(`replyImageInput-${commentId}`);
+
+    if(!text && (!imageInput || !imageInput.files || !imageInput.files[0])) return;
+
+    if(text) {
+        const foundWord = checkBannedWords(text);
+        if(foundWord) {
+            alert(`금지어("${foundWord}")가 포함되어 있습니다.`);
+            return;
+        }
     }
 
-    const reply = {
-        author: getNickname(),
-        authorEmail: getUserEmail(),
-        text: text,
-        timestamp: new Date().toLocaleString()
-    };
-
     try {
+        let imageBase64 = null;
+        if (imageInput && imageInput.files && imageInput.files[0]) {
+            imageBase64 = await compressImageToBase64(imageInput.files[0], 800, 0.72);
+        }
+
+        const reply = {
+            author: getNickname(),
+            authorEmail: getUserEmail(),
+            text: text,
+            timestamp: new Date().toLocaleString()
+        };
+        if (imageBase64) reply.imageBase64 = imageBase64;
+
         await db.ref(`comments/${articleId}/${commentId}/replies`).push(reply);
-        
+
         input.value = "";
+        if (imageInput) imageInput.value = "";
+        clearReplyImage(commentId);
         document.getElementById(`replyForm-${commentId}`).style.display = 'none';
+        triggerGithubNotification(true); // 답글 작성 시 자동 트리거
         loadComments(articleId);
-        
+
     } catch(error) {
         console.error("답글 등록 실패:", error);
         alert("답글 등록 중 오류가 발생했습니다.");
@@ -4337,6 +4513,110 @@ window.deleteReply = async function(articleId, commentId, replyId) {
         alert("삭제 실패: " + error.message);
     }
 }
+
+// ✅ 댓글 정렬 변경
+window.setCommentSort = function(method) {
+    currentCommentSort = method;
+    currentCommentPage = 1;
+    loadComments(currentArticleId);
+};
+
+// ✅ 댓글 좋아요/싫어요
+window.toggleCommentVote = function(articleId, commentId, voteType) {
+    if (!isLoggedIn()) return alert("로그인이 필요합니다!");
+    const uid = getUserId();
+    const voteRef = db.ref(`commentVotes/${articleId}/${commentId}/${uid}`);
+    const commentRef = db.ref(`comments/${articleId}/${commentId}`);
+
+    voteRef.once('value').then(snap => {
+        const current = snap.val();
+        commentRef.transaction(comment => {
+            if (!comment) return comment;
+            if (!comment.likeCount) comment.likeCount = 0;
+            if (!comment.dislikeCount) comment.dislikeCount = 0;
+            if (current === voteType) {
+                if (voteType === 'like') comment.likeCount--;
+                else comment.dislikeCount--;
+            } else {
+                if (current === 'like') comment.likeCount--;
+                if (current === 'dislike') comment.dislikeCount--;
+                if (voteType === 'like') comment.likeCount++;
+                else comment.dislikeCount++;
+            }
+            return comment;
+        }).then(result => {
+            if (!result.committed) return;
+            const updated = result.snapshot.val();
+            const votePromise = current === voteType ? voteRef.remove() : voteRef.set(voteType);
+            votePromise.then(() => voteRef.once('value')).then(s => {
+                const newVote = s.val();
+                const likeBtn = document.getElementById(`clike-${commentId}`);
+                const dislikeBtn = document.getElementById(`cdislike-${commentId}`);
+                if (likeBtn) {
+                    likeBtn.style.cssText = `border:1px solid ${newVote==='like'?'#1565c0':'#ddd'}; border-radius:20px; padding:3px 10px; font-size:12px; cursor:pointer; background:${newVote==='like'?'#e3f2fd':'#fff'}; color:${newVote==='like'?'#1565c0':'inherit'};`;
+                    likeBtn.innerHTML = `👍 ${updated.likeCount||0}`;
+                }
+                if (dislikeBtn) {
+                    dislikeBtn.style.cssText = `border:1px solid ${newVote==='dislike'?'#c62828':'#ddd'}; border-radius:20px; padding:3px 10px; font-size:12px; cursor:pointer; background:${newVote==='dislike'?'#fce4ec':'#fff'}; color:${newVote==='dislike'?'#c62828':'inherit'};`;
+                    dislikeBtn.innerHTML = `👎 ${updated.dislikeCount||0}`;
+                }
+            });
+        });
+    });
+};
+
+// ✅ 답글의 답글 폼 토글
+window.toggleNestedReplyForm = function(commentId, replyId) {
+    if (!isLoggedIn()) return alert("로그인이 필요합니다.");
+    const form = document.getElementById(`nestedReplyForm-${commentId}-${replyId}`);
+    if (!form) return;
+    form.style.display = form.style.display === 'none' ? 'flex' : 'none';
+    if (form.style.display === 'flex') {
+        document.getElementById(`nestedReplyInput-${commentId}-${replyId}`)?.focus();
+    }
+};
+
+// ✅ 답글의 답글 등록
+window.submitNestedReply = async function(articleId, commentId, parentReplyId) {
+    if (!isLoggedIn()) return alert("로그인이 필요합니다.");
+    const input = document.getElementById(`nestedReplyInput-${commentId}-${parentReplyId}`);
+    const text = input?.value.trim();
+    const imageInput = document.getElementById(`nestedReplyImageInput-${commentId}-${parentReplyId}`);
+
+    if (!text && (!imageInput || !imageInput.files || !imageInput.files[0])) return;
+
+    if (text) {
+        const foundWord = checkBannedWords(text);
+        if (foundWord) { alert(`금지어("${foundWord}")가 포함되어 있습니다.`); return; }
+    }
+
+    try {
+        let imageBase64 = null;
+        if (imageInput && imageInput.files && imageInput.files[0]) {
+            imageBase64 = await compressImageToBase64(imageInput.files[0], 800, 0.72);
+        }
+
+        const reply = {
+            author: getNickname(),
+            authorEmail: getUserEmail(),
+            text: text,
+            timestamp: new Date().toLocaleString(),
+            parentReplyId: parentReplyId
+        };
+        if (imageBase64) reply.imageBase64 = imageBase64;
+
+        await db.ref(`comments/${articleId}/${commentId}/replies`).push(reply);
+        if (input) input.value = '';
+        if (imageInput) imageInput.value = '';
+        clearNestedReplyImage(commentId, parentReplyId);
+        const form = document.getElementById(`nestedReplyForm-${commentId}-${parentReplyId}`);
+        if (form) form.style.display = 'none';
+        loadComments(articleId);
+    } catch(e) {
+        console.error("중첩 답글 등록 실패:", e);
+        alert("답글 등록 중 오류가 발생했습니다.");
+    }
+};
 
 console.log("✅ Part 9 댓글 시스템 완료");
 
@@ -5105,43 +5385,46 @@ function toggleVote(articleId, voteType) {
         const currentVote = snapshot.val();
 
         articleRef.transaction(article => {
-            if (!article) return article;
-            if (!article.likeCount) article.likeCount = 0;
-            if (!article.dislikeCount) article.dislikeCount = 0;
+    if (!article) return article;
+    if (!article.likeCount) article.likeCount = 0;
+    if (!article.dislikeCount) article.dislikeCount = 0;
 
-            if (currentVote === voteType) {
-                if (voteType === 'like') article.likeCount--;
-                if (voteType === 'dislike') article.dislikeCount--;
-                voteRef.remove(); 
-            } else {
-                if (currentVote === 'like') article.likeCount--;
-                if (currentVote === 'dislike') article.dislikeCount--;
+    if (currentVote === voteType) {
+        if (voteType === 'like') article.likeCount--;
+        if (voteType === 'dislike') article.dislikeCount--;
+        // ✅ voteRef.remove() 제거
+    } else {
+        if (currentVote === 'like') article.likeCount--;
+        if (currentVote === 'dislike') article.dislikeCount--;
 
-                if (voteType === 'like') article.likeCount++;
-                if (voteType === 'dislike') article.dislikeCount++;
-                voteRef.set(voteType); 
-            }
-            return article;
-        }).then((result) => {
-            if (!result.committed) return;
-            const updated = result.snapshot.val();
-            if (!updated) return;
+        if (voteType === 'like') article.likeCount++;
+        if (voteType === 'dislike') article.dislikeCount++;
+        // ✅ voteRef.set() 제거
+    }
+    return article;
+}).then((result) => {
+    if (!result.committed) return;
+    const updated = result.snapshot.val();
+    if (!updated) return;
 
-            const likeBtn = document.getElementById(`like-btn-${articleId}`);
-            const dislikeBtn = document.getElementById(`dislike-btn-${articleId}`);
+    // ✅ 트랜잭션 커밋 완료 후에 voteRef 업데이트
+    const votePromise = currentVote === voteType ? voteRef.remove() : voteRef.set(voteType);
 
-            voteRef.once('value').then(snap => {
-                const newVote = snap.val();
-                if (likeBtn) {
-                    likeBtn.className = `vote-btn${newVote === 'like' ? ' active' : ''}`;
-                    likeBtn.innerHTML = `👍 추천 ${updated.likeCount || 0}`;
-                }
-                if (dislikeBtn) {
-                    dislikeBtn.className = `vote-btn dislike${newVote === 'dislike' ? ' active' : ''}`;
-                    dislikeBtn.innerHTML = `👎 비추천 ${updated.dislikeCount || 0}`;
-                }
-            });
-        });
+    const likeBtn = document.getElementById(`like-btn-${articleId}`);
+    const dislikeBtn = document.getElementById(`dislike-btn-${articleId}`);
+
+    votePromise.then(() => voteRef.once('value')).then(snap => {
+        const newVote = snap.val();
+        if (likeBtn) {
+            likeBtn.className = `vote-btn${newVote === 'like' ? ' active' : ''}`;
+            likeBtn.innerHTML = `👍 추천 ${updated.likeCount || 0}`;
+        }
+        if (dislikeBtn) {
+            dislikeBtn.className = `vote-btn dislike${newVote === 'dislike' ? ' active' : ''}`;
+            dislikeBtn.innerHTML = `👎 비추천 ${updated.dislikeCount || 0}`;
+        }
+    });
+});
     });
 }
 
@@ -5732,15 +6015,21 @@ async function updateMessengerBadge() {
         const unreadCount = snapshot.numChildren();
         
         badges.forEach(badge => {
-            if (!badge) return;
-            
-            if (unreadCount > 0) {
-                badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
-                badge.style.display = 'inline-block';
-            } else {
-                badge.style.display = 'none';
-            }
-        });
+    if (!badge) return;
+    
+    if (unreadCount > 0) {
+        badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+        badge.style.display = 'inline-block';
+    } else {
+        badge.style.display = 'none';
+    }
+});
+
+// 하단 더보기 버튼 빨간 점 업데이트
+const moreMenuDot = document.getElementById('moreMenuDot');
+if (moreMenuDot) {
+    moreMenuDot.style.display = unreadCount > 0 ? 'block' : 'none';
+}
     } catch (error) {
         console.error("메신저 배지 업데이트 실패:", error);
     }
@@ -8134,7 +8423,8 @@ async function sendManualNotification() {
 
         await db.ref().update(updates);
 
-        resultEl.innerHTML = `<span style="color:#2e7d32;">✅ ${targetUids.length}명에게 알림 전송 완료! (5분 내 FCM 푸시 예정)</span>`;
+        const triggered = await triggerGithubNotification(false);
+        resultEl.innerHTML = `<span style="color:#2e7d32;">✅ ${targetUids.length}명에게 알림 전송 완료! ${triggered ? '(즉시 FCM 푸시 요청됨)' : '(5분 내 FCM 푸시 예정)'}</span>`;
 
     } catch (error) {
         console.error('수동 알림 전송 실패:', error);
@@ -8143,4 +8433,598 @@ async function sendManualNotification() {
     }
 }
 
+// ===== GitHub Action 트리거 (알림 즉시 전송) =====
+async function triggerGithubNotification(silent = false) {
+    try {
+        // 쿨다운: 1분에 1회만 허용
+        const lastTrigger = parseInt(localStorage.getItem('lastGithubTrigger') || '0');
+        if (Date.now() - lastTrigger < 60 * 1000) {
+            if (!silent) console.log('⏳ GitHub 트리거 쿨다운 중 (1분)');
+            return false;
+        }
+
+        const snap = await db.ref('siteSettings/githubDispatch').once('value');
+        const config = snap.val();
+        if (!config?.owner || !config?.repo || !config?.token) {
+            console.warn('⚠️ GitHub Dispatch 설정 없음 (siteSettings/githubDispatch)');
+            return false;
+        }
+
+        const response = await fetch(
+            `https://api.github.com/repos/${config.owner}/${config.repo}/dispatches`,
+            {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${config.token}`,
+                    'Accept': 'application/vnd.github+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ event_type: 'send-notification' })
+            }
+        );
+
+        if (response.status === 204) {
+            localStorage.setItem('lastGithubTrigger', Date.now().toString());
+            console.log('✅ GitHub Action 트리거 성공');
+            return true;
+        } else {
+            console.warn('⚠️ GitHub Action 트리거 실패:', response.status);
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ GitHub Action 트리거 오류:', error.message);
+        return false;
+    }
+}
+
+// ✅ 이미지 Canvas 압축 → base64
+function compressImageToBase64(file, maxPx = 800, quality = 0.72) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => {
+            const img = new Image();
+            img.onload = () => {
+                let w = img.width, h = img.height;
+                if (w > maxPx || h > maxPx) {
+                    if (w > h) { h = Math.round(h * maxPx / w); w = maxPx; }
+                    else { w = Math.round(w * maxPx / h); h = maxPx; }
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+// ===== 댓글/답글 이미지 미리보기 헬퍼 =====
+
+window.previewCommentImage = function(input) {
+    if (!input.files || !input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const preview = document.getElementById('commentImagePreview');
+        const img = document.getElementById('commentImagePreviewImg');
+        if (preview && img) {
+            img.src = e.target.result;
+            preview.style.display = 'block';
+        }
+    };
+    reader.readAsDataURL(input.files[0]);
+};
+
+window.clearCommentImage = function() {
+    const preview = document.getElementById('commentImagePreview');
+    const input = document.getElementById('commentImageInput');
+    if (preview) preview.style.display = 'none';
+    if (input) input.value = '';
+};
+
+window.previewReplyImage = function(input, commentId) {
+    if (!input.files || !input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const preview = document.getElementById(`replyImagePreview-${commentId}`);
+        const img = document.getElementById(`replyImagePreviewImg-${commentId}`);
+        if (preview && img) {
+            img.src = e.target.result;
+            preview.style.display = 'block';
+        }
+    };
+    reader.readAsDataURL(input.files[0]);
+};
+
+window.clearReplyImage = function(commentId) {
+    const preview = document.getElementById(`replyImagePreview-${commentId}`);
+    const input = document.getElementById(`replyImageInput-${commentId}`);
+    if (preview) preview.style.display = 'none';
+    if (input) input.value = '';
+};
+
+window.previewNestedReplyImage = function(input, commentId, replyId) {
+    if (!input.files || !input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const preview = document.getElementById(`nestedReplyImagePreview-${commentId}-${replyId}`);
+        const img = document.getElementById(`nestedReplyImagePreviewImg-${commentId}-${replyId}`);
+        if (preview && img) {
+            img.src = e.target.result;
+            preview.style.display = 'block';
+        }
+    };
+    reader.readAsDataURL(input.files[0]);
+};
+
+window.clearNestedReplyImage = function(commentId, replyId) {
+    const preview = document.getElementById(`nestedReplyImagePreview-${commentId}-${replyId}`);
+    const input = document.getElementById(`nestedReplyImageInput-${commentId}-${replyId}`);
+    if (preview) preview.style.display = 'none';
+    if (input) input.value = '';
+};
+
 console.log("✅ script1.js 최적화 버전 완료 (Parts 1-14 통합)");
+
+// ===== 버그 제보 시스템 =====
+
+// 유저 - 버그 제보 페이지
+window.showBugReportPage = function() {
+    hideAll();
+    window.scrollTo(0, 0);
+    const section = document.getElementById('moreMenuSection');
+    if (!section) return;
+    section.classList.add('active');
+
+    const deviceInfo = `${navigator.platform} / ${navigator.userAgent.match(/(Chrome|Safari|Firefox|Edge|Opera)[\/\s][\d.]+/)?.[0] || '알 수 없음'}`;
+    const now = new Date().toLocaleString('ko-KR');
+
+    section.innerHTML = `
+        <div style="max-width:600px; margin:0 auto; padding:20px;">
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
+                <button onclick="showMoreMenu()" style="background:none; border:none; font-size:20px; cursor:pointer; color:#495057;">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h2 style="margin:0; font-size:20px; font-weight:800; color:#00376b;">
+                    <i class="fas fa-bug"></i> 버그 제보
+                </h2>
+            </div>
+
+            <div style="background:#fff3cd; border:1px solid #ffc107; border-radius:10px; padding:12px 16px; margin-bottom:20px; font-size:13px; color:#856404;">
+                <i class="fas fa-info-circle"></i> 발견하신 버그를 제보해주시면 빠르게 수정하겠습니다!
+            </div>
+
+            <div style="background:white; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.08); display:flex; flex-direction:column; gap:16px;">
+
+                <div>
+                    <label style="font-size:13px; font-weight:600; color:#495057; display:block; margin-bottom:6px;">📱 기기 정보 (자동)</label>
+                    <input type="text" id="bugDevice" value="${deviceInfo}" readonly
+                        style="width:100%; padding:10px 12px; border:1px solid #e0e0e0; border-radius:8px; font-size:13px; background:#f8f9fa; color:#666; box-sizing:border-box;">
+                </div>
+
+                <div>
+                    <label style="font-size:13px; font-weight:600; color:#495057; display:block; margin-bottom:6px;">🕐 발생 시간 (자동)</label>
+                    <input type="text" id="bugTime" value="${now}" readonly
+                        style="width:100%; padding:10px 12px; border:1px solid #e0e0e0; border-radius:8px; font-size:13px; background:#f8f9fa; color:#666; box-sizing:border-box;">
+                </div>
+
+                <div>
+                    <label style="font-size:13px; font-weight:600; color:#495057; display:block; margin-bottom:6px;">📝 제목 <span style="color:#dc3545;">*</span></label>
+                    <input type="text" id="bugTitle" placeholder="버그를 간단히 설명해주세요" maxlength="100"
+                        style="width:100%; padding:10px 12px; border:1px solid #dee2e6; border-radius:8px; font-size:14px; box-sizing:border-box;">
+                </div>
+
+                <div>
+                    <label style="font-size:13px; font-weight:600; color:#495057; display:block; margin-bottom:6px;">📄 상세 내용 <span style="color:#dc3545;">*</span></label>
+                    <textarea id="bugContent" placeholder="버그가 발생한 상황, 재현 방법 등을 자세히 적어주세요" rows="5"
+                        style="width:100%; padding:10px 12px; border:1px solid #dee2e6; border-radius:8px; font-size:14px; resize:vertical; font-family:inherit; box-sizing:border-box;"></textarea>
+                </div>
+
+                <div>
+                    <label style="font-size:13px; font-weight:600; color:#495057; display:block; margin-bottom:6px;">📷 스크린샷 (선택)</label>
+                    <div id="bugImagePreviewArea" onclick="document.getElementById('bugImageInput').click()"
+                        style="border:2px dashed #dee2e6; border-radius:8px; padding:20px; text-align:center; cursor:pointer; background:#fafafa; transition:all 0.2s;"
+                        onmouseover="this.style.borderColor='#00376b'" onmouseout="this.style.borderColor='#dee2e6'">
+                        <i class="fas fa-camera" style="font-size:24px; color:#adb5bd;"></i>
+                        <p style="margin:8px 0 0; font-size:13px; color:#adb5bd;">클릭하여 이미지 첨부</p>
+                    </div>
+                    <input type="file" id="bugImageInput" accept="image/*" style="display:none;" onchange="previewBugImage(this)">
+                </div>
+
+                <button onclick="submitBugReport()"
+                    style="background:linear-gradient(135deg, #00376b, #005fa3); color:white; border:none; padding:14px; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; width:100%;">
+                    <i class="fas fa-paper-plane"></i> 제보 전송
+                </button>
+            </div>
+
+            <div id="bugSubmitMsg" style="margin-top:12px; text-align:center;"></div>
+        </div>
+    `;
+    updateURL('bugreport');
+};
+
+// 이미지 미리보기
+window.previewBugImage = function(input) {
+    if (!input.files || !input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const area = document.getElementById('bugImagePreviewArea');
+        area.innerHTML = `
+            <img src="${e.target.result}" style="max-width:100%; max-height:200px; border-radius:8px; object-fit:contain;">
+            <p style="margin:8px 0 0; font-size:12px; color:#868e96;">클릭하여 변경</p>
+        `;
+    };
+    reader.readAsDataURL(input.files[0]);
+};
+
+// 버그 제보 전송
+window.submitBugReport = async function() {
+    if (!isLoggedIn()) {
+        alert('로그인 후 이용해주세요.');
+        return;
+    }
+    const title = document.getElementById('bugTitle').value.trim();
+    const content = document.getElementById('bugContent').value.trim();
+    const device = document.getElementById('bugDevice').value;
+    const time = document.getElementById('bugTime').value;
+    const imageInput = document.getElementById('bugImageInput');
+    const msgEl = document.getElementById('bugSubmitMsg');
+
+    if (!title) { alert('제목을 입력해주세요.'); return; }
+    if (!content) { alert('상세 내용을 입력해주세요.'); return; }
+
+    const btn = document.querySelector('#moreMenuSection button[onclick="submitBugReport()"]');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 전송 중...'; }
+
+    try {
+        let imageBase64 = null;
+        if (imageInput.files && imageInput.files[0]) {
+            imageBase64 = await compressImageToBase64(imageInput.files[0], 800, 0.72);
+        }
+
+        const user = auth.currentUser;
+        const reportData = {
+            title,
+            content,
+            device,
+            time,
+            authorName: getNickname(),
+            authorEmail: getUserEmail(),
+            authorUid: user.uid,
+            imageBase64: imageBase64 || null,
+            status: 'pending',
+            createdAt: Date.now()
+        };
+
+        await db.ref('bugReports').push(reportData);
+
+        showToastNotification('🐛 버그 제보 완료', '소중한 제보 감사합니다! 빠르게 수정할게요 🙏');
+        setTimeout(() => showMoreMenu(), 1200);
+
+    } catch(e) {
+        console.error(e);
+        if (msgEl) msgEl.innerHTML = `<div style="background:#f8d7da; color:#721c24; padding:12px 16px; border-radius:8px; font-size:14px;"><i class="fas fa-exclamation-circle"></i> 전송 실패. 다시 시도해주세요.</div>`;
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> 제보 전송'; }
+    }
+};
+
+// 관리자 - 버그 제보 목록 보기
+window.showAdminBugReports = async function() {
+    if (!isAdmin()) { alert('관리자만 접근 가능합니다.'); return; }
+    hideAll();
+    window.scrollTo(0, 0);
+    const section = document.getElementById('moreMenuSection');
+    section.classList.add('active');
+
+    section.innerHTML = `
+        <div style="max-width:700px; margin:0 auto; padding:20px;">
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
+                <button onclick="showMoreMenu()" style="background:none; border:none; font-size:20px; cursor:pointer; color:#495057;">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h2 style="margin:0; font-size:20px; font-weight:800; color:#c62828;">
+                    <i class="fas fa-bug"></i> 버그 제보 관리
+                </h2>
+            </div>
+            <div id="adminBugList" style="display:flex; flex-direction:column; gap:14px;">
+                <div style="text-align:center; padding:40px; color:#adb5bd;">
+                    <i class="fas fa-spinner fa-spin" style="font-size:24px;"></i>
+                    <p>불러오는 중...</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    try {
+        const snap = await db.ref('bugReports').orderByChild('createdAt').once('value');
+        const listEl = document.getElementById('adminBugList');
+        if (!listEl) return;
+
+        const reports = [];
+        snap.forEach(child => reports.push({ id: child.key, ...child.val() }));
+        reports.reverse();
+
+        if (reports.length === 0) {
+            listEl.innerHTML = `<div style="text-align:center; padding:60px 20px; color:#adb5bd;"><i class="fas fa-inbox" style="font-size:40px;"></i><p style="margin-top:12px;">접수된 버그 제보가 없습니다</p></div>`;
+            return;
+        }
+
+        listEl.innerHTML = reports.map(r => {
+            const statusBadge = r.status === 'fixed'
+                ? `<span style="background:#d4edda; color:#155724; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700;"><i class="fas fa-check"></i> 수정완료</span>`
+                : `<span style="background:#fff3cd; color:#856404; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700;"><i class="fas fa-clock"></i> 대기중</span>`;
+
+            const date = new Date(r.createdAt).toLocaleString('ko-KR');
+
+            return `
+                <div id="bugCard-${r.id}" style="background:white; border-radius:12px; padding:18px; box-shadow:0 2px 8px rgba(0,0,0,0.08); border-left:4px solid ${r.status === 'fixed' ? '#28a745' : '#ffc107'};">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; gap:8px;">
+                        <div style="flex:1;">
+                            <div style="font-size:15px; font-weight:700; color:#202124; margin-bottom:4px;">${escapeHTML(r.title)}</div>
+                            <div style="font-size:12px; color:#868e96;">
+                                👤 ${escapeHTML(r.authorName)} &nbsp;|&nbsp; 🕐 ${escapeHTML(r.time)}
+                            </div>
+                        </div>
+                        ${statusBadge}
+                    </div>
+
+                    <div style="font-size:13px; color:#495057; white-space:pre-wrap; background:#f8f9fa; border-radius:8px; padding:10px 12px; margin-bottom:10px; line-height:1.6;">${escapeHTML(r.content)}</div>
+
+                    <div style="font-size:12px; color:#adb5bd; margin-bottom:10px;">
+                        📱 ${escapeHTML(r.device)} &nbsp;|&nbsp; 📅 접수: ${date}
+                    </div>
+
+                    ${r.imageBase64 ? `
+                    <div style="margin-bottom:12px;">
+                        <img src="${r.imageBase64}" onclick="openImageModal('${r.imageBase64}')" style="max-width:100%; max-height:200px; border-radius:8px; cursor:pointer; object-fit:contain; border:1px solid #dee2e6;">
+                    </div>` : ''}
+
+                   ${r.status !== 'fixed' ? `
+                    <button onclick="markBugFixed('${r.id}', '${r.authorUid}', '${escapeHTML(r.title).replace(/'/g, "\\'")}')"
+                        style="background:linear-gradient(135deg, #28a745, #20c997); color:white; border:none; padding:10px 20px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; width:100%;">
+                        <i class="fas fa-check-circle"></i> 수정 완료 처리 & 유저 알림
+                    </button>` : `
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <div style="flex:1; text-align:center; font-size:13px; color:#28a745; font-weight:600; padding:8px;">
+                            <i class="fas fa-check-circle"></i> 수정 완료됨
+                        </div>
+                        <button onclick="deleteBugReport('${r.id}')"
+                            style="background:#dc3545; color:white; border:none; padding:8px 16px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
+                            <i class="fas fa-trash"></i> 삭제
+                        </button>
+                    </div>`}
+                </div>
+            `;
+        }).join('');
+
+    } catch(e) {
+        console.error(e);
+        const listEl = document.getElementById('adminBugList');
+        if (listEl) listEl.innerHTML = `<p style="color:#dc3545; text-align:center;">불러오기 실패</p>`;
+    }
+};
+
+// 관리자 - 수정 완료 처리 및 유저 알림
+window.markBugFixed = async function(reportId, authorUid, reportTitle) {
+    if (!isAdmin()) return;
+    if (!confirm(`"${reportTitle}" 버그를 수정 완료 처리하고 해당 유저에게 알림을 보내시겠습니까?`)) return;
+
+    try {
+        await db.ref(`bugReports/${reportId}/status`).set('fixed');
+        await db.ref(`bugReports/${reportId}/fixedAt`).set(Date.now());
+
+        // 해당 유저에게 알림 전송
+        if (authorUid) {
+            const notifId = `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            await db.ref(`notifications/${authorUid}/${notifId}`).set({
+                type: 'bugFixed',
+                title: '🐛 버그 수정 완료',
+                text: `제보하신 버그 "${reportTitle}"가 수정되었습니다! 감사합니다 🙏`,
+                timestamp: Date.now(),
+                read: false
+            });
+        }
+
+        // 카드 UI 업데이트
+        const card = document.getElementById(`bugCard-${reportId}`);
+        if (card) {
+            card.style.borderLeftColor = '#28a745';
+            const btn = card.querySelector('button');
+            if (btn) btn.outerHTML = `<div style="text-align:center; font-size:13px; color:#28a745; font-weight:600; padding:8px;"><i class="fas fa-check-circle"></i> 수정 완료됨</div>`;
+            const badge = card.querySelector('span');
+            if (badge) badge.outerHTML = `<span style="background:#d4edda; color:#155724; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700;"><i class="fas fa-check"></i> 수정완료</span>`;
+        }
+
+        alert('✅ 수정 완료 처리 및 유저 알림 전송 완료!');
+
+    } catch(e) {
+        console.error(e);
+        alert('처리 중 오류가 발생했습니다.');
+    }
+};
+
+// 관리자 - 수정완료 버그 삭제
+window.deleteBugReport = async function(reportId) {
+    if (!isAdmin()) return;
+    if (!confirm('이 버그 제보를 삭제하시겠습니까?')) return;
+    try {
+        await db.ref(`bugReports/${reportId}`).remove();
+        const card = document.getElementById(`bugCard-${reportId}`);
+        if (card) {
+            card.style.transition = 'all 0.3s';
+            card.style.opacity = '0';
+            card.style.transform = 'translateX(30px)';
+            setTimeout(() => card.remove(), 300);
+        }
+    } catch(e) {
+        console.error(e);
+        alert('삭제 중 오류가 발생했습니다.');
+    }
+};
+
+// 관리자 전용 메모장
+window.showAdminMemo = async function() {
+    if (!isAdmin()) { alert('관리자만 접근 가능합니다.'); return; }
+    hideAll();
+    window.scrollTo(0, 0);
+    const section = document.getElementById('moreMenuSection');
+    section.classList.add('active');
+
+    section.innerHTML = `
+        <div style="max-width:700px; margin:0 auto; padding:20px;">
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
+                <button onclick="showMoreMenu()" style="background:none; border:none; font-size:20px; cursor:pointer; color:#495057;">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h2 style="margin:0; font-size:20px; font-weight:800; color:#c62828;">
+                    <i class="fas fa-sticky-note"></i> 관리자 메모장
+                </h2>
+            </div>
+
+            <div style="background:#fff8dc; border:1px solid #ffc107; border-radius:10px; padding:12px 16px; margin-bottom:20px; font-size:13px; color:#856404;">
+                <i class="fas fa-lock"></i> 관리자만 볼 수 있는 메모입니다. Firebase에 저장됩니다.
+            </div>
+
+            <div style="background:white; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin-bottom:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <label style="font-size:14px; font-weight:700; color:#495057;">📋 메모 목록</label>
+                    <button onclick="addAdminMemoItem()"
+                        style="background:#c62828; color:white; border:none; padding:7px 14px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;">
+                        <i class="fas fa-plus"></i> 새 메모
+                    </button>
+                </div>
+                <div id="adminMemoList" style="display:flex; flex-direction:column; gap:10px;">
+                    <div style="text-align:center; padding:30px; color:#adb5bd;">
+                        <i class="fas fa-spinner fa-spin"></i> 불러오는 중...
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    await loadAdminMemos();
+};
+
+async function loadAdminMemos() {
+    const listEl = document.getElementById('adminMemoList');
+    if (!listEl) return;
+    try {
+        const snap = await db.ref('adminMemos').orderByChild('createdAt').once('value');
+        const memos = [];
+        snap.forEach(child => memos.push({ id: child.key, ...child.val() }));
+        memos.reverse();
+
+        if (memos.length === 0) {
+            listEl.innerHTML = `<div style="text-align:center; padding:40px; color:#adb5bd;"><i class="fas fa-sticky-note" style="font-size:32px;"></i><p style="margin-top:10px;">메모가 없습니다. 새 메모를 추가해보세요!</p></div>`;
+            return;
+        }
+
+        listEl.innerHTML = memos.map(m => `
+            <div id="memoCard-${m.id}" style="background:#fffde7; border:1px solid #ffe082; border-radius:10px; padding:14px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                    <div style="flex:1;">
+                        <div style="font-size:13px; font-weight:700; color:#5d4037; margin-bottom:6px;">${escapeHTML(m.title || '제목 없음')}</div>
+                        <div style="font-size:13px; color:#6d4c41; white-space:pre-wrap; line-height:1.6;">${escapeHTML(m.content || '')}</div>
+                        <div style="font-size:11px; color:#bcaaa4; margin-top:8px;">📅 ${new Date(m.createdAt).toLocaleString('ko-KR')}</div>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:6px; flex-shrink:0;">
+                        <button onclick="editAdminMemo('${m.id}', \`${m.title ? m.title.replace(/`/g,'\\`') : ''}\`, \`${m.content ? m.content.replace(/`/g,'\\`') : ''}\`)"
+                            style="background:#ffa000; color:white; border:none; padding:5px 10px; border-radius:6px; font-size:11px; cursor:pointer; font-weight:700;">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteAdminMemo('${m.id}')"
+                            style="background:#dc3545; color:white; border:none; padding:5px 10px; border-radius:6px; font-size:11px; cursor:pointer; font-weight:700;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } catch(e) {
+        if (listEl) listEl.innerHTML = `<p style="color:#dc3545; text-align:center;">불러오기 실패</p>`;
+    }
+}
+
+window.addAdminMemoItem = function() {
+    const listEl = document.getElementById('adminMemoList');
+    if (!listEl) return;
+    const formId = `memoForm-new-${Date.now()}`;
+    const formHTML = `
+        <div id="${formId}" style="background:#fff8e1; border:2px solid #ffc107; border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:10px;">
+            <input id="${formId}-title" type="text" placeholder="제목" maxlength="100"
+                style="padding:8px 12px; border:1px solid #dee2e6; border-radius:8px; font-size:14px; width:100%; box-sizing:border-box;">
+            <textarea id="${formId}-content" placeholder="내용을 입력하세요..." rows="4"
+                style="padding:8px 12px; border:1px solid #dee2e6; border-radius:8px; font-size:14px; resize:vertical; font-family:inherit; width:100%; box-sizing:border-box;"></textarea>
+            <div style="display:flex; gap:8px;">
+                <button onclick="saveAdminMemo('${formId}', null)"
+                    style="background:#c62828; color:white; border:none; padding:9px 18px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; flex:1;">
+                    <i class="fas fa-save"></i> 저장
+                </button>
+                <button onclick="document.getElementById('${formId}').remove()"
+                    style="background:#6c757d; color:white; border:none; padding:9px 18px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;">
+                    취소
+                </button>
+            </div>
+        </div>
+    `;
+    listEl.insertAdjacentHTML('afterbegin', formHTML);
+};
+
+window.editAdminMemo = function(memoId, title, content) {
+    const card = document.getElementById(`memoCard-${memoId}`);
+    if (!card) return;
+    const formId = `memoForm-edit-${memoId}`;
+    card.outerHTML = `
+        <div id="${formId}" style="background:#fff8e1; border:2px solid #ffc107; border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:10px;">
+            <input id="${formId}-title" type="text" value="${title.replace(/"/g,'&quot;')}" maxlength="100"
+                style="padding:8px 12px; border:1px solid #dee2e6; border-radius:8px; font-size:14px; width:100%; box-sizing:border-box;">
+            <textarea id="${formId}-content" rows="4"
+                style="padding:8px 12px; border:1px solid #dee2e6; border-radius:8px; font-size:14px; resize:vertical; font-family:inherit; width:100%; box-sizing:border-box;">${content}</textarea>
+            <div style="display:flex; gap:8px;">
+                <button onclick="saveAdminMemo('${formId}', '${memoId}')"
+                    style="background:#c62828; color:white; border:none; padding:9px 18px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; flex:1;">
+                    <i class="fas fa-save"></i> 저장
+                </button>
+                <button onclick="loadAdminMemos()"
+                    style="background:#6c757d; color:white; border:none; padding:9px 18px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;">
+                    취소
+                </button>
+            </div>
+        </div>
+    `;
+};
+
+window.saveAdminMemo = async function(formId, memoId) {
+    const title = document.getElementById(`${formId}-title`)?.value.trim();
+    const content = document.getElementById(`${formId}-content`)?.value.trim();
+    if (!title && !content) { alert('제목 또는 내용을 입력해주세요.'); return; }
+    try {
+        if (memoId) {
+            await db.ref(`adminMemos/${memoId}`).update({ title: title || '', content: content || '', updatedAt: Date.now() });
+        } else {
+            await db.ref('adminMemos').push({ title: title || '', content: content || '', createdAt: Date.now() });
+        }
+        await loadAdminMemos();
+    } catch(e) {
+        alert('저장 실패. 다시 시도해주세요.');
+    }
+};
+
+window.deleteAdminMemo = async function(memoId) {
+    if (!confirm('이 메모를 삭제하시겠습니까?')) return;
+    try {
+        await db.ref(`adminMemos/${memoId}`).remove();
+        const card = document.getElementById(`memoCard-${memoId}`);
+        if (card) {
+            card.style.transition = 'all 0.3s';
+            card.style.opacity = '0';
+            card.style.transform = 'translateX(30px)';
+            setTimeout(() => card.remove(), 300);
+        }
+    } catch(e) {
+        alert('삭제 실패. 다시 시도해주세요.');
+    }
+};
