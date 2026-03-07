@@ -502,6 +502,10 @@ header {
 
 .article-content {
     padding: 16px;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 .category-badge {
@@ -1658,6 +1662,10 @@ textarea.form-control {
     line-height: 1.5;
     margin-bottom: 10px;
     white-space: pre-wrap;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 .comment-footer {
@@ -1727,6 +1735,11 @@ textarea.form-control {
 .reply-content {
     font-size: 13px;
     color: #333;
+    white-space: pre-wrap;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 .reply-actions {
@@ -2055,12 +2068,15 @@ input:checked + .slider:before {
 }
 
 .comment-body {
-    font-size: 15px;
-    color: #333;
-    line-height: 1.6;
-    margin-bottom: 12px;
+    font-size: 14px;
+    color: #444;
+    line-height: 1.5;
+    margin-bottom: 10px;
     white-space: pre-wrap;
-    word-wrap: break-word;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 .comment-footer {
@@ -2128,9 +2144,13 @@ input:checked + .slider:before {
 }
 
 .reply-content {
-    font-size: 14px;
+    font-size: 13px;
     color: #333;
-    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 .reply-actions {
