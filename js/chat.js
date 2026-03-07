@@ -803,10 +803,21 @@ function renderChatMessages(msgs, myUid, roomId) {
         let bubbleContent = '';
         if (msg.text) bubbleContent += escapeHTML(msg.text).replace(/\n/g, '<br>');
         if (msg.imageBase64) {
-            bubbleContent += `${msg.text ? '<br>' : ''}<img src="${msg.imageBase64}"
-                onclick="openChatImageModal('${msgId}')"
-                style="max-width:220px;max-height:220px;border-radius:10px;
-                display:block;margin-top:${msg.text ? '6px' : '0'};cursor:zoom-in;object-fit:cover;">`;
+            bubbleContent += `${msg.text ? '<br>' : ''}
+                <div style="position:relative;display:inline-block;margin-top:${msg.text ? '6px' : '0'};">
+                    <img src="${msg.imageBase64}"
+                        onclick="openChatImageModal('${msgId}')"
+                        style="max-width:220px;max-height:220px;border-radius:10px;
+                        display:block;cursor:zoom-in;object-fit:cover;">
+                    <button onclick="event.stopPropagation();downloadChatImage('${msgId}')"
+                        title="다운로드"
+                        style="position:absolute;bottom:6px;right:6px;
+                        width:30px;height:30px;border-radius:50%;border:none;cursor:pointer;
+                        background:rgba(0,0,0,0.45);color:white;
+                        display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-download" style="font-size:12px;pointer-events:none;"></i>
+                    </button>
+                </div>`;
         }
         if (msg.fileName) {
             const icon = getChatFileIcon(msg.fileType || '');
@@ -1219,20 +1230,57 @@ window.downloadChatFile = function (msgId) {
     document.body.removeChild(a);
 };
 
+// ===== 채팅 이미지 다운로드 =====
+window.downloadChatImage = function (msgId) {
+    const msgs = window._lastMsgs || {};
+    const msg  = msgs[msgId];
+    const src  = msg?.imageBase64 || document.querySelector(`[data-msgid="${msgId}"]`)?.dataset?.img;
+    if (!src) { showChatToast('❌ 이미지를 찾을 수 없습니다'); return; }
+    const ext = src.startsWith('data:image/png') ? 'png' : 'jpg';
+    const a   = document.createElement('a');
+    a.href     = src;
+    a.download = `chat_image_${msgId}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+};
+
 // ===== 채팅 이미지 전체보기 모달 =====
 window.openChatImageModal = function (msgId) {
     document.getElementById('_chatImgModal')?.remove();
     const bubble = document.querySelector(`[data-msgid="${msgId}"]`);
     const src    = bubble?.dataset?.img;
     if (!src) return;
+    const ext  = src.startsWith('data:image/png') ? 'png' : 'jpg';
     const modal = document.createElement('div');
     modal.id = '_chatImgModal';
     modal.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;
-        background:rgba(0,0,0,0.92);z-index:999999;display:flex;align-items:center;
-        justify-content:center;cursor:zoom-out;`;
-    modal.innerHTML = `<img src="${src}"
-        style="max-width:95vw;max-height:90vh;border-radius:10px;object-fit:contain;">`;
-    modal.addEventListener('click', () => modal.remove());
+        background:rgba(0,0,0,0.92);z-index:999999;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;`;
+    modal.innerHTML = `
+        <img src="${src}"
+            style="max-width:95vw;max-height:82vh;border-radius:10px;object-fit:contain;cursor:zoom-out;"
+            onclick="document.getElementById('_chatImgModal').remove()">
+        <div style="display:flex;gap:12px;margin-top:16px;">
+            <button onclick="
+                (function(){
+                    const a=document.createElement('a');
+                    a.href='${src}';
+                    a.download='chat_image_${msgId}.${ext}';
+                    document.body.appendChild(a);a.click();document.body.removeChild(a);
+                })()"
+                style="background:rgba(255,255,255,0.18);border:none;color:white;
+                padding:10px 22px;border-radius:22px;font-size:14px;cursor:pointer;
+                display:flex;align-items:center;gap:8px;font-weight:600;">
+                <i class="fas fa-download"></i> 다운로드
+            </button>
+            <button onclick="document.getElementById('_chatImgModal').remove()"
+                style="background:rgba(255,255,255,0.12);border:none;color:white;
+                padding:10px 22px;border-radius:22px;font-size:14px;cursor:pointer;font-weight:600;">
+                닫기
+            </button>
+        </div>`;
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
     document.body.appendChild(modal);
 };
 
@@ -2077,15 +2125,32 @@ window.openGalleryImage = function (msgId) {
     const d = new Date(m.timestamp);
     const dateStr = `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 `+
         `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    const ext = (m.imageBase64||'').startsWith('data:image/png') ? 'png' : 'jpg';
     modal.innerHTML = `
         <div style="color:white;font-size:13px;margin-bottom:12px;opacity:0.8;">
             ${escapeHTML(m.senderName||'')} · ${dateStr}
         </div>
         <img src="${m.imageBase64}"
-            style="max-width:95vw;max-height:80vh;border-radius:10px;object-fit:contain;">
-        <button onclick="this.closest('div[style]').remove()"
-            style="margin-top:16px;background:rgba(255,255,255,0.15);border:none;color:white;
-            padding:10px 28px;border-radius:22px;font-size:15px;cursor:pointer;">닫기</button>`;
+            style="max-width:95vw;max-height:76vh;border-radius:10px;object-fit:contain;cursor:zoom-out;"
+            onclick="this.closest('div').remove()">
+        <div style="display:flex;gap:12px;margin-top:16px;">
+            <button onclick="(function(){
+                    const a=document.createElement('a');
+                    a.href='${m.imageBase64}';
+                    a.download='chat_image_${msgId}.${ext}';
+                    document.body.appendChild(a);a.click();document.body.removeChild(a);
+                })()"
+                style="background:rgba(255,255,255,0.18);border:none;color:white;
+                padding:10px 22px;border-radius:22px;font-size:14px;cursor:pointer;
+                display:flex;align-items:center;gap:8px;font-weight:600;">
+                <i class="fas fa-download"></i> 다운로드
+            </button>
+            <button onclick="this.closest('div[style]').remove()"
+                style="background:rgba(255,255,255,0.12);border:none;color:white;
+                padding:10px 22px;border-radius:22px;font-size:14px;cursor:pointer;font-weight:600;">
+                닫기
+            </button>
+        </div>`;
     document.body.appendChild(modal);
     modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
 };
