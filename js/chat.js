@@ -220,36 +220,56 @@ window.showChatPage = async function () {
     }
     section.classList.add('active');
 
-    section.innerHTML = `
+   section.innerHTML = `
         <div style="max-width:600px;width:100%;margin:0 auto;
-            display:flex;flex-direction:column;height:100%;overflow:hidden;">
-            <div style="background:linear-gradient(135deg,#c62828,#e53935);
-                padding:16px 20px;display:flex;align-items:center;
-                justify-content:space-between;flex-shrink:0;">
-                <h2 style="color:white;margin:0;font-size:20px;font-weight:800;
-                    display:flex;align-items:center;gap:10px;">
-                    <i class="fas fa-comment-dots"></i> 채팅
+            display:flex;flex-direction:column;height:100%;overflow:hidden;background:#fafafa;">
+            <div style="background:white;padding:14px 20px 12px;display:flex;align-items:center;
+                justify-content:space-between;flex-shrink:0;
+                border-bottom:1px solid #dbdbdb;">
+                <h2 style="color:#262626;margin:0;font-size:22px;font-weight:800;
+                    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+                    letter-spacing:-0.5px;">
+                    채팅
                 </h2>
-                <div style="display:flex;gap:8px;">
-                    <button onclick="showNewChatModal()"
-                        style="background:rgba(255,255,255,0.2);border:none;color:white;
-                        padding:8px 14px;border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;">
-                        <i class="fas fa-edit"></i> 새 채팅
+                <div style="display:flex;gap:2px;align-items:center;">
+                    <button onclick="showMoreMenu()"
+                        style="background:none;border:none;color:#262626;width:40px;height:40px;
+                        border-radius:50%;cursor:pointer;font-size:18px;
+                        display:flex;align-items:center;justify-content:center;
+                        transition:background 0.15s;"
+                        onmouseover="this.style.background='#f5f5f5'"
+                        onmouseout="this.style.background='none'"
+                        title="뒤로가기">
+                        <i class="fas fa-arrow-left"></i>
                     </button>
                     <button onclick="showChatNotifSettings()"
-                        style="background:rgba(255,255,255,0.18);border:none;color:white;
-                        padding:8px 14px;border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;">
+                        style="background:none;border:none;color:#262626;width:40px;height:40px;
+                        border-radius:50%;cursor:pointer;font-size:20px;
+                        display:flex;align-items:center;justify-content:center;
+                        transition:background 0.15s;"
+                        onmouseover="this.style.background='#f5f5f5'"
+                        onmouseout="this.style.background='none'"
+                        title="알림 설정">
                         <i class="fas fa-bell"></i>
                     </button>
-                    <button onclick="showMoreMenu()"
-                        style="background:rgba(255,255,255,0.18);border:none;color:white;
-                        padding:8px 14px;border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;">
-                        <i class="fas fa-arrow-left"></i>
+                    <button onclick="showNewChatModal()"
+                        style="background:none;border:none;color:#262626;width:40px;height:40px;
+                        border-radius:50%;cursor:pointer;font-size:20px;
+                        display:flex;align-items:center;justify-content:center;
+                        transition:background 0.15s;"
+                        onmouseover="this.style.background='#f5f5f5'"
+                        onmouseout="this.style.background='none'"
+                        title="새 채팅">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                            <line x1="12" y1="10" x2="12" y2="14"/><line x1="10" y1="12" x2="14" y2="12"/>
+                        </svg>
                     </button>
                 </div>
             </div>
             <div id="chatRoomList"
-                style="flex:1;overflow-y:auto;background:white;-webkit-overflow-scrolling:touch;">
+                style="flex:1;overflow-y:auto;background:#fafafa;-webkit-overflow-scrolling:touch;">
                 <div style="text-align:center;padding:60px 20px;color:#adb5bd;">
                     <i class="fas fa-spinner fa-spin" style="font-size:32px;"></i>
                     <p style="margin-top:15px;">채팅 목록 불러오는 중...</p>
@@ -790,16 +810,46 @@ function renderChatMessages(msgs, myUid, roomId) {
             { hour: '2-digit', minute: '2-digit' });
 
         const msgEl = document.createElement('div');
-        msgEl.style.cssText = `display:flex;align-items:flex-end;gap:6px;
-            ${isMe ? 'flex-direction:row-reverse;' : ''}margin:2px 0;`;
+        msgEl.style.cssText = `display:flex;align-items:flex-start;gap:8px;
+            ${isMe ? 'flex-direction:row-reverse;' : ''}margin:${isMe ? '2px 0' : '4px 0'};`;
+
+        // ── 발신자 프로필 아바타 (상대방 메시지에만)
+        if (!isMe) {
+            const senderPhoto = window._chatAvatarCache?.[msg.senderId];
+            const avatarEl = document.createElement('div');
+            avatarEl.style.cssText = 'width:34px;height:34px;min-width:34px;border-radius:50%;overflow:hidden;flex-shrink:0;margin-top:2px;border:1.5px solid #efefef;';
+            if (senderPhoto) {
+                avatarEl.innerHTML = `<img src="${senderPhoto}" style="width:100%;height:100%;object-fit:cover;">`;
+            } else {
+                const initial = (msg.senderName || '?')[0].toUpperCase();
+                const palette = ['#f56040','#fcaf45','#bc2a8d','#405de6','#5851db','#e1306c'];
+                const bg = palette[initial.charCodeAt(0) % palette.length];
+                avatarEl.style.cssText += `background:${bg};display:flex;align-items:center;justify-content:center;`;
+                avatarEl.innerHTML = `<span style="color:white;font-size:14px;font-weight:700;">${escapeHTML(initial)}</span>`;
+            }
+            msgEl.appendChild(avatarEl);
+        }
+
+        // ── 말풍선 + 이름 래퍼
+        const bubbleWrap = document.createElement('div');
+        bubbleWrap.style.cssText = `display:flex;flex-direction:column;gap:3px;max-width:72%;
+            ${isMe ? 'align-items:flex-end;' : 'align-items:flex-start;'}`;
+
+        // ── 발신자 이름 (상대방 메시지에만)
+        if (!isMe) {
+            const nameEl = document.createElement('span');
+            nameEl.style.cssText = 'font-size:12px;font-weight:700;color:#8e8e8e;padding-left:4px;';
+            nameEl.textContent = msg.senderName || '';
+            bubbleWrap.appendChild(nameEl);
+        }
 
         const bubble = document.createElement('div');
         bubble.dataset.msgid = msgId;
-        bubble.style.cssText = `max-width:72%;
-            background:${isMe ? '#c62828' : 'white'};color:${isMe ? 'white' : '#212529'};
+        bubble.style.cssText = `max-width:100%;
+            background:${isMe ? '#262626' : 'white'};color:${isMe ? 'white' : '#262626'};
             padding:10px 14px;border-radius:${isMe ? '18px 4px 18px 18px' : '4px 18px 18px 18px'};
             font-size:14px;line-height:1.55;word-break:break-word;
-            box-shadow:0 1px 3px rgba(0,0,0,0.12);${isMe ? 'cursor:pointer;user-select:none;' : ''}`;
+            box-shadow:0 1px 2px rgba(0,0,0,0.08);${isMe ? 'cursor:pointer;user-select:none;' : ''}`;
         let bubbleContent = '';
         if (msg.text) bubbleContent += escapeHTML(msg.text).replace(/\n/g, '<br>');
         if (msg.imageBase64) {
@@ -859,16 +909,24 @@ function renderChatMessages(msgs, myUid, roomId) {
         timeEl.style.cssText = 'font-size:10px;color:#888;flex-shrink:0;margin-bottom:2px;';
         timeEl.textContent   = timeStr;
 
-        msgEl.id = `msgEl-${msgId}`;
-        msgEl.appendChild(bubble);
-        msgEl.appendChild(timeEl);
+       // 말풍선 + 시간을 가로로 묶기
+        const bubbleRow = document.createElement('div');
+        bubbleRow.style.cssText = `display:flex;align-items:flex-end;gap:5px;
+            ${isMe ? 'flex-direction:row-reverse;' : ''}`;
+        bubbleRow.appendChild(bubble);
+        bubbleRow.appendChild(timeEl);
+
         // 읽음 아바타 슬롯 (내 메시지에만)
         if (isMe) {
             const avatarSlot = document.createElement('div');
             avatarSlot.id = `readSlot-${msgId}`;
-            avatarSlot.style.cssText = 'display:flex;gap:2px;align-items:center;margin-bottom:2px;min-width:0;';
-            msgEl.insertBefore(avatarSlot, bubble); // row-reverse라 bubble 앞이 오른쪽
+            avatarSlot.style.cssText = 'display:flex;gap:2px;align-items:center;min-width:0;';
+            bubbleRow.insertBefore(avatarSlot, bubble);
         }
+
+        bubbleWrap.appendChild(bubbleRow);
+        msgEl.id = `msgEl-${msgId}`;
+        msgEl.appendChild(bubbleWrap);
         container.appendChild(msgEl);
     }
 
@@ -888,6 +946,13 @@ window.showChatMsgMenu = function (msgId, roomId, el) {
         background:white;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.18);
         z-index:99999;overflow:hidden;min-width:120px;`;
     menu.innerHTML = `
+        <button onclick="editChatMessage('${msgId}','${roomId}')"
+            style="display:flex;align-items:center;gap:8px;width:100%;padding:12px 16px;
+            border:none;background:none;cursor:pointer;font-size:14px;color:#262626;font-weight:600;
+            border-bottom:1px solid #f5f5f5;"
+            onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='none'">
+            <i class="fas fa-pencil-alt" style="color:#405de6;"></i> 수정
+        </button>
         <button onclick="deleteChatMessage('${msgId}','${roomId}')"
             style="display:flex;align-items:center;gap:8px;width:100%;padding:12px 16px;
             border:none;background:none;cursor:pointer;font-size:14px;color:#c62828;font-weight:600;"
@@ -910,6 +975,70 @@ window.deleteChatMessage = async function (msgId, roomId) {
         showChatToast('✅ 메시지가 삭제되었습니다');
     } catch (e) {
         showChatToast('❌ 삭제 실패: ' + e.message);
+    }
+};
+
+// ===== 메시지 수정 =====
+window.editChatMessage = function (msgId, roomId) {
+    document.getElementById('_chatMsgMenu')?.remove();
+    const msgs = window._lastMsgs || {};
+    const msg  = msgs[msgId];
+    if (!msg?.text) { showChatToast('⚠️ 텍스트 메시지만 수정할 수 있습니다.'); return; }
+
+    document.getElementById('_editMsgModal')?.remove();
+    const modal = document.createElement('div');
+    modal.id = '_editMsgModal';
+    modal.style.cssText = `position:fixed;bottom:0;left:0;width:100%;
+        background:rgba(0,0,0,0.45);z-index:99999;display:flex;
+        align-items:flex-end;justify-content:center;`;
+    modal.innerHTML = `
+        <div style="background:white;width:100%;max-width:600px;border-radius:20px 20px 0 0;
+            padding:20px 20px 32px;box-shadow:0 -4px 24px rgba(0,0,0,0.15);">
+            <div style="width:40px;height:4px;background:#dbdbdb;border-radius:2px;margin:0 auto 18px;"></div>
+            <div style="font-size:15px;font-weight:700;color:#262626;margin-bottom:12px;">
+                <i class="fas fa-pencil-alt" style="color:#405de6;margin-right:8px;"></i>메시지 수정
+            </div>
+            <textarea id="_editMsgInput"
+                style="width:100%;border:1.5px solid #dbdbdb;border-radius:12px;
+                padding:12px 14px;font-size:14px;resize:none;outline:none;
+                font-family:inherit;min-height:80px;box-sizing:border-box;line-height:1.5;"
+                onfocus="this.style.borderColor='#405de6'"
+                onblur="this.style.borderColor='#dbdbdb'">${escapeHTML(msg.text)}</textarea>
+            <div style="display:flex;gap:10px;margin-top:12px;">
+                <button onclick="document.getElementById('_editMsgModal').remove()"
+                    style="flex:1;padding:12px;border:1.5px solid #dbdbdb;border-radius:12px;
+                    background:white;font-size:14px;font-weight:600;color:#262626;cursor:pointer;">
+                    취소
+                </button>
+                <button onclick="confirmEditChatMessage('${msgId}','${roomId}')"
+                    style="flex:1;padding:12px;border:none;border-radius:12px;
+                    background:#262626;font-size:14px;font-weight:700;color:white;cursor:pointer;">
+                    수정 완료
+                </button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    setTimeout(() => {
+        const ta = document.getElementById('_editMsgInput');
+        if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+    }, 50);
+};
+
+window.confirmEditChatMessage = async function (msgId, roomId) {
+    const newText = document.getElementById('_editMsgInput')?.value.trim();
+    if (!newText) { showChatToast('⚠️ 내용을 입력해주세요.'); return; }
+    if (newText.length > 500) { showChatToast('⚠️ 500자 이하로 입력해주세요.'); return; }
+    document.getElementById('_editMsgModal').remove();
+    try {
+        await getChatDb().ref(`chats/${roomId}/messages/${msgId}`).update({
+            text: newText,
+            edited: true,
+            editedAt: Date.now()
+        });
+        showChatToast('✅ 메시지가 수정되었습니다');
+    } catch (e) {
+        showChatToast('❌ 수정 실패: ' + e.message);
     }
 };
 
@@ -1090,7 +1219,14 @@ async function sendChatNotification(toUid, fromName, text, roomId, senderMainUid
                 roomId
             });
         }
-    } catch (e) { console.warn('채팅 알림 전송 실패:', e.message); }
+    } catch (e) {
+        // permission_denied는 Firebase Rules 문제 — 메시지 전송 자체는 유지
+        if (e.code === 'PERMISSION_DENIED' || (e.message && e.message.includes('permission_denied'))) {
+            console.warn('⚠️ 채팅 알림 권한 없음 (Firebase Rules 확인 필요):', e.message);
+        } else {
+            console.warn('채팅 알림 전송 실패:', e.message);
+        }
+    }
 }
 
 // ===== 엔터키 =====
@@ -1839,6 +1975,15 @@ window.showRoomMenu = async function (roomId, isGroupStr) {
             <div style="width:40px;height:4px;background:#dee2e6;border-radius:2px;margin:0 auto 20px;"></div>
             <div style="padding:0 20px;">
                 ${memberListHTML}
+                <div onclick="document.getElementById('_roomMenu').remove();renameChatRoom('${roomId}')"
+                    style="display:flex;align-items:center;gap:12px;padding:14px 0;
+                    border-bottom:1px solid #f5f5f5;cursor:pointer;"
+                    onmouseover="this.style.background='#f8f9fa'"
+                    onmouseout="this.style.background='white'">
+                    <i class="fas fa-pencil-alt" style="color:#405de6;width:20px;text-align:center;"></i>
+                    <span style="font-size:15px;font-weight:600;color:#212529;">채팅방 이름 변경</span>
+                    <i class="fas fa-chevron-right" style="color:#ccc;margin-left:auto;font-size:12px;"></i>
+                </div>
                 <div onclick="document.getElementById('_roomMenu').remove();showChatSearch('${roomId}')"
                     style="display:flex;align-items:center;gap:12px;padding:14px 0;
                     border-bottom:1px solid #f5f5f5;cursor:pointer;">
@@ -1900,6 +2045,64 @@ window.saveRoomNotifSetting = async function (roomId, enabled) {
     if (!uid) return;
     await db.ref(`users/${uid}/notificationTypes/chatRooms/${roomId}`).set(enabled);
     showChatToast(enabled ? '🔔 이 채팅 알림 켜짐' : '🔕 이 채팅 알림 꺼짐');
+};
+
+// ===== 채팅방 이름 변경 =====
+window.renameChatRoom = function (roomId) {
+    document.getElementById('_renameModal')?.remove();
+    const modal = document.createElement('div');
+    modal.id = '_renameModal';
+    modal.style.cssText = `position:fixed;bottom:0;left:0;width:100%;
+        background:rgba(0,0,0,0.45);z-index:99999;display:flex;
+        align-items:flex-end;justify-content:center;`;
+    modal.innerHTML = `
+        <div style="background:white;width:100%;max-width:600px;border-radius:20px 20px 0 0;
+            padding:20px 20px 32px;box-shadow:0 -4px 24px rgba(0,0,0,0.15);">
+            <div style="width:40px;height:4px;background:#dbdbdb;border-radius:2px;margin:0 auto 18px;"></div>
+            <div style="font-size:15px;font-weight:700;color:#262626;margin-bottom:12px;">
+                <i class="fas fa-pencil-alt" style="color:#405de6;margin-right:8px;"></i>채팅방 이름 변경
+            </div>
+            <input id="_renameInput" type="text" placeholder="새 이름을 입력하세요..."
+                maxlength="40"
+                style="width:100%;border:1.5px solid #dbdbdb;border-radius:12px;
+                padding:12px 14px;font-size:15px;outline:none;
+                font-family:inherit;box-sizing:border-box;"
+                onfocus="this.style.borderColor='#405de6'"
+                onblur="this.style.borderColor='#dbdbdb'"
+                onkeydown="if(event.key==='Enter'){event.preventDefault();confirmRenameRoom('${roomId}');}">
+            <div style="display:flex;gap:10px;margin-top:14px;">
+                <button onclick="document.getElementById('_renameModal').remove()"
+                    style="flex:1;padding:12px;border:1.5px solid #dbdbdb;border-radius:12px;
+                    background:white;font-size:14px;font-weight:600;color:#262626;cursor:pointer;">
+                    취소
+                </button>
+                <button onclick="confirmRenameRoom('${roomId}')"
+                    style="flex:1;padding:12px;border:none;border-radius:12px;
+                    background:#262626;font-size:14px;font-weight:700;color:white;cursor:pointer;">
+                    변경
+                </button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    setTimeout(() => document.getElementById('_renameInput')?.focus(), 50);
+};
+
+window.confirmRenameRoom = async function (roomId) {
+    const newName = document.getElementById('_renameInput')?.value.trim();
+    if (!newName) { showChatToast('⚠️ 이름을 입력해주세요.'); return; }
+    document.getElementById('_renameModal').remove();
+    try {
+        const isGroup = roomId.startsWith('group_');
+        const field   = isGroup ? 'groupName' : 'customName';
+        await getChatDb().ref(`chats/${roomId}`).update({ [field]: newName });
+        // 헤더 타이틀 즉시 반영
+        const titleEl = document.querySelector('#chatSection span[data-roomtitle]');
+        if (titleEl) titleEl.textContent = newName;
+        showChatToast('✅ 채팅방 이름이 변경되었습니다');
+    } catch (e) {
+        showChatToast('❌ 변경 실패: ' + e.message);
+    }
 };
 
 // ===== 📷 사진·링크 모아보기 =====
