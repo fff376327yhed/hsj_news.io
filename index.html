@@ -229,6 +229,50 @@ if ('serviceWorker' in navigator) {
 .maintenance-image {
     margin: 30px 0;
 }
+
+/* ===== 🔥 핫 기사 카드 ===== */
+.hot-article-card {
+    background: linear-gradient(135deg, #fff8f8 0%, #fff3e0 100%);
+    border: 2px solid #ff5722;
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin: 10px 0 6px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.hot-article-card:active { transform: scale(0.98); }
+.hot-article-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #ff5722, #ff9800, #ff5722);
+    background-size: 200% 100%;
+    animation: hotShimmer 2s linear infinite;
+}
+@keyframes hotShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+.hot-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: linear-gradient(90deg, #ff5722, #ff9800);
+    color: white; font-size: 12px; font-weight: 800;
+    padding: 3px 10px; border-radius: 20px;
+    margin-bottom: 8px; letter-spacing: 0.3px;
+}
+.hot-article-title {
+    font-size: 15px; font-weight: 700; color: #212529;
+    line-height: 1.45; margin-bottom: 6px;
+    display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden;
+}
+.hot-article-meta {
+    display: flex; gap: 10px; font-size: 12px; color: #888;
+    flex-wrap: wrap;
+}
+
 </style>
 
 </head>
@@ -288,8 +332,88 @@ if ('serviceWorker' in navigator) {
 
 <!-- 홈 섹션 -->
 <section class="page-section active" id="articlesSection">
-    <div class="search-bar">
-        <select id="searchCategory" class="search-select">
+   <div class="search-bar">
+        <!-- 커스텀 카테고리 드롭다운 (dot 표시 지원) -->
+        <div id="catDropdownWrapper" style="position:relative; flex-shrink:0;">
+            <button id="catDropdownBtn"
+                onclick="toggleCatDropdown()"
+                style="display:flex; align-items:center; gap:6px; height:40px; padding:0 10px 0 14px;
+                    border:1.5px solid #dee2e6; border-radius:10px; background:white;
+                    font-size:14px; font-weight:600; color:#212529; cursor:pointer;
+                    white-space:nowrap; min-width:90px; justify-content:space-between;">
+                <span id="catDropdownLabel">자유게시판</span>
+                <i class="fas fa-chevron-down" style="font-size:11px; color:#888; transition:transform 0.2s;" id="catDropdownArrow"></i>
+            </button>
+            <!-- 새 기사 알림 dot (버튼 위) -->
+            <span id="catBtnDot" style="display:none; position:absolute; top:4px; right:4px;
+                width:9px; height:9px; background:#dc3545; border-radius:50%;
+                border:2px solid white; pointer-events:none;
+                box-shadow:0 0 4px rgba(220,53,69,0.6);"></span>
+
+            <!-- 드롭다운 목록 -->
+            <div id="catDropdownMenu" style="display:none; position:absolute; top:calc(100% + 6px); left:0;
+                background:white; border:1.5px solid #dee2e6; border-radius:12px;
+                box-shadow:0 6px 20px rgba(0,0,0,0.12); z-index:9999;
+                min-width:150px; overflow:hidden;">
+                <div onclick="selectCategory('자유게시판')" data-cat="자유게시판"
+                    class="_catItem"
+                    style="display:flex; align-items:center; justify-content:space-between;
+                    padding:11px 16px; font-size:14px; font-weight:600; cursor:pointer;
+                    background:#fff8f8; color:#c62828; border-bottom:1px solid #f5f5f5;">
+                    자유게시판
+                </div>
+                <div onclick="selectCategory('논란')" data-cat="논란" class="_catItem"
+                    style="display:flex; align-items:center; justify-content:space-between;
+                    padding:11px 16px; font-size:14px; cursor:pointer; border-bottom:1px solid #f5f5f5;">
+                    논란
+                    <span class="_catDot" style="display:none; width:8px; height:8px;
+                        background:#dc3545; border-radius:50; flex-shrink:0;
+                        box-shadow:0 0 4px rgba(220,53,69,0.5);"></span>
+                </div>
+                <div onclick="selectCategory('연애')" data-cat="연애" class="_catItem"
+                    style="display:flex; align-items:center; justify-content:space-between;
+                    padding:11px 16px; font-size:14px; cursor:pointer; border-bottom:1px solid #f5f5f5;">
+                    연애
+                    <span class="_catDot" style="display:none; width:8px; height:8px;
+                        background:#dc3545; border-radius:50%; flex-shrink:0;
+                        box-shadow:0 0 4px rgba(220,53,69,0.5);"></span>
+                </div>
+                <div onclick="selectCategory('정아영')" data-cat="정아영" class="_catItem"
+                    style="display:flex; align-items:center; justify-content:space-between;
+                    padding:11px 16px; font-size:14px; cursor:pointer; border-bottom:1px solid #f5f5f5;">
+                    정아영
+                    <span class="_catDot" style="display:none; width:8px; height:8px;
+                        background:#dc3545; border-radius:50%; flex-shrink:0;
+                        box-shadow:0 0 4px rgba(220,53,69,0.5);"></span>
+                </div>
+                <div onclick="selectCategory('게넥도')" data-cat="게넥도" class="_catItem"
+                    style="display:flex; align-items:center; justify-content:space-between;
+                    padding:11px 16px; font-size:14px; cursor:pointer; border-bottom:1px solid #f5f5f5;">
+                    게넥도
+                    <span class="_catDot" style="display:none; width:8px; height:8px;
+                        background:#dc3545; border-radius:50%; flex-shrink:0;
+                        box-shadow:0 0 4px rgba(220,53,69,0.5);"></span>
+                </div>
+                <div onclick="selectCategory('게임')" data-cat="게임" class="_catItem"
+                    style="display:flex; align-items:center; justify-content:space-between;
+                    padding:11px 16px; font-size:14px; cursor:pointer; border-bottom:1px solid #f5f5f5;">
+                    게임
+                    <span class="_catDot" style="display:none; width:8px; height:8px;
+                        background:#dc3545; border-radius:50%; flex-shrink:0;
+                        box-shadow:0 0 4px rgba(220,53,69,0.5);"></span>
+                </div>
+                <div onclick="selectCategory('마크')" data-cat="마크" class="_catItem"
+                    style="display:flex; align-items:center; justify-content:space-between;
+                    padding:11px 16px; font-size:14px; cursor:pointer;">
+                    마크
+                    <span class="_catDot" style="display:none; width:8px; height:8px;
+                        background:#dc3545; border-radius:50%; flex-shrink:0;
+                        box-shadow:0 0 4px rgba(220,53,69,0.5);"></span>
+                </div>
+            </div>
+        </div>
+        <!-- 기존 select는 숨김 처리 (JS 호환성 유지) -->
+        <select id="searchCategory" style="display:none;">
             <option value="자유게시판" selected>자유게시판</option>
             <option>논란</option>
             <option>연애</option>
@@ -405,16 +529,19 @@ if ('serviceWorker' in navigator) {
         <img id="commentImagePreviewImg" style="max-height:120px; max-width:100%; border-radius:10px; object-fit:contain; border:1px solid #dee2e6;">
         <button onclick="clearCommentImage()" style="position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.55); color:white; border:none; border-radius:50%; width:22px; height:22px; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center;"><i class="fas fa-times"></i></button>
     </div>
-    <div style="display:flex; gap:8px; align-items:flex-end;">
-        <textarea id="commentInput" placeholder="댓글 입력 (Shift+Enter: 줄바꿈)" class="comment-input" rows="1"
-            style="resize:none; overflow:hidden; min-height:42px; max-height:140px; line-height:1.4; padding:10px 12px; border-radius:20px;"
+    <div style="display:flex; gap:6px; align-items:flex-end;">
+        <textarea id="commentInput" placeholder="댓글을 입력하세요" class="comment-input" rows="1"
+            style="flex:1; resize:none; overflow:hidden; min-height:42px; max-height:140px;
+            line-height:1.4; padding:10px 14px; border-radius:20px; width:0;"
             onkeydown="handleCommentKey(event)"
             oninput="autoResizeTextarea(this)"></textarea>
         <input type="file" id="commentImageInput" accept="image/*" style="display:none;" onchange="previewCommentImage(this)">
-        <button onclick="document.getElementById('commentImageInput').click()" class="comment-submit-btn" style="flex-shrink:0; background:#f0f4f8; color:#495057;">
+        <button onclick="document.getElementById('commentImageInput').click()" class="comment-submit-btn"
+            style="flex-shrink:0; width:38px; height:38px; background:#f0f4f8; color:#495057; padding:0;">
             <i class="fas fa-camera"></i>
         </button>
-        <button onclick="submitCommentFromDetail()" class="comment-submit-btn" style="flex-shrink:0;">
+        <button onclick="submitCommentFromDetail()" class="comment-submit-btn"
+            style="flex-shrink:0; width:38px; height:38px; padding:0;">
             <i class="fas fa-paper-plane"></i>
         </button>
     </div>
@@ -451,70 +578,103 @@ if ('serviceWorker' in navigator) {
         <div id="notificationTypeSection"></div>
     </div>
 
-    <!-- 🎨 테마 설정 섹션 -->
-    <div style="background: white; padding: 16px; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-        <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 12px; color: #202124;">
+    <!-- 🎨 테마 설정 섹션 (아코디언) -->
+<div style="background:white; border-radius:12px; margin-bottom:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1); overflow:hidden;">
+    <div onclick="toggleSettingsAccordion('themeAccordion')"
+         style="display:flex; align-items:center; justify-content:space-between; padding:16px; cursor:pointer; user-select:none;"
+         onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background=''">
+        <h3 style="font-size:16px; font-weight:700; margin:0; color:#202124;">
             <i class="fas fa-palette"></i> 테마 설정
         </h3>
-        
-        <div style="display: flex; flex-direction: column; gap: 12px;">
-            <!-- 기본 테마 -->
-            <label class="theme-option" style="display: flex; align-items: center; padding: 12px; border: 2px solid #dadce0; border-radius: 10px; cursor: pointer; transition: all 0.3s;">
-                <input type="radio" name="theme" value="default" id="themeDefault" checked style="margin-right: 12px; width: 20px; height: 20px; cursor: pointer;">
-                <div style="flex: 1;">
-                    <div style="font-weight: 600; color: #202124; margin-bottom: 4px;">
-                        <i class="fas fa-newspaper"></i> 기본 테마
-                    </div>
-                    <div style="font-size: 12px; color: #5f6368;">
-                        깔끔하고 전문적인 뉴스 디자인
-                    </div>
+        <button id="themeAccordionBtn"
+            style="padding:5px 14px; font-size:13px; font-weight:700; border:1.5px solid #c62828;
+                   background:white; color:#c62828; border-radius:6px; cursor:pointer; pointer-events:none;">
+            더보기 ▾
+        </button>
+    </div>
+    <div id="themeAccordion" style="display:none; padding:0 16px 16px; border-top:1px solid #f0f0f0;">
+        <div style="display:flex; flex-direction:column; gap:12px; padding-top:14px;">
+            <label class="theme-option" style="display:flex; align-items:center; padding:12px; border:2px solid #dadce0; border-radius:10px; cursor:pointer; transition:all 0.3s;">
+                <input type="radio" name="theme" value="default" id="themeDefault" checked style="margin-right:12px; width:20px; height:20px; cursor:pointer;">
+                <div style="flex:1;">
+                    <div style="font-weight:600; color:#202124; margin-bottom:4px;"><i class="fas fa-newspaper"></i> 기본 테마</div>
+                    <div style="font-size:12px; color:#5f6368;">깔끔하고 전문적인 뉴스 디자인</div>
                 </div>
-                <div style="width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg, #00376b 0%, #5f6368 100%); border: 2px solid #dadce0;"></div>
+                <div style="width:40px; height:40px; border-radius:8px; background:linear-gradient(135deg,#00376b 0%,#5f6368 100%); border:2px solid #dadce0; flex-shrink:0;"></div>
             </label>
-
-            <!-- 크리스마스 테마 -->
-            <label class="theme-option" style="display: flex; align-items: center; padding: 12px; border: 2px solid #dadce0; border-radius: 10px; cursor: pointer; transition: all 0.3s;">
-                <input type="radio" name="theme" value="christmas" id="themeChristmas" style="margin-right: 12px; width: 20px; height: 20px; cursor: pointer;">
-                <div style="flex: 1;">
-                    <div style="font-weight: 600; color: #202124; margin-bottom: 4px;">
-                        <i class="fas fa-candy-cane"></i> 크리스마스 테마 <span style="background: linear-gradient(135deg, #c41e3a, #0f7f3e); padding: 2px 6px; border-radius: 4px; font-size: 10px; color: white; margin-left: 4px;">SPECIAL</span>
-                    </div>
-                    <div style="font-size: 12px; color: #5f6368;">
-                        🎄 메리 크리스마스! 눈 내리는 특별한 디자인
-                    </div>
+            <label class="theme-option" style="display:flex; align-items:center; padding:12px; border:2px solid #dadce0; border-radius:10px; cursor:pointer; transition:all 0.3s;">
+                <input type="radio" name="theme" value="christmas" id="themeChristmas" style="margin-right:12px; width:20px; height:20px; cursor:pointer;">
+                <div style="flex:1;">
+                    <div style="font-weight:600; color:#202124; margin-bottom:4px;"><i class="fas fa-candy-cane"></i> 크리스마스 테마 <span style="background:linear-gradient(135deg,#c41e3a,#0f7f3e); padding:2px 6px; border-radius:4px; font-size:10px; color:white; margin-left:4px;">SPECIAL</span></div>
+                    <div style="font-size:12px; color:#5f6368;">🎄 메리 크리스마스! 눈 내리는 특별한 디자인</div>
                 </div>
-                <div style="width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg, #c41e3a 0%, #0f7f3e 50%, #d4af37 100%); border: 2px solid #d4af37; box-shadow: 0 0 10px rgba(196, 30, 58, 0.5);"></div>
+                <div style="width:40px; height:40px; border-radius:8px; background:linear-gradient(135deg,#c41e3a 0%,#0f7f3e 50%,#d4af37 100%); border:2px solid #d4af37; box-shadow:0 0 10px rgba(196,30,58,0.5); flex-shrink:0;"></div>
             </label>
-
-            <!-- 가나디 테마 -->
-            <label class="theme-option" style="display: flex; align-items: center; padding: 12px; border: 2px solid #dadce0; border-radius: 10px; cursor: pointer; transition: all 0.3s;">
-                <input type="radio" name="theme" value="ganadi" id="themeGanadi" style="margin-right: 12px; width: 20px; height: 20px; cursor: pointer;">
-                <div style="flex: 1;">
-                    <div style="font-weight: 600; color: #202124; margin-bottom: 4px;">
-                        <i class="fas fa-dog"></i> 가나디 테마 <span style="background: linear-gradient(135deg, #FFB6C1, #B3D9FF); padding: 2px 6px; border-radius: 4px; font-size: 10px; color: white; margin-left: 4px;">듀...</span>
-                    </div>
-                    <div style="font-size: 12px; color: #5f6368;">
-                        🐶 나 안아.. 귀여운 강아지 감성 디자인
-                    </div>
+            <label class="theme-option" style="display:flex; align-items:center; padding:12px; border:2px solid #dadce0; border-radius:10px; cursor:pointer; transition:all 0.3s;">
+                <input type="radio" name="theme" value="ganadi" id="themeGanadi" style="margin-right:12px; width:20px; height:20px; cursor:pointer;">
+                <div style="flex:1;">
+                    <div style="font-weight:600; color:#202124; margin-bottom:4px;"><i class="fas fa-dog"></i> 가나디 테마 <span style="background:linear-gradient(135deg,#FFB6C1,#B3D9FF); padding:2px 6px; border-radius:4px; font-size:10px; color:white; margin-left:4px;">듀...</span></div>
+                    <div style="font-size:12px; color:#5f6368;">🐶 나 안아.. 귀여운 강아지 감성 디자인</div>
                 </div>
-                <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #FFB6C1 0%, #B3D9FF 100%); border: 2px solid #E8E8E8; box-shadow: 0 2px 8px rgba(255, 182, 193, 0.3);"></div>
+                <div style="width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,#FFB6C1 0%,#B3D9FF 100%); border:2px solid #E8E8E8; flex-shrink:0;"></div>
             </label>
-            
-            <!-- 붉은 말 테마 -->
-            <label class="theme-option" style="display: flex; align-items: center; padding: 12px; border: 2px solid #dadce0; border-radius: 10px; cursor: pointer; transition: all 0.3s;">
-                <input type="radio" name="theme" value="red-horse" id="themeRedHorse" style="margin-right: 12px; width: 20px; height: 20px; cursor: pointer;">
-                <div style="flex: 1;">
-                    <div style="font-weight: 600; color: #202124; margin-bottom: 4px;">
-                        <i class="fas fa-fire"></i> 붉은 말 테마 <span style="background: linear-gradient(135deg, #FF6F00, #c62828); padding: 2px 6px; border-radius: 4px; font-size: 10px; color: white; margin-left: 4px;">2026 NEW</span>
-                    </div>
-                    <div style="font-size: 12px; color: #5f6368;">
-                        🐴 2026 붉은 말의 해 특별 디자인
-                    </div>
+            <label class="theme-option" style="display:flex; align-items:center; padding:12px; border:2px solid #dadce0; border-radius:10px; cursor:pointer; transition:all 0.3s;">
+                <input type="radio" name="theme" value="red-horse" id="themeRedHorse" style="margin-right:12px; width:20px; height:20px; cursor:pointer;">
+                <div style="flex:1;">
+                    <div style="font-weight:600; color:#202124; margin-bottom:4px;"><i class="fas fa-fire"></i> 붉은 말 테마 <span style="background:linear-gradient(135deg,#FF6F00,#c62828); padding:2px 6px; border-radius:4px; font-size:10px; color:white; margin-left:4px;">2026 NEW</span></div>
+                    <div style="font-size:12px; color:#5f6368;">🐴 2026 붉은 말의 해 특별 디자인</div>
                 </div>
-                <div style="width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg, #FF6F00 0%, #c62828 50%, #8e0000 100%); border: 2px solid #FFD700; box-shadow: 0 0 10px rgba(198, 40, 40, 0.5);"></div>
+                <div style="width:40px; height:40px; border-radius:8px; background:linear-gradient(135deg,#FF6F00 0%,#c62828 50%,#8e0000 100%); border:2px solid #FFD700; flex-shrink:0;"></div>
+            </label>
+            <label class="theme-option" style="display:flex; align-items:center; padding:12px; border:2px solid #dadce0; border-radius:10px; cursor:pointer; transition:all 0.3s;">
+                <input type="radio" name="theme" value="dark" id="themeDark" style="margin-right:12px; width:20px; height:20px; cursor:pointer;">
+                <div style="flex:1;">
+                    <div style="font-weight:600; color:#202124; margin-bottom:4px;"><i class="fas fa-moon"></i> 다크 테마 <span style="background:linear-gradient(135deg,#1a1a2e,#16213e); padding:2px 6px; border-radius:4px; font-size:10px; color:#90caf9; margin-left:4px; border:1px solid #3a3a5c;">DARK</span></div>
+                    <div style="font-size:12px; color:#5f6368;">🌙 눈이 편안한 어두운 배경 디자인</div>
+                </div>
+                <div style="width:40px; height:40px; border-radius:8px; background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%); border:2px solid #5b9bd5; flex-shrink:0;"></div>
             </label>
         </div>
     </div>
+</div>
+
+<!-- 🔊 효과음 설정 섹션 (아코디언) — 신규 추가 -->
+<div style="background:white; border-radius:12px; margin-bottom:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1); overflow:hidden;">
+    <div onclick="toggleSettingsAccordion('soundAccordion')"
+         style="display:flex; align-items:center; justify-content:space-between; padding:16px; cursor:pointer; user-select:none;"
+         onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background=''">
+        <h3 style="font-size:16px; font-weight:700; margin:0; color:#202124;">
+            <i class="fas fa-volume-up"></i> 효과음 설정
+        </h3>
+        <button id="soundAccordionBtn"
+            style="padding:5px 14px; font-size:13px; font-weight:700; border:1.5px solid #c62828;
+                   background:white; color:#c62828; border-radius:6px; cursor:pointer; pointer-events:none;">
+            더보기 ▾
+        </button>
+    </div>
+    <div id="soundAccordion" style="display:none; padding:0 16px 16px; border-top:1px solid #f0f0f0;">
+        <div style="padding-top:14px;">
+            <div style="background:#fff8e1; border:1px solid #ffe082; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:12px; color:#795548; line-height:1.7;">
+                <i class="fas fa-info-circle"></i> 기본적으로 효과음은 모두 꺼져 있습니다.<br>
+                체크한 항목이 동작할 때마다 <b>MP3/effect.mp3</b> 파일이 재생됩니다.<br>
+                <span style="color:#a1887f;">※ 사이트 루트 기준 <code>MP3/effect.mp3</code> 파일 1개만 준비하면 됩니다.</span>
+            </div>
+            <div id="soundSettingsList" style="display:flex; flex-direction:column; gap:2px;"></div>
+            <div style="display:flex; gap:8px; margin-top:14px;">
+                <button onclick="selectAllSounds(true)"
+                    style="flex:1; padding:8px; font-size:12px; font-weight:700; border:1.5px solid #c62828; background:white; color:#c62828; border-radius:8px; cursor:pointer;"
+                    onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='white'">
+                    <i class="fas fa-check-square"></i> 전체 켜기
+                </button>
+                <button onclick="selectAllSounds(false)"
+                    style="flex:1; padding:8px; font-size:12px; font-weight:700; border:1.5px solid #dee2e6; background:white; color:#868e96; border-radius:8px; cursor:pointer;"
+                    onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
+                    <i class="fas fa-square"></i> 전체 끄기
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
     
     <!-- 관리자 전용 섹션 -->
     <div id="adminModeIndicator"></div>
