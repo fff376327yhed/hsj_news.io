@@ -2134,6 +2134,185 @@ function showArticles() {
     }, 100);
 }
 
+// ===== 🔥 핫 기사 점수 계산 =====
+function calcHotScore(article) {
+    const views    = article.views       || 0;
+    const likes    = article.likes       || article.likeCount    || 0;
+    const dislikes = article.dislikes    || article.dislikeCount || 0;
+    const comments = article.commentCount || 0;
+    // 조회수×1 + 좋아요×3 + 댓글×2 - 싫어요×2
+    return views * 1 + likes * 3 + comments * 2 - dislikes * 2;
+}
+
+// ===== 🔥 핫 기사 렌더링 (전체 또는 카테고리별) =====
+// articles: 배열(allArticles) 또는 객체(Firebase val) 모두 지원
+// ===== 🔥 핫 기사 렌더링 (전체 또는 카테고리별) =====
+// articles: allArticles 배열, commentCounts: {id: count} 객체
+function renderHotArticle(articles, containerId, category, commentCounts) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+
+    // allArticles 배열 기준, 고정 기사 제외
+    const pinnedIds = window._pinnedArticleIds || new Set();
+    const candidates = (Array.isArray(articles) ? articles : Object.values(articles))
+        .filter(a => {
+            if (!a || a.deleted) return false;
+            if (pinnedIds.has(a.id)) return false;
+            if (category && a.category !== category) return false;
+            return true;
+        });
+
+    if (candidates.length === 0) {
+        el.innerHTML = '';
+        window._currentHotArticleId = null; // 핫 기사 없음
+        return;
+    }
+
+    // commentCounts 반영
+    if (commentCounts) {
+        candidates.forEach(a => {
+            if (!a.commentCount) a.commentCount = commentCounts[a.id] || 0;
+        });
+    }
+
+    // 점수순 정렬
+    candidates.sort((a, b) => calcHotScore(b) - calcHotScore(a));
+    const hot = candidates[0];
+
+    // 핫 기사 ID 저장 (일반 목록에서 제외용)
+    window._currentHotArticleId = hot.id;
+    el.innerHTML = buildArticleCardHTML(hot, commentCounts, 'hot');
+}
+
+// ===== 🔥 핫 기사 로드 (articles 로드 후 호출) =====
+// window._allArticles 에 전체 기사 객체가 있다고 가정
+// 없으면 db.ref('articles') 에서 직접 로드
+window.loadAndRenderHotArticle = async function (category) {
+    try {
+        let articles = window._allArticles;
+        if (!articles) {
+            const snap = await db.ref('articles').orderByChild('deleted').equalTo(null).limitToLast(200).once('value');
+            articles = snap.val() || {};
+            window._allArticles = articles;
+        }
+        renderHotArticle(articles, 'featuredArticle', category || null);
+    } catch (e) { console.warn('핫 기사 로드 실패:', e); }
+};
+
+// ===== 🔴 카테고리별 새 기사 dot 관리 =====
+const CAT_NEW_KEY = '_catLastSeen'; // localStorage key prefix
+const NON_FREE_CATS = ['논란', '연애', '정아영', '게넥도', '게임', '마크'];
+
+window.initCategoryNewDots = async function () {
+    try {
+        const snap = await db.ref('articles')
+            .orderByChild('timestamp')
+            .limitToLast(50)
+            .once('value');
+        const articles = snap.val() || {};
+
+        // 카테고리별 가장 최신 timestamp 수집
+        const catLatest = {};
+        Object.values(articles).forEach(a => {
+            if (!a || a.deleted || !NON_FREE_CATS.includes(a.category)) return;
+            if (!catLatest[a.category] || a.timestamp > catLatest[a.category]) {
+                catLatest[a.category] = a.timestamp;
+            }
+        });
+
+        let anyNew = false;
+        NON_FREE_CATS.forEach(cat => {
+            const lastSeen = parseInt(localStorage.getItem(CAT_NEW_KEY + '_' + cat) || '0');
+            const latest   = catLatest[cat] || 0;
+            const hasNew   = latest > lastSeen;
+            if (hasNew) anyNew = true;
+
+            // 드롭다운 아이템 dot 업데이트
+            const item = document.querySelector(`#catDropdownMenu [data-cat="${cat}"]`);
+            if (item) {
+                const dot = item.querySelector('._catDot');
+                if (dot) dot.style.display = hasNew ? 'block' : 'none';
+            }
+        });
+
+        // 드롭다운 버튼 위 dot
+        const btnDot = document.getElementById('catBtnDot');
+        if (btnDot) btnDot.style.display = anyNew ? 'block' : 'none';
+
+    } catch (e) { console.warn('카테고리 dot 초기화 실패:', e); }
+};
+
+// 카테고리 선택 시 dot 제거 + 기존 필터 연동
+window.selectCategory = function (cat) {
+    // 기존 select 값 동기화 (기존 showArticles 로직 호환)
+    const sel = document.getElementById('searchCategory');
+    if (sel) {
+        sel.value = cat;
+        sel.dispatchEvent(new Event('change'));
+    }
+    // 드롭다운 닫기 + 레이블 변경
+    document.getElementById('catDropdownLabel').textContent = cat;
+    document.getElementById('catDropdownMenu').style.display = 'none';
+    document.getElementById('catDropdownArrow').style.transform = '';
+
+    // 선택한 카테고리 dot 제거 + localStorage 업데이트
+    if (NON_FREE_CATS.includes(cat)) {
+        localStorage.setItem(CAT_NEW_KEY + '_' + cat, Date.now());
+        const item = document.querySelector(`#catDropdownMenu [data-cat="${cat}"]`);
+        if (item) { const d = item.querySelector('._catDot'); if (d) d.style.display = 'none'; }
+        // 남은 dot 있는지 확인 후 버튼 dot 갱신
+        const anyLeft = NON_FREE_CATS.some(c => {
+            const it = document.querySelector(`#catDropdownMenu [data-cat="${c}"]`);
+            return it && it.querySelector('._catDot')?.style.display !== 'none';
+        });
+        const btnDot = document.getElementById('catBtnDot');
+        if (btnDot) btnDot.style.display = anyLeft ? 'block' : 'none';
+    }
+
+    // 기존 기사 목록 갱신 (showArticles 또는 filterByCategory 함수 호출)
+    if (typeof showArticles === 'function') showArticles();
+};
+
+window.toggleCatDropdown = function () {
+    const menu  = document.getElementById('catDropdownMenu');
+    const arrow = document.getElementById('catDropdownArrow');
+    const isOpen = menu.style.display !== 'none';
+    menu.style.display  = isOpen ? 'none' : 'block';
+    arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
+    if (!isOpen) {
+        // 외부 클릭 시 닫기
+        setTimeout(() => {
+            document.addEventListener('click', function closeDrop(e) {
+                if (!document.getElementById('catDropdownWrapper')?.contains(e.target)) {
+                    menu.style.display = 'none';
+                    arrow.style.transform = '';
+                    document.removeEventListener('click', closeDrop);
+                }
+            });
+        }, 10);
+    }
+};
+
+// ===== 대댓글 textarea 줄바꿈 허용 =====
+// 대댓글 input 동적 생성 시 이 핸들러를 적용
+window.handleReplyKey = function (e, articleId, commentId) {
+    if (e.key === 'Enter') {
+        const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+        if (isMobile) {
+            // 모바일: Enter = 전송
+            e.preventDefault();
+            if (typeof submitReply === 'function') submitReply(articleId, commentId);
+        } else {
+            // PC: Shift+Enter = 줄바꿈, Enter = 전송
+            if (!e.shiftKey) {
+                e.preventDefault();
+                if (typeof submitReply === 'function') submitReply(articleId, commentId);
+            }
+            // shiftKey 있으면 기본 동작(줄바꿈) 허용
+        }
+    }
+};
+
 function setupCategoryChangeListener() {
     const categorySelect = document.getElementById("searchCategory");
     if (!categorySelect) return;
@@ -2725,6 +2904,53 @@ async function getUserProfilePhoto(email) {
     }
 }
 
+// ===== 공통 기사 카드 HTML 빌더 =====
+// badge: 'pinned' | 'hot' | null
+function buildArticleCardHTML(a, commentCounts, badge) {
+    const views        = getArticleViews(a);
+    const votes        = getArticleVoteCounts(a);
+    const commentCount = (commentCounts && commentCounts[a.id]) || a.commentCount || 0;
+    const photoUrl     = window.profilePhotoCache?.get(a.authorEmail) || null;
+    const authorPhoto  = getProfilePlaceholder(photoUrl, 48);
+
+    let badgeHTML = '';
+    let borderStyle = 'cursor:pointer;';
+    if (badge === 'pinned') {
+        badgeHTML   = `<span class="pinned-badge">📌 고정</span>`;
+        borderStyle = 'border-left:4px solid #ffd700; cursor:pointer;';
+    } else if (badge === 'hot') {
+        badgeHTML   = `<span style="display:inline-flex;align-items:center;gap:4px;
+            background:linear-gradient(90deg,#ff5722,#ff9800);color:white;
+            font-size:11px;font-weight:800;padding:2px 9px;border-radius:20px;
+            margin-right:4px;">🔥 핫</span>`;
+        borderStyle = 'border-left:4px solid #ff5722; cursor:pointer;';
+    }
+
+    return `<div class="article-card" onclick="showArticleDetail('${a.id}')" style="${borderStyle}">
+        ${a.thumbnail ? `<img src="${a.thumbnail}" class="article-thumbnail" alt="썸네일">` : ''}
+        <div class="article-content">
+            <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:4px;">
+                <span class="category-badge">${escapeHTML(a.category)}</span>
+                ${badgeHTML}
+            </div>
+            <h3 class="article-title">${escapeHTML(a.title)}</h3>
+            ${a.summary ? `<p class="article-summary">${escapeHTML(a.summary)}</p>` : ''}
+            <div class="article-meta" style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    ${authorPhoto}
+                    <span>${escapeHTML(a.author || '')}</span>
+                </div>
+                <div class="article-stats" style="display:flex;gap:12px;">
+                    <span class="stat-item">👁️ ${views}</span>
+                    <span class="stat-item">💬 ${commentCount}</span>
+                    <span class="stat-item">👍 ${votes.likes}</span>
+                    ${votes.dislikes > 0 ? `<span class="stat-item">👎 ${votes.dislikes}</span>` : ''}
+                </div>
+            </div>
+        </div>
+    </div>`;
+}
+
 async function renderArticles() {
     const list = getSortedArticles();
     
@@ -2776,36 +3002,43 @@ async function renderArticles() {
         return;
     }
 
+    // ✅ 댓글 수 먼저 가져오기 (고정·핫·일반 기사 모두 필요하므로 상단으로 이동)
+    const commentsSnapshot = await db.ref("comments").once("value");
+    const commentsData = commentsSnapshot.val() || {};
+    const commentCounts = {};
+    Object.entries(commentsData).forEach(([articleId, articleComments]) => {
+        commentCounts[articleId] = Object.keys(articleComments).length;
+    });
+
     // 고정 기사 렌더링
     if(pinnedArticles.length > 0) {
-        const pinnedHTML = await Promise.all(pinnedArticles.map(async (a) => {
-            const photoUrl = window.profilePhotoCache.get(a.authorEmail) || null;
-            const authorPhotoHTML = getProfilePlaceholder(photoUrl, 24);
-            
-            return `<div class="article-card" onclick="showArticleDetail('${a.id}')" style="border-left:4px solid #ffd700;cursor:pointer;">
-                <div class="article-content">
-                   <span class="category-badge">${escapeHTML(a.category)}</span>
-                    <span class="pinned-badge">📌 고정</span>
-                    <h3 class="article-title">${escapeHTML(a.title)}</h3>
-                    <div class="article-meta" style="display:flex; align-items:center; gap:8px;">
-                        ${authorPhotoHTML}
-                        <span style="flex:1;">${escapeHTML(a.author)}</span>
-                    </div>
-                </div>
-            </div>`;
-        }));
-        
-        pinnedSection.innerHTML = pinnedHTML.join('');
+        pinnedSection.innerHTML = pinnedArticles
+            .map(a => buildArticleCardHTML(a, commentCounts, 'pinned'))
+            .join('');
     } else {
         pinnedSection.innerHTML = '';
     }
 
-    // 일반 기사
-    featured.innerHTML = '';
+// ✅ 핫 기사 후보 1위 먼저 계산 (필터링 + 캐시 모두 여기서 결정)
+    const pinnedIdSet = new Set(pinnedIds);
+    const hotCandidate = allArticles
+        .filter(a => a && !a.deleted && !pinnedIdSet.has(a.id) && a.category === currentCategory)
+        .sort((a, b) => calcHotScore(b) - calcHotScore(a))[0];
+    const hotId = hotCandidate ? hotCandidate.id : null;
+    window._currentHotArticleId = hotId;
+
+    // 핫 기사로 선정된 기사는 일반 목록에서 즉시 제외
+    const filteredUnpinned = hotId
+        ? unpinnedArticles.filter(a => a.id !== hotId)
+        : unpinnedArticles;
+
     const endIdx = currentArticlePage * ARTICLES_PER_PAGE;
-    const displayArticles = unpinnedArticles.slice(0, endIdx);
-    
-    const emails = [...new Set(displayArticles.map(a => a.authorEmail).filter(Boolean))];
+    const displayArticles = filteredUnpinned.slice(0, endIdx);
+
+    // ✅ 핫 기사 작성자 포함해서 캐시 대상 emails 구성
+    const allDisplayEmails = [...displayArticles, ...pinnedArticles];
+    if (hotCandidate) allDisplayEmails.push(hotCandidate);
+    const emails = [...new Set(allDisplayEmails.map(a => a.authorEmail).filter(Boolean))];
     const uncachedEmails = emails.filter(email => !window.profilePhotoCache.has(email));
 
     if(uncachedEmails.length > 0) {
@@ -2833,48 +3066,20 @@ async function renderArticles() {
         });
     }
 }
-    
-// ✅ 댓글 수 가져오기
-    const commentsSnapshot = await db.ref("comments").once("value");
-    const commentsData = commentsSnapshot.val() || {};
-    const commentCounts = {};
-    Object.entries(commentsData).forEach(([articleId, articleComments]) => {
-        commentCounts[articleId] = Object.keys(articleComments).length;
-    });
 
-    const articlesHTML = displayArticles.map((a) => {
-        const views = getArticleViews(a);
-        const votes = getArticleVoteCounts(a);
-        const commentCount = commentCounts[a.id] || 0;   // ← 이 줄 추가
-        const photoUrl = window.profilePhotoCache.get(a.authorEmail) || null;
-        const authorPhotoHTML = getProfilePlaceholder(photoUrl, 48);
+    // ✅ 캐시 로드 완료 후 핫 기사 렌더링
+    renderHotArticle(allArticles, 'featuredArticle', currentCategory, commentCounts);
     
-        return `<div class="article-card" onclick="showArticleDetail('${a.id}')" style="cursor:pointer;">
-       ${a.thumbnail ? `<img src="${a.thumbnail}" class="article-thumbnail" alt="썸네일">` : ''}
-       <div class="article-content">
-           <span class="category-badge">${escapeHTML(a.category)}</span>
-           <h3 class="article-title">${escapeHTML(a.title)}</h3>
-           <p class="article-summary">${escapeHTML(a.summary||'')}</p>
-           <div class="article-meta" style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-    <div style="display:flex; align-items:center; gap:8px;">
-        ${authorPhotoHTML}
-        <span>${escapeHTML(a.author)}</span>
-    </div>
-    <div class="article-stats" style="display:flex; gap:12px;">
-        <span class="stat-item">👁️ ${views}</span>
-        <span class="stat-item">💬 ${commentCount}</span>
-        <span class="stat-item">👍 ${votes.likes}</span>
-    </div>
-</div>
-            </div>
-        </div>`;
-    });
+// (댓글 수는 위에서 이미 로드됨)
+    const articlesHTML = displayArticles.map((a) =>
+        buildArticleCardHTML(a, commentCounts, null)
+    );
     
     grid.innerHTML = articlesHTML.join('');
     
-    if(endIdx < unpinnedArticles.length) {
+    if(endIdx < filteredUnpinned.length) {
         loadMore.innerHTML = `<button onclick="loadMoreArticles()" class="btn-block" style="background:#fff; border:1px solid #ddd; color:#555;">
-            더 보기 (${unpinnedArticles.length - endIdx})</button>`;
+            더 보기 (${filteredUnpinned.length - endIdx})</button>`;
     } else {
         loadMore.innerHTML = "";
     }
@@ -4207,9 +4412,9 @@ ${comment.imageBase64 ? `
         <button onclick="clearReplyImage('${commentId}')" style="position:absolute; top:3px; right:3px; background:rgba(0,0,0,0.55); color:white; border:none; border-radius:50%; width:20px; height:20px; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center;"><i class="fas fa-times"></i></button>
     </div>
     <div style="display:flex; align-items:flex-end; gap:6px;">
-        <textarea id="replyInput-${commentId}" class="reply-input" placeholder="답글 입력... (Shift+Enter: 줄바꿈)" rows="1"
+       <textarea id="replyInput-${commentId}" class="reply-input" placeholder="답글을 입력하세요" rows="1"
             style="resize:none; overflow:hidden; min-height:36px; max-height:100px; line-height:1.4; flex:1; border-radius:16px; padding:8px 12px;"
-            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitReply('${id}','${commentId}')}"
+            onkeydown="(function(e){ if(e.key==='Enter'){ const mob=/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent); if(mob){e.preventDefault();submitReply('${id}','${commentId}');}else if(!e.shiftKey){e.preventDefault();submitReply('${id}','${commentId}');} } })(event)"
             oninput="autoResizeTextarea(this)"></textarea>
         <input type="file" id="replyImageInput-${commentId}" accept="image/*" style="display:none;" onchange="previewReplyImage(this,'${commentId}')">
         <button onclick="document.getElementById('replyImageInput-${commentId}').click()" class="btn-reply-submit" style="background:#f0f4f8; color:#495057;"><i class="fas fa-camera"></i></button>
@@ -6689,8 +6894,9 @@ function applyTheme(themeName) {
     const ganadiGreeting = document.getElementById('ganadiGreeting');
     if (ganadiGreeting) ganadiGreeting.remove();
     
-    // ✨ 가나디 테마 클래스 제거 (모든 테마 전환 시 일단 제거)
+    // ✨ 모든 테마 클래스 제거 (새 테마 적용 전 초기화)
     document.body.classList.remove('ganadi-theme');
+    document.body.classList.remove('dark-theme');
     
     // 테마별 처리
     if (themeName === 'red-horse') {
@@ -6778,18 +6984,46 @@ function applyTheme(themeName) {
             }
         }
         
+    } else if (themeName === 'dark') {
+        // 🌙 다크 테마
+        let style4 = document.querySelector('link[href*="style4.css"]');
+        
+        if (!style4) {
+            themeStylesheet = document.createElement('link');
+            themeStylesheet.rel = 'stylesheet';
+            themeStylesheet.href = 'css/style4.css';
+            themeStylesheet.id = 'dark-theme';
+            document.head.appendChild(themeStylesheet);
+            console.log('🌙 다크 테마 로드');
+            
+            themeStylesheet.onload = function() {
+                console.log('✅ 다크 테마 로드 완료!');
+                currentAppliedTheme = themeName;
+                document.body.classList.add('dark-theme');
+            };
+        } else {
+            style4.disabled = false;
+            themeStylesheet = style4;
+            currentAppliedTheme = themeName;
+            document.body.classList.add('dark-theme');
+            console.log('♻️ 기존 다크 테마 활성화');
+        }
+        
     } else {
         // 📰 기본 테마
         const style1 = document.querySelector('link[href*="style1.css"]');
         const style2 = document.querySelector('link[href*="style2.css"]');
         const style3 = document.querySelector('link[href*="style3.css"]');
+        const style4 = document.querySelector('link[href*="style4.css"]');
         
         if (style1) style1.disabled = true;
         if (style2) style2.disabled = true;
         if (style3) style3.disabled = true;
+        if (style4) style4.disabled = true;
         
         // ✨ 모든 테마 클래스 제거
         document.body.classList.remove('ganadi-theme');
+        document.body.classList.remove('dark-theme');
         
         currentAppliedTheme = themeName;
         console.log('📰 기본 테마로 복원');
@@ -6875,9 +7109,30 @@ function applyInitialTheme() {
             // ✨ 가나디 테마 클래스 추가!
             document.body.classList.add('ganadi-theme');
         }
+    } else if (savedTheme === 'dark') {
+        let style4 = document.querySelector('link[href*="style4.css"]');
+        if (!style4) {
+            const newLink = document.createElement('link');
+            newLink.rel = 'stylesheet';
+            newLink.href = 'css/style4.css';
+            newLink.id = 'dark-theme';
+            document.head.appendChild(newLink);
+            themeStylesheet = newLink;
+            newLink.onload = () => {
+                console.log('✅ 다크 테마 초기 로드 완료');
+                currentAppliedTheme = 'dark';
+                document.body.classList.add('dark-theme');
+            };
+        } else {
+            style4.disabled = false;
+            themeStylesheet = style4;
+            currentAppliedTheme = 'dark';
+            document.body.classList.add('dark-theme');
+        }
     } else {
-        // ✨ 기본 테마일 때 가나디 클래스 제거
+        // ✨ 기본 테마일 때 모든 테마 클래스 제거
         document.body.classList.remove('ganadi-theme');
+        document.body.classList.remove('dark-theme');
         currentAppliedTheme = 'default';
         console.log('✅ 기본 테마 사용');
     }
@@ -7384,6 +7639,7 @@ function initThemeSelector() {
     const redHorseRadio = document.getElementById('themeRedHorse');
     const christmasRadio = document.getElementById('themeChristmas');
     const ganadiRadio = document.getElementById('themeGanadi');
+    const darkRadio = document.getElementById('themeDark');
     
     if (!defaultRadio || !redHorseRadio) {
         console.log('⚠️ 라디오 버튼을 찾을 수 없음. 1초 후 재시도...');
@@ -7399,6 +7655,7 @@ function initThemeSelector() {
     redHorseRadio.checked = (savedTheme === 'red-horse');
     if (christmasRadio) christmasRadio.checked = (savedTheme === 'christmas');
     if (ganadiRadio) ganadiRadio.checked = (savedTheme === 'ganadi');
+    if (darkRadio) darkRadio.checked = (savedTheme === 'dark');
     
     applyTheme(savedTheme);
     
@@ -7433,9 +7690,10 @@ document.querySelectorAll('input[name="theme"]').forEach(radio => {
             'red-horse': '🐴 붉은 말이 안내하는 새해 테마가 적용되었습니다!',
             'christmas': '🎄 메리 크리스마스! 눈 내리는 테마가 적용되었습니다!',
             'ganadi': '🐶 가나디 테마가 적용되었습니다! 듀...',
+            'dark': '🌙 다크 테마가 적용되었습니다!',
             'default': '📰 기본 테마로 돌아왔습니다!'
         };
-        
+
         const message = messages[selectedTheme] || messages['default'];
         
         if (typeof showToastNotification === 'function') {
@@ -9295,3 +9553,189 @@ window.deleteAdminMemo = async function(memoId) {
         alert('삭제 실패. 다시 시도해주세요.');
     }
 };
+
+// ===================================================================
+// 🔊 Part 16: 효과음 시스템
+// ===================================================================
+
+const SOUND_PACKS = [
+    { value: 'none',          label: '효과음 없음', desc: '모든 효과음을 사용하지 않습니다', icon: '🔇' },
+    { value: 'MP3/sfx1.mp3',  label: '좋아요',   desc: '좋아요 좋아요!!',                    icon: '🔔' },
+
+];
+
+const SOUND_ACTIONS = [
+    { key: 'articleClick',   icon: '📰', label: '기사 클릭',          desc: '기사 카드를 눌렀을 때' },
+    { key: 'articlePublish', icon: '🚀', label: '기사 발행',          desc: '기사를 작성·발행했을 때' },
+    { key: 'searchClick',    icon: '🔍', label: '검색 버튼 클릭',     desc: '검색 버튼을 눌렀을 때' },
+    { key: 'commentSend',    icon: '💬', label: '댓글 전송',          desc: '댓글을 작성해서 보낼 때' },
+    { key: 'commentLike',    icon: '👍', label: '댓글 좋아요/비추천', desc: '댓글에 좋아요/비추천을 눌렀을 때' },
+    { key: 'articleVote',    icon: '🗳️', label: '기사 추천/비추천',   desc: '기사에 추천/비추천을 눌렀을 때' },
+    { key: 'chatSend',       icon: '💌', label: '채팅 메시지 전송',   desc: '채팅방에서 메시지를 보낼 때' },
+    { key: 'navigate',       icon: '🧭', label: '탭/페이지 이동',     desc: '하단 탭 메뉴를 눌러 이동할 때' },
+    { key: 'loadMore',       icon: '⬇️', label: '더보기 클릭',        desc: '기사·댓글 더보기 버튼을 눌렀을 때' },
+    { key: 'imageUpload',    icon: '🖼️', label: '이미지 업로드',      desc: '이미지를 업로드했을 때' },
+    { key: 'login',          icon: '🔑', label: '로그인',             desc: '로그인에 성공했을 때' },
+    { key: 'logout',         icon: '🚪', label: '로그아웃',           desc: '로그아웃했을 때' },
+    { key: 'notification',   icon: '🔔', label: '알림 수신',          desc: '새 알림 토스트가 나타날 때' },
+    { key: 'categoryChange', icon: '📂', label: '카테고리 변경',      desc: '카테고리 드롭다운에서 선택할 때' },
+    { key: 'sortChange',     icon: '🔀', label: '정렬 방식 변경',     desc: '최신순·인기순 등 정렬을 바꿀 때' },
+    { key: 'modalOpen',      icon: '🪟', label: '모달/팝업 열기',     desc: '설정, 로그인 등 팝업이 열릴 때' },
+    { key: 'themeChange',    icon: '🎨', label: '테마 변경',          desc: '다른 테마를 선택했을 때' },
+    { key: 'goBack',         icon: '◀️', label: '뒤로가기',           desc: '뒤로가기 버튼을 눌렀을 때' },
+];
+
+let soundSettings = {};
+
+function loadSoundSettings() {
+    try { soundSettings = JSON.parse(localStorage.getItem('soundSettings') || '{}'); } catch(e) { soundSettings = {}; }
+    if (!soundSettings.selectedPack) soundSettings.selectedPack = 'none';
+    if (!soundSettings.actions) soundSettings.actions = {};
+    SOUND_ACTIONS.forEach(a => { if (soundSettings.actions[a.key] === undefined) soundSettings.actions[a.key] = false; });
+}
+
+function saveSoundSettings() {
+    try { localStorage.setItem('soundSettings', JSON.stringify(soundSettings)); } catch(e) {}
+}
+
+let _sharedAudio = null;
+function playSound(key) {
+    if (soundSettings.selectedPack === 'none') return;
+    if (!soundSettings.actions[key]) return;
+    try {
+        if (!_sharedAudio || _sharedAudio._pack !== soundSettings.selectedPack) {
+            _sharedAudio = new Audio(soundSettings.selectedPack);
+            _sharedAudio._pack = soundSettings.selectedPack;
+            _sharedAudio.volume = 0.6;
+        }
+        _sharedAudio.currentTime = 0;
+        _sharedAudio.play().catch(() => {});
+    } catch(e) {}
+}
+
+function toggleSettingsAccordion(id) {
+    const panel = document.getElementById(id);
+    const btn   = document.getElementById(id + 'Btn');
+    if (!panel) return;
+    const isOpen = panel.style.display !== 'none';
+    panel.style.display = isOpen ? 'none' : 'block';
+    if (btn) btn.textContent = isOpen ? '더보기 ▾' : '접기 ▴';
+    if (!isOpen && id === 'soundAccordion') renderSoundSettings();
+}
+
+function renderSoundSettings() {
+    loadSoundSettings();
+    const container = document.getElementById('soundSettingsList');
+    if (!container) return;
+    container.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+            ${SOUND_PACKS.map(p => `
+            <label style="display:flex;align-items:center;padding:12px;border:2px solid ${soundSettings.selectedPack===p.value?'#c62828':'#dadce0'};border-radius:10px;cursor:pointer;transition:all 0.2s;background:${soundSettings.selectedPack===p.value?'#fff8f8':'white'};">
+                <input type="radio" name="soundPack" value="${p.value}"
+                       ${soundSettings.selectedPack===p.value?'checked':''}
+                       onchange="onSoundPackChange('${p.value}')"
+                       style="margin-right:12px;width:20px;height:20px;cursor:pointer;accent-color:#c62828;">
+                <span style="font-size:22px;margin-right:12px;flex-shrink:0;">${p.icon}</span>
+                <div style="flex:1;">
+                    <div style="font-weight:600;color:#202124;margin-bottom:3px;">${p.label}</div>
+                    <div style="font-size:12px;color:#5f6368;">${p.desc}</div>
+                    ${p.value!=='none'?`<div style="font-size:11px;color:#adb5bd;margin-top:2px;">${p.value}</div>`:''}
+                </div>
+                ${p.value!=='none'?`<button onclick="event.preventDefault();previewSoundPack('${p.value}')"
+                    style="padding:5px 10px;font-size:11px;font-weight:700;border:1.5px solid #c62828;background:white;color:#c62828;border-radius:6px;cursor:pointer;flex-shrink:0;"
+                    onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='white'">▶ 미리듣기</button>`:''}
+            </label>`).join('')}
+        </div>
+        <div style="border-top:1px solid #f0f0f0;margin:4px 0 14px;"></div>
+        <div style="font-size:13px;font-weight:700;color:#495057;margin-bottom:10px;">⚙️ 효과음 울릴 동작 선택</div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            ${SOUND_ACTIONS.map(a => `
+            <label style="display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:8px;cursor:pointer;"
+                   onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">
+                <input type="checkbox" id="sfx_${a.key}" ${soundSettings.actions[a.key]?'checked':''}
+                       onchange="onSoundToggle('${a.key}',this.checked)"
+                       style="width:17px;height:17px;cursor:pointer;accent-color:#c62828;flex-shrink:0;">
+                <span style="font-size:17px;flex-shrink:0;">${a.icon}</span>
+                <div style="flex:1;">
+                    <div style="font-weight:600;font-size:14px;color:#202124;">${a.label}</div>
+                    <div style="font-size:11px;color:#868e96;">${a.desc}</div>
+                </div>
+            </label>`).join('')}
+        </div>
+    `;
+}
+
+window.onSoundPackChange = function(value) {
+    soundSettings.selectedPack = value;
+    saveSoundSettings();
+    renderSoundSettings();
+};
+
+window.previewSoundPack = function(file) {
+    try { const a = new Audio(file); a.volume = 0.6; a.play().catch(()=>{}); } catch(e) {}
+};
+
+window.onSoundToggle = function(key, checked) {
+    soundSettings.actions[key] = checked;
+    saveSoundSettings();
+};
+
+window.selectAllSounds = function(checked) {
+    SOUND_ACTIONS.forEach(a => {
+        soundSettings.actions[a.key] = checked;
+        const el = document.getElementById('sfx_'+a.key);
+        if (el) el.checked = checked;
+    });
+    saveSoundSettings();
+};
+
+loadSoundSettings();
+
+// ---- 훅 ----
+(function(){const _o=window.showArticleDetail||(typeof showArticleDetail==='function'?showArticleDetail:null);if(_o)window.showArticleDetail=function(id){playSound('articleClick');return _o.call(this,id);};})();
+(function(){const _o=window.searchArticles||(typeof searchArticles==='function'?searchArticles:null);if(_o)window.searchArticles=function(r){playSound('searchClick');return _o.call(this,r);};})();
+(function(){const _o=window.submitComment||(typeof submitComment==='function'?submitComment:null);if(_o)window.submitComment=async function(id){playSound('commentSend');return _o.call(this,id);};})();
+(function(){const _o=window.toggleVote||(typeof toggleVote==='function'?toggleVote:null);if(_o)window.toggleVote=function(a,v){playSound('articleVote');return _o.call(this,a,v);};})();
+(function(){const _o=window.toggleCommentVote;if(_o)window.toggleCommentVote=function(a,c,v){playSound('commentLike');return _o.call(this,a,c,v);};})();
+(function(){const _o=window.loadMoreArticles||(typeof loadMoreArticles==='function'?loadMoreArticles:null);if(_o)window.loadMoreArticles=function(){playSound('loadMore');return _o.call(this);};})();
+(function(){const _o=window.loadMoreComments||(typeof loadMoreComments==='function'?loadMoreComments:null);if(_o)window.loadMoreComments=function(){playSound('loadMore');return _o.call(this);};})();
+(function(){const _o=window.sortArticles||(typeof sortArticles==='function'?sortArticles:null);if(_o)window.sortArticles=function(m,b){playSound('sortChange');return _o.call(this,m,b);};})();
+(function(){
+    const _oH=window.showArticles||(typeof showArticles==='function'?showArticles:null);
+    const _oW=window.showWritePage||(typeof showWritePage==='function'?showWritePage:null);
+    const _oS=window.showSettings||(typeof showSettings==='function'?showSettings:null);
+    const _oM=window.showMoreMenu||(typeof showMoreMenu==='function'?showMoreMenu:null);
+    if(_oH)window.showArticles=function(){playSound('navigate');return _oH.call(this);};
+    if(_oW)window.showWritePage=function(){playSound('navigate');return _oW.call(this);};
+    if(_oS)window.showSettings=function(){playSound('navigate');return _oS.call(this);};
+    if(_oM)window.showMoreMenu=function(){playSound('navigate');return _oM.call(this);};
+})();
+(function(){const _o=window.selectCategory||(typeof selectCategory==='function'?selectCategory:null);if(_o)window.selectCategory=function(c){playSound('categoryChange');return _o.call(this,c);};})();
+(function(){const _o=window.logoutAdmin||(typeof logoutAdmin==='function'?logoutAdmin:null);if(_o)window.logoutAdmin=function(){playSound('logout');return _o.call(this);};})();
+(function(){const _o=window.openAdminAuthModal||(typeof openAdminAuthModal==='function'?openAdminAuthModal:null);if(_o)window.openAdminAuthModal=function(){playSound('modalOpen');return _o.call(this);};})();
+(function(){const _o=window.showToastNotification||(typeof showToastNotification==='function'?showToastNotification:null);if(_o)window.showToastNotification=function(t,m,a){playSound('notification');return _o.call(this,t,m,a);};})();
+(function(){const _o=window.goBack||(typeof goBack==='function'?goBack:null);if(_o)window.goBack=function(){playSound('goBack');return _o.call(this);};})();
+
+document.addEventListener('DOMContentLoaded',function(){
+    document.querySelectorAll('input[name="theme"]').forEach(r=>r.addEventListener('change',()=>playSound('themeChange')));
+    const form=document.getElementById('articleForm');
+    if(form)form.addEventListener('submit',()=>playSound('articlePublish'));
+});
+document.addEventListener('change',function(e){
+    if(['thumbnailInput','commentImageInput','maintenanceImageInput'].includes(e.target?.id)&&e.target.files?.length>0)playSound('imageUpload');
+});
+document.addEventListener('click',function(e){
+    const s=document.getElementById('chatSection');
+    if(!s||!s.contains(e.target))return;
+    const btn=e.target.closest('button');
+    if(!btn)return;
+    const ic=btn.querySelector('i');
+    if(ic&&(ic.className.includes('paper-plane')||ic.className.includes('send')))playSound('chatSend');
+});
+document.addEventListener('chatMessageSent',()=>playSound('chatSend'));
+if(typeof auth!=='undefined'){
+    auth.onAuthStateChanged(function(user){
+        if(user&&!window._sfxLoginFired){window._sfxLoginFired=true;playSound('login');}
+        if(!user)window._sfxLoginFired=false;
+    });
+}
