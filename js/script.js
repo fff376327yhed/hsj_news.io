@@ -2448,6 +2448,9 @@ function showMoreMenu() {
                         <i class="fas fa-comment-dots"></i> 채팅
                         <span class="notification-badge" id="chatBadgeMore" style="display:none; position:absolute; right:12px; top:12px; background:#dc3545; color:white; border-radius:12px; padding:2px 6px; font-size:10px; font-weight:700; min-width:18px; text-align:center;"></span>
                     </button>
+                    <button onclick="typeof showVotePage === 'function' ? showVotePage() : alert('투표 기능을 불러오는 중입니다. 잠시 후 다시 시도해주세요.')" class="more-menu-btn">
+                        <i class="fas fa-poll-h"></i> 투표
+                    </button>
                 </div>
             </div>
             
