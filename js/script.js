@@ -447,6 +447,7 @@ function routeToPage(page, articleId = null, section = null) {
         'friends': () => typeof showFriendsPage === 'function' ? showFriendsPage() : showMoreMenu(),
         'friendRequests': () => typeof showFriendRequestsPage === 'function' ? showFriendRequestsPage() : showMoreMenu(),
         'bugreport': () => typeof showBugReportPage === 'function' ? showBugReportPage() : showMoreMenu(),
+        'improvement': () => typeof showImprovementPage === 'function' ? showImprovementPage() : showMoreMenu(),
         'notification-settings': () => typeof showNotificationSettings === 'function' ? showNotificationSettings() : showSettings(),
         'errorlogs': () => showErrorLogs()
     };
@@ -1309,24 +1310,20 @@ async function sendNotification(type, data) {
         const usersData = usersSnapshot.val() || {};
         
         if (type === 'article') {
-            // 기사 알림: 수신자별 [사용자 필터 + 카테고리 필터] 종합 판단
             const authorUid    = Object.keys(usersData).find(id => usersData[id]?.email === data.authorEmail);
             const articleCat   = data.category || '';
 
             Object.entries(usersData).forEach(([uid, userData]) => {
+                if (!userData) return; // ✅ null 유저 방어
                 if(userData.notificationsEnabled === false) return;
-                if(userData.email === data.authorEmail) return; // 자기 자신 제외
+                if(userData.email === data.authorEmail) return;
 
                 const types = userData.notificationTypes || {};
-
-                // ① 기사 알림 켜져 있는지 확인
                 if(types.article === false) return;
 
-                // ② 사용자 필터: null이면 전체 허용 (기본값)
                 const filterUsers = types.articleFilterUsers || null;
                 if(filterUsers !== null && authorUid && filterUsers[authorUid] === false) return;
 
-                // ③ 카테고리 필터: null이면 전체 허용 (기본값)
                 const filterCats = types.articleFilterCategories || null;
                 if(filterCats !== null && articleCat && filterCats[articleCat] === false) return;
 
@@ -1334,24 +1331,20 @@ async function sendNotification(type, data) {
             });
         } 
         else if (type === 'myArticleComment') {
-            // 댓글 알림: 글 작성자에게, [사용자 필터 + 카테고리 필터] 종합 판단
             const commenterUid = Object.keys(usersData).find(id => usersData[id]?.email === data.commenterEmail);
             const articleCat   = data.articleCategory || '';
 
             Object.entries(usersData).forEach(([uid, userData]) => {
+                if (!userData) return; // ✅ null 유저 방어
                 if(userData.email !== data.articleAuthorEmail) return;
                 if(userData.notificationsEnabled === false) return;
 
                 const types = userData.notificationTypes || {};
-
-                // ① 댓글 알림 켜져 있는지 확인
                 if(types.comment === false) return;
 
-                // ② 사용자 필터: null이면 전체 허용 (기본값)
                 const filterUsers = types.commentFilterUsers || null;
                 if(filterUsers !== null && commenterUid && filterUsers[commenterUid] === false) return;
 
-                // ③ 카테고리 필터: null이면 전체 허용 (기본값)
                 const filterCats = types.commentFilterCategories || null;
                 if(filterCats !== null && articleCat && filterCats[articleCat] === false) return;
 
@@ -1359,8 +1352,8 @@ async function sendNotification(type, data) {
             });
         }
         else if (type === 'replyToComment') {
-            // 답글 알림: 댓글 작성자에게
             Object.entries(usersData).forEach(([uid, userData]) => {
+                if (!userData) return; // ✅ null 유저 방어
                 if(userData.email !== data.targetEmail) return;
                 if(userData.notificationsEnabled === false) return;
                 const types = userData.notificationTypes || {};
@@ -1369,8 +1362,8 @@ async function sendNotification(type, data) {
             });
         }
         else if (type === 'replyToReply') {
-            // 대댓글 알림: 부모 답글 작성자에게
             Object.entries(usersData).forEach(([uid, userData]) => {
+                if (!userData) return; // ✅ null 유저 방어
                 if(userData.email !== data.targetEmail) return;
                 if(userData.notificationsEnabled === false) return;
                 const types = userData.notificationTypes || {};
@@ -1424,7 +1417,12 @@ async function sendNotification(type, data) {
         console.log(`✅ ${targetUsers.length}개의 알림 DB 저장 완료`);
         
     } catch(error) {
-        console.error("❌ 알림 전송 실패:", error);
+        // ✅ PERMISSION_DENIED면 Firebase Rules 문제임을 명확히 로그
+        if (error.code === 'PERMISSION_DENIED' || (error.message && error.message.includes('permission_denied'))) {
+            console.error("🚫 알림 전송 권한 없음 — Firebase Rules의 notifications.$uid.write 를 'auth != null'로 변경해야 합니다:", error.message);
+        } else {
+            console.error("❌ 알림 전송 실패:", error);
+        }
     }
 }
 
@@ -2451,6 +2449,9 @@ function showMoreMenu() {
                     <button onclick="showBugReportPage()" class="more-menu-btn">
                         <i class="fas fa-bug"></i> 버그 제보
                     </button>
+                    <button onclick="showImprovementPage()" class="more-menu-btn">
+                        <i class="fas fa-lightbulb"></i> 개선 제보
+                    </button>
                 </div>
             </div>
 
@@ -2499,6 +2500,9 @@ function showMoreMenu() {
                     </button>
                     <button onclick="showAdminBugReports()" class="more-menu-btn" style="border-color:#ffcdd2;">
                         <i class="fas fa-bug" style="color:#c62828;"></i> 버그 제보 관리
+                    </button>
+                    <button onclick="showAdminImprovements()" class="more-menu-btn" style="border-color:#ffcdd2;">
+                        <i class="fas fa-lightbulb" style="color:#c62828;"></i> 개선 제보 관리
                     </button>
                     <button onclick="showAdminMemo()" class="more-menu-btn" style="border-color:#ffcdd2;">
                         <i class="fas fa-sticky-note" style="color:#c62828;"></i> 관리자 메모장
@@ -3143,27 +3147,59 @@ async function showArticleDetail(id) {
         const editedBadge = A.lastModified ? 
             `<span class="edited-badge"><i class="fas fa-edit"></i> 수정됨</span>` : '';
 
+        // ✅ 익명 모드 처리
+        const displayAuthor  = (A.anonymous && !isAdmin()) ? '익명' : escapeHTML(A.author);
+        const displayPhoto   = (A.anonymous && !isAdmin()) ? await createProfilePhoto(null, 40) : authorPhotoHTML;
+
+        // ✅ 추천/비추천 영역 (hideVotes 처리)
+        const voteSection = A.hideVotes && !isAdmin()
+            ? `<div style="text-align:center;color:#aaa;font-size:13px;padding:16px 0;">🙈 이 기사는 추천/비추천이 숨겨져 있습니다.</div>`
+            : `<div style="display:flex;gap:10px;padding-top:20px;margin-top:20px;border-top:1px solid #eee;justify-content:center;">
+                <button id="like-btn-${A.id}" onclick="toggleVote('${A.id}', 'like')" class="vote-btn ${userVote === 'like' ? 'active' : ''}">
+                    👍 추천 ${votes.likes}
+                </button>
+                <button id="dislike-btn-${A.id}" onclick="toggleVote('${A.id}', 'dislike')" class="vote-btn dislike ${userVote === 'dislike' ? 'active' : ''}">
+                    👎 비추천 ${votes.dislikes}
+                </button>
+               </div>`;
+
+        // ✅ 관리자 전용 기사 관리 패널
+        const adminArticlePanel = isAdmin() ? `
+            <div style="margin-top:20px; background:#fff8e1; border:1px solid #ffe082; border-radius:10px; padding:14px 16px;">
+                <div style="font-size:13px; font-weight:700; color:#795548; margin-bottom:10px;">🛠️ 관리자 기사 관리</div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+                    <button onclick="adminResetArticleViews('${A.id}')" style="padding:6px 12px; background:#e3f2fd; color:#1565c0; border:1px solid #90caf9; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;">👁️ 조회수 초기화</button>
+                    <button onclick="adminResetArticleVotes('${A.id}')" style="padding:6px 12px; background:#fce4ec; color:#c62828; border:1px solid #f48fb1; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;">👍 추천/비추천 초기화</button>
+                    <button onclick="adminShowArticleReaders('${A.id}')" style="padding:6px 12px; background:#e8f5e9; color:#2e7d32; border:1px solid #a5d6a7; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;">📖 독자 목록</button>
+                    <button onclick="adminShowArticleVoters('${A.id}')" style="padding:6px 12px; background:#f3e5f5; color:#6a1b9a; border:1px solid #ce93d8; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;">🗳️ 투표 현황</button>
+                </div>
+                <div style="font-size:11px; color:#888;">
+                    ${A.anonymous ? '🕵️ 익명 게시됨 | 실제 작성자: <strong>' + escapeHTML(A.author) + '</strong> (' + escapeHTML(A.authorEmail || '') + ')' : ''}
+                    ${A.hideVotes ? '&nbsp;&nbsp;🙈 추천/비추천 숨김 설정됨' : ''}
+                </div>
+            </div>` : '';
+
         root.innerHTML = `<div style="background:#fff;padding:20px;border-radius:8px;">
             <span class="category-badge">${A.category}</span>
             <h1 style="font-size:22px;font-weight:700;margin:15px 0;line-height:1.4;">
-       ${escapeHTML(A.title)}
-       ${editedBadge}
-   </h1>
-   ${isAdmin() ? `
-       <div style="display:inline-flex; align-items:center; gap:6px; background:#e8f0fe; border:1px solid #c5d4f5; padding:4px 10px; border-radius:6px; margin-bottom:10px; cursor:pointer;"
-            onclick="copyArticleLink('${A.id}')"
-            title="클릭하면 링크 복사">
-           <span style="font-size:11px; color:#1967d2; font-weight:700;">🔑 기사 링크 ID</span>
-           <code style="font-size:11px; color:#1967d2; font-family:monospace;">${A.id}</code>
-           <span style="font-size:10px; color:#5f6368;">📋</span>
-       </div>
-   ` : ''}
+                ${escapeHTML(A.title)}
+                ${editedBadge}
+                ${A.anonymous ? '<span style="font-size:12px;background:#eee;color:#666;padding:2px 8px;border-radius:10px;font-weight:500;">🕵️ 익명</span>' : ''}
+            </h1>
+            ${isAdmin() ? `
+                <div style="display:inline-flex; align-items:center; gap:6px; background:#e8f0fe; border:1px solid #c5d4f5; padding:4px 10px; border-radius:6px; margin-bottom:10px; cursor:pointer;"
+                     onclick="copyArticleLink('${A.id}')" title="클릭하면 링크 복사">
+                    <span style="font-size:11px; color:#1967d2; font-weight:700;">🔑 기사 링크 ID</span>
+                    <code style="font-size:11px; color:#1967d2; font-family:monospace;">${A.id}</code>
+                    <span style="font-size:10px; color:#5f6368;">📋</span>
+                </div>
+            ` : ''}
             
             <div class="article-meta" style="border-bottom:1px solid #eee; padding-bottom:15px; margin-bottom:20px; display:flex; align-items:center; gap:12px;">
-                ${authorPhotoHTML}
+                ${displayPhoto}
                 <div style="flex:1;">
-                    <div style="font-weight:600; color:#202124;">${escapeHTML(A.author)}</div>
-   <div style="color:#5f6368; font-size:13px;">${escapeHTML(A.date)}</div>
+                    <div style="font-weight:600; color:#202124;">${displayAuthor}</div>
+                    <div style="color:#5f6368; font-size:13px;">${escapeHTML(A.date)}</div>
                 </div>
                 <span style="color:#5f6368;" id="viewCountDisplay">👁️ ${views}</span>
             </div>
@@ -3172,10 +3208,10 @@ async function showArticleDetail(id) {
             
             <div style="font-size:16px;line-height:1.8;color:#333;">${sanitizeHTML(A.content)}</div>
             
-            <div style="display:flex;gap:10px;padding-top:20px;margin-top:20px;border-top:1px solid #eee; justify-content:center;">
-                <button id=\"like-btn-${A.id}\" onclick=\"toggleVote('${A.id}', 'like')\" class=\"vote-btn ${userVote === 'like' ? 'active' : ''}\">\n                    👍 추천 ${votes.likes}\n                </button>\n                <button id=\"dislike-btn-${A.id}\" onclick=\"toggleVote('${A.id}', 'dislike')\" class=\"vote-btn dislike ${userVote === 'dislike' ? 'active' : ''}\">\n                    👎 비추천 ${votes.dislikes}\n                </button>
-            </div>
+            ${voteSection}
             
+            ${adminArticlePanel}
+
             ${canEdit ? `<div style="margin-top:20px;text-align:right;">
                 <button onclick="editArticle('${A.id}')" class="btn-secondary">수정</button>
                 <button onclick="deleteArticle('${A.id}')" class="btn-danger">삭제</button>
@@ -4017,14 +4053,17 @@ function setupArticleForm() {
             content: content,
             author: getNickname(),
             authorEmail: getUserEmail(),
+            authorUid: getUserId(),        // ✅ 관리자 확인용 실제 UID 저장
             date: new Date().toLocaleString(),
             createdAt: Date.now(), 
             views: 0,
             likeCount: 0,
             dislikeCount: 0,
-            thumbnail: null
+            thumbnail: null,
+            anonymous: document.getElementById('articleAnonymous')?.checked || false,  // ✅ 익명 설정
+            hideVotes: document.getElementById('articleHideVotes')?.checked || false   // ✅ 추천 숨김 설정
         };
-        
+
         console.log("📝 새 기사 작성:", article.id);
         
         const fileInputSubmit = document.getElementById('thumbnailInput');
@@ -4347,18 +4386,28 @@ ${reply.imageBase64 ? `
                 `;
             }).join('');
         }
+        const _settings = window._currentArticleSettings || {};
         const commentsHTML = displayComments.map(([commentId, comment]) => {
             const isMyComment = isLoggedIn() && (comment.authorEmail === currentEmail || isAdmin());
-            const photoUrl = window.profilePhotoCache.get(comment.authorEmail) || null;
+
+            // ✅ 익명 처리
+            const displayCommentAuthor = (_settings.anonymous && !isAdmin()) ? '익명' : escapeHTML(comment.author);
+            const photoUrl = (_settings.anonymous && !isAdmin()) ? null : (window.profilePhotoCache.get(comment.authorEmail) || null);
             const authorPhotoHTML = getProfilePlaceholder(photoUrl, 32);
+
             const commentEditedBadge = comment.edited ? `<span class="edited-badge"><i class="fas fa-edit"></i> 수정됨</span>` : '';
 
-            // 댓글 좋아요/싫어요
             const myCommentVote = votesData[commentId] ? (votesData[commentId][myUid] || null) : null;
             const likeCount = comment.likeCount || 0;
             const dislikeCount = comment.dislikeCount || 0;
             const likeActive = myCommentVote === 'like' ? 'background:#e3f2fd; color:#1565c0; border-color:#1565c0;' : '';
             const dislikeActive = myCommentVote === 'dislike' ? 'background:#fce4ec; color:#c62828; border-color:#c62828;' : '';
+
+            // ✅ 추천/비추천 숨김 처리
+            const commentVoteHTML = _settings.hideVotes && !isAdmin()
+                ? ''
+                : `<button id="clike-${commentId}" onclick="toggleCommentVote('${id}','${commentId}','like')" style="border:1px solid #ddd; border-radius:20px; padding:3px 10px; font-size:12px; background:#fff; cursor:pointer; ${likeActive}">👍 ${likeCount}</button>
+                   <button id="cdislike-${commentId}" onclick="toggleCommentVote('${id}','${commentId}','dislike')" style="border:1px solid #ddd; border-radius:20px; padding:3px 10px; font-size:12px; background:#fff; cursor:pointer; ${dislikeActive}">👎 ${dislikeCount}</button>`;
 
             const repliesHTML = renderReplies(comment.replies, commentId);
 
@@ -4366,7 +4415,7 @@ ${reply.imageBase64 ? `
                 <div class="comment-card" id="comment-${commentId}">
                     <div class="comment-header">
                         ${authorPhotoHTML}
-                        <span class="comment-author">${escapeHTML(comment.author)}</span>
+                        <span class="comment-author">${displayCommentAuthor}</span>
                         <span class="comment-time">${escapeHTML(comment.timestamp)}</span>
                         ${commentEditedBadge}
                     </div>
@@ -4393,8 +4442,7 @@ ${comment.imageBase64 ? `
                     </div>
                     
                     <div class="comment-footer" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                        <button id="clike-${commentId}" onclick="toggleCommentVote('${id}','${commentId}','like')" style="border:1px solid #ddd; border-radius:20px; padding:3px 10px; font-size:12px; background:#fff; cursor:pointer; ${likeActive}">👍 ${likeCount}</button>
-                        <button id="cdislike-${commentId}" onclick="toggleCommentVote('${id}','${commentId}','dislike')" style="border:1px solid #ddd; border-radius:20px; padding:3px 10px; font-size:12px; background:#fff; cursor:pointer; ${dislikeActive}">👎 ${dislikeCount}</button>
+                        ${commentVoteHTML}
                         <button onclick="toggleReplyForm('${commentId}')" class="btn-text">💬 답글</button>
                         ${isMyComment ? `
                             <button onclick="editComment('${commentId}')" class="btn-text">✏️ 수정</button>
@@ -4603,7 +4651,12 @@ window.cancelReplyEdit = function(commentId, replyId) {
 
 // ✅ 댓글 로드 (호환성)
 function loadComments(id) {
-    loadCommentsWithProfile(id);
+    // ✅ 기사 설정을 전역으로 캐싱해 댓글 렌더에서 참조
+        window._currentArticleSettings = {
+            anonymous: A.anonymous || false,
+            hideVotes: A.hideVotes || false
+        };
+        loadCommentsWithProfile(id);
 }
 
 // ✅ 댓글 더보기
@@ -5597,27 +5650,30 @@ function markArticleAsViewed(articleId) {
 }
 
 function incrementView(id) {
-    // 이미 조회한 기사인지 확인 (영구적으로)
     if (hasViewedArticle(id)) {
         console.log("ℹ️ 이미 조회한 기사입니다 (영구 기록):", id);
         return;
     }
     
-    // 조회수 증가
     const viewRef = db.ref(`articles/${id}/views`);
     viewRef.transaction((currentViews) => {
         return (currentViews || 0) + 1;
     }).then((result) => {
-        // 조회 기록 영구 저장
         markArticleAsViewed(id);
-        
-        // ✅ 새로운 조회수 값
         const newViewCount = result.snapshot.val();
         console.log("✅ 조회수 증가 완료:", id, "→", newViewCount);
-        
-        // ✅ 화면에 실시간 반영
         updateViewCountOnScreen(newViewCount);
-        
+
+        // ✅ 로그인 유저라면 독자 기록 저장 (관리자 확인용)
+        const uid = getUserId();
+        if (uid) {
+            db.ref(`articleReaders/${id}/${uid}`).set({
+                name: getNickname(),
+                email: getUserEmail(),
+                timestamp: Date.now(),
+                readAt: new Date().toLocaleString()
+            }).catch(() => {});
+        }
     }).catch(error => {
         console.error("❌ 조회수 증가 실패:", error);
     });
@@ -9739,3 +9795,310 @@ if(typeof auth!=='undefined'){
         if(!user)window._sfxLoginFired=false;
     });
 }
+// ===== 개선 제보 시스템 =====
+
+window._improvementList = [];
+
+window.showImprovementPage = function() {
+    hideAll();
+    window.scrollTo(0, 0);
+    window._improvementList = [];
+    const section = document.getElementById('moreMenuSection');
+    if (!section) return;
+    section.classList.add('active');
+    const now = new Date().toLocaleString('ko-KR');
+    section.innerHTML = `
+        <div style="max-width:600px; margin:0 auto; padding:20px;">
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
+                <button onclick="showMoreMenu()" style="background:none; border:none; font-size:20px; cursor:pointer; color:#495057;"><i class="fas fa-arrow-left"></i></button>
+                <h2 style="margin:0; font-size:20px; font-weight:800; color:#e65100;"><i class="fas fa-lightbulb"></i> 개선 제보</h2>
+            </div>
+            <div style="background:#fff8e1; border:1px solid #ffca28; border-radius:10px; padding:12px 16px; margin-bottom:20px; font-size:13px; color:#795548;">
+                <i class="fas fa-info-circle"></i> 사이트를 더 좋게 만들 아이디어나 불편한 점을 알려주세요! 여러 개 추가 후 한 번에 전송할 수 있어요.
+            </div>
+            <div style="background:white; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.08); display:flex; flex-direction:column; gap:14px; margin-bottom:16px;">
+                <input type="hidden" id="improveTime" value="${now}">
+                <div>
+                    <label style="font-size:13px; font-weight:600; color:#495057; display:block; margin-bottom:6px;">📝 제목 <span style="color:#dc3545;">*</span></label>
+                    <input type="text" id="improveTitle" placeholder="개선 아이디어를 간단히 설명해주세요" maxlength="100"
+                        style="width:100%; padding:10px 12px; border:1px solid #dee2e6; border-radius:8px; font-size:14px; box-sizing:border-box; outline:none;"
+                        onfocus="this.style.borderColor='#e65100'" onblur="this.style.borderColor='#dee2e6'">
+                </div>
+                <div>
+                    <label style="font-size:13px; font-weight:600; color:#495057; display:block; margin-bottom:6px;">📂 분류</label>
+                    <select id="improveCategory" style="width:100%; padding:10px 12px; border:1px solid #dee2e6; border-radius:8px; font-size:14px; box-sizing:border-box; outline:none; background:white; cursor:pointer;"
+                        onfocus="this.style.borderColor='#e65100'" onblur="this.style.borderColor='#dee2e6'">
+                        <option value="UI/UX">🎨 UI/UX 개선</option>
+                        <option value="기능">⚙️ 새 기능 추가</option>
+                        <option value="성능">⚡ 성능 개선</option>
+                        <option value="콘텐츠">📰 콘텐츠 관련</option>
+                        <option value="기타">💬 기타</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:13px; font-weight:600; color:#495057; display:block; margin-bottom:6px;">📄 상세 내용 <span style="color:#dc3545;">*</span></label>
+                    <textarea id="improveContent" placeholder="어떻게 개선하면 좋을지 자세히 알려주세요" rows="4"
+                        style="width:100%; padding:10px 12px; border:1px solid #dee2e6; border-radius:8px; font-size:14px; resize:vertical; font-family:inherit; box-sizing:border-box; outline:none;"
+                        onfocus="this.style.borderColor='#e65100'" onblur="this.style.borderColor='#dee2e6'"></textarea>
+                </div>
+                <div>
+                    <label style="font-size:13px; font-weight:600; color:#495057; display:block; margin-bottom:6px;">📷 참고 이미지 (선택)</label>
+                    <div id="improveImagePreviewArea" onclick="document.getElementById('improveImageInput').click()"
+                        style="border:2px dashed #dee2e6; border-radius:8px; padding:16px; text-align:center; cursor:pointer; background:#fafafa;"
+                        onmouseover="this.style.borderColor='#e65100'" onmouseout="this.style.borderColor='#dee2e6'">
+                        <i class="fas fa-camera" style="font-size:22px; color:#adb5bd;"></i>
+                        <p style="margin:6px 0 0; font-size:13px; color:#adb5bd;">클릭하여 이미지 첨부</p>
+                    </div>
+                    <input type="file" id="improveImageInput" accept="image/*" style="display:none;" onchange="previewImproveImage(this)">
+                </div>
+                <button onclick="addImproveToList()"
+                    style="background:linear-gradient(135deg,#e65100,#ff8f00); color:white; border:none; padding:12px; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; width:100%;">
+                    <i class="fas fa-plus-circle"></i> 목록에 추가
+                </button>
+            </div>
+            <div id="improveQueueArea" style="display:none; margin-bottom:16px;">
+                <div style="font-size:13px; font-weight:700; color:#495057; margin-bottom:8px;">
+                    📋 제보 목록 <span id="improveQueueCount" style="background:#e65100; color:white; border-radius:10px; padding:1px 8px; font-size:12px;">0</span>
+                </div>
+                <div id="improveQueueList" style="display:flex; flex-direction:column; gap:8px;"></div>
+            </div>
+            <button id="improveSubmitAllBtn" onclick="submitImprovementReport()" style="display:none;
+                background:linear-gradient(135deg,#e65100,#ff6d00); color:white; border:none; padding:14px;
+                border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; width:100%; margin-bottom:8px;">
+                <i class="fas fa-paper-plane"></i> 전체 전송 (<span id="improveSubmitCount">0</span>건)
+            </button>
+            <div id="improveSubmitMsg" style="margin-top:8px; text-align:center;"></div>
+        </div>
+    `;
+    updateURL('improvement');
+};
+
+window.addImproveToList = async function() {
+    const title = document.getElementById('improveTitle').value.trim();
+    const content = document.getElementById('improveContent').value.trim();
+    const category = document.getElementById('improveCategory').value;
+    const imageInput = document.getElementById('improveImageInput');
+    if (!title) { alert('제목을 입력해주세요.'); return; }
+    if (!content) { alert('상세 내용을 입력해주세요.'); return; }
+    let imageBase64 = null;
+    if (imageInput.files && imageInput.files[0]) {
+        imageBase64 = await compressImageToBase64(imageInput.files[0], 800, 0.72);
+    }
+    window._improvementList.push({ id: Date.now(), title, content, category, time: document.getElementById('improveTime').value, imageBase64 });
+    document.getElementById('improveTitle').value = '';
+    document.getElementById('improveContent').value = '';
+    imageInput.value = '';
+    document.getElementById('improveImagePreviewArea').innerHTML = '<i class="fas fa-camera" style="font-size:22px; color:#adb5bd;"></i><p style="margin:6px 0 0; font-size:13px; color:#adb5bd;">클릭하여 이미지 첨부</p>';
+    renderImproveQueue();
+};
+
+window.renderImproveQueue = function() {
+    const list = window._improvementList;
+    const area = document.getElementById('improveQueueArea');
+    const queueList = document.getElementById('improveQueueList');
+    const submitBtn = document.getElementById('improveSubmitAllBtn');
+    if (!area || !queueList) return;
+    if (list.length === 0) { area.style.display = 'none'; submitBtn.style.display = 'none'; return; }
+    area.style.display = 'block';
+    submitBtn.style.display = 'block';
+    document.getElementById('improveQueueCount').textContent = list.length;
+    document.getElementById('improveSubmitCount').textContent = list.length;
+    queueList.innerHTML = list.map((item, idx) => `
+        <div style="background:white; border-radius:10px; padding:12px 14px; box-shadow:0 1px 4px rgba(0,0,0,0.08); display:flex; align-items:flex-start; gap:10px; border-left:3px solid #e65100;">
+            <div style="flex:1; min-width:0;">
+                <div style="font-size:11px; color:#e65100; font-weight:700; margin-bottom:2px;">${escapeHTML(item.category)}</div>
+                <div style="font-size:14px; font-weight:700; color:#202124; margin-bottom:2px;">${escapeHTML(item.title)}</div>
+                <div style="font-size:12px; color:#868e96; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(item.content)}</div>
+                ${item.imageBase64 ? '<div style="font-size:11px; color:#e65100; margin-top:3px;"><i class="fas fa-image"></i> 이미지 첨부됨</div>' : ''}
+            </div>
+            <button onclick="removeImproveFromList(${idx})" style="background:#fff0f0; border:none; color:#dc3545; border-radius:6px; padding:4px 8px; cursor:pointer; font-size:12px; flex-shrink:0;"><i class="fas fa-times"></i></button>
+        </div>`).join('');
+};
+
+window.removeImproveFromList = function(idx) {
+    window._improvementList.splice(idx, 1);
+    renderImproveQueue();
+};
+
+window.previewImproveImage = function(input) {
+    if (!input.files || !input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const area = document.getElementById('improveImagePreviewArea');
+        area.innerHTML = `<img src="${e.target.result}" style="max-width:100%; max-height:200px; border-radius:8px; object-fit:contain;"><p style="margin:8px 0 0; font-size:12px; color:#868e96;">클릭하여 변경</p>`;
+    };
+    reader.readAsDataURL(input.files[0]);
+};
+
+window.submitImprovementReport = async function() {
+    if (!isLoggedIn()) { alert('로그인 후 이용해주세요.'); return; }
+    const list = window._improvementList || [];
+    if (list.length === 0) { alert('제보할 내용을 먼저 추가해주세요.'); return; }
+    const btn = document.getElementById('improveSubmitAllBtn');
+    const msgEl = document.getElementById('improveSubmitMsg');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 전송 중...'; }
+    try {
+        const user = auth.currentUser;
+        const baseTime = Date.now();
+        for (let i = 0; i < list.length; i++) {
+            const item = list[i];
+            await db.ref('improvements').push({ title: item.title, content: item.content, category: item.category, time: item.time, authorName: getNickname(), authorEmail: getUserEmail(), authorUid: user.uid, imageBase64: item.imageBase64 || null, status: 'pending', createdAt: baseTime + i });
+        }
+        window._improvementList = [];
+        showToastNotification('💡 개선 제보 완료', `${list.length}건 제보 감사합니다! 검토 후 반영할게요 🙏`);
+        setTimeout(() => showMoreMenu(), 1200);
+    } catch(e) {
+        console.error(e);
+        if (msgEl) msgEl.innerHTML = '<div style="background:#f8d7da; color:#721c24; padding:12px 16px; border-radius:8px; font-size:14px;"><i class="fas fa-exclamation-circle"></i> 전송 실패. 다시 시도해주세요.</div>';
+        if (btn) { btn.disabled = false; btn.innerHTML = `<i class="fas fa-paper-plane"></i> 전체 전송 (${list.length}건)`; }
+    }
+};
+
+window._allImprovements = [];
+
+window.showAdminImprovements = async function() {
+    if (!isAdmin()) { alert('관리자만 접근 가능합니다.'); return; }
+    hideAll();
+    window.scrollTo(0, 0);
+    const section = document.getElementById('moreMenuSection');
+    section.classList.add('active');
+    section.innerHTML = `
+        <div style="max-width:700px; margin:0 auto; padding:20px;">
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+                <button onclick="showMoreMenu()" style="background:none; border:none; font-size:20px; cursor:pointer; color:#495057;"><i class="fas fa-arrow-left"></i></button>
+                <h2 style="margin:0; font-size:20px; font-weight:800; color:#e65100; flex:1;"><i class="fas fa-lightbulb"></i> 개선 제보 관리</h2>
+                <span id="improveTotalCount" style="font-size:13px; color:#868e96;"></span>
+            </div>
+            <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
+                <input id="improveSearchInput" type="text" placeholder="제목, 내용, 작성자 검색..."
+                    oninput="filterAdminImprovements()"
+                    style="flex:1; min-width:160px; padding:10px 14px; border:1.5px solid #dee2e6; border-radius:10px; font-size:14px; outline:none; box-sizing:border-box;"
+                    onfocus="this.style.borderColor='#e65100'" onblur="this.style.borderColor='#dee2e6'">
+                <select id="improveStatusFilter" onchange="filterAdminImprovements()"
+                    style="padding:10px 12px; border:1.5px solid #dee2e6; border-radius:10px; font-size:14px; outline:none; background:white; cursor:pointer;">
+                    <option value="all">전체 상태</option>
+                    <option value="pending">검토중</option>
+                    <option value="accepted">반영 예정</option>
+                    <option value="done">반영 완료</option>
+                    <option value="rejected">미반영</option>
+                </select>
+                <select id="improveCategoryFilter" onchange="filterAdminImprovements()"
+                    style="padding:10px 12px; border:1.5px solid #dee2e6; border-radius:10px; font-size:14px; outline:none; background:white; cursor:pointer;">
+                    <option value="all">전체 분류</option>
+                    <option value="UI/UX">UI/UX</option>
+                    <option value="기능">새 기능</option>
+                    <option value="성능">성능</option>
+                    <option value="콘텐츠">콘텐츠</option>
+                    <option value="기타">기타</option>
+                </select>
+            </div>
+            <div id="adminImproveList" style="display:flex; flex-direction:column; gap:14px;">
+                <div style="text-align:center; padding:40px; color:#adb5bd;"><i class="fas fa-spinner fa-spin" style="font-size:24px;"></i><p>불러오는 중...</p></div>
+            </div>
+        </div>`;
+    try {
+        const snap = await db.ref('improvements').once('value');
+        const reports = [];
+        snap.forEach(child => { reports.push({ id: child.key, ...child.val() }); });
+        reports.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        window._allImprovements = reports;
+        const countEl = document.getElementById('improveTotalCount');
+        if (countEl) countEl.textContent = `총 ${reports.length}건`;
+        renderAdminImproveList(reports);
+    } catch(e) {
+        const listEl = document.getElementById('adminImproveList');
+        if (listEl) listEl.innerHTML = `<p style="color:#dc3545; text-align:center;">불러오기 실패: ${e.message}</p>`;
+    }
+};
+
+window.filterAdminImprovements = function() {
+    const kw = (document.getElementById('improveSearchInput')?.value || '').toLowerCase();
+    const status = document.getElementById('improveStatusFilter')?.value || 'all';
+    const category = document.getElementById('improveCategoryFilter')?.value || 'all';
+    const filtered = (window._allImprovements || []).filter(r => {
+        const matchStatus = status === 'all' || r.status === status || (status === 'pending' && !r.status);
+        const matchCat = category === 'all' || r.category === category;
+        const matchKw = !kw || (r.title||'').toLowerCase().includes(kw) || (r.content||'').toLowerCase().includes(kw) || (r.authorName||'').toLowerCase().includes(kw);
+        return matchStatus && matchCat && matchKw;
+    });
+    renderAdminImproveList(filtered);
+};
+
+window.renderAdminImproveList = function(reports) {
+    const listEl = document.getElementById('adminImproveList');
+    if (!listEl) return;
+    if (reports.length === 0) {
+        listEl.innerHTML = `<div style="text-align:center; padding:60px 20px; color:#adb5bd;"><i class="fas fa-inbox" style="font-size:40px;"></i><p style="margin-top:12px;">검색 결과가 없습니다</p></div>`;
+        return;
+    }
+    const statusConfig = {
+        pending:  { label: '검토중',    bg: '#fff3cd', color: '#856404', icon: 'fa-clock',        border: '#ffc107' },
+        accepted: { label: '반영 예정', bg: '#cce5ff', color: '#004085', icon: 'fa-thumbs-up',    border: '#007bff' },
+        done:     { label: '반영 완료', bg: '#d4edda', color: '#155724', icon: 'fa-check-circle', border: '#28a745' },
+        rejected: { label: '미반영',    bg: '#f8d7da', color: '#721c24', icon: 'fa-times-circle', border: '#dc3545' }
+    };
+    const catEmoji = { 'UI/UX':'🎨', '기능':'⚙️', '성능':'⚡', '콘텐츠':'📰', '기타':'💬' };
+    listEl.innerHTML = reports.map(r => {
+        const cur = statusConfig[r.status] || statusConfig.pending;
+        const cat = r.category || '기타';
+        const date = new Date(r.createdAt).toLocaleString('ko-KR');
+        const statusBtns = Object.entries(statusConfig).map(([s, c]) => {
+            const active = (r.status || 'pending') === s;
+            return `<button onclick="updateImproveStatus('${r.id}','${s}','${r.authorUid||''}','${(r.title||'').replace(/'/g,"\\'")}')"
+                style="padding:6px 12px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; border:1.5px solid ${active ? c.border : '#dee2e6'}; background:${active ? c.bg : '#fff'}; color:${active ? c.color : '#868e96'};">
+                <i class="fas ${c.icon}"></i> ${c.label}</button>`;
+        }).join('');
+        return `
+            <div id="improveCard-${r.id}" style="background:white; border-radius:12px; padding:18px; box-shadow:0 2px 8px rgba(0,0,0,0.08); border-left:4px solid ${cur.border};">
+                <div style="display:flex; align-items:flex-start; gap:8px; margin-bottom:10px;">
+                    <div style="flex:1;">
+                        <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+                            <span style="font-size:11px; background:#fff8e1; color:#e65100; padding:2px 8px; border-radius:10px; font-weight:700;">${catEmoji[cat]||'💬'} ${escapeHTML(cat)}</span>
+                            <span style="background:${cur.bg}; color:${cur.color}; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700;"><i class="fas ${cur.icon}"></i> ${cur.label}</span>
+                        </div>
+                        <div style="font-size:15px; font-weight:700; color:#202124; margin-bottom:4px;">${escapeHTML(r.title||'')}</div>
+                        <div style="font-size:12px; color:#868e96;">👤 ${escapeHTML(r.authorName||'알 수 없음')} &nbsp;|&nbsp; 📅 ${date}</div>
+                    </div>
+                </div>
+                <div style="font-size:13px; color:#495057; white-space:pre-wrap; background:#f8f9fa; border-radius:8px; padding:10px 12px; margin-bottom:12px; line-height:1.6;">${escapeHTML(r.content||'')}</div>
+                ${r.imageBase64 ? `<div style="margin-bottom:12px;"><img src="${r.imageBase64}" onclick="openImageModal('${r.imageBase64}')" style="max-width:100%; max-height:200px; border-radius:8px; cursor:pointer; object-fit:contain; border:1px solid #dee2e6;"></div>` : ''}
+                <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;">${statusBtns}</div>
+                <button onclick="deleteImprovement('${r.id}')" style="background:#f8f9fa; color:#868e96; border:1px solid #dee2e6; padding:7px 14px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; width:100%;"><i class="fas fa-trash"></i> 삭제</button>
+            </div>`;
+    }).join('');
+};
+
+window.updateImproveStatus = async function(reportId, newStatus, authorUid, reportTitle) {
+    if (!isAdmin()) return;
+    try {
+        await db.ref(`improvements/${reportId}/status`).set(newStatus);
+        const msgs = {
+            accepted: `제보하신 개선 사항 "${reportTitle}"이 반영 예정 목록에 추가되었습니다! 🎉`,
+            done:     `제보하신 개선 사항 "${reportTitle}"이 반영 완료되었습니다! 감사합니다 🙏`,
+            rejected: `제보하신 개선 사항 "${reportTitle}"은 이번에는 반영이 어렵습니다. 소중한 의견 감사합니다.`
+        };
+        if (authorUid && msgs[newStatus]) {
+            const notifId = `notif_${Date.now()}_${Math.random().toString(36).substr(2,9)}`;
+            await db.ref(`notifications/${authorUid}/${notifId}`).set({ type: 'improvementUpdate', title: '💡 개선 제보 상태 업데이트', text: msgs[newStatus], timestamp: Date.now(), read: false });
+        }
+        const target = (window._allImprovements || []).find(r => r.id === reportId);
+        if (target) target.status = newStatus;
+        filterAdminImprovements();
+    } catch(e) {
+        alert('처리 중 오류가 발생했습니다.');
+    }
+};
+
+window.deleteImprovement = async function(reportId) {
+    if (!isAdmin()) return;
+    if (!confirm('이 개선 제보를 삭제하시겠습니까?')) return;
+    try {
+        await db.ref(`improvements/${reportId}`).remove();
+        window._allImprovements = (window._allImprovements || []).filter(r => r.id !== reportId);
+        const countEl = document.getElementById('improveTotalCount');
+        if (countEl) countEl.textContent = `총 ${window._allImprovements.length}건`;
+        filterAdminImprovements();
+    } catch(e) {
+        alert('삭제 중 오류가 발생했습니다.');
+    }
+};
