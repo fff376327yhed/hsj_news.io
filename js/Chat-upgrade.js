@@ -4,6 +4,20 @@
 'use strict';
 console.log('📱 chat-upgrade.js 로드 중...');
 
+// ✅ window._chat 네임스페이스 준비 대기 (chat.js 로드 순서 보장)
+function _waitForChat(cb, attempt) {
+    attempt = attempt || 0;
+    if (window._chat && typeof window._chat.isChatAuthReady === 'function') {
+        cb();
+    } else if (attempt < 30) {
+        setTimeout(() => _waitForChat(cb, attempt + 1), 100);
+    } else {
+        console.error('❌ Chat-upgrade: window._chat 초기화 실패 — chat.js 확인 필요');
+    }
+}
+
+// CSS 주입은 즉시 실행 (chat.js 의존 없음)
+
 // ===== CSS 주입 =====
 (function injectUpgradeCSS() {
     if (document.getElementById('_chatUpgradeStyle')) return;
@@ -258,9 +272,14 @@ function cu_showToast(msg) {
     setTimeout(() => el.remove(), 2800);
 }
 
+// ===== chat.js 의존 함수들은 준비 완료 후 초기화 =====
+_waitForChat(function() {
+    console.log('✅ Chat-upgrade: window._chat 준비 완료 — 업그레이드 적용');
+
 // ===== 1. 채팅 목록 페이지 (완전 재작성) =====
 window.showChatPage = async function () {
     if (!isLoggedIn()) { alert('로그인이 필요합니다!'); return; }
+    if (!window._chat) { alert('채팅 초기화 중입니다. 잠시 후 다시 시도해주세요.'); return; }
     if (!window._chat.isChatAuthReady()) {
         cu_showToast('⚠️ 채팅 인증 중...');
         await window._chat.syncChatAuth(auth.currentUser);
@@ -1337,5 +1356,8 @@ window.updateReadAvatars = function(msgs, myUid, roomId) {
     return _origUpdateReadAvatars(msgs, myUid, roomId);
 };
 
-console.log('✅ chat-upgrade.js 로드 완료');
+console.log('✅ chat-upgrade.js 업그레이드 적용 완료');
+}); // _waitForChat 끝
+
+console.log('✅ chat-upgrade.js 로드 완료 (초기화 대기 중)');
 })();
