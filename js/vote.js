@@ -873,24 +873,6 @@ function showVoteToast(msg) {
     setTimeout(() => el.remove(), 3000);
 }
 
-// ===== 더보기 메뉴에 투표 항목 추가 =====
-// showMoreMenu 패치: 커뮤니티 섹션에 투표 버튼 추가
-const _origShowMoreMenu = window.showMoreMenu;
-window.showMoreMenu = function () {
-    if (typeof _origShowMoreMenu === 'function') _origShowMoreMenu.call(this);
-    // 커뮤니티 섹션의 grid 첫 번째 자식 뒤에 투표 버튼 삽입
-    const section = document.getElementById('moreMenuSection');
-    if (!section || document.getElementById('moreMenuVoteBtn')) return;
-    const communityGrid = section.querySelector('.menu-section div[style*="display:grid"]');
-    if (!communityGrid) return;
-    const voteBtn = document.createElement('button');
-    voteBtn.id = 'moreMenuVoteBtn';
-    voteBtn.className = 'more-menu-btn';
-    voteBtn.onclick = showVotePage;
-    voteBtn.innerHTML = '<i class="fas fa-poll-h"></i> 투표';
-    communityGrid.appendChild(voteBtn);
-};
-
 // ===== URL 라우팅 등록 =====
 // handleRoute 함수가 이미 초기화된 후라도 vote 라우트를 동적으로 등록
 (function registerVoteRoute() {
