@@ -809,11 +809,19 @@ function cu_renderMessages(msgs, myUid, roomId, friendMainUid) {
             bubble.style.marginBottom = '18px';
         }
 
-        // ── 이벤트: 더블탭 = 하트 리액션
+        // ── 이벤트: 클릭 / 더블탭
         let tapTimer = null, tapCount = 0;
         bubble.addEventListener('click', (e) => {
             if (e.target.tagName === 'A' || e.target.tagName === 'IMG' ||
                 e.target.tagName === 'BUTTON') return;
+
+            if (isMe) {
+                // 내 메시지: 단순 클릭 → 수정/삭제 메뉴 (기존 동작 복원)
+                cu_showMsgMenu(msgId, roomId, bubble, isMe);
+                return;
+            }
+
+            // 상대방 메시지: 더블탭 = 하트 리액션
             tapCount++;
             if (tapCount === 1) {
                 tapTimer = setTimeout(() => { tapCount = 0; }, 300);
@@ -823,10 +831,10 @@ function cu_renderMessages(msgs, myUid, roomId, friendMainUid) {
             }
         });
 
-        // ── 이벤트: 길게 누르기 = 메시지 메뉴
+        // ── 이벤트: 길게 누르기 = 메시지 메뉴 (상대방 메시지용; 내 메시지는 클릭으로 열림)
         let pressTimer = null;
         bubble.addEventListener('pointerdown', (e) => {
-            pressTimer = setTimeout(() => { cu_showMsgMenu(msgId, roomId, bubble, isMe); }, 500);
+            if (!isMe) pressTimer = setTimeout(() => { cu_showMsgMenu(msgId, roomId, bubble, isMe); }, 500);
         });
         bubble.addEventListener('pointerup',   () => clearTimeout(pressTimer));
         bubble.addEventListener('pointermove', () => clearTimeout(pressTimer));
