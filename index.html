@@ -497,7 +497,26 @@ if ('serviceWorker' in navigator) {
         </div>
         
         <div id="bannedWordWarning" class="warning-box"></div>
-        
+
+        <!-- ✅ 기사 설정 -->
+        <div style="background:#f8f9fa; border:1px solid #e0e0e0; border-radius:10px; padding:14px 16px; margin-bottom:14px;">
+            <div style="font-size:13px; font-weight:700; color:#333; margin-bottom:10px;">⚙️ 기사 설정</div>
+            <label style="display:flex; align-items:center; gap:10px; margin-bottom:10px; cursor:pointer;">
+                <input type="checkbox" id="articleAnonymous" style="width:16px; height:16px; accent-color:#c62828;">
+                <div>
+                    <div style="font-size:13px; font-weight:600; color:#333;">🕵️ 익명 게시</div>
+                    <div style="font-size:11px; color:#888;">작성자·댓글 작성자 이름이 숨겨집니다. 관리자는 확인 가능.</div>
+                </div>
+            </label>
+            <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                <input type="checkbox" id="articleHideVotes" style="width:16px; height:16px; accent-color:#c62828;">
+                <div>
+                    <div style="font-size:13px; font-weight:600; color:#333;">🙈 추천/비추천 숨김</div>
+                    <div style="font-size:11px; color:#888;">댓글·대댓글 포함 추천/비추천이 숨겨집니다.</div>
+                </div>
+            </label>
+        </div>
+
         <button type="submit" class="btn-primary btn-block">
             <i class="fas fa-paper-plane"></i> 발행하기
         </button>
@@ -906,6 +925,10 @@ if ('serviceWorker' in navigator) {
 <script src="./js/ganadi-helper.js"></script>
 <script src="./js/category-tutorial.js"></script>
 <script src="./js/chat.js"></script>
+<script src="./js/vote.js"></script>
+<script src="./js/Console-toggle.js"></script>
+<script src="./js/Chat-upgrade.js"></script>
+<script src="./js/Device-detect.js"></script>
 
 <!-- 🔧 점검모드 버튼 표시 스크립트 -->
 <script>
