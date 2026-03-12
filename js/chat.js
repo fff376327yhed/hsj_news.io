@@ -1165,10 +1165,15 @@ window.sendChatMessage = async function (roomId) {
 // pushed:false & read:false 인 같은 roomId 알림이 있으면 덮어쓰고
 // count(메시지 수)를 누적해 "N개의 새 메시지" 형태로 표시합니다.
 async function sendChatNotification(toUid, fromName, text, roomId, senderMainUid) {
+    // ✅ 메인 앱 인증이 없으면 알림 전송 불가 (main db는 main auth 필요)
+    if (!auth.currentUser) {
+        console.log('ℹ️ 메인 인증 없음 — 채팅 알림 스킵');
+        return;
+    }
+
     try {
         const [globalSnap, roomSnap, filterSnap] = await Promise.all([
             db.ref(`users/${toUid}/notificationTypes/chat`).once('value'),
-            db.ref(`users/${toUid}/notificationTypes/chatRooms/${roomId}`).once('value'),
             senderMainUid
                 ? db.ref(`users/${toUid}/notificationTypes/chatFilterUsers/${senderMainUid}`).once('value')
                 : Promise.resolve({ val: () => null })
@@ -1181,48 +1186,22 @@ async function sendChatNotification(toUid, fromName, text, roomId, senderMainUid
         const shortText = text.length > 50 ? text.substring(0, 50) + '...' : text;
         const now       = Date.now();
 
-        // ── 같은 방의 미발송(pushed:false) & 미읽음(read:false) 알림이 이미 있으면 묶기
-        const existingSnap = await db.ref(`notifications/${toUid}`)
-            .orderByChild('roomId').equalTo(roomId).once('value');
-
-        let existingKey = null;
-        let existingCount = 0;
-        existingSnap.forEach(child => {
-            const d = child.val();
-            if (d.pushed === false && d.read === false && d.type === 'chat') {
-                existingKey   = child.key;
-                existingCount = d.count || 1;
-            }
+        // ── 수신자 notifications는 읽기 권한이 없으므로 항상 새 알림 생성
+        // (번들링은 서버 트리거에서 처리)
+        const notifId = `chat_${now}_${Math.random().toString(36).substr(2, 6)}`;
+        await db.ref(`notifications/${toUid}/${notifId}`).set({
+            type:      'chat',
+            title:     `💬 ${fromName}`,
+            text:      shortText,
+            count:     1,
+            timestamp: now,
+            read:      false,
+            pushed:    false,
+            roomId
         });
-
-        if (existingKey) {
-            // 기존 알림 갱신: 최신 메시지 + 누적 카운트
-            const newCount = existingCount + 1;
-            await db.ref(`notifications/${toUid}/${existingKey}`).update({
-                title:     `💬 ${fromName}`,
-                text:      newCount > 1 ? `메시지 ${newCount}개` : shortText,
-                count:     newCount,
-                timestamp: now,
-                pushed:    false   // 아직 발송 전으로 유지
-            });
-        } else {
-            // 새 알림 생성
-            const notifId = `chat_${now}_${Math.random().toString(36).substr(2, 6)}`;
-            await db.ref(`notifications/${toUid}/${notifId}`).set({
-                type:      'chat',
-                title:     `💬 ${fromName}`,
-                text:      shortText,
-                count:     1,
-                timestamp: now,
-                read:      false,
-                pushed:    false,
-                roomId
-            });
-        }
     } catch (e) {
-        // permission_denied는 Firebase Rules 문제 — 메시지 전송 자체는 유지
         if (e.code === 'PERMISSION_DENIED' || (e.message && e.message.includes('permission_denied'))) {
-            console.warn('⚠️ 채팅 알림 권한 없음 (Firebase Rules 확인 필요):', e.message);
+            console.warn('⚠️ 채팅 알림 권한 없음:', e.message);
         } else {
             console.warn('채팅 알림 전송 실패:', e.message);
         }
@@ -2739,5 +2718,33 @@ window.saveChatNotifSetting = async function () {
 };
 
 console.log('✅ chat.js 로드 완료 (완전 Auth 분리 버전)');
+
+// ================================================================
+// ✅ chat-upgrade.js 호환용 window._chat 전역 노출 (IIFE 내부)
+// ================================================================
+
+window._chat = {
+    // 함수
+    isChatAuthReady:   () => isChatAuthReady(),
+    getChatUserId:     () => getChatUserId(),
+    getChatDb:         () => getChatDb(),
+    getChatApp:        () => getChatApp(),
+    getChatAuth:       () => getChatAuth(),
+    syncChatAuth:      (u) => syncChatAuth(u),
+    resolveNickname:   (u) => resolveNickname(u),
+    getMyNickname:     ()  => getMyNickname(),
+    markAsRead:        (r, u) => markMessagesAsRead(r, u),
+    updateReadAvatars: (m, u, r) => updateReadAvatars(m, u, r),
+    updateBadge:       () => updateChatBadge(),
+    showToast:         (msg) => showChatToast(msg),
+    formatTime:        (ts) => formatChatTime(ts),
+
+    // 변경 가능한 변수: getter / setter
+    get activeChatRoomId()    { return activeChatRoomId; },
+    set activeChatRoomId(v)   { activeChatRoomId = v; },
+    get chatMsgListener()     { return chatMsgListener; },
+    set chatMsgListener(v)    { chatMsgListener = v; },
+};
+console.log('✅ window._chat 전역 노출 완료');
 
 })(); // IIFE 끝
