@@ -5,14 +5,22 @@
 console.log('📱 chat-upgrade.js 로드 중...');
 
 // ✅ window._chat 네임스페이스 준비 대기 (chat.js 로드 순서 보장)
+// 저속 환경(3G 등)에서 chat.js 실행 완료까지 최대 15초 대기
 function _waitForChat(cb, attempt) {
     attempt = attempt || 0;
     if (window._chat && typeof window._chat.isChatAuthReady === 'function') {
         cb();
-    } else if (attempt < 30) {
+    } else if (attempt < 150) {  // 100ms × 150 = 15초
         setTimeout(() => _waitForChat(cb, attempt + 1), 100);
     } else {
-        console.error('❌ Chat-upgrade: window._chat 초기화 실패 — chat.js 확인 필요');
+        // ✅ 최후 수단: window._chat이 없어도 기본 기능은 유지
+        console.error('❌ Chat-upgrade: window._chat 초기화 실패 — 기본 chat.js 함수로 폴백합니다');
+        // 원본 showChatPage / openChatRoom이 살아 있으면 그대로 사용
+        if (typeof window.showChatPage !== 'function') {
+            window.showChatPage = function() {
+                alert('채팅을 불러올 수 없습니다. 페이지를 새로고침해주세요.');
+            };
+        }
     }
 }
 
