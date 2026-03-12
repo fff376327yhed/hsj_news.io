@@ -461,8 +461,21 @@ function routeToPage(page, articleId = null, section = null) {
             showArticles();
         }
     } else {
-        console.warn(`알 수 없는 페이지: ${page}`);
-        showArticles();
+        // ✅ 알 수 없는 페이지: article ID처럼 생긴 값이면 기사 상세로 시도
+        // Firebase push 알림이 ?page=<articleId> 형태로 링크를 만드는 경우 대응
+        const looksLikeArticleId = /^[A-Za-z0-9_-]{8,30}$/.test(page);
+        if (looksLikeArticleId) {
+            console.info(`🔀 알 수 없는 페이지 "${page}" → 기사 ID로 시도`);
+            try {
+                showArticleDetail(page);
+            } catch(e) {
+                console.warn('기사 라우팅 실패:', e);
+                showArticles();
+            }
+        } else {
+            console.warn(`알 수 없는 페이지: ${page}`);
+            showArticles();
+        }
     }
 }
 
@@ -1215,6 +1228,10 @@ async function logErrorToFirebase(errorInfo) {
 
 // ✅ 전역 오류 자동 감지
 window.onerror = function(message, source, lineno, colno, error) {
+    // ✅ 크로스오리진 CDN 스크립트 에러는 "Script error." 메시지만 오고 정보가 없음 → 무시
+    if (message === 'Script error.' && lineno === 0 && colno === 0) return true;
+    // ✅ Service worker referrer 에러도 필터
+    if (source && source.includes('firebase-messaging-sw')) return true;
     logErrorToFirebase({
         message: message,
         stack: error?.stack || `${source} ${lineno}:${colno}`,
@@ -1243,6 +1260,8 @@ window.onunhandledrejection = function(event) {
         }).join(' ');
         // Firebase 내부 경고 등 노이즈 필터링
         if (msg.includes('@firebase') || msg.includes('FIREBASE WARNING')) return;
+        // ✅ 알 수 없는 페이지는 라우터가 이미 처리 — 에러로 기록 불필요
+        if (msg.startsWith('알 수 없는 페이지:')) return;
         try {
             const stack = new Error().stack || '';
             logErrorToFirebase({ message: msg, stack, type: 'console.warn', level: 'warn' });
