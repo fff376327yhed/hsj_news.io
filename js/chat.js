@@ -1174,6 +1174,7 @@ async function sendChatNotification(toUid, fromName, text, roomId, senderMainUid
     try {
         const [globalSnap, roomSnap, filterSnap] = await Promise.all([
             db.ref(`users/${toUid}/notificationTypes/chat`).once('value'),
+            db.ref(`users/${toUid}/notificationTypes/chatRooms/${roomId}`).once('value'),
             senderMainUid
                 ? db.ref(`users/${toUid}/notificationTypes/chatFilterUsers/${senderMainUid}`).once('value')
                 : Promise.resolve({ val: () => null })
