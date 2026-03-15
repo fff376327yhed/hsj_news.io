@@ -886,4 +886,4 @@ function showVoteToast(msg) {
 
 console.log('✅ vote.js 로드 완료');
 
-})(); // IIFE 끝
+})(); // IIFE 
