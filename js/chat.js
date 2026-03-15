@@ -320,13 +320,25 @@ async function loadChatRoomList() {
             return;
         }
 
-        const [chatSnaps, usersSnap, savedOrder] = await Promise.all([
+        // [최적화] users 전체 로드 제거 — participantInfo 우선 참조
+        const [chatSnaps, savedOrder] = await Promise.all([
             Promise.all(myRoomIds.map(id => getChatDb().ref(`chats/${id}`).once('value'))),
-            db.ref('users').once('value'),
             loadChatRoomOrder(mainUid)
         ]);
 
-        const usersData = usersSnap.val() || {};
+        // participantInfo 없는 채팅방 대비 최소 쿼리 캐시
+        const _roomUserCache = new Map();
+        async function _getRoomUser(uid) {
+            if (!uid) return {};
+            if (_roomUserCache.has(uid)) return _roomUserCache.get(uid);
+            try {
+                const snap = await db.ref('users/' + uid).once('value');
+                const data = snap.val() || {};
+                _roomUserCache.set(uid, data);
+                return data;
+            } catch(e) { return {}; }
+        }
+        const usersData = {}; // 호환성 유지
 
         // 기본 정렬: lastMessageAt 내림차순
         let rooms = chatSnaps
@@ -360,9 +372,14 @@ async function loadChatRoomList() {
                 friendUid = null; friendMainUid = null;
             } else {
                 const friendChatUid = Object.keys(chat.participants || {}).find(u => u !== myUid);
-                friendMainUid = chat.mainUids?.[friendChatUid] ||
-                    Object.keys(usersData).find(uid => usersData[uid]?.chatUid === friendChatUid) || null;
-                const friend = usersData[friendMainUid] || {};
+                friendMainUid = chat.mainUids?.[friendChatUid] || null;
+                // [최적화] participantInfo 우선 사용, 없으면 uid별 개별 쿼리
+                let friend = {};
+                if (chat.participantInfo?.[friendChatUid]) {
+                    friend = chat.participantInfo[friendChatUid];
+                } else if (friendMainUid) {
+                    friend = await _getRoomUser(friendMainUid);
+                }
                 displayName  = resolveNickname(friend);
                 const friendPhoto = friend.profilePhoto || null;
                 friendUid = friendChatUid;
@@ -849,7 +866,9 @@ function renderChatMessages(msgs, myUid, roomId) {
             background:${isMe ? '#262626' : 'white'};color:${isMe ? 'white' : '#262626'};
             padding:10px 14px;border-radius:${isMe ? '18px 4px 18px 18px' : '4px 18px 18px 18px'};
             font-size:14px;line-height:1.55;word-break:break-word;
-            box-shadow:0 1px 2px rgba(0,0,0,0.08);${isMe ? 'cursor:pointer;user-select:none;' : ''}`;
+            box-shadow:0 1px 2px rgba(0,0,0,0.08);
+            cursor:pointer;user-select:none;-webkit-user-select:none;
+            touch-action:manipulation;-webkit-tap-highlight-color:transparent;pointer-events:auto;`;
         let bubbleContent = '';
         if (msg.text) bubbleContent += escapeHTML(msg.text).replace(/\n/g, '<br>');
         if (msg.imageBase64) {
@@ -900,10 +919,17 @@ function renderChatMessages(msgs, myUid, roomId) {
         bubble.innerHTML = bubbleContent;
         bubble.dataset.img = msg.imageBase64 || '';
         if (msg.imageBase64) bubble.style.padding = '6px';
-        if (isMe) bubble.addEventListener('click', (e) => {
-            if (e.target.tagName === 'IMG') return; // 이미지 클릭은 모달로
-            showChatMsgMenu(msgId, roomId, bubble);
-        });
+
+        // ✅ 내 메시지: bubble 직접 클릭
+        if (isMe) {
+            bubble.onclick = function(e) {
+                console.log('🟢 [내 메시지] bubble 클릭 — msgId:', msgId, '| target:', e.target.tagName);
+                e.stopPropagation();
+                if (e.target.tagName === 'IMG') { console.log('🟢 IMG 클릭 → 메뉴 차단'); return; }
+                console.log('🟢 showChatMsgMenu 호출 (isMe=true)');
+                showChatMsgMenu(msgId, roomId, bubble, true, msg.text || '');
+            };
+        }
 
         const timeEl = document.createElement('span');
         timeEl.style.cssText = 'font-size:10px;color:#888;flex-shrink:0;margin-bottom:2px;';
@@ -925,6 +951,62 @@ function renderChatMessages(msgs, myUid, roomId) {
         }
 
         bubbleWrap.appendChild(bubbleRow);
+
+        // ✅ 상대방 메시지: bubbleWrap 전체를 클릭 영역으로 (이름·말풍선·시간 어디 눌러도 반응)
+        // 수정/삭제 버튼은 isMe=false이므로 showChatMsgMenu 내에서 자동 제외됨
+        if (!isMe) {
+            bubbleWrap.style.cursor = 'pointer';
+            bubbleWrap.onclick = function(e) {
+                console.log('🔵 [상대 메시지] bubbleWrap 클릭 — msgId:', msgId, '| target:', e.target.tagName, e.target);
+                e.stopPropagation();
+                if (e.target.tagName === 'IMG') { console.log('🔵 IMG 클릭 → 메뉴 차단'); return; }
+                console.log('🔵 showChatMsgMenu 호출 (isMe=false)');
+                showChatMsgMenu(msgId, roomId, bubble, false, msg.text || '');
+            };
+            // 혹시 bubbleWrap onclick이 아예 안 잡히는 경우를 대비해 bubble에도 동일 등록
+            bubble.onclick = function(e) {
+                console.log('🔵 [상대 메시지] bubble 직접 클릭 — msgId:', msgId, '| target:', e.target.tagName);
+                e.stopPropagation();
+                if (e.target.tagName === 'IMG') return;
+                console.log('🔵 bubble onclick → showChatMsgMenu (isMe=false)');
+                showChatMsgMenu(msgId, roomId, bubble, false, msg.text || '');
+            };
+        }
+        const reactions = msg.reactions || {};
+        const reactionSummary = {};
+        const myReactedEmoji = [];
+        for (const [emoji, reactors] of Object.entries(reactions)) {
+            const count = Object.keys(reactors).length;
+            if (count > 0) {
+                reactionSummary[emoji] = count;
+                if (reactors[myUid]) myReactedEmoji.push(emoji);
+            }
+        }
+        if (Object.keys(reactionSummary).length > 0) {
+            const reactionBar = document.createElement('div');
+            reactionBar.id = `reactionBar-${msgId}`;
+            reactionBar.style.cssText = `display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;
+                ${isMe ? 'justify-content:flex-end;' : 'justify-content:flex-start;padding-left:4px;'}`;
+            for (const [emoji, count] of Object.entries(reactionSummary)) {
+                const isMine = myReactedEmoji.includes(emoji);
+                const chip = document.createElement('button');
+                chip.title = `${emoji} ${count}명`;
+                chip.style.cssText = `display:inline-flex;align-items:center;gap:3px;
+                    padding:2px 8px;border-radius:12px;font-size:13px;cursor:pointer;
+                    border:1.5px solid ${isMine ? '#c62828' : '#e0e0e0'};
+                    background:${isMine ? '#fff0f0' : 'white'};
+                    color:${isMine ? '#c62828' : '#555'};
+                    transition:all 0.15s;`;
+                chip.innerHTML = `${emoji}<span style="font-size:11px;font-weight:700;">${count}</span>`;
+                chip.onclick = (e) => {
+                    e.stopPropagation();
+                    toggleChatReaction(msgId, roomId, emoji);
+                };
+                reactionBar.appendChild(chip);
+            }
+            bubbleWrap.appendChild(reactionBar);
+        }
+
         msgEl.id = `msgEl-${msgId}`;
         msgEl.appendChild(bubbleWrap);
         container.appendChild(msgEl);
@@ -936,35 +1018,139 @@ function renderChatMessages(msgs, myUid, roomId) {
     updateReadAvatars(msgs, myUid, roomId);
 }
 
-// ===== 메시지 삭제 메뉴 =====
-window.showChatMsgMenu = function (msgId, roomId, el) {
+// ===== 메시지 메뉴 (이모지 반응 + 복사 + 수정/삭제) =====
+window.showChatMsgMenu = function (msgId, roomId, el, isMe, msgText) {
+    console.log('🟡 showChatMsgMenu 진입 — msgId:', msgId, '| isMe:', isMe, '| roomId:', roomId);
     document.getElementById('_chatMsgMenu')?.remove();
     const rect = el.getBoundingClientRect();
-    const menu = document.createElement('div');
-    menu.id = '_chatMsgMenu';
-    menu.style.cssText = `position:fixed;top:${rect.bottom + 6}px;right:${window.innerWidth - rect.right}px;
-        background:white;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.18);
-        z-index:99999;overflow:hidden;min-width:120px;`;
-    menu.innerHTML = `
-        <button onclick="editChatMessage('${msgId}','${roomId}')"
-            style="display:flex;align-items:center;gap:8px;width:100%;padding:12px 16px;
-            border:none;background:none;cursor:pointer;font-size:14px;color:#262626;font-weight:600;
-            border-bottom:1px solid #f5f5f5;"
+    const EMOJIS = ['❤️','😂','😮','😢','😡','👍','👎','🔥'];
+    const myUid  = getChatUserId();
+
+    // 기존 내 반응 파악 (이미 누른 것 표시)
+    const msgs    = window._lastMsgs || {};
+    const msgData = msgs[msgId] || {};
+    const reactions = msgData.reactions || {};
+    const myReacted = EMOJIS.filter(e => reactions[e]?.[myUid]);
+
+    // ✅ 바텀시트 방식 (모바일에서 확실히 동작)
+    const overlay = document.createElement('div');
+    overlay.id = '_chatMsgMenu';
+    overlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;
+        background:rgba(0,0,0,0.4);z-index:99999;display:flex;align-items:flex-end;`;
+
+    // 이모지 반응 행
+    const emojiRow = EMOJIS.map(e => {
+        const active = myReacted.includes(e);
+        return `<button onclick="toggleChatReaction('${msgId}','${roomId}','${e}')"
+            style="width:40px;height:40px;border:none;cursor:pointer;font-size:20px;
+            border-radius:10px;background:${active ? '#fff0f0' : '#f8f9fa'};
+            outline:${active ? '2px solid #c62828' : 'none'};flex-shrink:0;
+            transition:transform 0.1s,background 0.15s;display:flex;align-items:center;justify-content:center;"
+            onmouseover="this.style.transform='scale(1.2)'"
+            onmouseout="this.style.transform='scale(1)'">${e}</button>`;
+    }).join('');
+
+    // 복사 버튼 (텍스트 있을 때만)
+    const copyBtn = msgText ? `
+        <button onclick="copyChatMessage('${msgId}')"
+            style="display:flex;align-items:center;gap:10px;width:100%;padding:14px 20px;
+            border:none;background:none;cursor:pointer;font-size:15px;color:#262626;font-weight:600;
+            border-top:1px solid #f5f5f5;text-align:left;"
             onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='none'">
-            <i class="fas fa-pencil-alt" style="color:#405de6;"></i> 수정
+            <i class="fas fa-copy" style="color:#1565c0;width:20px;font-size:16px;"></i> 복사
+        </button>` : '';
+
+    // 수정/삭제 (내 메시지만)
+    const editDeleteBtns = isMe ? `
+        <button onclick="editChatMessage('${msgId}','${roomId}')"
+            style="display:flex;align-items:center;gap:10px;width:100%;padding:14px 20px;
+            border:none;background:none;cursor:pointer;font-size:15px;color:#262626;font-weight:600;
+            border-top:1px solid #f5f5f5;text-align:left;"
+            onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='none'">
+            <i class="fas fa-pencil-alt" style="color:#405de6;width:20px;font-size:16px;"></i> 수정
         </button>
         <button onclick="deleteChatMessage('${msgId}','${roomId}')"
-            style="display:flex;align-items:center;gap:8px;width:100%;padding:12px 16px;
-            border:none;background:none;cursor:pointer;font-size:14px;color:#c62828;font-weight:600;"
+            style="display:flex;align-items:center;gap:10px;width:100%;padding:14px 20px;
+            border:none;background:none;cursor:pointer;font-size:15px;color:#c62828;font-weight:600;
+            text-align:left;"
             onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='none'">
-            <i class="fas fa-trash-alt"></i> 삭제
-        </button>`;
-    document.body.appendChild(menu);
+            <i class="fas fa-trash-alt" style="width:20px;font-size:16px;"></i> 삭제
+        </button>` : '';
+
+    overlay.innerHTML = `
+        <div style="background:white;width:100%;max-width:600px;margin:0 auto;
+            border-radius:20px 20px 0 0;padding-bottom:env(safe-area-inset-bottom,0px);
+            box-shadow:0 -4px 24px rgba(0,0,0,0.15);">
+            <div style="width:40px;height:4px;background:#dee2e6;border-radius:2px;margin:12px auto 6px;"></div>
+            <div style="display:flex;justify-content:space-around;align-items:center;
+                padding:10px 12px 12px;border-bottom:1px solid #f5f5f5;">
+                ${emojiRow}
+            </div>
+            ${copyBtn}
+            ${editDeleteBtns}
+        </div>`;
+
+    console.log('🟡 overlay DOM에 추가 — emojiRow 길이:', emojiRow.length, '| copyBtn 있음:', !!copyBtn, '| editDeleteBtns 있음:', !!editDeleteBtns);
+    // ✅ setTimeout으로 현재 클릭 이벤트가 끝난 뒤 리스너 등록 (즉시 닫힘 방지)
+    document.body.appendChild(overlay);
+    console.log('🟡 overlay 추가 완료 — body에 존재:', !!document.getElementById("_chatMsgMenu"));
     setTimeout(() => {
-        document.addEventListener('click', function h(e) {
-            if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', h); }
+        overlay.addEventListener('click', e => {
+            console.log('🟡 overlay 클릭 — target:', e.target === overlay ? 'overlay 배경(닫힘)' : '내부 요소');
+            if (e.target === overlay) overlay.remove();
         });
-    }, 50);
+    }, 0);
+};
+
+// ===== 메시지 복사 =====
+window.copyChatMessage = function (msgId) {
+    document.getElementById('_chatMsgMenu')?.remove();
+    const msgs = window._lastMsgs || {};
+    const text = msgs[msgId]?.text || '';
+    if (!text) { showChatToast('⚠️ 복사할 텍스트가 없습니다.'); return; }
+    navigator.clipboard?.writeText(text)
+        .then(() => showChatToast('✅ 복사되었습니다'))
+        .catch(() => {
+            // fallback for older browsers
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0;';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+            showChatToast('✅ 복사되었습니다');
+        });
+};
+
+// ===== 이모지 반응 토글 =====
+window.toggleChatReaction = async function (msgId, roomId, emoji) {
+    document.getElementById('_chatMsgMenu')?.remove();
+    const myUid = getChatUserId();
+    if (!myUid) { showChatToast('⚠️ 로그인이 필요합니다.'); return; }
+
+    try {
+        const reactionRef = getChatDb().ref(`chats/${roomId}/messages/${msgId}/reactions`);
+        const snap = await reactionRef.once('value');
+        const reactions = snap.val() || {};
+
+        const updates = {};
+        // 같은 이모지 누르면 토글 OFF
+        if (reactions[emoji]?.[myUid]) {
+            updates[`${emoji}/${myUid}`] = null;
+        } else {
+            // 다른 이모지 반응 제거 (하나만 선택 가능)
+            for (const [e, reactors] of Object.entries(reactions)) {
+                if (e !== emoji && reactors?.[myUid]) {
+                    updates[`${e}/${myUid}`] = null;
+                }
+            }
+            updates[`${emoji}/${myUid}`] = true;
+        }
+        await reactionRef.update(updates);
+    } catch (e) {
+        showChatToast('❌ 반응 저장 실패: ' + e.message);
+    }
 };
 
 window.deleteChatMessage = async function (msgId, roomId) {
