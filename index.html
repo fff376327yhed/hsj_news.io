@@ -2,6 +2,11 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://www.gstatic.com">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>해정뉴스</title>
 
@@ -508,11 +513,18 @@ if ('serviceWorker' in navigator) {
                     <div style="font-size:11px; color:#888;">작성자·댓글 작성자 이름이 숨겨집니다. 관리자는 확인 가능.</div>
                 </div>
             </label>
-            <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+            <label style="display:flex; align-items:center; gap:10px; margin-bottom:10px; cursor:pointer;">
                 <input type="checkbox" id="articleHideVotes" style="width:16px; height:16px; accent-color:#c62828;">
                 <div>
                     <div style="font-size:13px; font-weight:600; color:#333;">🙈 추천/비추천 숨김</div>
                     <div style="font-size:11px; color:#888;">댓글·대댓글 포함 추천/비추천이 숨겨집니다.</div>
+                </div>
+            </label>
+            <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                <input type="checkbox" id="articleNoNotify" style="width:16px; height:16px; accent-color:#c62828;">
+                <div>
+                    <div style="font-size:13px; font-weight:600; color:#333;">🔕 알림 보내지 않기</div>
+                    <div style="font-size:11px; color:#888;">이 기사 발행 시 다른 유저에게 알림이 전송되지 않습니다.</div>
                 </div>
             </label>
         </div>
