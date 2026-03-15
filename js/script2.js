@@ -31,13 +31,10 @@ function checkImageSignature(bytes, mimeType) {
 async function validateImageFile(file) {
     const errors = [];
     const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+    // ✅ 파일 크기 제한 없음
 
     if (!ALLOWED_TYPES.includes(file.type)) {
         errors.push('JPG, PNG, GIF, WEBP 형식만 허용됩니다.');
-    }
-    if (file.size > MAX_SIZE) {
-        errors.push('이미지 크기는 5MB 이하여야 합니다.');
     }
     if (errors.length === 0) {
         const bytes = await readMagicBytes(file, 12);
