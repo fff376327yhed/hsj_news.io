@@ -1,3 +1,97 @@
+// =====================================================================
+// ⚙️ 로딩 팁 설정 — 여기서 메세지를 자유롭게 추가/수정/삭제하세요!
+// 여러 개 입력 가능, 5초마다 랜덤으로 하나씩 표시됩니다.
+// =====================================================================
+const SITE_LOADING_TIPS = [
+    "그거 아세요? 정아영은 외계인이래요!",
+    "버그가 있다면 버그제보탭에 제보해주세요.",
+    "알림 설정에서 원하는 알림만 받을 수 있어요.",
+    "검색으로 원하는 기사를 빠르게 찾아보세요.",
+    "프로필을 설정해서 나를 표현해보세요!",
+    "관리자가 고정한 기사를 놓치지 마세요.",
+    "많이 읽힌 기사는 핫 기사로 표시돼요.",
+    "더보기에 채팅창에 들어가 대화를 나누세요!",
+    "개선할 점이 있다면 개선제보함에 제보해주세요.",
+    "설정에서 다크모드 등 테마를 바꿀 수 있어요.",
+    "설정에서 좋아요 효과음 등 효과음을 바꿀 수 있어요.",
+    "댓글 또는 채팅에서 사진을 업로드 해보세요.",
+    "설정에서 프로필 사진을 바꿔보세요!",
+    "그거 아세요? 명석이는 명석이에요.",
+    "그거 아세요? 밥에서는 밥맛이 나요.",
+    "그거 아세요? 밥에서는 쌀맛이 나요.",
+    "설정에서 기기모드를 탭하여 현재 기기로 설정하세요.",
+    "더보기에 투표탭을 사용해보세요!",
+    "항상 버그 수정 항목 기사를 놓치지 마세요.",
+    "관리자는 신입니다.",
+    "관리자는 해정이입니다.",
+    "관리자는 착하고 잘생겼습니다.",
+    "버그 수정을 할 때 짜증납니다.",
+    "현재 24번째에 있는 해당 메세지를 보고 있습니다.",
+    "관리자는 항상 최선을 다 해 노력하고 있습니다.",
+    "더보기에 활동중 탭을 가보세요!",
+    "마크 탭에는 행동팩 등과 같은 유용한 기사들이 있어요!",
+    "예전 해정뉴스 버전에서는 카지노와, 주식을 제작하려 했다네요.",
+    "관리자는 Claude AI를 사용합니다.",
+    "작성할 때 기사 설정을 해보세요!",
+    "이것은 31번째에 있는 마지막 메세지입니다."
+];
+
+// ── 로딩 화면 표시/숨김 ──
+let _loadingTipTimer = null;
+
+function showPageLoadingScreen() {
+    if (document.getElementById('_pageLoadingScreen')) return;
+    const overlay = document.createElement('div');
+    overlay.id = '_pageLoadingScreen';
+    overlay.style.cssText = [
+        'position:fixed','top:0','left:0','width:100%','height:100%',
+        'background:#fff','z-index:999998',
+        'display:flex','flex-direction:column',
+        'align-items:center','justify-content:center',
+        'transition:opacity 0.4s ease'
+    ].join(';');
+
+    overlay.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;gap:20px;padding:0 32px;">
+            <img src="favicon.ico" onerror="this.style.display='none'"
+                style="width:56px;height:56px;border-radius:14px;object-fit:cover;box-shadow:0 2px 12px rgba(0,0,0,0.12);">
+            <div style="width:44px;height:44px;border:4px solid #f0f0f0;
+                border-top:4px solid #c62828;border-radius:50%;
+                animation:_plsSpin 0.9s linear infinite;"></div>
+            <div style="font-size:17px;font-weight:700;color:#212121;letter-spacing:-0.3px;">로딩 중...</div>
+            <div id="_loadingTip"
+                style="font-size:13px;color:#888;text-align:center;max-width:280px;
+                line-height:1.6;min-height:42px;transition:opacity 0.4s ease;">
+            </div>
+        </div>
+        <style>
+            @keyframes _plsSpin { to { transform:rotate(360deg); } }
+        </style>
+    `;
+    document.body.appendChild(overlay);
+
+    // 첫 팁 즉시 표시 후 5초마다 랜덤 교체
+    function _rotateTip() {
+        const el = document.getElementById('_loadingTip');
+        if (!el || !SITE_LOADING_TIPS.length) return;
+        el.style.opacity = '0';
+        setTimeout(() => {
+            el.textContent = SITE_LOADING_TIPS[Math.floor(Math.random() * SITE_LOADING_TIPS.length)];
+            el.style.opacity = '1';
+        }, 300);
+    }
+    _rotateTip();
+    _loadingTipTimer = setInterval(_rotateTip, 5000);
+}
+
+function hidePageLoadingScreen() {
+    clearInterval(_loadingTipTimer);
+    const overlay = document.getElementById('_pageLoadingScreen');
+    if (!overlay) return;
+    overlay.style.opacity = '0';
+    setTimeout(() => overlay.remove(), 420);
+}
+
 // ===== Part 1: 기본 설정 및 Firebase 초기화 =====
 
 const firebaseConfig = {
@@ -77,6 +171,10 @@ function closeToast() {
 // 인증 지속성 설정
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
     .catch((error) => console.error("❌ 인증 지속성 설정 실패:", error));
+
+// ✅ 인증 초기화 완료를 기다리는 Promise (Race Condition 방지)
+let _authReadyResolve;
+const authReady = new Promise(resolve => { _authReadyResolve = resolve; });
 
 // ===== Firebase Messaging 초기화 (Service Worker 준비 후) =====
 let messaging = null;
@@ -1401,17 +1499,21 @@ async function sendNotification(type, data) {
 
         let notifTitle, notifText;
         if (type === 'article') {
+            const authorDisplay = data.anonymous ? '익명 유저' : data.authorName;
             notifTitle = '📰 새 기사';
-            notifText  = `${data.authorName}님이 새 기사를 작성했습니다: "${data.title}"`;
+            notifText  = `${authorDisplay}님이 새 기사를 작성했습니다: "${data.title}"`;
         } else if (type === 'myArticleComment') {
+            const commenterDisplay = data.anonymous ? '익명 유저' : data.commenterName;
             notifTitle = '💬 내 기사에 새 댓글';
-            notifText  = `${data.commenterName}님이 댓글을 남겼습니다: "${(data.content || '').substring(0, 50)}"`;
+            notifText  = `${commenterDisplay}님이 댓글을 남겼습니다: "${(data.content || '').substring(0, 50)}"`;
         } else if (type === 'replyToComment') {
+            const replierDisplay = data.anonymous ? '익명 유저' : data.replierName;
             notifTitle = '↩️ 내 댓글에 답글';
-            notifText  = `${data.replierName}님이 답글을 달았습니다: "${(data.content || '').substring(0, 50)}"`;
+            notifText  = `${replierDisplay}님이 답글을 달았습니다: "${(data.content || '').substring(0, 50)}"`;
         } else if (type === 'replyToReply') {
+            const replierDisplay2 = data.anonymous ? '익명 유저' : data.replierName;
             notifTitle = '↩️ 내 답글에 대댓글';
-            notifText  = `${data.replierName}님이 대댓글을 달았습니다: "${(data.content || '').substring(0, 50)}"`;
+            notifText  = `${replierDisplay2}님이 대댓글을 달았습니다: "${(data.content || '').substring(0, 50)}"`;
         } else {
             notifTitle = '🔔 알림';
             notifText  = '';
@@ -1493,11 +1595,15 @@ console.log("✅ Part 4 알림 시스템 완료");
 
   auth.onAuthStateChanged(async user => {
     console.log("🔐 인증 상태:", user ? user.email : "로그아웃");
+    _authReadyResolve(); // ✅ 인증 초기화 완료 신호
     
     _cachedAdminStatus = null;
     _adminCacheTime = 0;
     
     if (user) {
+        // ✅ 로그인 시 프로필 사진 캐시 초기화 (인증 전 null 캐시 제거)
+        if (window.profilePhotoCache) window.profilePhotoCache.clear();
+
         await isAdminAsync();
 
         showLoadingIndicator("로그인 중...");
@@ -2529,6 +2635,9 @@ function showMoreMenu() {
                     <button onclick="showAdminMemo()" class="more-menu-btn" style="border-color:#ffcdd2;">
                         <i class="fas fa-sticky-note" style="color:#c62828;"></i> 관리자 메모장
                     </button>
+                    <button onclick="migrateCommentCounts()" class="more-menu-btn" style="border-color:#ffcdd2;">
+                        <i class="fas fa-sync-alt" style="color:#c62828;"></i> 댓글 수 일괄 복구
+                    </button>
                 </div>
             </div>` : ''}
             
@@ -2903,6 +3012,7 @@ async function getUserProfilePhoto(email) {
         return window.profilePhotoCache.get(email);
     }
     
+    await authReady; // ✅ 인증 초기화 대기 (null 캐싱 방지)
     // ✅ 비로그인 시 프로필 사진 로드 건너뜀
     if (!isLoggedIn()) {
         window.profilePhotoCache.set(email, null);
@@ -2910,21 +3020,17 @@ async function getUserProfilePhoto(email) {
     }
     
     try {
-        const usersSnapshot = await db.ref("users").once("value");
-        const usersData = usersSnapshot.val() || {};
-        
-        for (const userData of Object.values(usersData)) {
-            if (userData && userData.email === email) {
-                const photoUrl = userData.profilePhoto || null;
-                window.profilePhotoCache.set(email, photoUrl);
-                return photoUrl;
-            }
+        const snap = await db.ref("users").orderByChild("email").equalTo(email).limitToFirst(1).once("value");
+        const val = snap.val();
+        if (val) {
+            const userData = Object.values(val)[0];
+            const photoUrl = userData.profilePhoto || null;
+            window.profilePhotoCache.set(email, photoUrl);
+            return photoUrl;
         }
-        
         window.profilePhotoCache.set(email, null);
         return null;
     } catch (error) {
-        // ✅ 권한 없으면 조용히 null 반환 (화면 깨짐 방지)
         window.profilePhotoCache.set(email, null);
         return null;
     }
@@ -2936,8 +3042,9 @@ function buildArticleCardHTML(a, commentCounts, badge) {
     const views        = getArticleViews(a);
     const votes        = getArticleVoteCounts(a);
     const commentCount = (commentCounts && commentCounts[a.id]) || a.commentCount || 0;
-    const photoUrl     = window.profilePhotoCache?.get(a.authorEmail) || null;
-    const authorPhoto  = getProfilePlaceholder(photoUrl, 48);
+    // ✅ 익명 게시글이면 홈 카드에서 관리자 포함 무조건 기본 프로필
+    const photoUrl    = a.anonymous ? null : (window.profilePhotoCache?.get(a.authorEmail) || null);
+    const authorPhoto = getProfilePlaceholder(photoUrl, 48);
 
     let badgeHTML = '';
     let borderStyle = 'cursor:pointer;';
@@ -2957,6 +3064,9 @@ function buildArticleCardHTML(a, commentCounts, badge) {
         <div class="article-content">
             <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:4px;">
                 <span class="category-badge">${escapeHTML(a.category)}</span>
+                ${a.anonymous ? `<span style="display:inline-flex;align-items:center;gap:3px;
+                    background:#f5f5f5;color:#757575;
+                    font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;">🕵️ 익명</span>` : ''}
                 ${badgeHTML}
             </div>
             <h3 class="article-title">${escapeHTML(a.title)}</h3>
@@ -2964,7 +3074,7 @@ function buildArticleCardHTML(a, commentCounts, badge) {
             <div class="article-meta" style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
                 <div style="display:flex;align-items:center;gap:8px;">
                     ${authorPhoto}
-                    <span>${escapeHTML(a.author || '')}</span>
+                    <span>${a.anonymous ? '익명' : escapeHTML(a.author || '')}</span>
                 </div>
                 <div class="article-stats" style="display:flex;gap:12px;">
                     <span class="stat-item">👁️ ${views}</span>
@@ -2978,6 +3088,8 @@ function buildArticleCardHTML(a, commentCounts, badge) {
 }
 
 async function renderArticles() {
+    // ✅ [최적화] authReady 대기 제거 — 기사 목록 즉시 렌더링 후 프로필 사진만 비동기 보완
+    // await authReady; // 제거: 이 한 줄이 2~4초 블로킹의 주범이었음
     const list = getSortedArticles();
     
     const grid = document.getElementById("articlesGrid");
@@ -2998,8 +3110,8 @@ async function renderArticles() {
     const currentCategory = document.getElementById("searchCategory")?.value || "자유게시판";
     
     // 고정 기사
-    const pinsSnapshot = await db.ref("pinnedArticles").once("value");
-    const pinnedData = pinsSnapshot.val() || {};
+    // ✅ [최적화] 60초 캐시 사용 (매 렌더링마다 DB 쿼리 제거)
+    const pinnedData = await getPinnedArticles();
     const pinnedIds = Object.keys(pinnedData);
 
     const pinnedArticles = [];
@@ -3028,24 +3140,17 @@ async function renderArticles() {
         return;
     }
 
-    // ✅ 댓글 수 먼저 가져오기 (고정·핫·일반 기사 모두 필요하므로 상단으로 이동)
-    const commentsSnapshot = await db.ref("comments").once("value");
-    const commentsData = commentsSnapshot.val() || {};
+    // ✅ [수정] allArticles의 commentCount를 commentCounts에 직접 매핑
+    // articles/{id}/commentCount 트랜잭션 값이 정확히 반영됨
     const commentCounts = {};
-    Object.entries(commentsData).forEach(([articleId, articleComments]) => {
-        commentCounts[articleId] = Object.keys(articleComments).length;
+    allArticles.forEach(a => {
+        if (a.id && a.commentCount) {
+            commentCounts[a.id] = a.commentCount;
+        }
     });
 
     // 고정 기사 렌더링
-    if(pinnedArticles.length > 0) {
-        pinnedSection.innerHTML = pinnedArticles
-            .map(a => buildArticleCardHTML(a, commentCounts, 'pinned'))
-            .join('');
-    } else {
-        pinnedSection.innerHTML = '';
-    }
-
-// ✅ 핫 기사 후보 1위 먼저 계산 (필터링 + 캐시 모두 여기서 결정)
+// ✅ 핫 기사 후보 1위 먼저 계산
     const pinnedIdSet = new Set(pinnedIds);
     const hotCandidate = allArticles
         .filter(a => a && !a.deleted && !pinnedIdSet.has(a.id) && a.category === currentCategory)
@@ -3053,7 +3158,6 @@ async function renderArticles() {
     const hotId = hotCandidate ? hotCandidate.id : null;
     window._currentHotArticleId = hotId;
 
-    // 핫 기사로 선정된 기사는 일반 목록에서 즉시 제외
     const filteredUnpinned = hotId
         ? unpinnedArticles.filter(a => a.id !== hotId)
         : unpinnedArticles;
@@ -3061,46 +3165,72 @@ async function renderArticles() {
     const endIdx = currentArticlePage * ARTICLES_PER_PAGE;
     const displayArticles = filteredUnpinned.slice(0, endIdx);
 
-    // ✅ 핫 기사 작성자 포함해서 캐시 대상 emails 구성
+    // ✅ 프로필 사진 캐시 먼저 로드 (고정/일반/핫 기사 모두 포함)
     const allDisplayEmails = [...displayArticles, ...pinnedArticles];
     if (hotCandidate) allDisplayEmails.push(hotCandidate);
-    const emails = [...new Set(allDisplayEmails.map(a => a.authorEmail).filter(Boolean))];
+    // ✅ 익명 게시글 저자는 프로필 사진 로드 자체를 제외 (카드에서 기본 프로필 표시)
+    const emails = [...new Set(
+        allDisplayEmails
+            .filter(a => !a.anonymous)
+            .map(a => a.authorEmail).filter(Boolean)
+    )];
     const uncachedEmails = emails.filter(email => !window.profilePhotoCache.has(email));
 
-    if(uncachedEmails.length > 0) {
-    // ✅ 로그인된 경우에만 프로필 사진 로드 시도
-    if (isLoggedIn()) {
-        try {
-            const usersSnapshot = await db.ref("users").once("value");
-            const usersData = usersSnapshot.val() || {};
-            
-            Object.values(usersData).forEach(userData => {
-                if(userData && userData.email && uncachedEmails.includes(userData.email)) {
-                    window.profilePhotoCache.set(userData.email, userData.profilePhoto || null);
-                }
-            });
-        } catch (error) {
-            // ✅ 권한 없으면 null로 채워서 이후 재시도 방지
-            uncachedEmails.forEach(email => {
-                window.profilePhotoCache.set(email, null);
-            });
-        }
-    } else {
-        // ✅ 비로그인 시 null로 캐시 채움
-        uncachedEmails.forEach(email => {
-            window.profilePhotoCache.set(email, null);
-        });
-    }
-}
+    if (uncachedEmails.length > 0) {
+        await authReady; // ✅ 인증 초기화 대기
+        if (isLoggedIn()) {
+            try {
+                // UID 있는 것과 없는 것 분리
+                const emailToUid = {};
+                allDisplayEmails.forEach(a => { if (a.authorUid && a.authorEmail) emailToUid[a.authorEmail] = a.authorUid; });
 
-    // ✅ 캐시 로드 완료 후 핫 기사 렌더링
+                const withUid    = uncachedEmails.filter(e => emailToUid[e]);
+                const withoutUid = uncachedEmails.filter(e => !emailToUid[e]);
+
+                // UID 있는 것: 병렬 직접 조회 (빠름)
+                const uidPromises = withUid.map(async email => {
+                    try {
+                        const snap = await db.ref("users/" + emailToUid[email] + "/profilePhoto").once("value");
+                        window.profilePhotoCache.set(email, snap.val() || null);
+                    } catch(e) { window.profilePhotoCache.set(email, null); }
+                });
+
+                // UID 없는 구 기사: 이메일 인덱스 쿼리 (병렬)
+                const emailPromises = withoutUid.map(async email => {
+                    try {
+                        const snap = await db.ref("users").orderByChild("email").equalTo(email).limitToFirst(1).once("value");
+                        const v = snap.val();
+                        const u = v ? Object.values(v)[0] : null;
+                        window.profilePhotoCache.set(email, u ? (u.profilePhoto || null) : null);
+                    } catch(e) { window.profilePhotoCache.set(email, null); }
+                });
+
+                await Promise.all([...uidPromises, ...emailPromises]);
+            } catch (error) {
+                console.warn("프로필 사진 배치 로드 실패:", error);
+            }
+        }
+    }
+
+    // ✅ 캐시 완성 후 고정 기사 렌더링
+    if (pinnedArticles.length > 0) {
+        pinnedSection.innerHTML = pinnedArticles
+            .map(a => buildArticleCardHTML(a, commentCounts, 'pinned'))
+            .join('');
+    } else {
+        pinnedSection.innerHTML = '';
+    }
+
+    // ✅ 핫 기사 렌더링
     renderHotArticle(allArticles, 'featuredArticle', currentCategory, commentCounts);
-    
-// (댓글 수는 위에서 이미 로드됨)
+
+    // ✅ [최적화] 기사 렌더링 완료 → 로딩 화면 숨김
+    hidePageLoadingScreen();
+
+    // ✅ 일반 기사 렌더링
     const articlesHTML = displayArticles.map((a) =>
         buildArticleCardHTML(a, commentCounts, null)
     );
-    
     grid.innerHTML = articlesHTML.join('');
     
     if(endIdx < filteredUnpinned.length) {
@@ -3170,8 +3300,13 @@ async function showArticleDetail(id) {
             `<span class="edited-badge"><i class="fas fa-edit"></i> 수정됨</span>` : '';
 
         // ✅ 익명 모드 처리
-        const displayAuthor  = (A.anonymous && !isAdmin()) ? '익명' : escapeHTML(A.author);
-        const displayPhoto   = (A.anonymous && !isAdmin()) ? await createProfilePhoto(null, 40) : authorPhotoHTML;
+        // 관리자: window._adminRevealAnonymous[id] === true이면 실명 표시, 아니면 익명 유지
+        if (!window._adminRevealAnonymous) window._adminRevealAnonymous = {};
+        const _isRevealedByAdmin = isAdmin() && !!window._adminRevealAnonymous[id];
+        const displayAuthor = A.anonymous
+            ? (_isRevealedByAdmin ? `${escapeHTML(A.author)} <span style="font-size:11px;background:#fff3e0;color:#e65100;padding:1px 7px;border-radius:8px;font-weight:600;">🔓 익명해제(관리자)</span>` : '익명')
+            : escapeHTML(A.author);
+        const displayPhoto  = (A.anonymous && !_isRevealedByAdmin) ? await createProfilePhoto(null, 40) : authorPhotoHTML;
 
         // ✅ 추천/비추천 영역 (hideVotes 처리)
         const voteSection = A.hideVotes && !isAdmin()
@@ -3186,6 +3321,10 @@ async function showArticleDetail(id) {
                </div>`;
 
         // ✅ 관리자 전용 기사 관리 패널
+        // 관리자 전용 익명 해제 상태: window._adminRevealAnonymous[articleId]
+        if (!window._adminRevealAnonymous) window._adminRevealAnonymous = {};
+        const _adminRevealed = !!window._adminRevealAnonymous[A.id];
+
         const adminArticlePanel = isAdmin() ? `
             <div style="margin-top:20px; background:#fff8e1; border:1px solid #ffe082; border-radius:10px; padding:14px 16px;">
                 <div style="font-size:13px; font-weight:700; color:#795548; margin-bottom:10px;">🛠️ 관리자 기사 관리</div>
@@ -3194,8 +3333,17 @@ async function showArticleDetail(id) {
                     <button onclick="adminResetArticleVotes('${A.id}')" style="padding:6px 12px; background:#fce4ec; color:#c62828; border:1px solid #f48fb1; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;">👍 추천/비추천 초기화</button>
                     <button onclick="adminShowArticleReaders('${A.id}')" style="padding:6px 12px; background:#e8f5e9; color:#2e7d32; border:1px solid #a5d6a7; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;">📖 독자 목록</button>
                     <button onclick="adminShowArticleVoters('${A.id}')" style="padding:6px 12px; background:#f3e5f5; color:#6a1b9a; border:1px solid #ce93d8; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;">🗳️ 투표 현황</button>
+                    ${A.anonymous ? `
+                    <button id="_adminAnonBtn_${A.id}"
+                        onclick="adminToggleAnonymousReveal('${A.id}')"
+                        style="padding:6px 12px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;
+                        border:1px solid ${_adminRevealed ? '#a5d6a7' : '#ffcc80'};
+                        background:${_adminRevealed ? '#e8f5e9' : '#fff3e0'};
+                        color:${_adminRevealed ? '#2e7d32' : '#e65100'};">
+                        ${_adminRevealed ? '🔓 익명 해제 중 (클릭 시 복원)' : '🔒 익명 해제 보기'}
+                    </button>` : ''}
                 </div>
-                <div style="font-size:11px; color:#888;">
+                <div id="_adminAnonInfo_${A.id}" style="font-size:11px; color:#888;">
                     ${A.anonymous ? '🕵️ 익명 게시됨 | 실제 작성자: <strong>' + escapeHTML(A.author) + '</strong> (' + escapeHTML(A.authorEmail || '') + ')' : ''}
                     ${A.hideVotes ? '&nbsp;&nbsp;🙈 추천/비추천 숨김 설정됨' : ''}
                 </div>
@@ -3240,6 +3388,12 @@ async function showArticleDetail(id) {
             </div>` : ''}
         </div>`;
         
+        // ✅ 기사 설정을 전역 캐싱 (A가 정의된 이 스코프에서 처리)
+        window._currentArticleSettings = {
+            anonymous: A.anonymous || false,
+            hideVotes: A.hideVotes || false
+        };
+
         loadCommentsWithProfile(id);
 
         if(typeof addImageClickHandlersToArticle === 'function') {
@@ -4083,7 +4237,8 @@ function setupArticleForm() {
             dislikeCount: 0,
             thumbnail: null,
             anonymous: document.getElementById('articleAnonymous')?.checked || false,  // ✅ 익명 설정
-            hideVotes: document.getElementById('articleHideVotes')?.checked || false   // ✅ 추천 숨김 설정
+            hideVotes: document.getElementById('articleHideVotes')?.checked || false,  // ✅ 추천 숨김 설정
+            noNotify: document.getElementById('articleNoNotify')?.checked || false    // ✅ 알림 안 보내기 설정
         };
 
         console.log("📝 새 기사 작성:", article.id);
@@ -4097,14 +4252,16 @@ function setupArticleForm() {
                     resetFormAfterSubmit();
                     window.isSubmitting = false;
                     
-                    await sendNotification('article', {
-                        authorEmail: article.authorEmail,
-                        authorName: article.author,
-                        title: article.title,
-                        articleId: article.id
-                    });
-                    
-                    triggerGithubNotification(true); // 기사 작성 시 자동 트리거
+                    if (!article.noNotify) {
+                        await sendNotification('article', {
+                            authorEmail: article.authorEmail,
+                            authorName: article.anonymous ? '익명 유저' : article.author,
+                            title: article.title,
+                            articleId: article.id,
+                            anonymous: article.anonymous || false
+                        });
+                        triggerGithubNotification(true); // ✅ noNotify가 아닐 때만 트리거
+                    }
                     showArticles();
                 });
             };
@@ -4114,15 +4271,17 @@ function setupArticleForm() {
                 resetFormAfterSubmit();
                 window.isSubmitting = false;
                 
-                await sendNotification('article', {
-                    authorEmail: article.authorEmail,
-                    authorName: article.author,
-                    title: article.title,
-                    articleId: article.id,
-                    category: article.category
-                });
-                
-                triggerGithubNotification(true); // 기사 작성 시 자동 트리거
+                if (!article.noNotify) {
+                    await sendNotification('article', {
+                        authorEmail: article.authorEmail,
+                        authorName: article.anonymous ? '익명 유저' : article.author,
+                        title: article.title,
+                        articleId: article.id,
+                        category: article.category,
+                        anonymous: article.anonymous || false
+                    });
+                    triggerGithubNotification(true); // ✅ noNotify가 아닐 때만 트리거
+                }
                 showArticles();
             });
         }
@@ -4253,6 +4412,7 @@ const rateLimiter = {
 
 // ✅ 댓글 로드 (프로필 사진 포함)
 async function loadCommentsWithProfile(id) {
+    await authReady; // ✅ 인증 초기화 대기 (프로필 사진 캐시 오염 방지)
     const currentUser = getNickname();
     const currentEmail = getUserEmail();
     const myUid = getUserId();
@@ -4302,20 +4462,38 @@ if (currentCommentSort === 'oldest') {
         const uncachedEmails = uniqueEmails.filter(e => !window.profilePhotoCache.has(e));
         if (uncachedEmails.length > 0) {
             if (isLoggedIn()) {
+                // ✅ email → uid 맵 구성 (댓글/답글에 authorUid 있으면 직접 조회, 없으면 email 쿼리)
+                const emailToUid = {};
+                displayComments.forEach(([_, comment]) => {
+                    if (comment.authorEmail && comment.authorUid) emailToUid[comment.authorEmail] = comment.authorUid;
+                    if (comment.replies) {
+                        Object.values(comment.replies).forEach(r => {
+                            if (r.authorEmail && r.authorUid) emailToUid[r.authorEmail] = r.authorUid;
+                        });
+                    }
+                });
                 try {
-                    const usersSnapshot = await db.ref("users").once("value");
-                    const usersData = usersSnapshot.val() || {};
-                    Object.values(usersData).forEach(u => {
-                        if (u && u.email && uncachedEmails.includes(u.email)) {
-                            window.profilePhotoCache.set(u.email, u.profilePhoto || null);
-                        }
-                    });
+                    await Promise.all(uncachedEmails.map(async email => {
+                        try {
+                            const uid = emailToUid[email];
+                            if (uid) {
+                                // ✅ UID로 직접 조회 (빠르고 안정적)
+                                const snap = await db.ref("users/" + uid + "/profilePhoto").once("value");
+                                window.profilePhotoCache.set(email, snap.val() || null);
+                            } else {
+                                // fallback: 이메일 쿼리 (authorUid 없는 구댓글)
+                                const snap = await db.ref("users").orderByChild("email").equalTo(email).limitToFirst(1).once("value");
+                                const v = snap.val();
+                                const u = v ? Object.values(v)[0] : null;
+                                window.profilePhotoCache.set(email, u ? (u.profilePhoto||null) : null);
+                            }
+                        } catch(e) { window.profilePhotoCache.set(email, null); }
+                    }));
                 } catch(e) {
                     uncachedEmails.forEach(email => window.profilePhotoCache.set(email, null));
                 }
-            } else {
-                uncachedEmails.forEach(email => window.profilePhotoCache.set(email, null));
             }
+            // ✅ 비로그인 시에는 null로 캐싱하지 않음 — authReady 이후 재호출되면 정상 로드됨
         }
 
         // ── 답글 트리 렌더 헬퍼 (재귀) ──
@@ -4348,7 +4526,12 @@ if (currentCommentSort === 'oldest') {
 
             return ordered.map(([replyId, reply]) => {
                 const isMyReply = isLoggedIn() && (reply.authorEmail === currentEmail || isAdmin());
-                const rPhotoHTML = getProfilePlaceholder(window.profilePhotoCache.get(reply.authorEmail)||null, 24);
+                // ✅ 익명 답글: 관리자 해제 상태 확인
+                const _rRevealedByAdmin = isAdmin() && !!(window._adminRevealAnonymous || {})[id];
+                const _rIsAnon = !!(_settings && _settings.anonymous);
+                const rPhotoHTML = (_rIsAnon && !_rRevealedByAdmin)
+                    ? getProfilePlaceholder(null, 24)
+                    : getProfilePlaceholder(window.profilePhotoCache.get(reply.authorEmail)||null, 24);
                 const editedBadge = reply.edited ? `<span class="edited-badge"><i class="fas fa-edit"></i> 수정됨</span>` : '';
 
                 // depth 무관하게 들여쓰기 고정: 최대 1단계(20px)만
@@ -4365,7 +4548,13 @@ if (currentCommentSort === 'oldest') {
                     <div class="reply-item" id="reply-${commentId}-${replyId}" style="margin-left:${indent}px;">
                         <div class="reply-header">
                             ${rPhotoHTML}
-                            <span class="reply-author">↳ ${escapeHTML(reply.author)}</span>
+                            <span class="reply-author">↳ ${
+                                _rIsAnon
+                                    ? (_rRevealedByAdmin
+                                        ? `${escapeHTML(reply.author)} <span style="font-size:10px;background:#fff3e0;color:#e65100;padding:1px 6px;border-radius:8px;font-weight:600;">🔓</span>`
+                                        : '익명')
+                                    : escapeHTML(reply.author)
+                            }</span>
                             <span class="reply-time">${escapeHTML(reply.timestamp)}</span>
                             ${editedBadge}
                         </div>
@@ -4413,8 +4602,14 @@ ${reply.imageBase64 ? `
             const isMyComment = isLoggedIn() && (comment.authorEmail === currentEmail || isAdmin());
 
             // ✅ 익명 처리
-            const displayCommentAuthor = (_settings.anonymous && !isAdmin()) ? '익명' : escapeHTML(comment.author);
-            const photoUrl = (_settings.anonymous && !isAdmin()) ? null : (window.profilePhotoCache.get(comment.authorEmail) || null);
+            // ✅ 익명 댓글: 관리자 해제 상태 확인
+            const _cRevealedByAdmin = isAdmin() && !!(window._adminRevealAnonymous || {})[currentArticleId];
+            const displayCommentAuthor = _settings.anonymous
+                ? (_cRevealedByAdmin
+                    ? `${escapeHTML(comment.author)} <span style="font-size:10px;background:#fff3e0;color:#e65100;padding:1px 6px;border-radius:8px;font-weight:600;">🔓</span>`
+                    : '익명')
+                : escapeHTML(comment.author);
+            const photoUrl = (_settings.anonymous && !_cRevealedByAdmin) ? null : (window.profilePhotoCache.get(comment.authorEmail) || null);
             const authorPhotoHTML = getProfilePlaceholder(photoUrl, 32);
 
             const commentEditedBadge = comment.edited ? `<span class="edited-badge"><i class="fas fa-edit"></i> 수정됨</span>` : '';
@@ -4673,12 +4868,20 @@ window.cancelReplyEdit = function(commentId, replyId) {
 
 // ✅ 댓글 로드 (호환성)
 function loadComments(id) {
-    // ✅ 기사 설정을 전역으로 캐싱해 댓글 렌더에서 참조
-        window._currentArticleSettings = {
-            anonymous: A.anonymous || false,
-            hideVotes: A.hideVotes || false
-        };
+    // _currentArticleSettings는 showArticleDetail에서 세팅됨
+    // 혹시 세팅 안 된 경우(직접 호출 등)를 대비해 DB에서 재조회
+    if (!window._currentArticleSettings) {
+        db.ref("articles/" + id).once("value").then(snap => {
+            const article = snap.val() || {};
+            window._currentArticleSettings = {
+                anonymous: article.anonymous || false,
+                hideVotes: article.hideVotes || false
+            };
+            loadCommentsWithProfile(id);
+        });
+    } else {
         loadCommentsWithProfile(id);
+    }
 }
 
 // ✅ 댓글 더보기
@@ -4708,6 +4911,7 @@ function submitCommentFromDetail() {
 }
 
 async function submitComment(id){
+    await authReady; // ✅ 인증 초기화 완료 대기 (Race Condition 방지)
     if(!isLoggedIn()) {
         alert("댓글 작성은 로그인 후 가능합니다!");
         return;
@@ -4753,12 +4957,15 @@ async function submitComment(id){
         const C = {
             author: getNickname(),
             authorEmail: getUserEmail(),
+            authorUid: getUserId(), // ✅ UID 저장 → 프로필 사진 직접 조회용
             text: txt,
             timestamp: new Date().toLocaleString(),
         };
         if (imageBase64) C.imageBase64 = imageBase64;
 
         await db.ref("comments/" + id + "/" + cid).set(C);
+        // ✅ [최적화] 댓글 수 카운터 증가 (전체 comments 로드 불필 제거)
+        await db.ref("articles/" + id + "/commentCount").transaction(n => (n || 0) + 1);
 
         const articleSnapshot = await db.ref("articles/" + id).once("value");
         const article = articleSnapshot.val();
@@ -4767,10 +4974,12 @@ async function submitComment(id){
             await sendNotification('myArticleComment', {
                 articleAuthorEmail: article.authorEmail,
                 commenterEmail: C.authorEmail,
-                commenterName: C.author,
+                // ✅ 익명 게시글이면 댓글 알림도 익명 유저로 표시
+                commenterName: article.anonymous ? '익명 유저' : C.author,
                 content: txt || '[이미지]',
                 articleId: id,
-                articleCategory: article.category || ''
+                articleCategory: article.category || '',
+                anonymous: article.anonymous || false
             });
         }
 
@@ -4800,6 +5009,8 @@ function deleteComment(aid, cid, author){
     if(!confirm("정말 이 댓글을 삭제하시겠습니까?")) return;
     
     db.ref("comments/" + aid + "/" + cid).remove().then(() => {
+        // ✅ [최적화] 댓글 수 -1
+        db.ref("articles/" + aid + "/commentCount").transaction(n => Math.max((n || 0) - 1, 0));
         alert("댓글이 삭제되었습니다.");
         loadComments(aid);
     }).catch(error => {
@@ -4853,6 +5064,8 @@ window.submitReply = async function(articleId, commentId) {
         if (imageBase64) reply.imageBase64 = imageBase64;
 
         await db.ref(`comments/${articleId}/${commentId}/replies`).push(reply);
+        // ✅ [최적화] 댓글 수 +1
+        await db.ref(`articles/${articleId}/commentCount`).transaction(n => (n || 0) + 1);
 
         // ✅ 댓글 작성자에게 답글 알림 전송
         try {
@@ -4889,6 +5102,8 @@ window.deleteReply = async function(articleId, commentId, replyId) {
     
     try {
         await db.ref(`comments/${articleId}/${commentId}/replies/${replyId}`).remove();
+        // ✅ [최적화] 댓글 수 -1
+        await db.ref(`articles/${articleId}/commentCount`).transaction(n => Math.max((n || 0) - 1, 0));
         loadComments(articleId);
     } catch(error) {
         alert("삭제 실패: " + error.message);
@@ -5399,10 +5614,225 @@ window.deleteArticleFromAdmin = function(id, nickname) {
     });
 }
 
+// =====================================================================
+// ✅ 관리자 기사 관리 패널 함수 4종
+// =====================================================================
+
+// ① 조회수 초기화
+window.adminResetArticleViews = async function(articleId) {
+    if (!isAdmin()) { alert('관리자 권한이 필요합니다.'); return; }
+    if (!confirm('이 기사의 조회수를 0으로 초기화하시겠습니까?\n독자 기록도 함께 삭제됩니다.')) return;
+    try {
+        await Promise.all([
+            db.ref(`articles/${articleId}/views`).set(0),
+            db.ref(`articleReaders/${articleId}`).remove()
+        ]);
+        // 화면 즉시 반영
+        const el = document.getElementById('viewCountDisplay');
+        if (el) el.innerHTML = '👁️ 0';
+        alert('✅ 조회수가 초기화되었습니다.');
+    } catch(e) {
+        alert('❌ 초기화 실패: ' + e.message);
+    }
+};
+
+// ② 추천/비추천 초기화
+window.adminResetArticleVotes = async function(articleId) {
+    if (!isAdmin()) { alert('관리자 권한이 필요합니다.'); return; }
+    if (!confirm('이 기사의 추천/비추천을 모두 초기화하시겠습니까?\n투표 기록도 함께 삭제됩니다.')) return;
+    try {
+        await Promise.all([
+            db.ref(`articles/${articleId}/likeCount`).set(0),
+            db.ref(`articles/${articleId}/dislikeCount`).set(0),
+            db.ref(`votes/${articleId}`).remove()
+        ]);
+        // 화면 즉시 반영
+        const likeBtn    = document.getElementById(`like-btn-${articleId}`);
+        const dislikeBtn = document.getElementById(`dislike-btn-${articleId}`);
+        if (likeBtn)    likeBtn.innerHTML    = '👍 추천 0';
+        if (dislikeBtn) dislikeBtn.innerHTML = '👎 비추천 0';
+        alert('✅ 추천/비추천이 초기화되었습니다.');
+    } catch(e) {
+        alert('❌ 초기화 실패: ' + e.message);
+    }
+};
+
+// ③ 독자 목록 모달
+window.adminShowArticleReaders = async function(articleId) {
+    if (!isAdmin()) { alert('관리자 권한이 필요합니다.'); return; }
+    document.getElementById('_adminReadersModal')?.remove();
+
+    const snap = await db.ref(`articleReaders/${articleId}`).once('value');
+    const data = snap.val() || {};
+    const readers = Object.values(data).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+    const rows = readers.length === 0
+        ? `<div style="text-align:center;color:#aaa;padding:30px 0;font-size:14px;">독자 기록이 없습니다.</div>`
+        : readers.map((r, i) => `
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0;
+                border-bottom:1px solid #f5f5f5;">
+                <div style="width:28px;height:28px;border-radius:50%;background:#c62828;
+                    display:flex;align-items:center;justify-content:center;
+                    color:white;font-size:12px;font-weight:700;flex-shrink:0;">
+                    ${(r.name || '?')[0].toUpperCase()}
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:14px;font-weight:600;color:#212121;
+                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                        ${escapeHTML(r.name || '알 수 없음')}
+                    </div>
+                    <div style="font-size:11px;color:#888;">${escapeHTML(r.email || '')}</div>
+                </div>
+                <div style="font-size:11px;color:#aaa;flex-shrink:0;text-align:right;">
+                    ${escapeHTML(r.readAt || '')}
+                </div>
+            </div>`).join('');
+
+    const modal = document.createElement('div');
+    modal.id = '_adminReadersModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:99999;display:flex;align-items:flex-end;justify-content:center;';
+    modal.innerHTML = `
+        <div style="background:white;width:100%;max-width:600px;border-radius:20px 20px 0 0;
+            max-height:70vh;display:flex;flex-direction:column;
+            box-shadow:0 -4px 24px rgba(0,0,0,0.15);">
+            <div style="padding:16px 20px 12px;border-bottom:1px solid #f0f0f0;flex-shrink:0;">
+                <div style="width:36px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 14px;"></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div style="font-size:16px;font-weight:800;color:#212121;">
+                        📖 독자 목록 <span style="font-size:13px;color:#888;font-weight:500;">(${readers.length}명)</span>
+                    </div>
+                    <button onclick="document.getElementById('_adminReadersModal').remove()"
+                        style="border:none;background:none;font-size:20px;color:#aaa;cursor:pointer;">✕</button>
+                </div>
+            </div>
+            <div style="flex:1;overflow-y:auto;padding:0 20px;">
+                ${rows}
+            </div>
+        </div>`;
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    document.body.appendChild(modal);
+};
+
+// ④ 투표 현황 모달
+window.adminShowArticleVoters = async function(articleId) {
+    if (!isAdmin()) { alert('관리자 권한이 필요합니다.'); return; }
+    document.getElementById('_adminVotersModal')?.remove();
+
+    const [votesSnap, articleSnap] = await Promise.all([
+        db.ref(`votes/${articleId}`).once('value'),
+        db.ref(`articles/${articleId}`).once('value')
+    ]);
+    const votes   = votesSnap.val()   || {};
+    const article = articleSnap.val() || {};
+    const likeCount    = article.likeCount    || 0;
+    const dislikeCount = article.dislikeCount || 0;
+    const total = likeCount + dislikeCount;
+
+    // uid → 유저 이름 조회
+    const uids = Object.keys(votes);
+    const userSnaps = await Promise.all(uids.map(uid => db.ref(`users/${uid}`).once('value')));
+    const userMap = {};
+    uids.forEach((uid, i) => { userMap[uid] = userSnaps[i].val() || {}; });
+
+    const likers    = uids.filter(uid => votes[uid] === 'like');
+    const dislikers = uids.filter(uid => votes[uid] === 'dislike');
+
+    function voterRow(uid) {
+        const u = userMap[uid] || {};
+        const name  = u.newNickname || u.nickname || u.displayName || (u.email ? u.email.split('@')[0] : '알 수 없음');
+        const email = u.email || '';
+        return `
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5;">
+                <div style="width:26px;height:26px;border-radius:50%;background:#e0e0e0;
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:11px;font-weight:700;color:#555;flex-shrink:0;">
+                    ${(name)[0].toUpperCase()}
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:13px;font-weight:600;color:#212121;">${escapeHTML(name)}</div>
+                    <div style="font-size:11px;color:#aaa;">${escapeHTML(email)}</div>
+                </div>
+            </div>`;
+    }
+
+    const barW = total > 0 ? Math.round((likeCount / total) * 100) : 50;
+
+    const modal = document.createElement('div');
+    modal.id = '_adminVotersModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:99999;display:flex;align-items:flex-end;justify-content:center;';
+    modal.innerHTML = `
+        <div style="background:white;width:100%;max-width:600px;border-radius:20px 20px 0 0;
+            max-height:75vh;display:flex;flex-direction:column;
+            box-shadow:0 -4px 24px rgba(0,0,0,0.15);">
+            <div style="padding:16px 20px 12px;border-bottom:1px solid #f0f0f0;flex-shrink:0;">
+                <div style="width:36px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 14px;"></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                    <div style="font-size:16px;font-weight:800;color:#212121;">🗳️ 투표 현황</div>
+                    <button onclick="document.getElementById('_adminVotersModal').remove()"
+                        style="border:none;background:none;font-size:20px;color:#aaa;cursor:pointer;">✕</button>
+                </div>
+                <!-- 요약 바 -->
+                <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:6px;">
+                    <span style="color:#1565c0;">👍 추천 ${likeCount}</span>
+                    <span style="color:#c62828;">비추천 ${dislikeCount} 👎</span>
+                </div>
+                <div style="background:#fce4ec;border-radius:999px;height:10px;overflow:hidden;">
+                    <div style="background:#1565c0;height:100%;width:${barW}%;border-radius:999px;transition:width 0.4s;"></div>
+                </div>
+                <div style="font-size:11px;color:#aaa;text-align:center;margin-top:4px;">총 ${total}표</div>
+            </div>
+            <div style="flex:1;overflow-y:auto;padding:0 20px;">
+                ${likers.length > 0 ? `
+                    <div style="font-size:12px;font-weight:700;color:#1565c0;padding:12px 0 4px;">
+                        👍 추천 (${likers.length}명)
+                    </div>
+                    ${likers.map(voterRow).join('')}` : ''}
+                ${dislikers.length > 0 ? `
+                    <div style="font-size:12px;font-weight:700;color:#c62828;padding:12px 0 4px;">
+                        👎 비추천 (${dislikers.length}명)
+                    </div>
+                    ${dislikers.map(voterRow).join('')}` : ''}
+                ${uids.length === 0 ? `<div style="text-align:center;color:#aaa;padding:30px 0;font-size:14px;">투표 기록이 없습니다.</div>` : ''}
+            </div>
+        </div>`;
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    document.body.appendChild(modal);
+};
+
+// =====================================================================
+// ✅ 관리자 전용 — 익명 해제 토글 (DB 변경 없이 관리자 화면에서만 적용)
+// =====================================================================
+window.adminToggleAnonymousReveal = function(articleId) {
+    if (!isAdmin()) return;
+    if (!window._adminRevealAnonymous) window._adminRevealAnonymous = {};
+
+    // 토글
+    window._adminRevealAnonymous[articleId] = !window._adminRevealAnonymous[articleId];
+    const revealed = window._adminRevealAnonymous[articleId];
+
+    // 버튼 텍스트 즉시 교체
+    const btn = document.getElementById(`_adminAnonBtn_${articleId}`);
+    if (btn) {
+        btn.textContent = revealed ? '🔓 익명 해제 중 (클릭 시 복원)' : '🔒 익명 해제 보기';
+        btn.style.background    = revealed ? '#e8f5e9' : '#fff3e0';
+        btn.style.borderColor   = revealed ? '#a5d6a7' : '#ffcc80';
+        btn.style.color         = revealed ? '#2e7d32' : '#e65100';
+    }
+
+    // 기사 작성자 / 댓글 / 답글 재렌더링 (showArticleDetail 재호출)
+    if (typeof showArticleDetail === 'function') {
+        showArticleDetail(articleId);
+    }
+};
+
+
+
 // ✅ 관리자 권한으로 댓글 삭제
 window.deleteCommentFromAdmin = function(articleId, commentId, nickname) {
     if(!confirm("이 댓글을 삭제하시겠습니까?")) return;
     db.ref("comments/" + articleId + "/" + commentId).remove().then(() => {
+        // ✅ [최적화] 댓글 수 -1
+        db.ref("articles/" + articleId + "/commentCount").transaction(n => Math.max((n || 0) - 1, 0));
         alert("삭제되었습니다.");
         closeUserDetail();
         showUserDetail(nickname);
@@ -5580,13 +6010,82 @@ console.log("✅ Part 12 금지어 관리 완료");
 // ✅ Firebase 실시간 리스너
 let articlesListenerActive = false;
 
+// ✅ [최적화] pinnedArticles 60초 캐시
+let _pinnedCache = null;
+let _pinnedCacheTime = 0;
+const PINNED_CACHE_TTL = 60_000;
+async function getPinnedArticles() {
+    if (_pinnedCache && Date.now() - _pinnedCacheTime < PINNED_CACHE_TTL) return _pinnedCache;
+    const snap = await db.ref("pinnedArticles").once("value");
+    _pinnedCache = snap.val() || {};
+    _pinnedCacheTime = Date.now();
+    return _pinnedCache;
+}
+// 관리자꬀ 고정 변하면 캐시 초기화
+function invalidatePinnedCache() { _pinnedCache = null; }
+
+
+// ===== 댓글 수 일괄 복구 (기존 기사 commentCount 마이그레이션) =====
+window.migrateCommentCounts = async function() {
+    if (!isAdmin()) { alert('관리자만 실행 가능합니다.'); return; }
+    if (!confirm('모든 기사의 댓글 수를 실제 댓글 수로 업데이트합니다.\n시간이 걸릴 수 있습니다. 계속할까요?')) return;
+
+    showLoadingIndicator('댓글 수 집계 중...');
+    try {
+        const [commentsSnap, articlesSnap] = await Promise.all([
+            db.ref('comments').once('value'),
+            db.ref('articles').once('value')
+        ]);
+
+        const commentsData = commentsSnap.val() || {};
+        const articlesData = articlesSnap.val() || {};
+
+        const updates = {};
+        let updated = 0;
+
+        // 모든 기사에 대해 실제 댓글 수 집계
+        for (const articleId of Object.keys(articlesData)) {
+            const articleComments = commentsData[articleId] || {};
+            // 삭제된 댓글(deleted:true) 제외
+            const realCount = Object.values(articleComments)
+                .filter(c => c && !c.deleted).length;
+            const storedCount = articlesData[articleId].commentCount || 0;
+
+            if (realCount !== storedCount) {
+                updates[`articles/${articleId}/commentCount`] = realCount;
+                updated++;
+            }
+        }
+
+        if (Object.keys(updates).length === 0) {
+            hideLoadingIndicator();
+            alert('✅ 모든 기사의 댓글 수가 이미 정확합니다.');
+            return;
+        }
+
+        await db.ref().update(updates);
+        hideLoadingIndicator();
+        alert(`✅ ${updated}개 기사의 댓글 수가 업데이트되었습니다.`);
+    } catch (e) {
+        hideLoadingIndicator();
+        alert('❌ 오류: ' + e.message);
+        console.error(e);
+    }
+};
+
 function setupArticlesListener() {
     if(articlesListenerActive) return;
     
     db.ref("articles").on("value", snapshot => {
         const val = snapshot.val() || {};
-        allArticles = Object.values(val);
-        
+        allArticles = Object.entries(val).map(([key, a]) => {
+            const { content: _c, ...rest } = a;
+            // ✅ id 필드가 없으면 Firebase key로 보완
+            if (!rest.id) rest.id = key;
+            return rest;
+        });
+        // ✅ [최적화] 기사 데이터 수신 즉시 로딩화면 숨김 + 렌더링
+        hidePageLoadingScreen();
         if(document.getElementById("articlesSection")?.classList.contains("active")) {
             searchArticles(false);
         }
@@ -5854,10 +6353,10 @@ function searchArticles(resetPage = true) {
             articles = articles.filter(a => a.category === category);
         }
         if(keyword) {
-            articles = articles.filter(a => 
-                a.title.toLowerCase().includes(keyword) || 
-                a.content.toLowerCase().includes(keyword) ||
-                (a.summary && a.summary.toLowerCase().includes(keyword))
+            articles = articles.filter(a =>
+                a.title.toLowerCase().includes(keyword) ||
+                (a.summary && a.summary.toLowerCase().includes(keyword)) ||
+                (a.author && a.author.toLowerCase().includes(keyword))
             );
         }
         
@@ -6751,9 +7250,14 @@ console.log("✅ 알림 삭제 기능 추가 완료");
 
 // ===== Part 14: 최종 초기화 =====
 
-window.addEventListener("load", () => {
-    console.log("🚀 시스템 초기화...");
-    
+window.addEventListener("DOMContentLoaded", () => {
+    console.log("🚀 시스템 초기화 (DOMContentLoaded - 최적화)...");
+
+    // ✅ [최적화] 로딩 화면 즉시 표시
+    showPageLoadingScreen();
+    // 안전장치: 10초 후에도 남아있으면 강제 숨김
+    setTimeout(() => hidePageLoadingScreen(), 10000);
+
     setupArticlesListener();
     
     Promise.all([
