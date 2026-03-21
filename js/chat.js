@@ -1467,7 +1467,7 @@ function readFileAsBase64(file) {
     });
 }
 
-function getChatFileIcon(mimeType) {
+window.getChatFileIcon = function getChatFileIcon(mimeType) {
     if (!mimeType) return '📎';
     if (mimeType.startsWith('image/'))                              return '🖼️';
     if (mimeType.startsWith('video/'))                              return '🎬';
@@ -2932,6 +2932,13 @@ window._chat = {
     get chatMsgListener()     { return chatMsgListener; },
     set chatMsgListener(v)    { chatMsgListener = v; },
 };
+
+// chat.js IIFE 하단 window._chat 노출 부분 근처에 추가
+window.getChatFileIcon = getChatFileIcon;
+
 console.log('✅ window._chat 전역 노출 완료');
+
+// 📍 chat.js 맨 마지막 줄
+window.dispatchEvent(new CustomEvent('chatReady'));
 
 })(); // IIFE 끝
