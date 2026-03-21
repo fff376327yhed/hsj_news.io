@@ -5679,130 +5679,115 @@ window.adminResetArticleViews = async function(articleId) {
     }
 };
 
-// ✅ 관리자 대리 작성 — 선택된 유저 정보
+// ✅ 관리자 대리 작성 — 공통 유저 목록 로드
+async function _adminLoadUserList() {
+    const snap = await db.ref('users').once('value');
+    const users = snap.val() || {};
+    // 기사에서 실제 닉네임 가져오기 (displayName 보완)
+    const articleSnap = await db.ref('articles').limitToLast(200).once('value');
+    const articles = articleSnap.val() || {};
+    const emailToNick = {};
+    Object.values(articles).forEach(a => {
+        if (a.authorEmail && a.author) emailToNick[a.authorEmail] = a.author;
+    });
+    return Object.entries(users).map(([uid, u]) => {
+        const email = u.email || '';
+        const nick = u.newNickname || emailToNick[email] || u.nickname || email.split('@')[0] || '알 수 없음';
+        return { uid, nick, email, photoURL: u.photoURL || '' };
+    }).filter(u => u.email).sort((a, b) => a.nick.localeCompare(b.nick));
+}
+
+function _adminRenderUserRadios(users, listId, name, onSelect) {
+    const list = document.getElementById(listId);
+    if (!list) return;
+    if (users.length === 0) {
+        list.innerHTML = `<div style="padding:10px;font-size:12px;color:#aaa;text-align:center;">유저 없음</div>`;
+        return;
+    }
+    list.innerHTML = users.map(u => `
+        <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;border-bottom:1px solid #fff8e1;"
+            onmouseover="this.style.background='#fffde7'" onmouseout="this.style.background='white'">
+            <input type="radio" name="${name}" value="${u.uid}"
+                data-nick="${u.nick.replace(/"/g,'&quot;')}"
+                data-email="${u.email.replace(/"/g,'&quot;')}"
+                data-photo="${(u.photoURL||'').replace(/"/g,'&quot;')}"
+                onchange="${onSelect}(this)"
+                style="width:15px;height:15px;accent-color:#795548;flex-shrink:0;">
+            <img src="${u.photoURL||''}" onerror="this.style.display='none'"
+                style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+            <div>
+                <div style="font-size:13px;font-weight:700;color:#333;">${escapeHTML(u.nick)}</div>
+                <div style="font-size:11px;color:#888;">${escapeHTML(u.email)}</div>
+            </div>
+        </label>`).join('');
+}
+
+// ── 기사 대리 작성 ──
 window._adminImpersonateUser = null;
 
 window._adminClearImpersonate = function() {
     window._adminImpersonateUser = null;
-    const query = document.getElementById('adminImpersonateQuery');
-    const results = document.getElementById('adminImpersonateResults');
-    const selected = document.getElementById('adminImpersonateSelected');
-    if (query) query.value = '';
-    if (results) results.style.display = 'none';
-    if (selected) selected.style.display = 'none';
+    const toggle = document.getElementById('adminImpersonateToggle');
+    const list   = document.getElementById('adminImpersonateUserList');
+    if (toggle) toggle.checked = false;
+    if (list)   list.style.display = 'none';
 };
 
-// 유저 검색 (닉네임 또는 이메일)
-let _adminSearchTimer = null;
-window._adminSearchUser = function(query) {
-    clearTimeout(_adminSearchTimer);
-    const results = document.getElementById('adminImpersonateResults');
-    if (!query || query.trim().length < 1) {
-        if (results) results.style.display = 'none';
+window._adminToggleImpersonate = async function(checked) {
+    const list = document.getElementById('adminImpersonateUserList');
+    if (!list) return;
+    if (!checked) {
+        window._adminImpersonateUser = null;
+        list.style.display = 'none';
         return;
     }
-    _adminSearchTimer = setTimeout(async () => {
-        const snap = await db.ref('users').once('value');
-        const users = snap.val() || {};
-        const q = query.trim().toLowerCase();
-        const matched = Object.entries(users)
-            .filter(([uid, u]) => {
-                const nick = (u.newNickname || u.nickname || u.displayName || '').toLowerCase();
-                const email = (u.email || '').toLowerCase();
-                return nick.includes(q) || email.includes(q);
-            })
-            .slice(0, 6);
-
-        if (!results) return;
-        if (matched.length === 0) {
-            results.style.display = 'block';
-            results.innerHTML = `<div style="padding:10px 14px;font-size:13px;color:#aaa;">검색 결과 없음</div>`;
-            return;
-        }
-        results.style.display = 'block';
-        results.innerHTML = matched.map(([uid, u]) => {
-            const nick = u.newNickname || u.nickname || u.displayName || '(닉네임 없음)';
-            const email = u.email || '';
-            return `<div onclick="window._adminSelectImpersonate('${uid}','${nick.replace(/'/g,"\\'")}','${email.replace(/'/g,"\\'")}','${(u.photoURL||'').replace(/'/g,"\\'")}' )"
-                style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #fff8e1;display:flex;align-items:center;gap:10px;font-size:13px;"
-                onmouseover="this.style.background='#fff8e1'" onmouseout="this.style.background='white'">
-                <img src="${u.photoURL || ''}" onerror="this.style.display='none'" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;">
-                <div><div style="font-weight:700;color:#333;">${escapeHTML(nick)}</div><div style="font-size:11px;color:#888;">${escapeHTML(email)}</div></div>
-            </div>`;
-        }).join('');
-    }, 300);
+    list.style.display = 'block';
+    list.innerHTML = `<div style="padding:10px;font-size:12px;color:#aaa;text-align:center;">불러오는 중...</div>`;
+    const users = await _adminLoadUserList();
+    _adminRenderUserRadios(users, 'adminImpersonateUserList', 'adminImpUser', 'window._adminPickImpersonate');
 };
 
-window._adminSelectImpersonate = function(uid, nick, email, photoURL) {
-    window._adminImpersonateUser = { uid, nick, email, photoURL };
-    const results = document.getElementById('adminImpersonateResults');
-    const selected = document.getElementById('adminImpersonateSelected');
-    const label = document.getElementById('adminImpersonateLabel');
-    const query = document.getElementById('adminImpersonateQuery');
-    if (results) results.style.display = 'none';
-    if (query) query.value = '';
-    if (label) label.textContent = `✅ ${nick} (${email})`;
-    if (selected) selected.style.display = 'flex';
+window._adminPickImpersonate = function(radio) {
+    window._adminImpersonateUser = {
+        uid: radio.value,
+        nick: radio.dataset.nick,
+        email: radio.dataset.email,
+        photoURL: radio.dataset.photo
+    };
 };
 
-// ✅ 관리자 댓글 대리 작성
+// ── 댓글 대리 작성 ──
 window._adminCommentImpersonateUser = null;
 
 window._adminClearCommentImpersonate = function() {
     window._adminCommentImpersonateUser = null;
-    const q = document.getElementById('adminCommentImpersonateQuery');
-    const r = document.getElementById('adminCommentImpersonateResults');
-    const s = document.getElementById('adminCommentImpersonateSelected');
-    if (q) q.value = '';
-    if (r) r.style.display = 'none';
-    if (s) s.style.display = 'none';
+    const toggle = document.getElementById('adminCommentImpersonateToggle');
+    const list   = document.getElementById('adminCommentImpersonateUserList');
+    if (toggle) toggle.checked = false;
+    if (list)   list.style.display = 'none';
 };
 
-let _adminCommentSearchTimer = null;
-window._adminCommentSearchUser = function(query) {
-    clearTimeout(_adminCommentSearchTimer);
-    const results = document.getElementById('adminCommentImpersonateResults');
-    if (!query || !query.trim()) { if (results) results.style.display = 'none'; return; }
-    _adminCommentSearchTimer = setTimeout(async () => {
-        const snap = await db.ref('users').once('value');
-        const users = snap.val() || {};
-        const q = query.trim().toLowerCase();
-        const matched = Object.entries(users)
-            .filter(([uid, u]) => {
-                const nick  = (u.newNickname || u.nickname || u.displayName || '').toLowerCase();
-                const email = (u.email || '').toLowerCase();
-                return nick.includes(q) || email.includes(q);
-            }).slice(0, 6);
-        if (!results) return;
-        if (matched.length === 0) {
-            results.style.display = 'block';
-            results.innerHTML = `<div style="padding:8px 12px;font-size:12px;color:#aaa;">검색 결과 없음</div>`;
-            return;
-        }
-        results.style.display = 'block';
-        results.innerHTML = matched.map(([uid, u]) => {
-            const nick  = u.newNickname || u.nickname || u.displayName || '(닉네임 없음)';
-            const email = u.email || '';
-            return `<div onclick="window._adminSelectCommentImpersonate('${uid}','${nick.replace(/'/g,"\\'")}','${email.replace(/'/g,"\\'")}','${(u.photoURL||'').replace(/'/g,"\\'")}' )"
-                style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #fff8e1;display:flex;align-items:center;gap:8px;font-size:12px;"
-                onmouseover="this.style.background='#fff8e1'" onmouseout="this.style.background='white'">
-                <img src="${u.photoURL||''}" onerror="this.style.display='none'" style="width:24px;height:24px;border-radius:50%;object-fit:cover;flex-shrink:0;">
-                <div><div style="font-weight:700;color:#333;">${escapeHTML(nick)}</div><div style="font-size:11px;color:#888;">${escapeHTML(email)}</div></div>
-            </div>`;
-        }).join('');
-    }, 300);
+window._adminCommentToggleImpersonate = async function(checked) {
+    const list = document.getElementById('adminCommentImpersonateUserList');
+    if (!list) return;
+    if (!checked) {
+        window._adminCommentImpersonateUser = null;
+        list.style.display = 'none';
+        return;
+    }
+    list.style.display = 'block';
+    list.innerHTML = `<div style="padding:8px;font-size:12px;color:#aaa;text-align:center;">불러오는 중...</div>`;
+    const users = await _adminLoadUserList();
+    _adminRenderUserRadios(users, 'adminCommentImpersonateUserList', 'adminImpCommentUser', 'window._adminPickCommentImpersonate');
 };
 
-window._adminSelectCommentImpersonate = function(uid, nick, email, photoURL) {
-    window._adminCommentImpersonateUser = { uid, nick, email, photoURL };
-    const r = document.getElementById('adminCommentImpersonateResults');
-    const s = document.getElementById('adminCommentImpersonateSelected');
-    const l = document.getElementById('adminCommentImpersonateLabel');
-    const q = document.getElementById('adminCommentImpersonateQuery');
-    if (r) r.style.display = 'none';
-    if (q) q.value = '';
-    if (l) l.textContent = `✅ ${nick} (${email})`;
-    if (s) s.style.display = 'flex';
+window._adminPickCommentImpersonate = function(radio) {
+    window._adminCommentImpersonateUser = {
+        uid: radio.value,
+        nick: radio.dataset.nick,
+        email: radio.dataset.email,
+        photoURL: radio.dataset.photo
+    };
 };
 
 // 기사 상세 로드 시 관리자 댓글 박스 표시
@@ -5822,7 +5807,6 @@ window._adminSelectCommentImpersonate = function(uid, nick, email, photoURL) {
     };
     window.showArticleDetail._commentImpHooked = true;
 })();
-
 
 
 // ✅ 수치 직접 조작 (조회수 / 좋아요 / 싫어요)
