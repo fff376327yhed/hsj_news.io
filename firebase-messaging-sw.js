@@ -37,7 +37,7 @@ messaging.onBackgroundMessage((payload) => {
   const notificationOptions = {
     body: notificationBody,
     icon:  `${BASE_URL}/favicon/android-icon-192x192.png`,
-    badge: `${BASE_URL}/favicon/favicon-16x16.png`,
+    badge: `${BASE_URL}/favicon/badge-96x96.png`,
     // ✅ 최적화: notificationId 없을 때 'hsj-news-default' 고정 tag 사용
     //    → 같은 종류 알림끼리 그룹화되어 알림 범람 방지
     tag:      notificationId || 'hsj-news-default',
