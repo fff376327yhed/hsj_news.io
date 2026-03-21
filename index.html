@@ -533,6 +533,20 @@ if ('serviceWorker' in navigator) {
         
         <div id="bannedWordWarning" class="warning-box"></div>
 
+        <!-- ✅ 관리자 전용: 다른 계정으로 작성 -->
+        <div id="adminImpersonateBox" style="display:none; background:#fff8e1; border:1px solid #ffe082; border-radius:10px; padding:14px 16px; margin-bottom:14px;">
+            <div style="font-size:13px; font-weight:700; color:#795548; margin-bottom:10px;">🛠️ 관리자 — 다른 계정으로 작성</div>
+            <div style="font-size:12px; color:#a0522d; margin-bottom:10px;">아래에 유저 닉네임 또는 이메일을 입력하면 해당 계정 명의로 기사가 등록됩니다.</div>
+            <input id="adminImpersonateQuery" type="text" placeholder="닉네임 또는 이메일 검색..."
+                oninput="window._adminSearchUser(this.value)"
+                style="width:100%;padding:8px 12px;border:1.5px solid #ffe082;border-radius:8px;font-size:13px;box-sizing:border-box;outline:none;margin-bottom:8px;">
+            <div id="adminImpersonateResults" style="display:none;background:white;border:1px solid #ffe082;border-radius:8px;overflow:hidden;margin-bottom:8px;"></div>
+            <div id="adminImpersonateSelected" style="display:none;padding:8px 12px;background:#fffde7;border:1.5px solid #f9a825;border-radius:8px;font-size:13px;display:flex;align-items:center;gap:8px;justify-content:space-between;">
+                <span id="adminImpersonateLabel">선택된 유저 없음</span>
+                <button onclick="window._adminClearImpersonate()" style="background:none;border:none;color:#a0522d;cursor:pointer;font-size:16px;line-height:1;">✕</button>
+            </div>
+        </div>
+
         <!-- ✅ 기사 설정 -->
         <div style="background:#f8f9fa; border:1px solid #e0e0e0; border-radius:10px; padding:14px 16px; margin-bottom:14px;">
             <div style="font-size:13px; font-weight:700; color:#333; margin-bottom:10px;">⚙️ 기사 설정</div>
@@ -586,6 +600,19 @@ if ('serviceWorker' in navigator) {
         </select>
     </div>
     <div class="comment-input-wrapper" style="flex-direction:column; gap:8px; align-items:stretch; margin-bottom:16px;">
+
+    <!-- ✅ 관리자 전용: 댓글 대리 작성 -->
+    <div id="adminCommentImpersonateBox" style="display:none; background:#fff8e1; border:1px solid #ffe082; border-radius:10px; padding:10px 12px; margin-bottom:4px;">
+        <div style="font-size:12px; font-weight:700; color:#795548; margin-bottom:6px;">🛠️ 다른 계정으로 댓글</div>
+        <input id="adminCommentImpersonateQuery" type="text" placeholder="닉네임 또는 이메일 검색..."
+            oninput="window._adminCommentSearchUser(this.value)"
+            style="width:100%;padding:6px 10px;border:1.5px solid #ffe082;border-radius:8px;font-size:12px;box-sizing:border-box;outline:none;margin-bottom:4px;">
+        <div id="adminCommentImpersonateResults" style="display:none;background:white;border:1px solid #ffe082;border-radius:8px;overflow:hidden;margin-bottom:4px;"></div>
+        <div id="adminCommentImpersonateSelected" style="display:none;padding:6px 10px;background:#fffde7;border:1.5px solid #f9a825;border-radius:8px;font-size:12px;align-items:center;gap:8px;justify-content:space-between;">
+            <span id="adminCommentImpersonateLabel">선택된 유저 없음</span>
+            <button onclick="window._adminClearCommentImpersonate()" style="background:none;border:none;color:#a0522d;cursor:pointer;font-size:14px;line-height:1;">✕</button>
+        </div>
+    </div>
     <div id="commentImagePreview" style="display:none; position:relative; margin-bottom:4px;">
         <img id="commentImagePreviewImg" style="max-height:120px; max-width:100%; border-radius:10px; object-fit:contain; border:1px solid #dee2e6;">
         <button onclick="clearCommentImage()" style="position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.55); color:white; border:none; border-radius:50%; width:22px; height:22px; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center;"><i class="fas fa-times"></i></button>
@@ -980,9 +1007,6 @@ if ('serviceWorker' in navigator) {
 
 <!-- 🌳 나무아래키 위키 시스템 -->
 <script src="./js/wiki.js"></script>
-
-<!-- ✨ AI 도우미 (기사 요약 / AI 채팅 / 위키 초안) -->
-<script src="./js/Ai.js"></script>
 
 <!-- 🔧 점검모드 버튼 표시 스크립트 -->
 <script>
