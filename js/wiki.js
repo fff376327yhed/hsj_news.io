@@ -655,15 +655,41 @@
         );
     }
 
+    // 실시간 미리보기용 debounce 타이머
+    var _previewDebounceTimer = null;
+
+    function _updatePreviewNow() {
+        var area = document.getElementById('wikiEditArea');
+        var cont = document.getElementById('wikiPreviewContent');
+        if (!area || !cont) return;
+        cont.innerHTML = parseNamuMark(area.value);
+    }
+
+    function _onPreviewInput() {
+        clearTimeout(_previewDebounceTimer);
+        _previewDebounceTimer = setTimeout(_updatePreviewNow, 300); // 300ms 후 반영
+    }
+
     window._wikiPreviewContent = function () {
         var area = document.getElementById('wikiEditArea');
         var prev = document.getElementById('wikiPreviewArea');
         var cont = document.getElementById('wikiPreviewContent');
         if (!area || !prev || !cont) return;
-        cont.innerHTML = parseNamuMark(area.value);
+
         var isOpen = prev.style.display !== 'none';
-        prev.style.display = isOpen ? 'none' : 'block';
-        if (!isOpen) prev.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        if (isOpen) {
+            // 미리보기 닫기 → 실시간 리스너 제거
+            prev.style.display = 'none';
+            area.removeEventListener('input', _onPreviewInput);
+        } else {
+            // 미리보기 열기 → 즉시 렌더링 + 실시간 리스너 등록
+            cont.innerHTML = parseNamuMark(area.value);
+            prev.style.display = 'block';
+            prev.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            area.removeEventListener('input', _onPreviewInput); // 중복 방지
+            area.addEventListener('input', _onPreviewInput);
+        }
     };
 
     window._wikiInsert = function (before, after) {
