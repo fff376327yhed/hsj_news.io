@@ -4,24 +4,36 @@
 'use strict';
 console.log('📱 chat-upgrade.js 로드 중...');
 
-// ✅ window._chat 네임스페이스 준비 대기 (chat.js 로드 순서 보장)
-// 저속 환경(3G 등)에서 chat.js 실행 완료까지 최대 15초 대기
-function _waitForChat(cb, attempt) {
-    attempt = attempt || 0;
+// ✅ window._chat 준비 대기 — CustomEvent 방식 (최적화)
+// 기존 100ms × 150회 setTimeout 폴링 → 이벤트 기반으로 교체
+// chat.js 마지막에 window.dispatchEvent(new CustomEvent('chatReady')) 추가 필요
+function _waitForChat(cb) {
+    // 이미 준비됐으면 즉시 실행
     if (window._chat && typeof window._chat.isChatAuthReady === 'function') {
         cb();
-    } else if (attempt < 150) {  // 100ms × 150 = 15초
-        setTimeout(() => _waitForChat(cb, attempt + 1), 100);
-    } else {
-        // ✅ 최후 수단: window._chat이 없어도 기본 기능은 유지
-        console.error('❌ Chat-upgrade: window._chat 초기화 실패 — 기본 chat.js 함수로 폴백합니다');
-        // 원본 showChatPage / openChatRoom이 살아 있으면 그대로 사용
+        return;
+    }
+    // CustomEvent 대기 (저속 환경 대비 최대 15초 타임아웃 1개만 유지)
+    let resolved = false;
+    function _onReady() {
+        if (resolved) return;
+        resolved = true;
+        window.removeEventListener('chatReady', _onReady);
+        cb();
+    }
+    window.addEventListener('chatReady', _onReady);
+    // 안전장치: 15초 후 폴백 (setTimeout 1회만 사용)
+    setTimeout(() => {
+        if (resolved) return;
+        resolved = true;
+        window.removeEventListener('chatReady', _onReady);
+        console.error('❌ Chat-upgrade: chatReady 이벤트 미수신 — 폴백 실행');
         if (typeof window.showChatPage !== 'function') {
             window.showChatPage = function() {
                 alert('채팅을 불러올 수 없습니다. 페이지를 새로고침해주세요.');
             };
         }
-    }
+    }, 15000);
 }
 
 // CSS 주입은 즉시 실행 (chat.js 의존 없음)
@@ -284,8 +296,32 @@ function cu_showToast(msg) {
 _waitForChat(function() {
     console.log('✅ Chat-upgrade: window._chat 준비 완료 — 업그레이드 적용');
 
+    // ✅ 채팅 이미지 모달 전역 자동 정리
+    // wiki, 더보기 등 다른 섹션으로 이동 시 열린 모달 자동 닫기
+    (function() {
+        function _cleanChatModal() {
+            document.getElementById('_chatImgModal')?.remove();
+        }
+        // popstate: URL 변경 시
+        window.addEventListener('popstate', _cleanChatModal);
+        // 페이지 숨김 시 (모바일 홈 버튼 등)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') _cleanChatModal();
+        });
+        // hideAll이 호출될 때 (다른 섹션 이동 시 script.js에서 호출)
+        const _origHideAll = window.hideAll;
+        if (typeof _origHideAll === 'function') {
+            window.hideAll = function() {
+                _cleanChatModal();
+                return _origHideAll.apply(this, arguments);
+            };
+        }
+    })();
+
 // ===== 1. 채팅 목록 페이지 (완전 재작성) =====
 window.showChatPage = async function () {
+    // ✅ 다른 페이지 이동 전 이미지 모달 제거
+    document.getElementById('_chatImgModal')?.remove();
     if (!isLoggedIn()) { alert('로그인이 필요합니다!'); return; }
     if (!window._chat) { alert('채팅 초기화 중입니다. 잠시 후 다시 시도해주세요.'); return; }
     if (!window._chat.isChatAuthReady()) {
@@ -549,10 +585,10 @@ window.openChatRoom = async function (roomId, friendUid, friendName, friendPhoto
 
     section.innerHTML = `
         <div style="max-width:600px;width:100%;margin:0 auto;
-            display:flex;flex-direction:column;height:100%;overflow:hidden;background:white;">
+            display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;background:white;">
 
             <!-- 헤더 -->
-            <div class="cu-room-header">
+            <div class="cu-room-header" style="flex-shrink:0;">
                 <button onclick="showChatPage()"
                     style="width:38px;height:38px;border-radius:50%;border:none;background:none;
                     cursor:pointer;font-size:18px;color:#212121;display:flex;align-items:center;
@@ -590,25 +626,32 @@ window.openChatRoom = async function (roomId, friendUid, friendName, friendPhoto
                 </div>
             </div>
 
-            <!-- 답장 미리보기 (숨김 초기) -->
-            <div id="cuReplyPreview" style="display:none;"></div>
+            <!-- 답장 미리보기 -->
+            <div id="cuReplyPreview" style="display:none;flex-shrink:0;"></div>
 
-            <!-- 파일/이미지 미리보기 -->
-            <div id="chatImgPreview" style="display:none;padding:8px 14px 0;position:relative;">
-                <img id="chatImgPreviewImg"
-                    style="max-height:90px;max-width:160px;border-radius:12px;object-fit:cover;
-                    border:1.5px solid #e8e8e8;">
-                <button onclick="clearChatImage()"
-                    style="position:absolute;top:4px;right:10px;background:rgba(0,0,0,0.5);
-                    color:white;border:none;border-radius:50%;width:22px;height:22px;
-                    font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
-                    <i class="fas fa-times"></i>
-                </button>
+            <!-- 사진 미리보기 -->
+            <div id="chatImgPreview" style="display:none;flex-shrink:0;padding:8px 14px 4px;position:relative;border-bottom:1px solid #f0f0f0;">
+                <div style="position:relative;display:inline-block;">
+                    <img id="chatImgPreviewImg"
+                        style="max-height:100px;max-width:180px;border-radius:10px;
+                               object-fit:cover;border:1.5px solid #e0e0e0;">
+                    <button onclick="clearChatImage()"
+                        style="position:absolute;top:-6px;right:-6px;background:#333;color:white;
+                               border:2px solid white;border-radius:50%;width:20px;height:20px;
+                               font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div style="font-size:11px;color:#aaa;margin-top:4px;">사진이 첨부되었습니다.</div>
             </div>
-            <div id="chatFilePreview_${roomId}" style="display:none;padding:6px 14px 0;gap:6px;flex-wrap:wrap;"></div>
+
+            <!-- 파일 미리보기 -->
+            <div id="chatFilePreview_${roomId}"
+                style="display:none;flex-shrink:0;padding:6px 14px;gap:6px;flex-wrap:wrap;border-bottom:1px solid #f0f0f0;">
+            </div>
 
             <!-- 입력 영역 -->
-            <div class="cu-input-area">
+            <div class="cu-input-area" style="flex-shrink:0;">
                 <input type="file" id="chatImageInput" accept="image/*" style="display:none;"
                     onchange="previewChatImage(this)">
                 <input type="file" id="chatFileInput" multiple accept="*/*" style="display:none;"
@@ -625,8 +668,7 @@ window.openChatRoom = async function (roomId, friendUid, friendName, friendPhoto
                     <textarea id="chatInput" class="cu-input-textarea"
                         placeholder="메시지 입력..." rows="1"
                         onkeydown="handleChatKeydown(event,'${roomId}')"
-                        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';cu_updateSendBtn()">
-                    </textarea>
+                        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';cu_updateSendBtn()"></textarea>
                     <button id="cuSendBtn" class="cu-send-btn"
                         onclick="cu_sendMsg('${roomId}')">
                         <i class="fas fa-paper-plane" style="font-size:15px;"></i>
@@ -658,14 +700,17 @@ window.openChatRoom = async function (roomId, friendUid, friendName, friendPhoto
             window._chat.markAsRead(roomId, myUid);
         });
 
-    // PC 힌트
-    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-    if (!isMobile) {
-        const hint = document.createElement('div');
-        hint.style.cssText = 'font-size:11px;color:#bbb;padding:2px 14px 0;';
-        hint.textContent = 'Shift+Enter로 줄바꿈';
-        const inputArea = document.querySelector('.cu-input-area');
-        if (inputArea) inputArea.insertBefore(hint, inputArea.firstChild);
+    // ✅ PC 힌트 - cu-input-area 상단에 삽입 (중복 방지)
+    if (!/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+        const existing = document.querySelector('.cu-pc-hint');
+        if (!existing) {
+            const hint = document.createElement('div');
+            hint.className = 'cu-pc-hint';
+            hint.style.cssText = 'font-size:11px;color:#bbb;padding:2px 14px 0;text-align:right;flex-shrink:0;';
+            hint.textContent = 'Shift+Enter로 줄바꿈';
+            const inputArea = document.querySelector('.cu-input-area');
+            if (inputArea) inputArea.insertBefore(hint, inputArea.firstChild);
+        }
     }
 };
 
@@ -734,23 +779,47 @@ function cu_renderMessages(msgs, myUid, roomId, friendMainUid) {
         bubble.dataset.msgid = msgId;
         bubble.style.position = 'relative';
 
-        // 이미지
+        // ✅ 이미지 버블 (확대 + 다운로드 버튼)
         if (msg.imageBase64) {
             bubble.classList.add('img-only');
-            bubble.innerHTML = `<img src="${msg.imageBase64}"
-                style="max-width:220px;max-height:260px;border-radius:14px;display:block;cursor:zoom-in;"
-                onclick="openChatImageModal('${msgId}')">`;
+            // ✅ _lastMsgs[msgId]에서 직접 읽기 위해 msgId만 data 속성에 저장
+            bubble.dataset.chatImgId = msgId;
+            bubble.innerHTML = `
+                <div style="position:relative;display:inline-block;line-height:0;">
+                    <img src="${msg.imageBase64}"
+                        style="max-width:220px;max-height:260px;border-radius:14px;
+                               display:block;cursor:zoom-in;vertical-align:bottom;"
+                        onclick="event.stopPropagation();cu_openImgModal('${msgId}')">
+                    <!-- ✅ 다운로드 버튼 -->
+                    <button onclick="event.stopPropagation();cu_downloadImg('${msgId}')"
+                        title="다운로드"
+                        style="position:absolute;bottom:8px;right:8px;width:32px;height:32px;
+                               border-radius:50%;border:none;cursor:pointer;
+                               background:rgba(0,0,0,0.5);color:white;
+                               display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-download" style="font-size:13px;pointer-events:none;"></i>
+                    </button>
+                    <!-- ✅ 메뉴 버튼 (내 사진에만) - 삭제/답장 접근 -->
+                    ${isMe ? `<button onclick="event.stopPropagation();cu_showMsgMenu('${msgId}','${roomId}',this.closest('.cu-msg-bubble'),true)"
+                        title="메뉴"
+                        style="position:absolute;top:8px;right:8px;width:28px;height:28px;
+                               border-radius:50%;border:none;cursor:pointer;
+                               background:rgba(0,0,0,0.45);color:white;
+                               display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-ellipsis-h" style="font-size:11px;pointer-events:none;"></i>
+                    </button>` : ''}
+                </div>`;
             if (msg.text) {
                 bubble.classList.remove('img-only');
                 bubble.style.padding = '6px';
                 bubble.innerHTML += `<div style="padding:6px 8px 2px;font-size:14px;">${cu_escapeHTML(msg.text)}</div>`;
             }
         } else if (msg.fileName) {
-            // 파일
-            const icon = getChatFileIcon(msg.fileType || '');
+            const icon = window.getChatFileIcon ? window.getChatFileIcon(msg.fileType || '') : '📎';
             const sizeStr = msg.fileSize > 1048576
                 ? (msg.fileSize/1048576).toFixed(1)+' MB'
                 : Math.round((msg.fileSize||0)/1024)+' KB';
+            bubble.dataset.fileId = msgId;
             bubble.innerHTML = `
                 <div style="display:flex;align-items:center;gap:10px;min-width:180px;">
                     <div style="width:38px;height:38px;border-radius:8px;flex-shrink:0;
@@ -761,7 +830,7 @@ function cu_renderMessages(msgs, myUid, roomId, friendMainUid) {
                             text-overflow:ellipsis;color:${isMe ? 'white' : '#212121'};">${cu_escapeHTML(msg.fileName)}</div>
                         <div style="font-size:11px;color:${isMe ? 'rgba(255,255,255,0.7)' : '#aaa'};">${sizeStr}</div>
                     </div>
-                    <button onclick="downloadChatFile('${msgId}')"
+                    <button onclick="event.stopPropagation(); window.downloadChatFile && window.downloadChatFile('${msgId}')"
                         style="width:30px;height:30px;border-radius:50%;border:none;cursor:pointer;
                         background:${isMe ? 'rgba(255,255,255,0.25)' : '#e8f0fe'};
                         color:${isMe ? 'white' : '#1565c0'};display:flex;align-items:center;justify-content:center;">
@@ -812,11 +881,12 @@ function cu_renderMessages(msgs, myUid, roomId, friendMainUid) {
         // ── 이벤트: 클릭 / 더블탭
         let tapTimer = null, tapCount = 0;
         bubble.addEventListener('click', (e) => {
+            // IMG/BUTTON 클릭은 각자 inline onclick이 처리 (stopPropagation)
             if (e.target.tagName === 'A' || e.target.tagName === 'IMG' ||
-                e.target.tagName === 'BUTTON') return;
+                e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
 
             if (isMe) {
-                // 내 메시지: 단순 클릭 → 수정/삭제 메뉴 (기존 동작 복원)
+                // 내 메시지: 클릭 → 수정/삭제 메뉴
                 cu_showMsgMenu(msgId, roomId, bubble, isMe);
                 return;
             }
@@ -863,7 +933,18 @@ function cu_renderMessages(msgs, myUid, roomId, friendMainUid) {
         container.appendChild(msgEl);
     }
 
-    if (wasAtBottom || prevCount === 0) container.scrollTop = container.scrollHeight;
+    // ✅ 스크롤 타이밍 수정
+    // prevCount===0(첫 로드): chatSection이 방금 display:flex가 되어 레이아웃이 아직 미완료
+    // → setTimeout으로 브라우저 레이아웃 완료 후 스크롤
+    if (prevCount === 0) {
+        setTimeout(() => {
+            container.scrollTop = container.scrollHeight;
+        }, 50);
+    } else if (wasAtBottom) {
+        requestAnimationFrame(() => {
+            container.scrollTop = container.scrollHeight;
+        });
+    }
     window._chat.updateReadAvatars(msgs, myUid, roomId);
 }
 
@@ -1001,10 +1082,14 @@ window.cu_showMsgMenu = function(msgId, roomId, el, isMe) {
 
     const actions = [
         { icon:'fas fa-reply', label:'답장', color:'#1565c0', fn: () => cu_setReply(msgId) },
-        { icon:'fas fa-copy',  label:'복사', color:'#555',
-          fn: () => { navigator.clipboard?.writeText(msg?.text || '').then(() => cu_showToast('복사됐어요!')); }},
-        ...(isMe && msg?.text ? [{ icon:'fas fa-pencil-alt', label:'수정', color:'#405de6', fn: () => editChatMessage(msgId, roomId) }] : []),
-        ...(isMe ? [{ icon:'fas fa-trash-alt', label:'삭제', color:'#c62828', fn: () => deleteChatMessage(msgId, roomId) }] : []),
+        ...(msg?.imageBase64 ? [{ icon:'fas fa-download', label:'다운로드', color:'#1565c0',
+            fn: () => cu_downloadImg(msgId) }] : []),
+        ...(msg?.text ? [{ icon:'fas fa-copy', label:'복사', color:'#555',
+            fn: () => { navigator.clipboard?.writeText(msg.text).then(() => cu_showToast('복사됐어요!')); }}] : []),
+        ...(isMe && msg?.text ? [{ icon:'fas fa-pencil-alt', label:'수정', color:'#405de6',
+            fn: () => editChatMessage(msgId, roomId) }] : []),
+        ...(isMe ? [{ icon:'fas fa-trash-alt', label:'삭제 🗑️', color:'#e53935',
+            fn: () => { if (confirm('이 메시지를 삭제하시겠습니까?')) deleteChatMessage(msgId, roomId); }}] : []),
     ];
 
     actions.forEach(({ icon, label, color, fn }) => {
@@ -1369,11 +1454,67 @@ window._chat.updateReadAvatars = async function(msgs, myUid, roomId) {
     }
 };
 
-// _chat 네임스페이스에 연결된 updateReadAvatars도 교체
-// cu_renderMessages에서 호출하는 updateReadAvatars를 패치
-const _origUpdateReadAvatars = window._chat.updateReadAvatars;
+// window.updateReadAvatars를 _chat 네임스페이스의 새 함수로 동기화
+// (위 1281줄에서 window._chat.updateReadAvatars는 이미 새 함수로 교체됨)
 window.updateReadAvatars = function(msgs, myUid, roomId) {
-    return _origUpdateReadAvatars(msgs, myUid, roomId);
+    return window._chat.updateReadAvatars(msgs, myUid, roomId);
+};
+
+// ===== ✅ 이미지 전체화면 모달 =====
+// chat.js의 openChatImageModal은 dataset.img(대용량 base64)를 attribute에서 읽는데
+// 브라우저가 큰 attribute를 잘라내면 src가 깨짐 → _lastMsgs에서 직접 읽도록 재정의
+window.openChatImageModal = function(msgId) { cu_openImgModal(msgId); };
+
+window.cu_openImgModal = function(msgId) {
+    document.getElementById('_chatImgModal')?.remove();
+    const msg = (window._lastMsgs || {})[msgId];
+    const src = msg?.imageBase64;
+    if (!src) { cu_showToast('이미지를 불러올 수 없습니다.'); return; }
+    const ext = src.startsWith('data:image/png')  ? 'png'
+              : src.startsWith('data:image/gif')  ? 'gif'
+              : src.startsWith('data:image/webp') ? 'webp' : 'jpg';
+    const modal = document.createElement('div');
+    modal.id = '_chatImgModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:999999;' +
+        'display:flex;flex-direction:column;align-items:center;justify-content:center;';
+    modal.innerHTML = `
+        <img src="${src}"
+            style="max-width:95vw;max-height:82vh;border-radius:10px;object-fit:contain;
+                   cursor:zoom-out;-webkit-tap-highlight-color:transparent;"
+            onclick="document.getElementById('_chatImgModal').remove()">
+        <div style="display:flex;gap:12px;margin-top:18px;">
+            <button onclick="cu_downloadImg('${msgId}')"
+                style="background:rgba(255,255,255,0.18);border:none;color:white;
+                padding:11px 24px;border-radius:24px;font-size:14px;cursor:pointer;
+                display:flex;align-items:center;gap:8px;font-weight:700;">
+                <i class="fas fa-download"></i> 다운로드
+            </button>
+            <button onclick="document.getElementById('_chatImgModal').remove()"
+                style="background:rgba(255,255,255,0.1);border:none;color:white;
+                padding:11px 24px;border-radius:24px;font-size:14px;cursor:pointer;font-weight:600;">
+                닫기
+            </button>
+        </div>`;
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    const esc = (e) => { if (e.key === 'Escape') { modal.remove(); document.removeEventListener('keydown', esc); }};
+    document.addEventListener('keydown', esc);
+    document.body.appendChild(modal);
+};
+
+window.cu_downloadImg = function(msgId) {
+    const msg = (window._lastMsgs || {})[msgId];
+    const src = msg?.imageBase64;
+    if (!src) { cu_showToast('이미지를 찾을 수 없습니다.'); return; }
+    const ext = src.startsWith('data:image/png')  ? 'png'
+              : src.startsWith('data:image/gif')  ? 'gif'
+              : src.startsWith('data:image/webp') ? 'webp' : 'jpg';
+    const a = document.createElement('a');
+    a.href = src;
+    a.download = `chat_image_${msgId}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    cu_showToast('✅ 다운로드 시작!');
 };
 
 console.log('✅ chat-upgrade.js 업그레이드 적용 완료');
