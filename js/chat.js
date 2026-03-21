@@ -83,6 +83,11 @@ function waitForChatAuth(timeoutMs = 3000) {
     });
 }
 
+// ✅ 모바일 여부 판단
+function _isMobile() {
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
 async function syncChatAuth(mainUser) {
     const chatAuthInst = getChatAuth();
 
@@ -90,6 +95,23 @@ async function syncChatAuth(mainUser) {
     if (!mainUser) {
         if (chatAuthInst.currentUser) await chatAuthInst.signOut();
         return;
+    }
+
+    // ✅ 모바일 redirect 로그인 결과 처리 (redirect 후 복귀 시)
+    try {
+        const result = await chatAuthInst.getRedirectResult();
+        if (result && result.user) {
+            console.log('✅ chatApp redirect 인증 완료:', result.user.email);
+            document.getElementById('_chatAuthBanner')?.remove();
+            const mainUid = auth.currentUser?.uid;
+            if (mainUid) {
+                await db.ref(`users/${mainUid}/chatUid`).set(result.user.uid);
+                console.log('✅ chatUid 메인DB 저장 완료 (redirect)');
+            }
+            return;
+        }
+    } catch (e) {
+        // getRedirectResult 오류는 무시하고 계속 진행
     }
 
     // ✅ 자동로그인: Firebase가 로컬 세션 복원할 때까지 잠깐 대기
@@ -110,20 +132,30 @@ async function syncChatAuth(mainUser) {
         return;
     }
 
-    // 세션 복원 실패 → 팝업으로 로그인 시도
+    // 세션 복원 실패 → 인증 시도
     await _signInChatAppSilently();
 }
 
-// ===== chatApp 전용 팝업 인증 =====
-// 브라우저에 Google 세션이 있으면 팝업이 순간 떴다 자동으로 닫힘
+// ===== chatApp 전용 인증 =====
+// 모바일: redirect 방식 (팝업 차단 우회)
+// PC: popup 방식 (기존 동작 유지)
 window._signInChatAppSilently = async function _signInChatAppSilently() {
     if (getChatAuth().currentUser) return;
     try {
         const provider = new firebase.auth.GoogleAuthProvider();
+
+        if (_isMobile()) {
+            // ✅ 모바일 Android/iOS: 팝업 대신 redirect 사용 (팝업 차단 에러 방지)
+            console.log('📱 모바일 감지 → redirect 로그인 시도');
+            await getChatAuth().signInWithRedirect(provider);
+            // redirect 후 페이지 이동됨 → 복귀 시 syncChatAuth()의 getRedirectResult()에서 처리
+            return;
+        }
+
+        // PC: 기존 팝업 방식
         const result = await getChatAuth().signInWithPopup(provider);
         console.log('✅ chatApp 인증 완료:', result.user.email);
         document.getElementById('_chatAuthBanner')?.remove();
-        // ✅ 메인 DB에 chatUid 저장 (상대방이 채팅 시작할 때 사용)
         const mainUid = auth.currentUser?.uid;
         if (mainUid) {
             await db.ref(`users/${mainUid}/chatUid`).set(result.user.uid);
