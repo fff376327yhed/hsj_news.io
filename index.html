@@ -9,6 +9,12 @@
     <link rel="preconnect" href="https://www.gstatic.com">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>해정뉴스</title>
+    <!-- PWA -->
+    <meta name="theme-color" content="#c62828">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="해정뉴스">
+    <meta name="mobile-web-app-capable" content="yes">
 
     
     <!-- 파비콘 추가 -->
@@ -74,13 +80,20 @@ if ('serviceWorker' in navigator) {
         scope: swScope
       });
       
-      if (registration.installing) {
-        await new Promise(resolve => {
-          registration.installing.addEventListener('statechange', function() {
-            if (this.state === 'activated') {
+      if (registration.installing || registration.waiting) {
+        const targetWorker = registration.installing || registration.waiting;
+        await new Promise((resolve) => {
+          // 이미 activated 상태라면 즉시 resolve
+          if (targetWorker.state === 'activated') { resolve(); return; }
+          targetWorker.addEventListener('statechange', function() {
+            // installed(waiting) 또는 activated 상태에서 resolve
+            // waiting 상태에서 멈추는 경우도 정상 처리
+            if (this.state === 'installed' || this.state === 'activated') {
               resolve();
             }
           });
+          // 안전장치: 10초 후 강제 resolve (무한 hang 방지)
+          setTimeout(resolve, 10000);
         });
       }
       
@@ -88,6 +101,23 @@ if ('serviceWorker' in navigator) {
       
     } catch (error) {
       console.error('❌ Service Worker 등록 실패:', error);
+    }
+  });
+
+  // ✅ 최적화: SW에서 보내는 SW_NAVIGATE 메시지 수신 → 기존 탭 내 페이지 이동
+  // (알림 클릭 시 새 탭 2개 열리는 버그 방지)
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data?.type === 'SW_NAVIGATE' && event.data?.url) {
+      const url = event.data.url;
+      // SPA 라우팅이 있으면 handleRoute로, 없으면 location 변경
+      const urlObj = new URL(url);
+      const page = urlObj.searchParams.get('page');
+      const id   = urlObj.searchParams.get('id');
+      if (page && typeof window.handleRoute === 'function') {
+        window.handleRoute(page, id);
+      } else {
+        window.location.href = url;
+      }
     }
   });
 } else {
@@ -785,6 +815,12 @@ if ('serviceWorker' in navigator) {
     <div id="patchNotesList"></div>
 </section>
 
+
+<!-- 🌳 나무아래키 섹션 -->
+<section class="page-section" id="wikiSection">
+    <!-- JavaScript로 동적 생성됨 -->
+</section>
+
 </main>
 
 <!-- 모달들 -->
@@ -942,6 +978,12 @@ if ('serviceWorker' in navigator) {
 <script src="./js/Chat-upgrade.js"></script>
 <script src="./js/Device-detect.js"></script>
 
+<!-- 🌳 나무아래키 위키 시스템 -->
+<script src="./js/wiki.js"></script>
+
+<!-- ✨ AI 도우미 (기사 요약 / AI 채팅 / 위키 초안) -->
+<script src="./js/Ai.js"></script>
+
 <!-- 🔧 점검모드 버튼 표시 스크립트 -->
 <script>
 // 관리자 로그인 시 점검모드 버튼 표시
@@ -973,6 +1015,67 @@ auth.onAuthStateChanged(async function(user) {
     }
 });
 </script>
+
+
+    <!-- ✅ PWA 설치 배너 -->
+    <div id="pwaInstallBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;
+        background:white;border-top:1px solid #e0e0e0;padding:14px 16px;
+        display:none;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.1);">
+        <div style="width:40px;height:40px;border-radius:10px;background:#2e7d32;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="fas fa-seedling" style="color:white;font-size:18px;"></i>
+        </div>
+        <div style="flex:1;min-width:0;">
+            <div style="font-size:14px;font-weight:700;color:#212121;">해정뉴스 앱 설치</div>
+            <div style="font-size:12px;color:#888;margin-top:2px;">홈 화면에 추가해서 앱처럼 사용하세요</div>
+        </div>
+        <button onclick="window._pwaInstall()" 
+            style="padding:8px 16px;background:#2e7d32;color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;">
+            설치
+        </button>
+        <button onclick="document.getElementById('pwaInstallBanner').style.display='none';sessionStorage.setItem('pwaBannerDismissed','1')"
+            style="padding:8px;background:none;border:none;color:#aaa;cursor:pointer;font-size:16px;flex-shrink:0;">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
+    <script>
+    // ✅ PWA 설치 프롬프트 핸들러
+    (function() {
+        let _deferredPrompt = null;
+
+        window.addEventListener('beforeinstallprompt', function(e) {
+            e.preventDefault();
+            _deferredPrompt = e;
+            // 이전에 배너를 닫지 않았으면 표시
+            if (!sessionStorage.getItem('pwaBannerDismissed')) {
+                const banner = document.getElementById('pwaInstallBanner');
+                if (banner) banner.style.display = 'flex';
+            }
+        });
+
+        window._pwaInstall = async function() {
+            const banner = document.getElementById('pwaInstallBanner');
+            if (!_deferredPrompt) {
+                // iOS Safari 안내
+                alert('iOS Safari에서는:\n[공유 버튼] → [홈 화면에 추가]를 눌러 설치하세요.');
+                return;
+            }
+            _deferredPrompt.prompt();
+            const { outcome } = await _deferredPrompt.userChoice;
+            _deferredPrompt = null;
+            if (banner) banner.style.display = 'none';
+        };
+
+        window.addEventListener('appinstalled', function() {
+            _deferredPrompt = null;
+            const banner = document.getElementById('pwaInstallBanner');
+            if (banner) banner.style.display = 'none';
+            if (typeof showToastNotification === 'function') {
+                showToastNotification('✅ 설치 완료', '해정뉴스 앱이 설치되었습니다!');
+            }
+        });
+    })();
+    </script>
 
 </body>
 </html>
