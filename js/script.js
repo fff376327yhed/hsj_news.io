@@ -377,7 +377,6 @@ function loadBannedWords() {
 
 function checkBannedWords(text) {
     if (!text) return null;
-    if (isAdmin()) return null; // ✅ 관리자는 금지어 검사 무시
     for (const word of bannedWordsList) {
         if (text.includes(word)) return word;
     }
@@ -387,7 +386,6 @@ function checkBannedWords(text) {
 function addWarningToCurrentUser() {
     const user = auth.currentUser;
     if (!user) return;
-    if (isAdmin()) return; // ✅ 관리자는 경고 누적 없음
     
     db.ref("users/" + user.uid).once("value").then(snapshot => {
         const data = snapshot.val() || {};
@@ -3349,6 +3347,32 @@ async function showArticleDetail(id) {
                     ${A.anonymous ? '🕵️ 익명 게시됨 | 실제 작성자: <strong>' + escapeHTML(A.author) + '</strong> (' + escapeHTML(A.authorEmail || '') + ')' : ''}
                     ${A.hideVotes ? '&nbsp;&nbsp;🙈 추천/비추천 숨김 설정됨' : ''}
                 </div>
+
+                <!-- ✅ 수치 직접 조작 -->
+                <div style="margin-top:12px; border-top:1px solid #ffe082; padding-top:12px;">
+                    <div style="font-size:12px; font-weight:700; color:#795548; margin-bottom:8px;">📊 수치 직접 조작</div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
+                        <div style="display:flex;flex-direction:column;gap:3px;">
+                            <label style="font-size:11px;color:#888;">👁️ 조회수</label>
+                            <input id="_adminViewsInput_${A.id}" type="number" min="0" value="${views}"
+                                style="width:90px;padding:5px 8px;border:1px solid #ffe082;border-radius:6px;font-size:13px;text-align:center;">
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:3px;">
+                            <label style="font-size:11px;color:#888;">👍 좋아요</label>
+                            <input id="_adminLikesInput_${A.id}" type="number" min="0" value="${votes.likes}"
+                                style="width:90px;padding:5px 8px;border:1px solid #ffe082;border-radius:6px;font-size:13px;text-align:center;">
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:3px;">
+                            <label style="font-size:11px;color:#888;">👎 싫어요</label>
+                            <input id="_adminDislikesInput_${A.id}" type="number" min="0" value="${votes.dislikes}"
+                                style="width:90px;padding:5px 8px;border:1px solid #ffe082;border-radius:6px;font-size:13px;text-align:center;">
+                        </div>
+                        <button onclick="adminSetArticleStats('${A.id}')"
+                            style="padding:6px 16px;background:#795548;color:white;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;height:30px;">
+                            ✅ 적용
+                        </button>
+                    </div>
+                </div>
             </div>` : '';
 
         root.innerHTML = `<div style="background:#fff;padding:20px;border-radius:8px;">
@@ -5643,6 +5667,44 @@ window.adminResetArticleViews = async function(articleId) {
         alert('❌ 초기화 실패: ' + e.message);
     }
 };
+
+// ✅ 수치 직접 조작 (조회수 / 좋아요 / 싫어요)
+window.adminSetArticleStats = async function(articleId) {
+    if (!isAdmin()) { alert('관리자 권한이 필요합니다.'); return; }
+
+    const viewsEl    = document.getElementById(`_adminViewsInput_${articleId}`);
+    const likesEl    = document.getElementById(`_adminLikesInput_${articleId}`);
+    const dislikesEl = document.getElementById(`_adminDislikesInput_${articleId}`);
+    if (!viewsEl || !likesEl || !dislikesEl) return;
+
+    const newViews    = Math.max(0, parseInt(viewsEl.value)    || 0);
+    const newLikes    = Math.max(0, parseInt(likesEl.value)    || 0);
+    const newDislikes = Math.max(0, parseInt(dislikesEl.value) || 0);
+
+    if (!confirm(`수치를 다음과 같이 변경하시겠습니까?\n\n👁️ 조회수: ${newViews}\n👍 좋아요: ${newLikes}\n👎 싫어요: ${newDislikes}`)) return;
+
+    try {
+        await db.ref(`articles/${articleId}`).update({
+            views:        newViews,
+            likeCount:    newLikes,
+            dislikeCount: newDislikes
+        });
+
+        // 화면 즉시 반영
+        const viewEl = document.getElementById('viewCountDisplay');
+        if (viewEl) viewEl.innerHTML = `👁️ ${newViews}`;
+
+        const likeBtn    = document.getElementById(`like-btn-${articleId}`);
+        const dislikeBtn = document.getElementById(`dislike-btn-${articleId}`);
+        if (likeBtn)    likeBtn.innerHTML    = `👍 추천 ${newLikes}`;
+        if (dislikeBtn) dislikeBtn.innerHTML = `👎 비추천 ${newDislikes}`;
+
+        alert('✅ 수치가 변경되었습니다.');
+    } catch(e) {
+        alert('❌ 변경 실패: ' + e.message);
+    }
+};
+
 
 // ② 추천/비추천 초기화
 window.adminResetArticleVotes = async function(articleId) {
