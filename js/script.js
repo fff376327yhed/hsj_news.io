@@ -143,8 +143,8 @@ function processToastQueue() {
         <div id="toastNotification" class="toast-notification" onclick="${articleId ? `showArticleDetail('${articleId}')` : 'closeToast()'}">
             <div class="toast-icon">🔔</div>
             <div class="toast-content">
-                <div class="toast-title">${title}</div>
-                <div class="toast-message">${message}</div>
+                <div class="toast-title">${escapeHTML ? escapeHTML(title) : title}</div>
+                <div class="toast-message">${escapeHTML ? escapeHTML(message) : message}</div>
             </div>
             <button class="toast-close" onclick="event.stopPropagation(); closeToast();">
                 <i class="fas fa-times"></i>
@@ -3379,6 +3379,12 @@ async function showArticleDetail(id) {
             <div style="font-size:16px;line-height:1.8;color:#333;">${sanitizeHTML(A.content)}</div>
             
             ${voteSection}
+            
+            <!-- ✨ AI 요약 버튼 -->
+            <div id="_aiSummaryWrap" style="margin:14px 0 4px;">
+                <button id="_aiSummaryBtn" onclick="window._aiSummarize()" style="width:100%;padding:11px 18px;border:1.5px solid #c62828;background:white;color:#c62828;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s;">✨ AI 요약 보기<span style="font-size:11px;font-weight:400;color:#aaa;">Puter AI</span></button>
+                <div id="_aiSummaryResult" style="display:none;margin-top:10px;background:#fff8f8;border:1.5px solid #ffcdd2;border-radius:10px;padding:14px 16px;font-size:14px;line-height:1.75;color:#333;"></div>
+            </div>
             
             ${adminArticlePanel}
 
@@ -7268,11 +7274,16 @@ window.addEventListener("DOMContentLoaded", () => {
     
     setupArticleForm();
     
-    // ✅ [PATCH 3] 3분마다 lastSeen 갱신
-    setInterval(updateLastSeen, 3 * 60 * 1000);
+    // ✅ [PATCH 3] 3분마다 lastSeen 갱신 (누수 방지: interval ID 저장)
+    if (window._lastSeenInterval) clearInterval(window._lastSeenInterval);
+    window._lastSeenInterval = setInterval(updateLastSeen, 3 * 60 * 1000);
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') updateLastSeen();
     });
+    // ✅ 페이지 언로드 시 interval 정리
+    window.addEventListener('beforeunload', () => {
+        clearInterval(window._lastSeenInterval);
+    }, { once: true });
 
     // ✅ 카테고리 자동 적용 리스너 등록
     setupCategoryChangeListener();
