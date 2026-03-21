@@ -2470,6 +2470,13 @@ function showWritePage() {
     window.scrollTo(0, 0);
     
     document.getElementById("writeSection").classList.add("active");
+
+    // ✅ 관리자 전용: 대리 작성 박스 표시 및 초기화
+    const impBox = document.getElementById('adminImpersonateBox');
+    if (impBox) {
+        impBox.style.display = isAdmin() ? 'block' : 'none';
+        window._adminClearImpersonate();
+    }
     
     setTimeout(() => {
         // ✅ 항상 새로운 폼으로 초기화
@@ -4253,24 +4260,25 @@ function setupArticleForm() {
         }
         
         // ✅ 항상 새로운 ID 생성
+        const _imp = isAdmin() && window._adminImpersonateUser;
         const article = {
             id: Date.now().toString(),
             category: category,
             title: title,
             summary: summary,
             content: content,
-            author: getNickname(),
-            authorEmail: getUserEmail(),
-            authorUid: getUserId(),        // ✅ 관리자 확인용 실제 UID 저장
+            author:      _imp ? _imp.nick  : getNickname(),
+            authorEmail: _imp ? _imp.email : getUserEmail(),
+            authorUid:   _imp ? _imp.uid   : getUserId(),
             date: new Date().toLocaleString(),
             createdAt: Date.now(), 
             views: 0,
             likeCount: 0,
             dislikeCount: 0,
             thumbnail: null,
-            anonymous: document.getElementById('articleAnonymous')?.checked || false,  // ✅ 익명 설정
-            hideVotes: document.getElementById('articleHideVotes')?.checked || false,  // ✅ 추천 숨김 설정
-            noNotify: document.getElementById('articleNoNotify')?.checked || false    // ✅ 알림 안 보내기 설정
+            anonymous: document.getElementById('articleAnonymous')?.checked || false,
+            hideVotes: document.getElementById('articleHideVotes')?.checked || false,
+            noNotify: document.getElementById('articleNoNotify')?.checked || false
         };
 
         console.log("📝 새 기사 작성:", article.id);
@@ -4986,10 +4994,11 @@ async function submitComment(id){
         }
 
         const cid = Date.now().toString();
+        const _cimp = isAdmin() && window._adminCommentImpersonateUser;
         const C = {
-            author: getNickname(),
-            authorEmail: getUserEmail(),
-            authorUid: getUserId(), // ✅ UID 저장 → 프로필 사진 직접 조회용
+            author: _cimp ? _cimp.nick  : getNickname(),
+            authorEmail: _cimp ? _cimp.email : getUserEmail(),
+            authorUid: _cimp ? _cimp.uid  : getUserId(),
             text: txt,
             timestamp: new Date().toLocaleString(),
         };
@@ -5087,9 +5096,11 @@ window.submitReply = async function(articleId, commentId) {
             imageBase64 = await compressImageToBase64(imageInput.files[0], 800, 0.72);
         }
 
+        const _rimp = isAdmin() && window._adminCommentImpersonateUser;
         const reply = {
-            author: getNickname(),
-            authorEmail: getUserEmail(),
+            author: _rimp ? _rimp.nick  : getNickname(),
+            authorEmail: _rimp ? _rimp.email : getUserEmail(),
+            authorUid: _rimp ? _rimp.uid  : getUserId(),
             text: text,
             timestamp: new Date().toLocaleString()
         };
@@ -5667,6 +5678,152 @@ window.adminResetArticleViews = async function(articleId) {
         alert('❌ 초기화 실패: ' + e.message);
     }
 };
+
+// ✅ 관리자 대리 작성 — 선택된 유저 정보
+window._adminImpersonateUser = null;
+
+window._adminClearImpersonate = function() {
+    window._adminImpersonateUser = null;
+    const query = document.getElementById('adminImpersonateQuery');
+    const results = document.getElementById('adminImpersonateResults');
+    const selected = document.getElementById('adminImpersonateSelected');
+    if (query) query.value = '';
+    if (results) results.style.display = 'none';
+    if (selected) selected.style.display = 'none';
+};
+
+// 유저 검색 (닉네임 또는 이메일)
+let _adminSearchTimer = null;
+window._adminSearchUser = function(query) {
+    clearTimeout(_adminSearchTimer);
+    const results = document.getElementById('adminImpersonateResults');
+    if (!query || query.trim().length < 1) {
+        if (results) results.style.display = 'none';
+        return;
+    }
+    _adminSearchTimer = setTimeout(async () => {
+        const snap = await db.ref('users').once('value');
+        const users = snap.val() || {};
+        const q = query.trim().toLowerCase();
+        const matched = Object.entries(users)
+            .filter(([uid, u]) => {
+                const nick = (u.newNickname || u.nickname || u.displayName || '').toLowerCase();
+                const email = (u.email || '').toLowerCase();
+                return nick.includes(q) || email.includes(q);
+            })
+            .slice(0, 6);
+
+        if (!results) return;
+        if (matched.length === 0) {
+            results.style.display = 'block';
+            results.innerHTML = `<div style="padding:10px 14px;font-size:13px;color:#aaa;">검색 결과 없음</div>`;
+            return;
+        }
+        results.style.display = 'block';
+        results.innerHTML = matched.map(([uid, u]) => {
+            const nick = u.newNickname || u.nickname || u.displayName || '(닉네임 없음)';
+            const email = u.email || '';
+            return `<div onclick="window._adminSelectImpersonate('${uid}','${nick.replace(/'/g,"\\'")}','${email.replace(/'/g,"\\'")}','${(u.photoURL||'').replace(/'/g,"\\'")}' )"
+                style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #fff8e1;display:flex;align-items:center;gap:10px;font-size:13px;"
+                onmouseover="this.style.background='#fff8e1'" onmouseout="this.style.background='white'">
+                <img src="${u.photoURL || ''}" onerror="this.style.display='none'" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                <div><div style="font-weight:700;color:#333;">${escapeHTML(nick)}</div><div style="font-size:11px;color:#888;">${escapeHTML(email)}</div></div>
+            </div>`;
+        }).join('');
+    }, 300);
+};
+
+window._adminSelectImpersonate = function(uid, nick, email, photoURL) {
+    window._adminImpersonateUser = { uid, nick, email, photoURL };
+    const results = document.getElementById('adminImpersonateResults');
+    const selected = document.getElementById('adminImpersonateSelected');
+    const label = document.getElementById('adminImpersonateLabel');
+    const query = document.getElementById('adminImpersonateQuery');
+    if (results) results.style.display = 'none';
+    if (query) query.value = '';
+    if (label) label.textContent = `✅ ${nick} (${email})`;
+    if (selected) selected.style.display = 'flex';
+};
+
+// ✅ 관리자 댓글 대리 작성
+window._adminCommentImpersonateUser = null;
+
+window._adminClearCommentImpersonate = function() {
+    window._adminCommentImpersonateUser = null;
+    const q = document.getElementById('adminCommentImpersonateQuery');
+    const r = document.getElementById('adminCommentImpersonateResults');
+    const s = document.getElementById('adminCommentImpersonateSelected');
+    if (q) q.value = '';
+    if (r) r.style.display = 'none';
+    if (s) s.style.display = 'none';
+};
+
+let _adminCommentSearchTimer = null;
+window._adminCommentSearchUser = function(query) {
+    clearTimeout(_adminCommentSearchTimer);
+    const results = document.getElementById('adminCommentImpersonateResults');
+    if (!query || !query.trim()) { if (results) results.style.display = 'none'; return; }
+    _adminCommentSearchTimer = setTimeout(async () => {
+        const snap = await db.ref('users').once('value');
+        const users = snap.val() || {};
+        const q = query.trim().toLowerCase();
+        const matched = Object.entries(users)
+            .filter(([uid, u]) => {
+                const nick  = (u.newNickname || u.nickname || u.displayName || '').toLowerCase();
+                const email = (u.email || '').toLowerCase();
+                return nick.includes(q) || email.includes(q);
+            }).slice(0, 6);
+        if (!results) return;
+        if (matched.length === 0) {
+            results.style.display = 'block';
+            results.innerHTML = `<div style="padding:8px 12px;font-size:12px;color:#aaa;">검색 결과 없음</div>`;
+            return;
+        }
+        results.style.display = 'block';
+        results.innerHTML = matched.map(([uid, u]) => {
+            const nick  = u.newNickname || u.nickname || u.displayName || '(닉네임 없음)';
+            const email = u.email || '';
+            return `<div onclick="window._adminSelectCommentImpersonate('${uid}','${nick.replace(/'/g,"\\'")}','${email.replace(/'/g,"\\'")}','${(u.photoURL||'').replace(/'/g,"\\'")}' )"
+                style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #fff8e1;display:flex;align-items:center;gap:8px;font-size:12px;"
+                onmouseover="this.style.background='#fff8e1'" onmouseout="this.style.background='white'">
+                <img src="${u.photoURL||''}" onerror="this.style.display='none'" style="width:24px;height:24px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                <div><div style="font-weight:700;color:#333;">${escapeHTML(nick)}</div><div style="font-size:11px;color:#888;">${escapeHTML(email)}</div></div>
+            </div>`;
+        }).join('');
+    }, 300);
+};
+
+window._adminSelectCommentImpersonate = function(uid, nick, email, photoURL) {
+    window._adminCommentImpersonateUser = { uid, nick, email, photoURL };
+    const r = document.getElementById('adminCommentImpersonateResults');
+    const s = document.getElementById('adminCommentImpersonateSelected');
+    const l = document.getElementById('adminCommentImpersonateLabel');
+    const q = document.getElementById('adminCommentImpersonateQuery');
+    if (r) r.style.display = 'none';
+    if (q) q.value = '';
+    if (l) l.textContent = `✅ ${nick} (${email})`;
+    if (s) s.style.display = 'flex';
+};
+
+// 기사 상세 로드 시 관리자 댓글 박스 표시
+(function _hookArticleDetailForCommentImp() {
+    const _orig = window.showArticleDetail;
+    if (typeof _orig !== 'function' || _orig._commentImpHooked) return;
+    window.showArticleDetail = async function(id) {
+        const result = await _orig.apply(this, arguments);
+        setTimeout(() => {
+            const box = document.getElementById('adminCommentImpersonateBox');
+            if (box) {
+                box.style.display = isAdmin() ? 'block' : 'none';
+                window._adminClearCommentImpersonate();
+            }
+        }, 200);
+        return result;
+    };
+    window.showArticleDetail._commentImpHooked = true;
+})();
+
+
 
 // ✅ 수치 직접 조작 (조회수 / 좋아요 / 싫어요)
 window.adminSetArticleStats = async function(articleId) {
