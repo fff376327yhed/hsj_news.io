@@ -239,7 +239,8 @@ async function loadVoteList(tab) {
     body.innerHTML = `<div style="text-align:center;padding:60px 0;color:#9e9e9e;font-size:13px;">불러오는 중...</div>`;
 
     try {
-        const snap = await db.ref('polls').orderByChild('createdAt').once('value');
+        // ✅ 최적화: 최근 100개만 로드 (투표 수 증가 시 성능 보호)
+        const snap = await db.ref('polls').orderByChild('createdAt').limitToLast(100).once('value');
         const data = snap.val() || {};
         let votes = Object.entries(data).map(([id, v]) => ({ id, ...v }))
             .sort((a, b) => b.createdAt - a.createdAt);
@@ -775,7 +776,15 @@ window.addVoteOption = function(max) {
 
 window.removeVoteOption = function(i) {
     const row = document.getElementById(`voteOptRow_${i}`);
-    if (row) row.remove();
+    if (row) {
+        row.remove();
+        // 삭제 후 남은 옵션 수에 맞춰 _voteOptCount 재계산
+        const remaining = document.querySelectorAll('.vote-option-input').length;
+        window._voteOptCount = Math.max(remaining, window._voteOptCount - 1);
+        // 삭제 후 최대치 미만이면 추가 버튼 다시 표시
+        const addBtn = document.getElementById('voteAddOptionBtn');
+        if (addBtn) addBtn.style.display = '';
+    }
 };
 
 window.toggleVoteSetting = function(name) {
@@ -886,4 +895,4 @@ function showVoteToast(msg) {
 
 console.log('✅ vote.js 로드 완료');
 
-})(); // IIFE 
+})(); // IIFE
