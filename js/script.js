@@ -377,6 +377,7 @@ function loadBannedWords() {
 
 function checkBannedWords(text) {
     if (!text) return null;
+    if (isAdmin()) return null; // ✅ 관리자는 금지어 검사 무시
     for (const word of bannedWordsList) {
         if (text.includes(word)) return word;
     }
@@ -386,6 +387,7 @@ function checkBannedWords(text) {
 function addWarningToCurrentUser() {
     const user = auth.currentUser;
     if (!user) return;
+    if (isAdmin()) return; // ✅ 관리자는 경고 누적 없음
     
     db.ref("users/" + user.uid).once("value").then(snapshot => {
         const data = snapshot.val() || {};
