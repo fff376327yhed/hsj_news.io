@@ -4267,7 +4267,7 @@ function setupArticleForm() {
             title: title,
             summary: summary,
             content: content,
-            author:      _imp ? _imp.nick  : getNickname(),
+            author:      _imp ? (_imp.customNick || _imp.nick) : getNickname(),
             authorEmail: _imp ? _imp.email : getUserEmail(),
             authorUid:   _imp ? _imp.uid   : getUserId(),
             date: new Date().toLocaleString(),
@@ -4996,7 +4996,7 @@ async function submitComment(id){
         const cid = Date.now().toString();
         const _cimp = isAdmin() && window._adminCommentImpersonateUser;
         const C = {
-            author: _cimp ? _cimp.nick  : getNickname(),
+            author: _cimp ? (_cimp.customNick || _cimp.nick) : getNickname(),
             authorEmail: _cimp ? _cimp.email : getUserEmail(),
             authorUid: _cimp ? _cimp.uid  : getUserId(),
             text: txt,
@@ -5098,7 +5098,7 @@ window.submitReply = async function(articleId, commentId) {
 
         const _rimp = isAdmin() && window._adminCommentImpersonateUser;
         const reply = {
-            author: _rimp ? _rimp.nick  : getNickname(),
+            author: _rimp ? (_rimp.customNick || _rimp.nick) : getNickname(),
             authorEmail: _rimp ? _rimp.email : getUserEmail(),
             authorUid: _rimp ? _rimp.uid  : getUserId(),
             text: text,
@@ -5690,11 +5690,20 @@ async function _adminLoadUserList() {
     Object.values(articles).forEach(a => {
         if (a.authorEmail && a.author) emailToNick[a.authorEmail] = a.author;
     });
-    return Object.entries(users).map(([uid, u]) => {
+    const seen = new Set();
+    const result = Object.entries(users).map(([uid, u]) => {
         const email = u.email || '';
         const nick = u.newNickname || emailToNick[email] || u.nickname || email.split('@')[0] || '알 수 없음';
         return { uid, nick, email, photoURL: u.photoURL || '' };
-    }).filter(u => u.email).sort((a, b) => a.nick.localeCompare(b.nick));
+    }).filter(u => {
+        if (!u.email || seen.has(u.uid)) return false;
+        seen.add(u.uid);
+        return true;
+    }).sort((a, b) => a.nick.localeCompare(b.nick, 'ko'));
+    // uid→user 전역 맵에 저장
+    window._adminUserMapCache = window._adminUserMapCache || {};
+    result.forEach(u => { window._adminUserMapCache[u.uid] = u; });
+    return result;
 }
 
 function _adminRenderUserRadios(users, listId, name, onSelect) {
@@ -5725,10 +5734,23 @@ function _adminRenderUserRadios(users, listId, name, onSelect) {
 // ── 기사 대리 작성 ──
 window._adminImpersonateUser = null;
 
+// ✅ 이름 커스텀 실시간 반영
+window._adminUpdateImpersonateName = function(val, type) {
+    if (type === 'article' && window._adminImpersonateUser) {
+        window._adminImpersonateUser.customNick = val.trim() || null;
+    } else if (type === 'comment' && window._adminCommentImpersonateUser) {
+        window._adminCommentImpersonateUser.customNick = val.trim() || null;
+    }
+};
+
 window._adminClearImpersonate = function() {
     window._adminImpersonateUser = null;
     const toggle = document.getElementById('adminImpersonateToggle');
     const list   = document.getElementById('adminImpersonateUserList');
+    const cDiv   = document.getElementById('adminImpersonateCustomName');
+    const cInput = document.getElementById('adminImpersonateNameInput');
+    if (cDiv) cDiv.style.display = 'none';
+    if (cInput) cInput.value = '';
     if (toggle) toggle.checked = false;
     if (list)   list.style.display = 'none';
 };
@@ -5748,12 +5770,13 @@ window._adminToggleImpersonate = async function(checked) {
 };
 
 window._adminPickImpersonate = function(radio) {
-    window._adminImpersonateUser = {
-        uid: radio.value,
-        nick: radio.dataset.nick,
-        email: radio.dataset.email,
-        photoURL: radio.dataset.photo
-    };
+    const u = (window._adminUserMapCache || {})[radio.value];
+    if (!u) return;
+    window._adminImpersonateUser = { uid: u.uid, nick: u.nick, email: u.email, photoURL: u.photoURL || '', customNick: null };
+    const customDiv = document.getElementById('adminImpersonateCustomName');
+    const nameInput = document.getElementById('adminImpersonateNameInput');
+    if (customDiv) customDiv.style.display = 'block';
+    if (nameInput) { nameInput.value = ''; nameInput.placeholder = '원래 이름: ' + u.nick; }
 };
 
 // ── 댓글 대리 작성 ──
@@ -5763,6 +5786,10 @@ window._adminClearCommentImpersonate = function() {
     window._adminCommentImpersonateUser = null;
     const toggle = document.getElementById('adminCommentImpersonateToggle');
     const list   = document.getElementById('adminCommentImpersonateUserList');
+    const cDiv   = document.getElementById('adminCommentImpersonateCustomName');
+    const cInput = document.getElementById('adminCommentImpersonateNameInput');
+    if (cDiv) cDiv.style.display = 'none';
+    if (cInput) cInput.value = '';
     if (toggle) toggle.checked = false;
     if (list)   list.style.display = 'none';
 };
@@ -5782,12 +5809,13 @@ window._adminCommentToggleImpersonate = async function(checked) {
 };
 
 window._adminPickCommentImpersonate = function(radio) {
-    window._adminCommentImpersonateUser = {
-        uid: radio.value,
-        nick: radio.dataset.nick,
-        email: radio.dataset.email,
-        photoURL: radio.dataset.photo
-    };
+    const u = (window._adminUserMapCache || {})[radio.value];
+    if (!u) return;
+    window._adminCommentImpersonateUser = { uid: u.uid, nick: u.nick, email: u.email, photoURL: u.photoURL || '', customNick: null };
+    const customDiv = document.getElementById('adminCommentImpersonateCustomName');
+    const nameInput = document.getElementById('adminCommentImpersonateNameInput');
+    if (customDiv) customDiv.style.display = 'block';
+    if (nameInput) { nameInput.value = ''; nameInput.placeholder = '원래 이름: ' + u.nick; }
 };
 
 // 기사 상세 로드 시 관리자 댓글 박스 표시
