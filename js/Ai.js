@@ -6,7 +6,7 @@
     'use strict';
 
     const PUTER_SRC = 'https://js.puter.com/v2/';
-    const AI_MODEL  = 'gemini-2.5-flash-lite';
+    const AI_MODEL  = 'gpt-4o-mini';
     let   _puterLoading = false;
 
     // ──────────────────────────────────────────────
@@ -228,9 +228,11 @@ A: 아니요, 현재 해정뉴스에는 주식 기능이 없습니다. 예전에
         await loadPuter();
         const resp = await puter.ai.chat(prompt, { model: opts.model || AI_MODEL });
         if (typeof resp === 'string') return resp;
-        const c = resp?.message?.content;
+        const msg = resp?.message ?? resp;
+        const c   = msg?.content ?? msg?.text ?? msg;
         if (typeof c === 'string') return c;
-        if (Array.isArray(c)) return c.map(b => b.text || '').join('');
+        if (Array.isArray(c)) return c.map(b => b.text ?? b.content ?? String(b)).filter(Boolean).join('');
+        if (c != null) return String(c);
         return String(resp ?? '');
     }
 
@@ -318,7 +320,7 @@ A: 아니요, 현재 해정뉴스에는 주식 기능이 없습니다. 예전에
             .aiq{padding:5px 10px;border:1px solid #ffcdd2;border-radius:20px;background:#fff8f8;
                 color:#c62828;font-size:11px;cursor:pointer;white-space:nowrap;transition:all .15s;}
             .aiq:hover{background:#c62828;color:white;}
-            #_aiChatFab{position:fixed;bottom:80px;right:16px;z-index:8888;width:52px;height:52px;
+            #_aiChatFab{position:fixed;bottom:80px;right:16px;z-index:10001;width:52px;height:52px;
                 border-radius:50%;background:#c62828;color:white;border:none;cursor:pointer;
                 box-shadow:0 4px 16px rgba(198,40,40,.4);display:flex;align-items:center;
                 justify-content:center;transition:transform .2s;font-size:22px;}
