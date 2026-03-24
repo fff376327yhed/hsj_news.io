@@ -5195,39 +5195,47 @@ window.toggleCommentVote = function(articleId, commentId, voteType) {
     if (!isLoggedIn()) return alert("로그인이 필요합니다!");
     const uid = getUserId();
     const voteRef = db.ref(`commentVotes/${articleId}/${commentId}/${uid}`);
-    const commentRef = db.ref(`comments/${articleId}/${commentId}`);
+    // ✅ [BUG FIX] 기존: comments/${articleId}/${commentId} 전체 트랜잭션 → 작성자/관리자만 쓰기 가능해 일반 유저 차단됨
+    // 수정: likeCount/dislikeCount 필드만 개별 트랜잭션 실행 → "auth != null" 규칙(Firebase Rules 추가)으로 가능
+    const likeCountRef    = db.ref(`comments/${articleId}/${commentId}/likeCount`);
+    const dislikeCountRef = db.ref(`comments/${articleId}/${commentId}/dislikeCount`);
 
     voteRef.once('value').then(snap => {
         const current = snap.val();
-        commentRef.transaction(comment => {
-            if (!comment) return comment;
-            if (!comment.likeCount) comment.likeCount = 0;
-            if (!comment.dislikeCount) comment.dislikeCount = 0;
-            if (current === voteType) {
-                if (voteType === 'like') comment.likeCount--;
-                else comment.dislikeCount--;
-            } else {
-                if (current === 'like') comment.likeCount--;
-                if (current === 'dislike') comment.dislikeCount--;
-                if (voteType === 'like') comment.likeCount++;
-                else comment.dislikeCount++;
-            }
-            return comment;
-        }).then(result => {
-            if (!result.committed) return;
-            const updated = result.snapshot.val();
-            const votePromise = current === voteType ? voteRef.remove() : voteRef.set(voteType);
+        const isCancelling = current === voteType;
+
+        const likeTransaction = likeCountRef.transaction(count => {
+            count = count || 0;
+            if (isCancelling && voteType === 'like') return count - 1;
+            if (!isCancelling && current === 'like') return count - 1;
+            if (!isCancelling && voteType === 'like') return count + 1;
+            return count;
+        });
+
+        const dislikeTransaction = dislikeCountRef.transaction(count => {
+            count = count || 0;
+            if (isCancelling && voteType === 'dislike') return count - 1;
+            if (!isCancelling && current === 'dislike') return count - 1;
+            if (!isCancelling && voteType === 'dislike') return count + 1;
+            return count;
+        });
+
+        Promise.all([likeTransaction, dislikeTransaction]).then(([likeResult, dislikeResult]) => {
+            const newLikeCount    = likeResult.snapshot.val()    || 0;
+            const newDislikeCount = dislikeResult.snapshot.val() || 0;
+
+            const votePromise = isCancelling ? voteRef.remove() : voteRef.set(voteType);
             votePromise.then(() => voteRef.once('value')).then(s => {
-                const newVote = s.val();
-                const likeBtn = document.getElementById(`clike-${commentId}`);
+                const newVote    = s.val();
+                const likeBtn    = document.getElementById(`clike-${commentId}`);
                 const dislikeBtn = document.getElementById(`cdislike-${commentId}`);
                 if (likeBtn) {
                     likeBtn.style.cssText = `border:1px solid ${newVote==='like'?'#1565c0':'#ddd'}; border-radius:20px; padding:3px 10px; font-size:12px; cursor:pointer; background:${newVote==='like'?'#e3f2fd':'#fff'}; color:${newVote==='like'?'#1565c0':'inherit'};`;
-                    likeBtn.innerHTML = `👍 ${updated.likeCount||0}`;
+                    likeBtn.innerHTML = `👍 ${newLikeCount}`;
                 }
                 if (dislikeBtn) {
                     dislikeBtn.style.cssText = `border:1px solid ${newVote==='dislike'?'#c62828':'#ddd'}; border-radius:20px; padding:3px 10px; font-size:12px; cursor:pointer; background:${newVote==='dislike'?'#fce4ec':'#fff'}; color:${newVote==='dislike'?'#c62828':'inherit'};`;
-                    dislikeBtn.innerHTML = `👎 ${updated.dislikeCount||0}`;
+                    dislikeBtn.innerHTML = `👎 ${newDislikeCount}`;
                 }
             });
         });
@@ -6522,52 +6530,53 @@ function toggleVote(articleId, voteType) {
     
     const uid = getUserId();
     const voteRef = db.ref(`votes/${articleId}/${uid}`);
-    const articleRef = db.ref(`articles/${articleId}`);
+    // ✅ [BUG FIX] 기존: articles/${articleId} 전체 트랜잭션 → 작성자/관리자만 쓰기 가능해 일반 유저 차단됨
+    // 수정: likeCount/dislikeCount 필드만 개별 트랜잭션 실행 → "auth != null" 규칙으로 모든 로그인 유저 가능
+    const likeCountRef    = db.ref(`articles/${articleId}/likeCount`);
+    const dislikeCountRef = db.ref(`articles/${articleId}/dislikeCount`);
 
     voteRef.once('value').then(snapshot => {
         const currentVote = snapshot.val();
+        const isCancelling = currentVote === voteType;
 
-        articleRef.transaction(article => {
-    if (!article) return article;
-    if (!article.likeCount) article.likeCount = 0;
-    if (!article.dislikeCount) article.dislikeCount = 0;
+        const likeTransaction = likeCountRef.transaction(count => {
+            count = count || 0;
+            if (isCancelling && voteType === 'like') return count - 1;
+            if (!isCancelling && currentVote === 'like') return count - 1;
+            if (!isCancelling && voteType === 'like') return count + 1;
+            return count;
+        });
 
-    if (currentVote === voteType) {
-        if (voteType === 'like') article.likeCount--;
-        if (voteType === 'dislike') article.dislikeCount--;
-        // ✅ voteRef.remove() 제거
-    } else {
-        if (currentVote === 'like') article.likeCount--;
-        if (currentVote === 'dislike') article.dislikeCount--;
+        const dislikeTransaction = dislikeCountRef.transaction(count => {
+            count = count || 0;
+            if (isCancelling && voteType === 'dislike') return count - 1;
+            if (!isCancelling && currentVote === 'dislike') return count - 1;
+            if (!isCancelling && voteType === 'dislike') return count + 1;
+            return count;
+        });
 
-        if (voteType === 'like') article.likeCount++;
-        if (voteType === 'dislike') article.dislikeCount++;
-        // ✅ voteRef.set() 제거
-    }
-    return article;
-}).then((result) => {
-    if (!result.committed) return;
-    const updated = result.snapshot.val();
-    if (!updated) return;
+        Promise.all([likeTransaction, dislikeTransaction]).then(([likeResult, dislikeResult]) => {
+            const newLikeCount    = likeResult.snapshot.val()    || 0;
+            const newDislikeCount = dislikeResult.snapshot.val() || 0;
 
-    // ✅ 트랜잭션 커밋 완료 후에 voteRef 업데이트
-    const votePromise = currentVote === voteType ? voteRef.remove() : voteRef.set(voteType);
+            // ✅ 트랜잭션 커밋 완료 후에 voteRef 업데이트
+            const votePromise = isCancelling ? voteRef.remove() : voteRef.set(voteType);
 
-    const likeBtn = document.getElementById(`like-btn-${articleId}`);
-    const dislikeBtn = document.getElementById(`dislike-btn-${articleId}`);
+            const likeBtn    = document.getElementById(`like-btn-${articleId}`);
+            const dislikeBtn = document.getElementById(`dislike-btn-${articleId}`);
 
-    votePromise.then(() => voteRef.once('value')).then(snap => {
-        const newVote = snap.val();
-        if (likeBtn) {
-            likeBtn.className = `vote-btn${newVote === 'like' ? ' active' : ''}`;
-            likeBtn.innerHTML = `👍 추천 ${updated.likeCount || 0}`;
-        }
-        if (dislikeBtn) {
-            dislikeBtn.className = `vote-btn dislike${newVote === 'dislike' ? ' active' : ''}`;
-            dislikeBtn.innerHTML = `👎 비추천 ${updated.dislikeCount || 0}`;
-        }
-    });
-});
+            votePromise.then(() => voteRef.once('value')).then(snap => {
+                const newVote = snap.val();
+                if (likeBtn) {
+                    likeBtn.className = `vote-btn${newVote === 'like' ? ' active' : ''}`;
+                    likeBtn.innerHTML = `👍 추천 ${newLikeCount}`;
+                }
+                if (dislikeBtn) {
+                    dislikeBtn.className = `vote-btn dislike${newVote === 'dislike' ? ' active' : ''}`;
+                    dislikeBtn.innerHTML = `👎 비추천 ${newDislikeCount}`;
+                }
+            });
+        });
     });
 }
 
