@@ -246,6 +246,7 @@ let originalUserTheme = null;
 window.profilePhotoCache = new Map(); // window 객체에 직접 할당하여 다른 함수에서도 접근 가능하도록
 let maintenanceChecked = false;
 let isEasterEggActive = false; // ✨ 추가: 이스터에그 활성 상태
+let _isBannedUser = false; // ✅ [BUG FIX] 차단 유저 재로그인 방지 플래그
 
 // 로딩 인디케이터
 function showLoadingIndicator(message = "로딩 중...") {
@@ -631,6 +632,11 @@ function logoutAdmin(){
 
 // Google 로그인
 function googleLogin() {
+    // ✅ [BUG FIX] 차단 유저는 재로그인 불가
+    if (_isBannedUser) {
+        alert("🚫 차단된 계정입니다. 다른 계정으로 시도하거나 관리자에게 문의하세요.");
+        return;
+    }
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({
         prompt: 'select_account'
@@ -1604,9 +1610,10 @@ console.log("✅ Part 4 알림 시스템 완료");
         // ✅ 로그인 시 프로필 사진 캐시 초기화 (인증 전 null 캐시 제거)
         if (window.profilePhotoCache) window.profilePhotoCache.clear();
 
-        await isAdminAsync();
+        // ✅ [BUG FIX] 로딩 인디케이터를 await 전에 먼저 표시
+        showLoadingIndicator("로그인 확인 중...");
 
-        showLoadingIndicator("로그인 중...");
+        await isAdminAsync();
 
         const userRef = db.ref("users/" + user.uid);
         const snap = await userRef.once("value");
@@ -1620,9 +1627,22 @@ console.log("✅ Part 4 알림 시스템 완료");
         }
         
         if (data.isBanned) {
+            // ✅ [BUG FIX] await signOut + 재로그인 방지 플래그
+            // 기존: auth.signOut() 비동기 무시 → onAuthStateChanged(null) 즉시 발동
+            //       → "로그인이 필요합니다" UI 표시 → 유저가 반복 로그인 시도 → 루프
+            _isBannedUser = true;
             hideLoadingIndicator();
-            alert("🚫 차단된 계정입니다.");
-            auth.signOut();
+            await auth.signOut();
+            // 차단 화면 렌더링 (설정 섹션을 직접 덮어씀)
+            const el = document.getElementById("profileNickname");
+            if (el) {
+                el.innerHTML = `<div style="background:#fff3f3;border:2px solid #c62828;border-radius:12px;padding:24px;text-align:center;">
+                    <div style="font-size:48px;margin-bottom:12px;">🚫</div>
+                    <div style="font-size:18px;font-weight:800;color:#c62828;margin-bottom:8px;">계정이 차단되었습니다</div>
+                    <div style="font-size:14px;color:#666;line-height:1.6;">관리자에게 문의하세요.<br><small style="color:#aaa;">이 계정으로는 로그인할 수 없습니다.</small></div>
+                </div>`;
+            }
+            alert("🚫 차단된 계정입니다. 관리자에게 문의하세요.");
             return;
         }
 
@@ -2455,7 +2475,11 @@ function setupCategoryChangeListener() {
 }
 
 // 4. 글 작성 페이지 (기존 함수 덮어쓰기)
-function showWritePage() {
+async function showWritePage() {
+    // ✅ [BUG FIX] Firebase auth 초기화 완료 대기
+    // 페이지 첫 로드 시 auth.onAuthStateChanged가 아직 안 불렸으면
+    // isLoggedIn()이 false를 반환해 googleLogin()이 자동 실행되는 버그 방지
+    await authReady;
     if(!isLoggedIn()) { 
         alert("기사 작성은 로그인 후 가능합니다!"); 
         googleLogin(); 
@@ -4267,7 +4291,7 @@ function setupArticleForm() {
             title: title,
             summary: summary,
             content: content,
-            author:      _imp ? (_imp.customNick || _imp.nick) : getNickname(),
+            author:      _imp ? _imp.nick  : getNickname(),
             authorEmail: _imp ? _imp.email : getUserEmail(),
             authorUid:   _imp ? _imp.uid   : getUserId(),
             date: new Date().toLocaleString(),
@@ -4996,7 +5020,7 @@ async function submitComment(id){
         const cid = Date.now().toString();
         const _cimp = isAdmin() && window._adminCommentImpersonateUser;
         const C = {
-            author: _cimp ? (_cimp.customNick || _cimp.nick) : getNickname(),
+            author: _cimp ? _cimp.nick  : getNickname(),
             authorEmail: _cimp ? _cimp.email : getUserEmail(),
             authorUid: _cimp ? _cimp.uid  : getUserId(),
             text: txt,
@@ -5098,7 +5122,7 @@ window.submitReply = async function(articleId, commentId) {
 
         const _rimp = isAdmin() && window._adminCommentImpersonateUser;
         const reply = {
-            author: _rimp ? (_rimp.customNick || _rimp.nick) : getNickname(),
+            author: _rimp ? _rimp.nick  : getNickname(),
             authorEmail: _rimp ? _rimp.email : getUserEmail(),
             authorUid: _rimp ? _rimp.uid  : getUserId(),
             text: text,
@@ -5690,20 +5714,11 @@ async function _adminLoadUserList() {
     Object.values(articles).forEach(a => {
         if (a.authorEmail && a.author) emailToNick[a.authorEmail] = a.author;
     });
-    const seen = new Set();
-    const result = Object.entries(users).map(([uid, u]) => {
+    return Object.entries(users).map(([uid, u]) => {
         const email = u.email || '';
         const nick = u.newNickname || emailToNick[email] || u.nickname || email.split('@')[0] || '알 수 없음';
         return { uid, nick, email, photoURL: u.photoURL || '' };
-    }).filter(u => {
-        if (!u.email || seen.has(u.uid)) return false;
-        seen.add(u.uid);
-        return true;
-    }).sort((a, b) => a.nick.localeCompare(b.nick, 'ko'));
-    // uid→user 전역 맵에 저장
-    window._adminUserMapCache = window._adminUserMapCache || {};
-    result.forEach(u => { window._adminUserMapCache[u.uid] = u; });
-    return result;
+    }).filter(u => u.email).sort((a, b) => a.nick.localeCompare(b.nick));
 }
 
 function _adminRenderUserRadios(users, listId, name, onSelect) {
@@ -5734,23 +5749,10 @@ function _adminRenderUserRadios(users, listId, name, onSelect) {
 // ── 기사 대리 작성 ──
 window._adminImpersonateUser = null;
 
-// ✅ 이름 커스텀 실시간 반영
-window._adminUpdateImpersonateName = function(val, type) {
-    if (type === 'article' && window._adminImpersonateUser) {
-        window._adminImpersonateUser.customNick = val.trim() || null;
-    } else if (type === 'comment' && window._adminCommentImpersonateUser) {
-        window._adminCommentImpersonateUser.customNick = val.trim() || null;
-    }
-};
-
 window._adminClearImpersonate = function() {
     window._adminImpersonateUser = null;
     const toggle = document.getElementById('adminImpersonateToggle');
     const list   = document.getElementById('adminImpersonateUserList');
-    const cDiv   = document.getElementById('adminImpersonateCustomName');
-    const cInput = document.getElementById('adminImpersonateNameInput');
-    if (cDiv) cDiv.style.display = 'none';
-    if (cInput) cInput.value = '';
     if (toggle) toggle.checked = false;
     if (list)   list.style.display = 'none';
 };
@@ -5770,13 +5772,12 @@ window._adminToggleImpersonate = async function(checked) {
 };
 
 window._adminPickImpersonate = function(radio) {
-    const u = (window._adminUserMapCache || {})[radio.value];
-    if (!u) return;
-    window._adminImpersonateUser = { uid: u.uid, nick: u.nick, email: u.email, photoURL: u.photoURL || '', customNick: null };
-    const customDiv = document.getElementById('adminImpersonateCustomName');
-    const nameInput = document.getElementById('adminImpersonateNameInput');
-    if (customDiv) customDiv.style.display = 'block';
-    if (nameInput) { nameInput.value = ''; nameInput.placeholder = '원래 이름: ' + u.nick; }
+    window._adminImpersonateUser = {
+        uid: radio.value,
+        nick: radio.dataset.nick,
+        email: radio.dataset.email,
+        photoURL: radio.dataset.photo
+    };
 };
 
 // ── 댓글 대리 작성 ──
@@ -5786,10 +5787,6 @@ window._adminClearCommentImpersonate = function() {
     window._adminCommentImpersonateUser = null;
     const toggle = document.getElementById('adminCommentImpersonateToggle');
     const list   = document.getElementById('adminCommentImpersonateUserList');
-    const cDiv   = document.getElementById('adminCommentImpersonateCustomName');
-    const cInput = document.getElementById('adminCommentImpersonateNameInput');
-    if (cDiv) cDiv.style.display = 'none';
-    if (cInput) cInput.value = '';
     if (toggle) toggle.checked = false;
     if (list)   list.style.display = 'none';
 };
@@ -5809,13 +5806,12 @@ window._adminCommentToggleImpersonate = async function(checked) {
 };
 
 window._adminPickCommentImpersonate = function(radio) {
-    const u = (window._adminUserMapCache || {})[radio.value];
-    if (!u) return;
-    window._adminCommentImpersonateUser = { uid: u.uid, nick: u.nick, email: u.email, photoURL: u.photoURL || '', customNick: null };
-    const customDiv = document.getElementById('adminCommentImpersonateCustomName');
-    const nameInput = document.getElementById('adminCommentImpersonateNameInput');
-    if (customDiv) customDiv.style.display = 'block';
-    if (nameInput) { nameInput.value = ''; nameInput.placeholder = '원래 이름: ' + u.nick; }
+    window._adminCommentImpersonateUser = {
+        uid: radio.value,
+        nick: radio.dataset.nick,
+        email: radio.dataset.email,
+        photoURL: radio.dataset.photo
+    };
 };
 
 // 기사 상세 로드 시 관리자 댓글 박스 표시
@@ -7529,7 +7525,12 @@ window.addEventListener("DOMContentLoaded", () => {
     
     // ✅ 삭제됨: cleanupOldViewRecords() 호출 제거
     
-    initialRoute();
+    // ✅ [BUG FIX] authReady 이후에 라우팅 실행
+    // Firebase 세션 복원이 완료된 후 initialRoute를 실행해야
+    // showWritePage 등에서 isLoggedIn()이 정확한 값을 반환한다
+    authReady.then(() => {
+        initialRoute();
+    });
 });
 
 // ✅ 추가: 페이지 언로드 시 카테고리 저장
