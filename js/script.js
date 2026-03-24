@@ -645,7 +645,8 @@ function googleLogin() {
     auth.signInWithPopup(provider)
         .then((result) => {
             console.log("Google 로그인 성공:", result.user.email);
-            alert(`환영합니다, ${result.user.displayName || result.user.email}님!`);
+            // ✅ [BUG FIX] alert 제거 — 로그인 환영 메시지는 onAuthStateChanged의
+            // showToastNotification에서 처리하므로 중복 alert 제거 (루프 방지)
         })
         .catch((error) => {
             console.error("Google 로그인 오류:", error);
@@ -677,7 +678,8 @@ auth.getRedirectResult()
     .then((result) => {
         if (result.user) {
             console.log("Google 로그인 성공 (리디렉션):", result.user.email);
-            alert(`환영합니다, ${result.user.displayName || result.user.email}님!`);
+            // ✅ [BUG FIX] alert 제거 — 로그인 환영 메시지는 onAuthStateChanged의
+            // showToastNotification에서 처리하므로 중복 alert 제거 (루프 방지)
         }
     })
     .catch((error) => {
@@ -1651,12 +1653,16 @@ console.log("✅ Part 4 알림 시스템 완료");
         registerFCMToken(); // ✅ 로그인마다 FCM 토큰 갱신
 
         // ✅ 타이밍 문제로 첫 등록 실패한 경우 탭 포커스 시 재시도
-        document.addEventListener('visibilitychange', function _fcmRetryOnVisible() {
-            if (document.visibilityState === 'visible' && !_fcmRegistered && isLoggedIn()) {
-                console.log('👁️ 탭 포커스 복귀 - FCM 등록 재시도');
-                registerFCMToken();
-            }
-        });
+        // ✅ [BUG FIX] onAuthStateChanged가 여러 번 호출될 때 리스너 중복 등록 방지
+        if (!window._fcmVisibilityListenerAdded) {
+            window._fcmVisibilityListenerAdded = true;
+            document.addEventListener('visibilitychange', function _fcmRetryOnVisible() {
+                if (document.visibilityState === 'visible' && !_fcmRegistered && isLoggedIn()) {
+                    console.log('👁️ 탭 포커스 복귀 - FCM 등록 재시도');
+                    registerFCMToken();
+                }
+            });
+        }
 
         updateHeaderProfileButton(user);
         updateLastSeen();
