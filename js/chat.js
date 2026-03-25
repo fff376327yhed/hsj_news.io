@@ -132,30 +132,23 @@ async function syncChatAuth(mainUser) {
         return;
     }
 
-    // syncChatAuth 맨 아래 호출부도 수정
-await _signInChatAppSilently(mainUser);  // ✅ mainUser 전달
+    // ✅ 자동 redirect/popup 로그인 제거 → 사용자가 채팅 탭 클릭 시 명시적 로그인 UI 표시
+    // (모바일 redirect 무한 루프 방지)
+    console.log('ℹ️ chatApp 미인증 - 채팅 탭 클릭 시 로그인 안내됩니다.');
 }
 
 // ===== chatApp 전용 인증 =====
-// 모바일: redirect 방식 (팝업 차단 우회)
-// PC: popup 방식 (기존 동작 유지)
-// ✅ 파라미터 추가
+// ✅ 모바일/PC 모두 popup 방식 사용 (redirect 루프 완전 제거)
+// 반드시 사용자 직접 클릭 이벤트 핸들러 내에서만 호출해야 팝업이 열림
 window._signInChatAppSilently = async function _signInChatAppSilently(mainUser) {
     if (getChatAuth().currentUser) return;
     try {
         const provider = new firebase.auth.GoogleAuthProvider();
-
-        if (_isMobile()) {
-            console.log('📱 모바일 감지 → redirect 로그인 시도');
-            await getChatAuth().signInWithRedirect(provider);
-            return;
-        }
-
         const result = await getChatAuth().signInWithPopup(provider);
         console.log('✅ chatApp 인증 완료:', result.user.email);
         document.getElementById('_chatAuthBanner')?.remove();
         
-        // ✅ 수정: 전달받은 mainUser.uid 우선 사용, 없으면 auth.currentUser 폴백
+        // 전달받은 mainUser.uid 우선 사용, 없으면 auth.currentUser 폴백
         const mainUid = mainUser?.uid ?? auth.currentUser?.uid;
         if (mainUid) {
             await db.ref(`users/${mainUid}/chatUid`).set(result.user.uid);
@@ -167,6 +160,107 @@ window._signInChatAppSilently = async function _signInChatAppSilently(mainUser) 
         _showChatAuthExpiredBanner();
     }
 };
+
+// ===== ✅ 채팅 로그인 오버레이 (채팅 탭 클릭 시 미인증 상태용) =====
+// 사용자 직접 버튼 클릭 → signInWithPopup → 모바일/PC 모두 안정적으로 동작
+function _showChatLoginOverlay() {
+    if (document.getElementById('_chatLoginOverlay')) return;
+    const overlay = document.createElement('div');
+    overlay.id = '_chatLoginOverlay';
+    overlay.style.cssText = [
+        'position:fixed','top:0','left:0','right:0','bottom:0',
+        'background:white','z-index:99999',
+        'display:flex','flex-direction:column',
+        'align-items:center','justify-content:center',
+        'padding:40px 24px'
+    ].join(';');
+
+    overlay.innerHTML = `
+        <div style="max-width:320px;width:100%;text-align:center;">
+            <div style="font-size:52px;margin-bottom:20px;">💬</div>
+            <h2 style="font-size:22px;font-weight:800;color:#212121;margin:0 0 10px;">채팅 연결이 필요해요</h2>
+            <p style="font-size:14px;color:#777;margin:0 0 36px;line-height:1.7;">
+                채팅 서비스는 별도 계정 연결이 필요합니다.<br>
+                Google 계정으로 한 번만 연결하면<br>다음부터는 자동으로 접속됩니다.
+            </p>
+            <button id="_chatLoginBtn" style="
+                width:100%;padding:15px;border:none;border-radius:14px;
+                background:#c62828;color:white;font-size:15px;font-weight:700;
+                cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;
+                box-shadow:0 4px 14px rgba(198,40,40,0.3);
+                transition:opacity 0.15s;
+            ">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path fill="white" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="white" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="white" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="white" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Google로 채팅 연결하기
+            </button>
+            <button id="_chatLoginCancelBtn" style="
+                width:100%;padding:13px;border:none;border-radius:14px;
+                background:none;color:#999;font-size:14px;cursor:pointer;margin-top:10px;
+            ">취소</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // 취소 버튼
+    document.getElementById('_chatLoginCancelBtn').addEventListener('click', () => {
+        overlay.remove();
+        if (typeof showMoreMenu === 'function') showMoreMenu();
+    });
+
+    // 로그인 버튼 (사용자 직접 클릭 → popup 차단 없음)
+    document.getElementById('_chatLoginBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('_chatLoginBtn');
+        if (!btn) return;
+        btn.style.opacity = '0.7';
+        btn.innerHTML = `<span style="display:inline-block;
+            width:18px;height:18px;border:3px solid rgba(255,255,255,0.4);
+            border-top-color:white;border-radius:50%;
+            animation:_plsSpin 0.8s linear infinite;"></span>
+            &nbsp;연결 중...`;
+        btn.disabled = true;
+
+        try {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            const result = await getChatAuth().signInWithPopup(provider);
+            console.log('✅ chatApp 로그인 성공:', result.user.email);
+
+            const mainUid = auth.currentUser?.uid;
+            if (mainUid) {
+                await db.ref(`users/${mainUid}/chatUid`).set(result.user.uid);
+                console.log('✅ chatUid 저장 완료');
+            }
+
+            overlay.remove();
+            // 인증 완료 → 채팅 페이지 정상 로드
+            window.showChatPage();
+
+        } catch (e) {
+            const isCancelled = e.code === 'auth/popup-closed-by-user'
+                || e.code === 'auth/cancelled-popup-request';
+            console.warn('⚠️ 채팅 로그인 실패:', e.code);
+            if (btn) {
+                btn.style.opacity = '1';
+                btn.disabled = false;
+                btn.innerHTML = isCancelled
+                    ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path fill="white" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="white" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="white" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="white" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                       </svg> 다시 시도`
+                    : `⚠️ 연결 실패 - 다시 시도`;
+            }
+            if (!isCancelled) {
+                showChatToast('⚠️ 채팅 연결에 실패했습니다. 다시 시도해주세요.');
+            }
+        }
+    });
+}
 
 // ===== 토큰 만료 안내 배너 =====
 function _showChatAuthExpiredBanner() {
@@ -224,11 +318,10 @@ let chatMsgListener  = null;
 window.showChatPage = async function () {
     if (!isLoggedIn()) { alert('로그인이 필요합니다!'); return; }
 
-    // chatApp 인증 확인
+    // ✅ chatApp 미인증 시 → 명시적 로그인 오버레이 표시 (redirect 루프 방지)
     if (!isChatAuthReady()) {
-        showChatToast('⚠️ 채팅 인증 중... 잠시 후 다시 시도해주세요.');
-        await syncChatAuth(auth.currentUser);
-        if (!isChatAuthReady()) { _showChatAuthExpiredBanner(); return; }
+        _showChatLoginOverlay();
+        return;
     }
 
     if (chatMsgListener && activeChatRoomId) {
