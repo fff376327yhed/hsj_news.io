@@ -5191,14 +5191,35 @@ window.setCommentSort = function(method) {
 };
 
 // ✅ 댓글 좋아요/싫어요
+// ✅ [BUG FIX] 댓글 추천/비추천 연속 클릭 방지용 잠금 Set
+const _commentVotingInProgress = new Set();
+
 window.toggleCommentVote = function(articleId, commentId, voteType) {
     if (!isLoggedIn()) return alert("로그인이 필요합니다!");
+
+    // ✅ 이미 처리 중인 댓글은 중복 실행 차단
+    const lockKey = `${commentId}_${getUserId()}`;
+    if (_commentVotingInProgress.has(lockKey)) return;
+    _commentVotingInProgress.add(lockKey);
+
+    // ✅ 버튼 즉시 비활성화 (UI 피드백)
+    const likeBtn    = document.getElementById(`clike-${commentId}`);
+    const dislikeBtn = document.getElementById(`cdislike-${commentId}`);
+    if (likeBtn)    likeBtn.disabled = true;
+    if (dislikeBtn) dislikeBtn.disabled = true;
+
     const uid = getUserId();
     const voteRef = db.ref(`commentVotes/${articleId}/${commentId}/${uid}`);
     // ✅ [BUG FIX] 기존: comments/${articleId}/${commentId} 전체 트랜잭션 → 작성자/관리자만 쓰기 가능해 일반 유저 차단됨
     // 수정: likeCount/dislikeCount 필드만 개별 트랜잭션 실행 → "auth != null" 규칙(Firebase Rules 추가)으로 가능
     const likeCountRef    = db.ref(`comments/${articleId}/${commentId}/likeCount`);
     const dislikeCountRef = db.ref(`comments/${articleId}/${commentId}/dislikeCount`);
+
+    function _unlock() {
+        _commentVotingInProgress.delete(lockKey);
+        if (likeBtn)    likeBtn.disabled = false;
+        if (dislikeBtn) dislikeBtn.disabled = false;
+    }
 
     voteRef.once('value').then(snap => {
         const current = snap.val();
@@ -5226,9 +5247,7 @@ window.toggleCommentVote = function(articleId, commentId, voteType) {
 
             const votePromise = isCancelling ? voteRef.remove() : voteRef.set(voteType);
             votePromise.then(() => voteRef.once('value')).then(s => {
-                const newVote    = s.val();
-                const likeBtn    = document.getElementById(`clike-${commentId}`);
-                const dislikeBtn = document.getElementById(`cdislike-${commentId}`);
+                const newVote = s.val();
                 if (likeBtn) {
                     likeBtn.style.cssText = `border:1px solid ${newVote==='like'?'#1565c0':'#ddd'}; border-radius:20px; padding:3px 10px; font-size:12px; cursor:pointer; background:${newVote==='like'?'#e3f2fd':'#fff'}; color:${newVote==='like'?'#1565c0':'inherit'};`;
                     likeBtn.innerHTML = `👍 ${newLikeCount}`;
@@ -5237,9 +5256,9 @@ window.toggleCommentVote = function(articleId, commentId, voteType) {
                     dislikeBtn.style.cssText = `border:1px solid ${newVote==='dislike'?'#c62828':'#ddd'}; border-radius:20px; padding:3px 10px; font-size:12px; cursor:pointer; background:${newVote==='dislike'?'#fce4ec':'#fff'}; color:${newVote==='dislike'?'#c62828':'inherit'};`;
                     dislikeBtn.innerHTML = `👎 ${newDislikeCount}`;
                 }
-            });
-        });
-    });
+            }).finally(_unlock);
+        }).catch(_unlock);
+    }).catch(_unlock);
 };
 
 // ✅ 답글의 답글 폼 토글
@@ -6522,18 +6541,38 @@ async function checkUserVote(articleId) {
 }
 
 // ✅ 투표 토글
+// ✅ [BUG FIX] 연속 클릭으로 인한 중복 트랜잭션 방지용 잠금 Set
+const _votingInProgress = new Set();
+
 function toggleVote(articleId, voteType) {
     if(!isLoggedIn()) {
         alert("추천/비추천은 로그인 후 가능합니다!");
         return;
     }
-    
+
+    // ✅ 이미 처리 중인 기사는 중복 실행 차단
+    const lockKey = `${articleId}_${getUserId()}`;
+    if (_votingInProgress.has(lockKey)) return;
+    _votingInProgress.add(lockKey);
+
+    // ✅ 버튼 즉시 비활성화 (UI 피드백)
+    const likeBtn    = document.getElementById(`like-btn-${articleId}`);
+    const dislikeBtn = document.getElementById(`dislike-btn-${articleId}`);
+    if (likeBtn)    likeBtn.disabled = true;
+    if (dislikeBtn) dislikeBtn.disabled = true;
+
     const uid = getUserId();
     const voteRef = db.ref(`votes/${articleId}/${uid}`);
     // ✅ [BUG FIX] 기존: articles/${articleId} 전체 트랜잭션 → 작성자/관리자만 쓰기 가능해 일반 유저 차단됨
     // 수정: likeCount/dislikeCount 필드만 개별 트랜잭션 실행 → "auth != null" 규칙으로 모든 로그인 유저 가능
     const likeCountRef    = db.ref(`articles/${articleId}/likeCount`);
     const dislikeCountRef = db.ref(`articles/${articleId}/dislikeCount`);
+
+    function _unlock() {
+        _votingInProgress.delete(lockKey);
+        if (likeBtn)    likeBtn.disabled = false;
+        if (dislikeBtn) dislikeBtn.disabled = false;
+    }
 
     voteRef.once('value').then(snapshot => {
         const currentVote = snapshot.val();
@@ -6562,9 +6601,6 @@ function toggleVote(articleId, voteType) {
             // ✅ 트랜잭션 커밋 완료 후에 voteRef 업데이트
             const votePromise = isCancelling ? voteRef.remove() : voteRef.set(voteType);
 
-            const likeBtn    = document.getElementById(`like-btn-${articleId}`);
-            const dislikeBtn = document.getElementById(`dislike-btn-${articleId}`);
-
             votePromise.then(() => voteRef.once('value')).then(snap => {
                 const newVote = snap.val();
                 if (likeBtn) {
@@ -6575,9 +6611,9 @@ function toggleVote(articleId, voteType) {
                     dislikeBtn.className = `vote-btn dislike${newVote === 'dislike' ? ' active' : ''}`;
                     dislikeBtn.innerHTML = `👎 비추천 ${newDislikeCount}`;
                 }
-            });
-        });
-    });
+            }).finally(_unlock);
+        }).catch(_unlock);
+    }).catch(_unlock);
 }
 
 // ✅ 투표 수
