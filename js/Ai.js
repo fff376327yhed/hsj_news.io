@@ -362,16 +362,19 @@ A: 아니요, 현재 해정뉴스에는 주식 기능이 없습니다. 예전에
                     </button>
                 </div>
             </div>
-            <button id="_aiChatFab" onclick="window._aiToggle()" title="AI 도우미">
+            <button id="_aiChatFab" onclick="window._aiOpenChat()" title="AI 도우미">
                 🤖<div class="ai-badge" id="_aiBadge"></div>
             </button>`;
         document.body.appendChild(wrap);
     }
 
-    window._aiToggle = function() {
+    // 채팅창 열고닫기 전용 (ai-toggle.js의 _aiFeatureToggle과 이름 충돌 방지)
+    window._aiOpenChat = function() {
         document.getElementById('_aiChatWin')?.classList.toggle('open');
         document.getElementById('_aiBadge').style.display = 'none';
     };
+    // 하위 호환 (더보기 메뉴 등에서 _aiToggle() 직접 호출하는 경우)
+    window._aiToggle = window._aiOpenChat;
 
     window._aiQuick = function(q) {
         const input = document.getElementById('_aiChatInput');
@@ -495,7 +498,7 @@ AI:`;
                 btn.id = '_aiMoreBtn';
                 btn.className = 'more-menu-btn';
                 btn.innerHTML = '✨ AI 도우미';
-                btn.onclick = () => window._aiToggle();
+                btn.onclick = () => window._aiOpenChat();
                 grid.appendChild(btn);
             }, 80);
         };
