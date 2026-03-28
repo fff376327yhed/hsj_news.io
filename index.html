@@ -24,6 +24,16 @@
     <link rel="icon" type="image/png" sizes="32x32" href="https://raw.githubusercontent.com/fff376327yhed/hsj_news.io/main/favicon/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="https://raw.githubusercontent.com/fff376327yhed/hsj_news.io/main/favicon/favicon-16x16.png">
     
+    <!-- ✅ PWA 설치 프롬프트 조기 캡처 (Firebase 등 스크립트 로딩 전 이벤트 소실 방지) -->
+    <script>
+      window.__pwaEarlyPrompt = null;
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        window.__pwaEarlyPrompt = e;
+        console.log('🎯 [Early] beforeinstallprompt 캡처 완료 (Pwa.js 로드 전)');
+      });
+    </script>
+
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js" crossorigin="anonymous"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js" crossorigin="anonymous"></script>
