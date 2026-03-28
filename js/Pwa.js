@@ -15,7 +15,13 @@
     var COOLDOWN_DAYS = 7;
     var SHOW_DELAY_MS = 3500;
 
-    var _deferredPrompt = null;
+    // ✅ 조기 캡처 프롬프트 회수 (index.html head에서 미리 잡아둔 것)
+    // GitHub Pages + 로그인 상태에서 Firebase 로딩으로 Pwa.js가 늦게 실행되어
+    // beforeinstallprompt를 놓치는 문제 방지
+    var _deferredPrompt = window.__pwaEarlyPrompt || null;
+    if (_deferredPrompt) {
+        console.log('✅ 조기 캡처된 beforeinstallprompt 회수 성공');
+    }
 
     // ──────────────────────────────────────────────
     // 감지 유틸
@@ -185,10 +191,13 @@
 
         newInstall.addEventListener('click', function () {
             banner.style.display = 'none';
-            if (_deferredPrompt) {
+            var prompt = _deferredPrompt || window.__pwaEarlyPrompt || null;
+            if (prompt) {
+                _deferredPrompt = prompt;
                 _deferredPrompt.prompt();
                 _deferredPrompt.userChoice.then(function (r) {
                     _deferredPrompt = null;
+                    window.__pwaEarlyPrompt = null;
                     if (r.outcome === 'accepted') { clearDismiss(); updateInstallBadge(); }
                 });
             } else {
@@ -220,10 +229,14 @@
             return;
         }
 
-        if (_deferredPrompt) {
+        // 조기 캡처 포함한 프롬프트 체크
+        var prompt = _deferredPrompt || window.__pwaEarlyPrompt || null;
+        if (prompt) {
+            _deferredPrompt = prompt;
             _deferredPrompt.prompt();
             _deferredPrompt.userChoice.then(function (r) {
                 _deferredPrompt = null;
+                window.__pwaEarlyPrompt = null;
                 if (r.outcome === 'accepted') { clearDismiss(); updateInstallBadge(); }
             });
             return;
@@ -280,7 +293,8 @@
     window.addEventListener('beforeinstallprompt', function (e) {
         e.preventDefault();
         _deferredPrompt = e;
-        console.log('\uD83D\uDCF2 beforeinstallprompt \uC218\uC2E0');
+        window.__pwaEarlyPrompt = e; // 동기화
+        console.log('\uD83D\uDCF2 beforeinstallprompt \uC218\uC2E0 (Pwa.js \uD578\uB4E4\uB7EC)');
         updateInstallBadge();
         if (!isInstalledPWA() && !isDismissedRecently()) {
             setTimeout(showAndroidBanner, SHOW_DELAY_MS);
