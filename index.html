@@ -10,6 +10,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>해정뉴스</title>
     <!-- PWA -->
+    <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#c62828">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -783,41 +784,139 @@ if ('serviceWorker' in navigator) {
     <div id="adminModeIndicator"></div>
 
     <!-- ================================================================ -->
-    <!-- 📱 앱 설치 카드 (NEW)                                            -->
+    <!-- 📱 앱 설치 카드 (개선판)                                         -->
     <!-- ================================================================ -->
-    <div style="background:white; border-radius:12px; margin-bottom:12px;
-                box-shadow:0 2px 8px rgba(0,0,0,0.1); overflow:hidden;">
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:16px;">
-            <div style="display:flex; align-items:center; gap:12px;">
-                <div style="width:40px; height:40px; border-radius:11px;
-                            background:linear-gradient(135deg,#c62828,#e53935);
-                            display:flex; align-items:center; justify-content:center;
-                            box-shadow:0 2px 8px rgba(198,40,40,0.3); flex-shrink:0;">
-                    <img src="./favicon/android-icon-192x192.png"
-                         onerror="this.style.display='none';this.parentNode.innerHTML='📰'"
-                         style="width:26px;height:26px;border-radius:6px;object-fit:cover;">
-                </div>
-                <div>
-                    <div style="font-size:15px; font-weight:700; color:#202124;">📱 앱 설치</div>
-                    <div style="display:flex; align-items:center; gap:6px; margin-top:3px;">
-                        <span id="pwaStatusBadge"
-                              style="font-size:11px; font-weight:700; padding:2px 8px;
-                                     border-radius:20px; background:#fff3e0;
-                                     color:#e65100; border:1px solid #ffcc80;">
-                            확인 중...
-                        </span>
-                        <span style="font-size:12px; color:#888;">홈 화면에서 바로 실행</span>
-                    </div>
+    <div style="background:linear-gradient(135deg,#fff8f8 0%,#fff3f3 100%);
+                border-radius:16px; margin-bottom:12px;
+                box-shadow:0 2px 12px rgba(198,40,40,0.1);
+                border:1.5px solid rgba(198,40,40,0.15); overflow:hidden;">
+        <div style="display:flex; align-items:center; gap:14px; padding:18px 16px;">
+            <div style="width:48px; height:48px; border-radius:14px; flex-shrink:0;
+                        background:linear-gradient(135deg,#c62828,#e53935);
+                        display:flex; align-items:center; justify-content:center;
+                        box-shadow:0 3px 12px rgba(198,40,40,0.35);">
+                <img src="./favicon/android-icon-192x192.png"
+                     onerror="this.style.display='none';this.parentNode.innerHTML='📰'"
+                     style="width:30px;height:30px;border-radius:8px;object-fit:cover;">
+            </div>
+            <div style="flex:1; min-width:0;">
+                <div style="font-size:15px; font-weight:800; color:#212121; letter-spacing:-0.3px;">📱 앱으로 설치하기</div>
+                <div style="display:flex; align-items:center; gap:6px; margin-top:5px; flex-wrap:wrap;">
+                    <span id="pwaStatusBadge"
+                          style="font-size:11px; font-weight:700; padding:3px 10px;
+                                 border-radius:20px; background:#fff3e0;
+                                 color:#e65100; border:1px solid #ffcc80;
+                                 white-space:nowrap;">
+                        확인 중...
+                    </span>
+                    <span style="font-size:12px; color:#aaa;">홈 화면에서 바로 실행</span>
                 </div>
             </div>
             <button id="pwaSettingInstallBtn"
                     onclick="window._pwaShowInstall && window._pwaShowInstall()"
-                    style="padding:9px 16px; background:#c62828; color:white;
-                           border:none; border-radius:10px; font-size:13px;
-                           font-weight:700; cursor:pointer; flex-shrink:0;
-                           white-space:nowrap;">
-                📲 지금 설치하기
+                    style="padding:12px 18px; background:linear-gradient(135deg,#c62828,#e53935);
+                           color:white; border:none; border-radius:12px;
+                           font-size:13px; font-weight:800; cursor:pointer;
+                           flex-shrink:0; white-space:nowrap;
+                           box-shadow:0 3px 10px rgba(198,40,40,0.3);
+                           -webkit-tap-highlight-color:transparent; min-height:44px;">
+                📲 설치하기
             </button>
+        </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- 🤖 AI 기능 설정 카드                                              -->
+    <!-- ================================================================ -->
+    <div style="background:white; border-radius:12px; margin-bottom:12px;
+                box-shadow:0 2px 8px rgba(0,0,0,0.1); overflow:hidden;">
+        <div onclick="toggleSettingsAccordion('aiFeatureAccordion')"
+             style="display:flex; align-items:center; justify-content:space-between; padding:16px; cursor:pointer; user-select:none;"
+             onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background=''">
+            <h3 style="font-size:16px; font-weight:700; margin:0; color:#202124;">
+                🤖 AI 기능 설정
+            </h3>
+            <button id="aiFeatureAccordionBtn"
+                style="padding:5px 14px; font-size:13px; font-weight:700; border:1.5px solid #c62828;
+                       background:white; color:#c62828; border-radius:6px; cursor:pointer; pointer-events:none;">
+                더보기 ▾
+            </button>
+        </div>
+        <div id="aiFeatureAccordion" style="display:none; padding:0 16px 16px; border-top:1px solid #f0f0f0;">
+            <div style="padding-top:14px; display:flex; flex-direction:column; gap:10px;">
+
+                <!-- AI 채팅 (로봇) 토글 -->
+                <div style="display:flex; align-items:center; justify-content:space-between;
+                            padding:14px 16px; background:#f8f9ff; border-radius:12px;
+                            border:1.5px solid #e8eaf6; gap:12px;">
+                    <div style="display:flex; align-items:center; gap:12px; flex:1; min-width:0;">
+                        <div style="width:40px; height:40px; border-radius:11px; flex-shrink:0;
+                                    background:linear-gradient(135deg,#5c6bc0,#7986cb);
+                                    display:flex; align-items:center; justify-content:center;
+                                    font-size:20px; box-shadow:0 2px 8px rgba(92,107,192,0.3);">🤖</div>
+                        <div>
+                            <div style="font-size:14px; font-weight:700; color:#212121;">로봇과 채팅</div>
+                            <div style="font-size:12px; color:#aaa; margin-top:2px;">AI 채팅 버튼 표시 여부</div>
+                        </div>
+                    </div>
+                    <!-- ✅ 수정: _aiFeatureToggle 로 호출 (Ai.js _aiOpenChat과 충돌 해결) -->
+                    <label style="position:relative; display:inline-block; width:50px; height:28px; flex-shrink:0; cursor:pointer;">
+                        <input type="checkbox" id="aiChatToggle"
+                               onchange="window._aiFeatureToggle('chat', this.checked)"
+                               style="opacity:0; width:0; height:0; position:absolute;">
+                        <span id="aiChatSlider" style="
+                            position:absolute; cursor:pointer; inset:0;
+                            background:#ccc; border-radius:28px;
+                            transition:background 0.25s;">
+                            <span style="
+                                position:absolute; left:3px; top:3px;
+                                width:22px; height:22px;
+                                background:white; border-radius:50%;
+                                box-shadow:0 2px 6px rgba(0,0,0,0.25);
+                                transition:transform 0.25s;
+                                display:block;"></span>
+                        </span>
+                    </label>
+                </div>
+
+                <!-- AI 요약 버튼 토글 -->
+                <div style="display:flex; align-items:center; justify-content:space-between;
+                            padding:14px 16px; background:#f8f9ff; border-radius:12px;
+                            border:1.5px solid #e8eaf6; gap:12px;">
+                    <div style="display:flex; align-items:center; gap:12px; flex:1; min-width:0;">
+                        <div style="width:40px; height:40px; border-radius:11px; flex-shrink:0;
+                                    background:linear-gradient(135deg,#c62828,#e53935);
+                                    display:flex; align-items:center; justify-content:center;
+                                    font-size:20px; box-shadow:0 2px 8px rgba(198,40,40,0.25);">✨</div>
+                        <div>
+                            <div style="font-size:14px; font-weight:700; color:#212121;">AI 요약 버튼</div>
+                            <div style="font-size:12px; color:#aaa; margin-top:2px;">기사 내 AI 요약 기능 표시 여부</div>
+                        </div>
+                    </div>
+                    <!-- ✅ 수정: _aiFeatureToggle 로 호출 -->
+                    <label style="position:relative; display:inline-block; width:50px; height:28px; flex-shrink:0; cursor:pointer;">
+                        <input type="checkbox" id="aiSummaryToggle"
+                               onchange="window._aiFeatureToggle('summary', this.checked)"
+                               style="opacity:0; width:0; height:0; position:absolute;">
+                        <span id="aiSummarySlider" style="
+                            position:absolute; cursor:pointer; inset:0;
+                            background:#ccc; border-radius:28px;
+                            transition:background 0.25s;">
+                            <span style="
+                                position:absolute; left:3px; top:3px;
+                                width:22px; height:22px;
+                                background:white; border-radius:50%;
+                                box-shadow:0 2px 6px rgba(0,0,0,0.25);
+                                transition:transform 0.25s;
+                                display:block;"></span>
+                        </span>
+                    </label>
+                </div>
+
+                <div style="font-size:12px; color:#bbb; text-align:center; padding-top:2px; line-height:1.6;">
+                    설정은 이 기기에만 저장됩니다
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1064,6 +1163,9 @@ if ('serviceWorker' in navigator) {
 <!-- 📱 PWA 설치 관리 -->
 <script src="./js/pwa.js"></script>
 
+<!-- 🤖 AI 기능 ON/OFF 토글 -->
+<script src="./js/ai-toggle.js"></script>
+
 <!-- 🔧 점검모드 버튼 표시 스크립트 -->
 <script>
 // 관리자 로그인 시 점검모드 버튼 표시
@@ -1100,30 +1202,37 @@ auth.onAuthStateChanged(async function(user) {
 <!-- 📱 PWA 설치 배너 (Android Chrome) — JS는 pwa.js 에서 처리        -->
 <!-- ================================================================ -->
 <div id="pwaInstallBanner" style="
-    display:none; position:fixed; bottom:64px; left:10px; right:10px;
-    z-index:10000; background:white; border-radius:16px;
-    padding:14px 16px; align-items:center; gap:12px;
-    box-shadow:0 4px 24px rgba(0,0,0,0.18); border:1px solid #f0f0f0;">
+    display:none; position:fixed; bottom:70px; left:12px; right:12px;
+    z-index:10000; background:white; border-radius:20px;
+    padding:16px 18px; align-items:center; gap:14px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.08);
+    border:1px solid rgba(198,40,40,0.12);">
     <div style="
-        width:42px; height:42px; border-radius:11px;
+        width:48px; height:48px; border-radius:14px; flex-shrink:0;
         background:linear-gradient(135deg,#c62828,#e53935);
-        display:flex; align-items:center; justify-content:center; flex-shrink:0;
-        box-shadow:0 2px 8px rgba(198,40,40,0.3);">
+        display:flex; align-items:center; justify-content:center;
+        box-shadow:0 3px 10px rgba(198,40,40,0.35);">
         <img src="./favicon/android-icon-192x192.png"
              onerror="this.style.display='none';this.parentNode.innerHTML='📰'"
-             style="width:26px;height:26px;border-radius:6px;object-fit:cover;">
+             style="width:30px;height:30px;border-radius:8px;object-fit:cover;">
     </div>
     <div style="flex:1; min-width:0;">
-        <div style="font-size:14px; font-weight:700; color:#212121; letter-spacing:-0.3px;">해정뉴스 앱 설치</div>
-        <div style="font-size:12px; color:#888; margin-top:2px;">홈 화면에서 앱처럼 빠르게 실행돼요</div>
+        <div style="font-size:15px; font-weight:800; color:#212121; letter-spacing:-0.3px; margin-bottom:3px;">해정뉴스 앱 설치</div>
+        <div style="font-size:12px; color:#999; line-height:1.4;">홈 화면에서 앱처럼 빠르게 실행!</div>
     </div>
-    <button id="pwaInstallBtn" style="
-        padding:9px 16px; background:#c62828; color:white; border:none;
-        border-radius:10px; font-size:13px; font-weight:700; cursor:pointer;
-        flex-shrink:0; white-space:nowrap;">설치</button>
-    <button id="pwaInstallDismiss" style="
-        padding:8px; background:none; border:none; color:#bbb;
-        cursor:pointer; font-size:20px; flex-shrink:0; line-height:1;">×</button>
+    <div style="display:flex; gap:8px; flex-shrink:0;">
+        <button id="pwaInstallBtn" style="
+            padding:11px 18px; background:linear-gradient(135deg,#c62828,#e53935);
+            color:white; border:none; border-radius:12px;
+            font-size:14px; font-weight:800; cursor:pointer;
+            white-space:nowrap; box-shadow:0 3px 10px rgba(198,40,40,0.3);
+            -webkit-tap-highlight-color:transparent; min-height:44px;">설치</button>
+        <button id="pwaInstallDismiss" style="
+            padding:11px 12px; background:#f5f5f5; border:none; color:#aaa;
+            cursor:pointer; font-size:18px; line-height:1;
+            border-radius:12px; min-height:44px; min-width:44px;
+            -webkit-tap-highlight-color:transparent;">✕</button>
+    </div>
 </div>
 
 <!-- ================================================================ -->
@@ -1131,72 +1240,81 @@ auth.onAuthStateChanged(async function(user) {
 <!-- ================================================================ -->
 <div id="pwaIosModal" style="
     display:none; position:fixed; inset:0; z-index:10001;
-    background:rgba(0,0,0,0.55); align-items:flex-end; justify-content:center;">
+    background:rgba(0,0,0,0.6); align-items:flex-end; justify-content:center;
+    -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px);">
     <div style="
-        background:white; border-radius:24px 24px 0 0;
-        padding:24px 22px 40px; width:100%; max-width:480px;">
-        <div style="width:40px;height:4px;background:#e0e0e0;border-radius:4px;margin:0 auto 22px;"></div>
-        <div style="display:flex; align-items:center; gap:12px; margin-bottom:22px;">
-            <div style="width:48px; height:48px; border-radius:12px;
+        background:white; border-radius:28px 28px 0 0;
+        padding:20px 22px 44px; width:100%; max-width:520px;
+        box-shadow:0 -8px 40px rgba(0,0,0,0.2);">
+        <!-- 드래그 핸들 -->
+        <div style="width:40px;height:4px;background:#e0e0e0;border-radius:4px;margin:0 auto 24px;"></div>
+        <!-- 헤더 -->
+        <div style="display:flex; align-items:center; gap:14px; margin-bottom:24px;">
+            <div style="width:52px; height:52px; border-radius:14px; flex-shrink:0;
                         background:linear-gradient(135deg,#c62828,#e53935);
                         display:flex; align-items:center; justify-content:center;
-                        box-shadow:0 2px 8px rgba(198,40,40,0.3);">
+                        box-shadow:0 4px 14px rgba(198,40,40,0.35);">
                 <img src="./favicon/android-icon-192x192.png"
                      onerror="this.style.display='none';this.parentNode.innerHTML='📰'"
-                     style="width:30px;height:30px;border-radius:7px;object-fit:cover;">
+                     style="width:32px;height:32px;border-radius:8px;object-fit:cover;">
             </div>
             <div>
-                <div style="font-size:16px; font-weight:800; color:#212121;">해정뉴스 앱 설치</div>
-                <div style="font-size:13px; color:#888; margin-top:2px;">아래 순서대로 진행해주세요</div>
+                <div style="font-size:17px; font-weight:900; color:#212121; letter-spacing:-0.4px;">해정뉴스 앱 설치</div>
+                <div style="font-size:13px; color:#999; margin-top:3px;">Safari에서 아래 순서대로 진행해주세요</div>
             </div>
         </div>
         <!-- 단계 안내 -->
-        <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:24px;">
+        <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:28px;">
             <div style="display:flex; align-items:center; gap:14px;
-                        padding:13px 14px; background:#fff8f8;
-                        border-radius:12px; border:1px solid #fdecea;">
-                <div style="width:30px; height:30px; border-radius:50%;
-                            background:#c62828; color:white; font-weight:800;
-                            font-size:13px; display:flex; align-items:center;
-                            justify-content:center; flex-shrink:0;">1</div>
+                        padding:14px 16px; background:#fff8f8;
+                        border-radius:14px; border:1.5px solid #fde8e8;">
+                <div style="width:34px; height:34px; border-radius:50%; flex-shrink:0;
+                            background:linear-gradient(135deg,#c62828,#e53935);
+                            color:white; font-weight:900; font-size:14px;
+                            display:flex; align-items:center; justify-content:center;
+                            box-shadow:0 2px 8px rgba(198,40,40,0.3);">1</div>
                 <div style="flex:1;">
-                    <div style="font-size:13px; font-weight:700; color:#212121;">하단 공유 버튼 탭</div>
-                    <div style="font-size:12px; color:#888; margin-top:2px;">Safari 하단 중앙 □↑ 아이콘</div>
+                    <div style="font-size:14px; font-weight:800; color:#212121;">하단 공유 버튼 탭</div>
+                    <div style="font-size:12px; color:#aaa; margin-top:3px;">Safari 하단 중앙 □↑ 아이콘</div>
                 </div>
-                <span style="font-size:22px;">□↑</span>
+                <span style="font-size:26px; flex-shrink:0;">□↑</span>
             </div>
             <div style="display:flex; align-items:center; gap:14px;
-                        padding:13px 14px; background:#fff8f8;
-                        border-radius:12px; border:1px solid #fdecea;">
-                <div style="width:30px; height:30px; border-radius:50%;
-                            background:#c62828; color:white; font-weight:800;
-                            font-size:13px; display:flex; align-items:center;
-                            justify-content:center; flex-shrink:0;">2</div>
+                        padding:14px 16px; background:#fff8f8;
+                        border-radius:14px; border:1.5px solid #fde8e8;">
+                <div style="width:34px; height:34px; border-radius:50%; flex-shrink:0;
+                            background:linear-gradient(135deg,#c62828,#e53935);
+                            color:white; font-weight:900; font-size:14px;
+                            display:flex; align-items:center; justify-content:center;
+                            box-shadow:0 2px 8px rgba(198,40,40,0.3);">2</div>
                 <div style="flex:1;">
-                    <div style="font-size:13px; font-weight:700; color:#212121;">"홈 화면에 추가" 선택</div>
-                    <div style="font-size:12px; color:#888; margin-top:2px;">스크롤해서 해당 항목을 탭</div>
+                    <div style="font-size:14px; font-weight:800; color:#212121;">"홈 화면에 추가" 선택</div>
+                    <div style="font-size:12px; color:#aaa; margin-top:3px;">목록 스크롤 후 해당 항목 탭</div>
                 </div>
-                <span style="font-size:22px;">➕</span>
+                <span style="font-size:26px; flex-shrink:0;">➕</span>
             </div>
             <div style="display:flex; align-items:center; gap:14px;
-                        padding:13px 14px; background:#fff8f8;
-                        border-radius:12px; border:1px solid #fdecea;">
-                <div style="width:30px; height:30px; border-radius:50%;
-                            background:#c62828; color:white; font-weight:800;
-                            font-size:13px; display:flex; align-items:center;
-                            justify-content:center; flex-shrink:0;">3</div>
+                        padding:14px 16px; background:#fff8f8;
+                        border-radius:14px; border:1.5px solid #fde8e8;">
+                <div style="width:34px; height:34px; border-radius:50%; flex-shrink:0;
+                            background:linear-gradient(135deg,#c62828,#e53935);
+                            color:white; font-weight:900; font-size:14px;
+                            display:flex; align-items:center; justify-content:center;
+                            box-shadow:0 2px 8px rgba(198,40,40,0.3);">3</div>
                 <div style="flex:1;">
-                    <div style="font-size:13px; font-weight:700; color:#212121;">오른쪽 위 "추가" 탭</div>
-                    <div style="font-size:12px; color:#888; margin-top:2px;">이름 확인 후 추가하면 완료!</div>
+                    <div style="font-size:14px; font-weight:800; color:#212121;">오른쪽 위 "추가" 탭</div>
+                    <div style="font-size:12px; color:#aaa; margin-top:3px;">이름 확인 후 추가하면 완료!</div>
                 </div>
-                <span style="font-size:22px;">✅</span>
+                <span style="font-size:26px; flex-shrink:0;">✅</span>
             </div>
         </div>
         <button id="pwaIosClose" style="
-            width:100%; padding:15px; background:#212121; color:white;
-            border:none; border-radius:14px; font-size:15px;
-            font-weight:700; cursor:pointer;">
-            확인했어요
+            width:100%; padding:17px; background:linear-gradient(135deg,#c62828,#e53935);
+            color:white; border:none; border-radius:16px;
+            font-size:16px; font-weight:800; cursor:pointer;
+            box-shadow:0 4px 14px rgba(198,40,40,0.35);
+            -webkit-tap-highlight-color:transparent; letter-spacing:-0.3px;">
+            확인했어요 👍
         </button>
     </div>
 </div>
