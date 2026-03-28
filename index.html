@@ -308,6 +308,22 @@ if ('serviceWorker' in navigator) {
     flex-wrap: wrap;
 }
 
+/* ===== PWA 애니메이션 ===== */
+#pwaInstallBanner[style*="flex"] {
+    animation: _pwaBannerUp 0.35s cubic-bezier(.22,.68,0,1.2) both;
+}
+#pwaIosModal[style*="flex"] > div {
+    animation: _pwaIosUp 0.3s ease both;
+}
+@keyframes _pwaBannerUp {
+    from { opacity:0; transform:translateY(16px) scale(0.97); }
+    to   { opacity:1; transform:translateY(0) scale(1); }
+}
+@keyframes _pwaIosUp {
+    from { transform:translateY(100%); }
+    to   { transform:translateY(0); }
+}
+
 </style>
 
 </head>
@@ -762,12 +778,49 @@ if ('serviceWorker' in navigator) {
         </div>
     </div>
 </div>
-    
+
     <!-- 관리자 전용 섹션 -->
     <div id="adminModeIndicator"></div>
 
-    
-    
+    <!-- ================================================================ -->
+    <!-- 📱 앱 설치 카드 (NEW)                                            -->
+    <!-- ================================================================ -->
+    <div style="background:white; border-radius:12px; margin-bottom:12px;
+                box-shadow:0 2px 8px rgba(0,0,0,0.1); overflow:hidden;">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:16px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:40px; height:40px; border-radius:11px;
+                            background:linear-gradient(135deg,#c62828,#e53935);
+                            display:flex; align-items:center; justify-content:center;
+                            box-shadow:0 2px 8px rgba(198,40,40,0.3); flex-shrink:0;">
+                    <img src="./favicon/android-icon-192x192.png"
+                         onerror="this.style.display='none';this.parentNode.innerHTML='📰'"
+                         style="width:26px;height:26px;border-radius:6px;object-fit:cover;">
+                </div>
+                <div>
+                    <div style="font-size:15px; font-weight:700; color:#202124;">📱 앱 설치</div>
+                    <div style="display:flex; align-items:center; gap:6px; margin-top:3px;">
+                        <span id="pwaStatusBadge"
+                              style="font-size:11px; font-weight:700; padding:2px 8px;
+                                     border-radius:20px; background:#fff3e0;
+                                     color:#e65100; border:1px solid #ffcc80;">
+                            확인 중...
+                        </span>
+                        <span style="font-size:12px; color:#888;">홈 화면에서 바로 실행</span>
+                    </div>
+                </div>
+            </div>
+            <button id="pwaSettingInstallBtn"
+                    onclick="window._pwaShowInstall && window._pwaShowInstall()"
+                    style="padding:9px 16px; background:#c62828; color:white;
+                           border:none; border-radius:10px; font-size:13px;
+                           font-weight:700; cursor:pointer; flex-shrink:0;
+                           white-space:nowrap;">
+                📲 지금 설치하기
+            </button>
+        </div>
+    </div>
+
     <div class="settings-divider"></div>
     
     <h3 class="section-title">🛡️ 관리</h3>
@@ -1008,6 +1061,9 @@ if ('serviceWorker' in navigator) {
 <!-- 🌳 나무아래키 위키 시스템 -->
 <script src="./js/wiki.js"></script>
 
+<!-- 📱 PWA 설치 관리 -->
+<script src="./js/pwa.js"></script>
+
 <!-- 🔧 점검모드 버튼 표시 스크립트 -->
 <script>
 // 관리자 로그인 시 점검모드 버튼 표시
@@ -1040,66 +1096,110 @@ auth.onAuthStateChanged(async function(user) {
 });
 </script>
 
+<!-- ================================================================ -->
+<!-- 📱 PWA 설치 배너 (Android Chrome) — JS는 pwa.js 에서 처리        -->
+<!-- ================================================================ -->
+<div id="pwaInstallBanner" style="
+    display:none; position:fixed; bottom:64px; left:10px; right:10px;
+    z-index:10000; background:white; border-radius:16px;
+    padding:14px 16px; align-items:center; gap:12px;
+    box-shadow:0 4px 24px rgba(0,0,0,0.18); border:1px solid #f0f0f0;">
+    <div style="
+        width:42px; height:42px; border-radius:11px;
+        background:linear-gradient(135deg,#c62828,#e53935);
+        display:flex; align-items:center; justify-content:center; flex-shrink:0;
+        box-shadow:0 2px 8px rgba(198,40,40,0.3);">
+        <img src="./favicon/android-icon-192x192.png"
+             onerror="this.style.display='none';this.parentNode.innerHTML='📰'"
+             style="width:26px;height:26px;border-radius:6px;object-fit:cover;">
+    </div>
+    <div style="flex:1; min-width:0;">
+        <div style="font-size:14px; font-weight:700; color:#212121; letter-spacing:-0.3px;">해정뉴스 앱 설치</div>
+        <div style="font-size:12px; color:#888; margin-top:2px;">홈 화면에서 앱처럼 빠르게 실행돼요</div>
+    </div>
+    <button id="pwaInstallBtn" style="
+        padding:9px 16px; background:#c62828; color:white; border:none;
+        border-radius:10px; font-size:13px; font-weight:700; cursor:pointer;
+        flex-shrink:0; white-space:nowrap;">설치</button>
+    <button id="pwaInstallDismiss" style="
+        padding:8px; background:none; border:none; color:#bbb;
+        cursor:pointer; font-size:20px; flex-shrink:0; line-height:1;">×</button>
+</div>
 
-    <!-- ✅ PWA 설치 배너 -->
-    <div id="pwaInstallBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;
-        background:white;border-top:1px solid #e0e0e0;padding:14px 16px;
-        display:none;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.1);">
-        <div style="width:40px;height:40px;border-radius:10px;background:#2e7d32;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <i class="fas fa-seedling" style="color:white;font-size:18px;"></i>
+<!-- ================================================================ -->
+<!-- 📱 iOS Safari 단계별 안내 모달 — JS는 pwa.js 에서 처리            -->
+<!-- ================================================================ -->
+<div id="pwaIosModal" style="
+    display:none; position:fixed; inset:0; z-index:10001;
+    background:rgba(0,0,0,0.55); align-items:flex-end; justify-content:center;">
+    <div style="
+        background:white; border-radius:24px 24px 0 0;
+        padding:24px 22px 40px; width:100%; max-width:480px;">
+        <div style="width:40px;height:4px;background:#e0e0e0;border-radius:4px;margin:0 auto 22px;"></div>
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:22px;">
+            <div style="width:48px; height:48px; border-radius:12px;
+                        background:linear-gradient(135deg,#c62828,#e53935);
+                        display:flex; align-items:center; justify-content:center;
+                        box-shadow:0 2px 8px rgba(198,40,40,0.3);">
+                <img src="./favicon/android-icon-192x192.png"
+                     onerror="this.style.display='none';this.parentNode.innerHTML='📰'"
+                     style="width:30px;height:30px;border-radius:7px;object-fit:cover;">
+            </div>
+            <div>
+                <div style="font-size:16px; font-weight:800; color:#212121;">해정뉴스 앱 설치</div>
+                <div style="font-size:13px; color:#888; margin-top:2px;">아래 순서대로 진행해주세요</div>
+            </div>
         </div>
-        <div style="flex:1;min-width:0;">
-            <div style="font-size:14px;font-weight:700;color:#212121;">해정뉴스 앱 설치</div>
-            <div style="font-size:12px;color:#888;margin-top:2px;">홈 화면에 추가해서 앱처럼 사용하세요</div>
+        <!-- 단계 안내 -->
+        <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:24px;">
+            <div style="display:flex; align-items:center; gap:14px;
+                        padding:13px 14px; background:#fff8f8;
+                        border-radius:12px; border:1px solid #fdecea;">
+                <div style="width:30px; height:30px; border-radius:50%;
+                            background:#c62828; color:white; font-weight:800;
+                            font-size:13px; display:flex; align-items:center;
+                            justify-content:center; flex-shrink:0;">1</div>
+                <div style="flex:1;">
+                    <div style="font-size:13px; font-weight:700; color:#212121;">하단 공유 버튼 탭</div>
+                    <div style="font-size:12px; color:#888; margin-top:2px;">Safari 하단 중앙 □↑ 아이콘</div>
+                </div>
+                <span style="font-size:22px;">□↑</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:14px;
+                        padding:13px 14px; background:#fff8f8;
+                        border-radius:12px; border:1px solid #fdecea;">
+                <div style="width:30px; height:30px; border-radius:50%;
+                            background:#c62828; color:white; font-weight:800;
+                            font-size:13px; display:flex; align-items:center;
+                            justify-content:center; flex-shrink:0;">2</div>
+                <div style="flex:1;">
+                    <div style="font-size:13px; font-weight:700; color:#212121;">"홈 화면에 추가" 선택</div>
+                    <div style="font-size:12px; color:#888; margin-top:2px;">스크롤해서 해당 항목을 탭</div>
+                </div>
+                <span style="font-size:22px;">➕</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:14px;
+                        padding:13px 14px; background:#fff8f8;
+                        border-radius:12px; border:1px solid #fdecea;">
+                <div style="width:30px; height:30px; border-radius:50%;
+                            background:#c62828; color:white; font-weight:800;
+                            font-size:13px; display:flex; align-items:center;
+                            justify-content:center; flex-shrink:0;">3</div>
+                <div style="flex:1;">
+                    <div style="font-size:13px; font-weight:700; color:#212121;">오른쪽 위 "추가" 탭</div>
+                    <div style="font-size:12px; color:#888; margin-top:2px;">이름 확인 후 추가하면 완료!</div>
+                </div>
+                <span style="font-size:22px;">✅</span>
+            </div>
         </div>
-        <button onclick="window._pwaInstall()" 
-            style="padding:8px 16px;background:#2e7d32;color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;">
-            설치
-        </button>
-        <button onclick="document.getElementById('pwaInstallBanner').style.display='none';sessionStorage.setItem('pwaBannerDismissed','1')"
-            style="padding:8px;background:none;border:none;color:#aaa;cursor:pointer;font-size:16px;flex-shrink:0;">
-            <i class="fas fa-times"></i>
+        <button id="pwaIosClose" style="
+            width:100%; padding:15px; background:#212121; color:white;
+            border:none; border-radius:14px; font-size:15px;
+            font-weight:700; cursor:pointer;">
+            확인했어요
         </button>
     </div>
-
-    <script>
-    // ✅ PWA 설치 프롬프트 핸들러
-    (function() {
-        let _deferredPrompt = null;
-
-        window.addEventListener('beforeinstallprompt', function(e) {
-            e.preventDefault();
-            _deferredPrompt = e;
-            // 이전에 배너를 닫지 않았으면 표시
-            if (!sessionStorage.getItem('pwaBannerDismissed')) {
-                const banner = document.getElementById('pwaInstallBanner');
-                if (banner) banner.style.display = 'flex';
-            }
-        });
-
-        window._pwaInstall = async function() {
-            const banner = document.getElementById('pwaInstallBanner');
-            if (!_deferredPrompt) {
-                // iOS Safari 안내
-                alert('iOS Safari에서는:\n[공유 버튼] → [홈 화면에 추가]를 눌러 설치하세요.');
-                return;
-            }
-            _deferredPrompt.prompt();
-            const { outcome } = await _deferredPrompt.userChoice;
-            _deferredPrompt = null;
-            if (banner) banner.style.display = 'none';
-        };
-
-        window.addEventListener('appinstalled', function() {
-            _deferredPrompt = null;
-            const banner = document.getElementById('pwaInstallBanner');
-            if (banner) banner.style.display = 'none';
-            if (typeof showToastNotification === 'function') {
-                showToastNotification('✅ 설치 완료', '해정뉴스 앱이 설치되었습니다!');
-            }
-        });
-    })();
-    </script>
+</div>
 
 </body>
 </html>
