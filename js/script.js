@@ -253,9 +253,13 @@ const authReady = new Promise(resolve => { _authReadyResolve = resolve; });
 
 // ===== Firebase Messaging 초기화 (Service Worker 준비 후) =====
 let messaging = null;
-// ✅ [중복 수신 버그 수정] FCM 포그라운드 메시지로 이미 Toast를 보여준 notificationId 집합
-// setupNotificationListener(child_added)가 같은 알림을 감지할 때 중복 Toast 방지용
+// ✅ [중복 수신 버그 수정] FCM으로 Toast를 보여준 notificationId 집합
 window._shownByFCM = new Set();
+// ===== 🆕 새 기사 판별용 마지막 홈 방문 시각 =====
+// localStorage 'hjnews_lastHomeVisit' 에 타임스탬프(ms)를 저장합니다.
+// 홈 화면 렌더링 직전에 읽어 이전 방문 시각으로 사용하고, 렌더 후 갱신합니다.
+const _LAST_VISIT_KEY = 'hjnews_lastHomeVisit';
+window._lastHomeVisit = parseInt(localStorage.getItem(_LAST_VISIT_KEY) || '0');
 
 async function initializeMessaging() {
     try {
@@ -282,8 +286,7 @@ async function initializeMessaging() {
             const title = payload.data?.title || payload.notification?.title || '📰 해정뉴스';
             const body = payload.data?.body || payload.data?.text || payload.notification?.body || '새로운 알림';
             const articleId = payload.data?.articleId || null;
-            // ✅ [중복 수신 버그 수정] FCM으로 이미 Toast를 보여준 notificationId를 기록
-            // setupNotificationListener의 child_added가 같은 알림을 감지해도 Toast를 중복 표시하지 않음
+            // ✅ [중복 수신 버그 수정] FCM으로 보여준 notificationId 기록
             const notifId = payload.data?.notificationId;
             if (notifId) window._shownByFCM.add(notifId);
             
@@ -1457,10 +1460,8 @@ window.onunhandledrejection = function(event) {
     };
 })();
 
-// ✅ [중복 수신 버그 수정] 포그라운드 메시지 수신 핸들러 중복 등록 제거
-// messaging.onMessage는 initializeMessaging() 내부에서만 단 1회 등록합니다.
-// 이 위치에서 재등록하면 동일한 메시지에 대해 Toast가 2번 발생합니다.
-// (이전 코드에서 이중 등록이 중복 알림 버그의 1순위 원인이었습니다)
+// ✅ [중복 수신 버그 수정] 포그라운드 onMessage는 initializeMessaging() 안에서만 1회 등록
+// 여기서 재등록하면 같은 메시지에 Toast가 2번 뜨는 버그가 발생합니다.
 
 // ===== 기존 setupNotificationListener 함수 수정 =====
 let notificationListenerActive = false;
@@ -1485,15 +1486,12 @@ function setupNotificationListener(uid) {
             
             if (shownNotifications.has(notifId)) return;
             if (notification.timestamp < pageLoadTime) return;
-            
-            // ✅ [중복 수신 버그 수정] FCM onMessage가 이미 이 알림을 Toast로 보여줬다면 스킵
-            // 포그라운드 상태에서 FCM과 DB 리스너가 동시에 발화하는 경우 Toast 2회 방지
+            // ✅ [중복 수신 버그 수정] FCM이 이미 Toast 표시한 알림 스킵
             if (window._shownByFCM && window._shownByFCM.has(notifId)) {
                 shownNotifications.add(notifId);
-                window._shownByFCM.delete(notifId); // 메모리 누수 방지
+                window._shownByFCM.delete(notifId);
                 return;
             }
-            
             if (!notification.read) {
                 shownNotifications.add(notifId);
                 showToastNotification(notification.title, notification.text, notification.articleId);
@@ -1663,14 +1661,12 @@ function startNotificationListener(uid) {
             
             if (shownNotifications.has(notifId)) return;
             if (notification.timestamp < pageLoadTime) return;
-            
-            // ✅ [중복 수신 버그 수정] FCM onMessage가 이미 이 알림을 Toast로 보여줬다면 스킵
+            // ✅ [중복 수신 버그 수정] FCM이 이미 Toast 표시한 알림 스킵
             if (window._shownByFCM && window._shownByFCM.has(notifId)) {
                 shownNotifications.add(notifId);
                 window._shownByFCM.delete(notifId);
                 return;
             }
-            
             if (!notification.read) {
                 shownNotifications.add(notifId);
                 showToastNotification(notification.title, notification.text, notification.articleId);
@@ -2419,7 +2415,8 @@ function renderHotArticle(articles, containerId, category, commentCounts) {
 
     // 핫 기사 ID 저장 (일반 목록에서 제외용)
     window._currentHotArticleId = hot.id;
-    el.innerHTML = buildArticleCardHTML(hot, commentCounts, 'hot');
+    const _hotIsNew = (window._lastHomeVisit || 0) > 0 && hot.timestamp > (window._lastHomeVisit || 0);
+    el.innerHTML = buildArticleCardHTML(hot, commentCounts, 'hot', _hotIsNew);
 }
 
 // ===== 🔥 핫 기사 로드 (articles 로드 후 호출) =====
@@ -3164,7 +3161,8 @@ async function getUserProfilePhoto(email) {
 
 // ===== 공통 기사 카드 HTML 빌더 =====
 // badge: 'pinned' | 'hot' | null
-function buildArticleCardHTML(a, commentCounts, badge) {
+// isNew: true이면 마지막 방문 이후 새로 올라온 기사 → 특별 디자인 적용
+function buildArticleCardHTML(a, commentCounts, badge, isNew = false) {
     const views        = getArticleViews(a);
     const votes        = getArticleVoteCounts(a);
     const commentCount = (commentCounts && commentCounts[a.id]) || a.commentCount || 0;
@@ -3174,6 +3172,11 @@ function buildArticleCardHTML(a, commentCounts, badge) {
 
     let badgeHTML = '';
     let borderStyle = 'cursor:pointer;';
+    // 🆕 새 기사 뱃지
+    let newBadgeHTML = '';
+    if (isNew) {
+        newBadgeHTML = '<span class="new-article-badge">NEW</span>';
+    }
     if (badge === 'pinned') {
         badgeHTML   = `<span class="pinned-badge">📌 고정</span>`;
         borderStyle = 'border-left:4px solid #ffd700; cursor:pointer;';
@@ -3185,7 +3188,7 @@ function buildArticleCardHTML(a, commentCounts, badge) {
         borderStyle = 'border-left:4px solid #ff5722; cursor:pointer;';
     }
 
-    return `<div class="article-card" onclick="showArticleDetail('${a.id}')" style="${borderStyle}">
+    return `<div class="article-card${isNew ? ' article-card--new' : ''}" onclick="showArticleDetail('${a.id}')" style="${borderStyle}">
         ${a.thumbnail ? `<img src="${a.thumbnail}" class="article-thumbnail" alt="썸네일">` : ''}
         <div class="article-content">
             <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:4px;">
@@ -3193,7 +3196,7 @@ function buildArticleCardHTML(a, commentCounts, badge) {
                 ${a.anonymous ? `<span style="display:inline-flex;align-items:center;gap:3px;
                     background:#f5f5f5;color:#757575;
                     font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;">🕵️ 익명</span>` : ''}
-                ${badgeHTML}
+                ${newBadgeHTML}${badgeHTML}
             </div>
             <h3 class="article-title">${escapeHTML(a.title)}</h3>
             ${a.summary ? `<p class="article-summary">${escapeHTML(a.summary)}</p>` : ''}
@@ -3216,6 +3219,12 @@ function buildArticleCardHTML(a, commentCounts, badge) {
 async function renderArticles() {
     // ✅ [최적화] authReady 대기 제거 — 기사 목록 즉시 렌더링 후 프로필 사진만 비동기 보완
     // await authReady; // 제거: 이 한 줄이 2~4초 블로킹의 주범이었음
+
+    // 🆕 [새 기사 디자인] 이번 렌더링에서 사용할 "이전 방문 시각" 스냅샷
+    // window._lastHomeVisit은 페이지 로드 시 localStorage에서 읽은 값입니다.
+    // 렌더 완료 후 현재 시각으로 갱신하므로, 이 변수를 먼저 캡처해야 합니다.
+    const _visitSnapshot = window._lastHomeVisit || 0;
+
     const list = getSortedArticles();
     
     const grid = document.getElementById("articlesGrid");
@@ -3341,7 +3350,8 @@ async function renderArticles() {
     // ✅ 캐시 완성 후 고정 기사 렌더링
     if (pinnedArticles.length > 0) {
         pinnedSection.innerHTML = pinnedArticles
-            .map(a => buildArticleCardHTML(a, commentCounts, 'pinned'))
+            .map(a => buildArticleCardHTML(a, commentCounts, 'pinned',
+                _visitSnapshot > 0 && a.timestamp > _visitSnapshot))
             .join('');
     } else {
         pinnedSection.innerHTML = '';
@@ -3355,10 +3365,16 @@ async function renderArticles() {
 
     // ✅ 일반 기사 렌더링
     const articlesHTML = displayArticles.map((a) =>
-        buildArticleCardHTML(a, commentCounts, null)
+        buildArticleCardHTML(a, commentCounts, null,
+            _visitSnapshot > 0 && a.timestamp > _visitSnapshot)
     );
     grid.innerHTML = articlesHTML.join('');
-    
+
+    // 🆕 [새 기사 디자인] 렌더 완료 → 방문 시각 갱신
+    // 다음 방문 때 지금 이후 올라온 기사만 NEW 뱃지를 받습니다.
+    window._lastHomeVisit = Date.now();
+    localStorage.setItem(_LAST_VISIT_KEY, window._lastHomeVisit);
+
     if(endIdx < filteredUnpinned.length) {
         loadMore.innerHTML = `<button onclick="loadMoreArticles()" class="btn-block" style="background:#fff; border:1px solid #ddd; color:#555;">
             더 보기 (${filteredUnpinned.length - endIdx})</button>`;
@@ -3372,6 +3388,14 @@ console.log("✅ Part 7 기사 렌더링 완료");
 // ===== Part 8: 기사 상세보기 및 작성/수정 =====
 
 async function showArticleDetail(id) {
+    // 🆕 [새 기사 디자인] 클릭 즉시 해당 카드의 NEW 스타일 제거 (즉각적 피드백)
+    document.querySelectorAll('.article-card--new').forEach(el => {
+        if (el.getAttribute('onclick')?.includes(id)) {
+            el.classList.remove('article-card--new');
+            const badge = el.querySelector('.new-article-badge');
+            if (badge) badge.remove();
+        }
+    });
     hideAll();
     const detailSection = document.getElementById("articleDetailSection");
     detailSection.classList.add("active");
