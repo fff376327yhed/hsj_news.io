@@ -1,18 +1,25 @@
 // =====================================================================
-// ✨ 해정뉴스 AI 도우미 (Puter.js - 무제한 무료)
-// 처음 사용 시 Puter.com 무료 계정 팝업 자동 표시
+// ✨ 해정뉴스 AI 도우미 — Groq AI (Llama 3.3 70B) + 커스텀 학습 관리
 // =====================================================================
-(function() {
+(function () {
     'use strict';
 
-    const PUTER_SRC = 'https://js.puter.com/v2/';
-    const AI_MODEL  = 'gpt-4o-mini';
-    let   _puterLoading = false;
+    // ────────────────────────────────────────────
+    // 상수 (Groq 설정)
+    // 무료 하루 14,400회 / 분당 30회
+    // ────────────────────────────────────────────
+    var GROQ_ENDPOINT    = 'https://api.groq.com/openai/v1/chat/completions';
+    var GROQ_MODEL       = 'llama-3.3-70b-versatile';
+    var GROQ_DEFAULT_KEY = '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'; // 공용 기본 키
 
-    // ──────────────────────────────────────────────
-    // 해정뉴스 사이트 지식베이스 (AI 채팅 학습 데이터)
-    // ──────────────────────────────────────────────
-    const SITE_KNOWLEDGE = `
+    var LS_APIKEY   = 'groq_api_key';
+    var LS_TRAINING = 'haejung_ai_training';
+    var ADMIN_PW    = '';
+
+    // ────────────────────────────────────────────
+    // 기본 사이트 지식베이스
+    // ────────────────────────────────────────────
+    var SITE_KNOWLEDGE = `
 [해정뉴스 기본 정보]
 - 이름: 해정뉴스
 - 설명: 학생들이 직접 운영하는 뉴스 및 커뮤니티 웹사이트
@@ -32,7 +39,7 @@
 - 기사 기능: 추천(좋아요), 비추천, 조회수 자동 집계
 - 기사 공유: 링크 복사 버튼 지원
 - 기사 수정/삭제: 본인 글만 가능
-- AI 요약: 기사 하단 "✨ AI 요약 보기" 버튼으로 Puter AI 요약 제공
+- AI 요약: 기사 하단 "✨ AI 요약 보기" 버튼으로 Groq AI 요약 제공
 - 핫 기사: 추천 수 기준 상단 노출
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -108,157 +115,159 @@
 - 문서 역사(편집 이력) 확인 가능
 - 수정 요청 시스템: 작성자가 편집 잠금 설정 시 수정 요청으로 전환
 - 관리자는 모든 문서 수정/삭제 가능
-- AI 초안 자동 생성 기능 지원 (편집 툴바 ✨ AI 초안 버튼)
+- AI 초안 자동 생성 기능 지원 (편집 툴바 AI 초안 버튼)
 
-[나무마크 문법 — 나무아래키 편집 방법]
-- == 제목 ==        → 대제목 (h2)
-- === 소제목 ===    → 소제목 (h3)
-- ==== 소소제목 ==== → 세부 제목 (h4)
-- '''굵게'''        → 굵은 텍스트
-- ''기울임''        → 기울임 텍스트
-- __밑줄__          → 밑줄 텍스트
-- --취소선--        → 취소선
-- ~~형광펜~~        → 노란 형광펜 강조
-- [[문서명]]        → 내부 위키 링크
-- [[문서명|표시텍스트]] → 텍스트를 지정한 내부 링크
-- [* 각주내용]      → 각주 삽입
-- {{{코드}}}        → 인라인 코드
-- {{{#ff0000 빨간텍스트}}} → 컬러 텍스트
-- [목차]            → 목차 자동 생성
-- * 항목            → 순서 없는 목록
-- ## 주석           → 주석 (화면에 표시 안 됨)
-- ||제목||제목||    → 표(테이블) 작성
-
-[나무마크 예시]
-[목차]
-
-== 개요 ==
-여기에 내용을 씁니다.
-
-== 특징 ==
-=== 편집 방법 ===
-* 누구나 편집할 수 있습니다
-* [[다른문서]]로 내부 링크를 만들 수 있습니다
+[나무마크 문법]
+- 제목: == 제목 ==
+- 소제목: === 소제목 ===
+- 굵게: 따옴표 3개로 감싸기
+- 내부링크: [[문서명]]
+- 목록: * 항목
+- 표: ||셀||셀||
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [AI 기능]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- 기사 AI 요약: 기사 하단 "✨ AI 요약 보기" 버튼 클릭
-- AI 채팅: 화면 우측 하단 ✨ 버튼 클릭
-- 위키 AI 초안: 위키 편집 화면 툴바의 "✨ AI 초안" 버튼
-- AI 엔진: Puter AI (Gemini 2.5 Flash Lite) — 무제한 무료
-- 처음 사용 시 Puter.com 무료 계정 가입 팝업이 자동으로 뜸 (정상)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-[더보기 메뉴 전체 항목]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- 자유게시판 바로가기
-- 마크 카테고리 바로가기
-- 알림 확인
-- 채팅
-- 투표
-- Q&A
-- 패치노트
-- 활동 상태
-- 버그 제보
-- 개선 제보
-- ✨ AI 도우미 (AI 채팅 열기)
+- 기사 AI 요약: 기사 하단 AI 요약 보기 버튼 클릭
+- AI 채팅: 화면 우측 하단 버튼 클릭
+- 위키 AI 초안: 위키 편집 화면 툴바의 AI 초안 버튼
+- AI 엔진: Groq Llama 3.3 70B
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [자주 묻는 질문]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Q: 글(기사)을 어떻게 쓰나요?
-A: 로그인 후 상단 "글쓰기" 버튼을 누르세요. 제목, 카테고리, 내용을 입력하고 등록하면 됩니다. 임시저장도 가능합니다.
+A: 로그인 후 상단 글쓰기 버튼을 누르세요.
 
 Q: 카테고리는 어떤 것들이 있나요?
 A: 자유게시판, 논란, 연애, 정아영, 게넥도, 게임, 마크 총 7개입니다.
 
-Q: 댓글은 어떻게 쓰나요?
-A: 기사 하단 댓글 입력창에 작성하세요. 사진도 업로드할 수 있습니다.
-
-Q: 채팅은 어떻게 하나요?
-A: 더보기 메뉴 또는 하단 네비게이션에서 채팅을 선택하세요.
-
-Q: 나무아래키는 뭔가요?
-A: 해정뉴스의 자체 위키입니다. 더보기 → 나무아래키로 접속하세요. 누구나 문서를 작성하고 편집할 수 있습니다.
-
-Q: 나무마크가 뭔가요?
-A: 나무아래키에서 사용하는 문서 편집 문법입니다. == 제목 ==, '''굵게''', [[링크]] 등의 문법을 사용합니다.
-
-Q: 알림 설정은 어떻게 하나요?
-A: 알림 패널 → 알림 설정에서 카테고리별로 원하는 알림만 받을 수 있습니다.
-
-Q: 프로필 사진이나 닉네임을 바꾸고 싶어요.
-A: 하단 네비게이션의 설정(톱니바퀴 아이콘)에서 변경할 수 있습니다.
-
 Q: 앱으로 설치할 수 있나요?
-A: 네! PWA를 지원합니다. 브라우저에서 "홈 화면에 추가"를 누르면 앱처럼 설치됩니다.
-
-Q: AI 요약이 처음에 팝업이 뜨는 이유가 뭔가요?
-A: Puter AI를 사용하기 위해 Puter.com 무료 계정 가입이 필요합니다. 한 번만 가입하면 이후에는 팝업 없이 사용 가능합니다.
+A: 네! PWA를 지원합니다. 브라우저에서 홈 화면에 추가를 누르면 앱처럼 설치됩니다.
 
 Q: 버그나 불편한 점을 어디에 제보하나요?
 A: 더보기 → 버그 제보(오류) 또는 개선 제보(기능 요청)로 제보해주세요.
-
-Q: 주식 기능이 있나요?
-A: 아니요, 현재 해정뉴스에는 주식 기능이 없습니다. 예전에 개발 계획이 있었으나 현재는 제공되지 않습니다.
 `;
 
-    // ──────────────────────────────────────────────
-    // Puter.js 동적 로드
-    // ──────────────────────────────────────────────
-    function loadPuter() {
-        return new Promise((resolve, reject) => {
-            if (window.puter) return resolve();
-            if (_puterLoading) {
-                const t = setInterval(() => { if (window.puter) { clearInterval(t); resolve(); } }, 100);
-                setTimeout(() => { clearInterval(t); reject(new Error('Puter 로드 시간 초과')); }, 12000);
-                return;
-            }
-            _puterLoading = true;
-            const s = document.createElement('script');
-            s.src = PUTER_SRC;
-            s.onload = () => { _puterLoading = false; resolve(); };
-            s.onerror = () => { _puterLoading = false; reject(new Error('Puter.js 로드 실패')); };
-            document.head.appendChild(s);
+    // ────────────────────────────────────────────
+    // 로컬스토리지 헬퍼
+    // ────────────────────────────────────────────
+    function getApiKey() {
+        try {
+            // gsk_ 로 시작하는 개인 키가 있으면 우선 사용, 없으면 기본 공용 키
+            var stored = localStorage.getItem(LS_APIKEY) || '';
+            if (stored && stored.startsWith('gsk_')) return stored;
+            return GROQ_DEFAULT_KEY;
+        } catch (e) { return GROQ_DEFAULT_KEY; }
+    }
+    function setApiKey(k) {
+        try { localStorage.setItem(LS_APIKEY, k); } catch (e) {}
+    }
+    function getTraining() {
+        try {
+            var raw = localStorage.getItem(LS_TRAINING);
+            return raw ? JSON.parse(raw) : [];
+        } catch (e) { return []; }
+    }
+    function setTraining(arr) {
+        try { localStorage.setItem(LS_TRAINING, JSON.stringify(arr)); } catch (e) {}
+    }
+
+    // ────────────────────────────────────────────
+    // 커스텀 학습 데이터 빌드
+    // ────────────────────────────────────────────
+    function buildCustomKnowledge() {
+        var items = getTraining();
+        if (!items.length) return '';
+        var lines = ['━━━━━━━━━━━━━━━━━━━━━━━━━━━', '[관리자 추가 학습 데이터]', '━━━━━━━━━━━━━━━━━━━━━━━━━━━'];
+        items.forEach(function (item, i) {
+            lines.push((i + 1) + '. [' + item.title + ']');
+            lines.push(item.content);
+            lines.push('');
         });
+        return lines.join('\n');
     }
 
-    async function askAI(prompt, opts = {}) {
-        await loadPuter();
-        const resp = await puter.ai.chat(prompt, { model: opts.model || AI_MODEL });
-        if (typeof resp === 'string') return resp;
-        const msg = resp?.message ?? resp;
-        const c   = msg?.content ?? msg?.text ?? msg;
-        if (typeof c === 'string') return c;
-        if (Array.isArray(c)) return c.map(b => b.text ?? b.content ?? String(b)).filter(Boolean).join('');
-        if (c != null) return String(c);
-        return String(resp ?? '');
+    function buildSystemPrompt() {
+        var custom = buildCustomKnowledge();
+        return '당신은 해정뉴스 커뮤니티의 AI 도우미입니다.\n'
+            + '아래 사이트 정보를 바탕으로 친절하고 간결하게 한국어로 답변하세요.\n'
+            + '모르는 내용은 솔직하게 모른다고 하세요.\n\n'
+            + SITE_KNOWLEDGE
+            + (custom ? '\n\n' + custom : '');
     }
 
-    // ══════════════════════════════════════════════════════════════
-    // 1. 기사 AI 요약 (_aiSummarize - script.js HTML에서 호출됨)
-    // ══════════════════════════════════════════════════════════════
-    window._aiSummarize = async function() {
-        const btn    = document.getElementById('_aiSummaryBtn');
-        const result = document.getElementById('_aiSummaryResult');
-        const root   = document.getElementById('articleDetail');
+    // ────────────────────────────────────────────
+    // Groq API 호출 (단일 함수)
+    // ────────────────────────────────────────────
+    async function _groqFetch(messages) {
+        var key = getApiKey();
+        var isDefault = (key === GROQ_DEFAULT_KEY);
+        var res = await fetch(GROQ_ENDPOINT, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + key
+            },
+            body: JSON.stringify({
+                model: GROQ_MODEL,
+                messages: messages,
+                max_tokens: 800,
+                temperature: 0.7
+            })
+        });
+        if (!res.ok) {
+            var err = await res.json().catch(function () { return {}; });
+            var status = res.status;
+            var msg = err?.error?.message || '';
+            if (status === 401) {
+                throw new Error(isDefault
+                    ? '기본 키 만료됨 — ⚙️에서 개인 Groq 키를 입력해주세요.'
+                    : '개인 API 키가 올바르지 않습니다. ⚙️에서 확인해주세요.');
+            }
+            if (status === 429) throw new Error('rate_limit');
+            throw new Error(msg || 'HTTP ' + status);
+        }
+        var data = await res.json();
+        var text = data?.choices?.[0]?.message?.content;
+        if (!text) throw new Error('응답 없음');
+        return text.trim();
+    }
+
+    function askAI(userText, systemOverride) {
+        var system = systemOverride || buildSystemPrompt();
+        return _groqFetch([
+            { role: 'system', content: system },
+            { role: 'user', content: userText }
+        ]);
+    }
+
+    function askAIWithHistory(messages) {
+        var allMessages = [{ role: 'system', content: buildSystemPrompt() }].concat(messages);
+        return _groqFetch(allMessages);
+    }
+
+    // ════════════════════════════════════════════
+    // 1. 기사 AI 요약
+    // ════════════════════════════════════════════
+    window._aiSummarize = async function () {
+        var btn    = document.getElementById('_aiSummaryBtn');
+        var result = document.getElementById('_aiSummaryResult');
+        var root   = document.getElementById('articleDetail');
         if (!btn || !result) return;
 
-        // 토글
         if (result.style.display !== 'none') {
             result.style.display = 'none';
-            btn.innerHTML = '✨ AI 요약 보기 <span style="font-size:11px;font-weight:400;color:#aaa;">Puter AI</span>';
+            btn.innerHTML = '✨ AI 요약 보기 <span style="font-size:11px;font-weight:400;color:#aaa;">Groq AI</span>';
             return;
         }
 
-        // 본문 수집 - 더 넓게 탐색
-        const bodyEl = root?.querySelector('[style*="line-height:1.8"][style*="color:#333"]')
-                    || root?.querySelector('.ql-editor')
-                    || root?.querySelector('[class*="article-body"]');
-        const rawText = bodyEl?.innerText?.trim() || root?.innerText?.slice(0, 3000) || '';
-        const titleEl = root?.querySelector('[style*="font-size:22px"],[style*="font-size:20px"],h1,h2');
-        const title   = titleEl?.innerText?.trim() || '기사';
+        var bodyEl = root?.querySelector('[style*="line-height:1.8"][style*="color:#333"]')
+                  || root?.querySelector('.ql-editor')
+                  || root?.querySelector('[class*="article-body"]');
+        var rawText = bodyEl?.innerText?.trim() || root?.innerText?.slice(0, 3000) || '';
+        var titleEl = root?.querySelector('[style*="font-size:22px"],[style*="font-size:20px"],h1,h2');
+        var title   = titleEl?.innerText?.trim() || '기사';
 
         if (rawText.length < 30) {
             result.style.display = 'block';
@@ -267,127 +276,293 @@ A: 아니요, 현재 해정뉴스에는 주식 기능이 없습니다. 예전에
         }
 
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AI가 읽는 중... <span style="font-size:11px;color:#aaa;">(처음엔 Puter 가입 팝업이 뜹니다)</span>';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AI가 읽는 중...';
 
         try {
-            const prompt = `다음 기사를 한국어로 3줄로 요약해주세요. 핵심만 간결하게.\n\n제목: ${title}\n\n본문:\n${rawText.slice(0, 2500)}`;
-            const summary = await askAI(prompt);
+            var prompt = '다음 기사를 한국어로 3줄로 요약해주세요. 핵심만 간결하게.\n\n제목: '
+                       + title + '\n\n본문:\n' + rawText.slice(0, 2500);
+            var summary = await askAI(prompt);
             result.style.display = 'block';
-            result.innerHTML = `
-                <div style="font-size:11px;font-weight:700;color:#c62828;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
-                    ✨ AI 요약 <span style="font-weight:400;color:#aaa;">· Puter AI</span>
-                </div>
-                ${summary.trim().replace(/\n/g, '<br>')}`;
+            result.innerHTML = '<div style="font-size:11px;font-weight:700;color:#c62828;margin-bottom:8px;">'
+                + '✨ AI 요약 <span style="font-weight:400;color:#aaa;">· Groq Llama 3.3</span></div>'
+                + summary.replace(/\n/g, '<br>');
             btn.innerHTML = '✨ AI 요약 닫기';
         } catch (e) {
             result.style.display = 'block';
-            result.innerHTML = `<span style="color:#c62828;font-size:13px;">오류: ${e.message}</span>`;
-            btn.innerHTML = '✨ AI 요약 보기 <span style="font-size:11px;font-weight:400;color:#aaa;">Puter AI</span>';
+            result.innerHTML = '<span style="color:#c62828;font-size:13px;">오류: ' + e.message + '</span>';
+            btn.innerHTML = '✨ AI 요약 보기 <span style="font-size:11px;font-weight:400;color:#aaa;">Groq AI</span>';
         } finally {
             btn.disabled = false;
         }
     };
 
-    // ══════════════════════════════════════════════════════════════
-    // 2. AI 채팅 (해정뉴스 학습 포함)
-    // ══════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════
+    // 2. AI 채팅 UI
+    // ════════════════════════════════════════════
     function injectChatFloat() {
         if (document.getElementById('_aiFloatWrap')) return;
 
-        const style = document.createElement('style');
-        style.textContent = `
-            #_aiChatWin{display:none;position:fixed;bottom:148px;right:16px;width:320px;height:460px;
-                background:white;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.2);
-                z-index:8888;flex-direction:column;overflow:hidden;border:1px solid #eee;}
-            #_aiChatWin.open{display:flex;}
-            #_aiChatHdr{background:linear-gradient(135deg,#c62828,#b71c1c);color:white;
-                padding:13px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
-            #_aiChatHdrIcon{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.2);
-                display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
-            #_aiChatMsgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;}
-            .aib{max-width:86%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.65;word-break:break-word;}
-            .aib.u{background:#c62828;color:white;align-self:flex-end;border-radius:14px 14px 4px 14px;}
-            .aib.b{background:#f5f5f5;color:#333;align-self:flex-start;border-radius:14px 14px 14px 4px;}
-            .aib.b.thinking{color:#aaa;font-style:italic;}
-            #_aiChatInputRow{padding:10px;border-top:1px solid #eee;display:flex;gap:8px;flex-shrink:0;}
-            #_aiChatInput{flex:1;padding:8px 12px;border:1.5px solid #eee;border-radius:20px;
-                font-size:13px;outline:none;resize:none;max-height:80px;font-family:inherit;}
-            #_aiChatInput:focus{border-color:#c62828;}
-            #_aiSendBtn{width:36px;height:36px;border-radius:50%;background:#c62828;color:white;
-                border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-            #_aiSendBtn:disabled{opacity:.5;cursor:default;}
-            #_aiQuickBtns{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 10px;}
-            .aiq{padding:5px 10px;border:1px solid #ffcdd2;border-radius:20px;background:#fff8f8;
-                color:#c62828;font-size:11px;cursor:pointer;white-space:nowrap;transition:all .15s;}
-            .aiq:hover{background:#c62828;color:white;}
-            #_aiChatFab{position:fixed;bottom:80px;right:16px;z-index:10001;width:52px;height:52px;
-                border-radius:50%;background:#c62828;color:white;border:none;cursor:pointer;
-                box-shadow:0 4px 16px rgba(198,40,40,.4);display:flex;align-items:center;
-                justify-content:center;transition:transform .2s;font-size:22px;}
-            #_aiChatFab:hover{transform:scale(1.08);}
-            #_aiChatFab .ai-badge{position:absolute;top:-2px;right:-2px;width:14px;height:14px;
-                background:#4caf50;border-radius:50%;border:2px solid white;display:none;}
-        `;
+        var style = document.createElement('style');
+        style.textContent = [
+            '#_aiChatWin{display:none;position:fixed;bottom:148px;right:16px;width:320px;height:480px;',
+            'background:white;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.2);',
+            'z-index:8888;flex-direction:column;overflow:hidden;border:1px solid #eee;}',
+            '#_aiChatWin.open{display:flex;}',
+            '#_aiChatHdr{background:linear-gradient(135deg,#1a73e8,#0d47a1);color:white;',
+            'padding:13px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;}',
+            '#_aiChatHdrIcon{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.2);',
+            'display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}',
+            '#_aiChatMsgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;}',
+            '.aib{max-width:86%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.65;word-break:break-word;}',
+            '.aib.u{background:#1a73e8;color:white;align-self:flex-end;border-radius:14px 14px 4px 14px;}',
+            '.aib.b{background:#f5f5f5;color:#333;align-self:flex-start;border-radius:14px 14px 14px 4px;}',
+            '.aib.b.thinking{color:#aaa;font-style:italic;animation:_aiPulse 1.2s infinite;}',
+            '@keyframes _aiPulse{0%,100%{opacity:.5}50%{opacity:1}}',
+            '#_aiChatInputRow{padding:10px;border-top:1px solid #eee;display:flex;gap:8px;flex-shrink:0;}',
+            '#_aiChatInput{flex:1;padding:8px 12px;border:1.5px solid #eee;border-radius:20px;',
+            'font-size:13px;outline:none;resize:none;max-height:80px;font-family:inherit;}',
+            '#_aiChatInput:focus{border-color:#1a73e8;}',
+            '#_aiSendBtn{width:36px;height:36px;border-radius:50%;background:#1a73e8;color:white;',
+            'border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}',
+            '#_aiSendBtn:disabled{opacity:.5;cursor:default;}',
+            '#_aiQuickBtns{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 10px;}',
+            '.aiq{padding:5px 10px;border:1px solid #bbdefb;border-radius:20px;background:#e3f2fd;',
+            'color:#1a73e8;font-size:11px;cursor:pointer;white-space:nowrap;transition:all .15s;}',
+            '.aiq:hover{background:#1a73e8;color:white;}',
+            '#_aiChatFab{position:fixed;bottom:80px;right:16px;z-index:10001;width:52px;height:52px;',
+            'border-radius:50%;background:linear-gradient(135deg,#1a73e8,#0d47a1);color:white;',
+            'border:none;cursor:pointer;box-shadow:0 4px 16px rgba(26,115,232,.45);',
+            'display:flex;align-items:center;justify-content:center;transition:transform .2s;font-size:22px;}',
+            '#_aiChatFab:hover{transform:scale(1.08);}',
+            '#_aiChatFab .ai-badge{position:absolute;top:-2px;right:-2px;width:14px;height:14px;',
+            'background:#4caf50;border-radius:50%;border:2px solid white;display:none;}',
+            '#_aiTrainPanel{display:none;flex-direction:column;height:100%;overflow:hidden;}',
+            '#_aiTrainPanel.open{display:flex;}',
+            '#_aiTrainList{flex:1;overflow-y:auto;padding:10px;}',
+            '.ai-train-item{background:#f5f5f5;border-radius:10px;padding:10px;margin-bottom:8px;',
+            'display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}',
+            '.ai-train-item-title{font-weight:700;font-size:12px;color:#1a73e8;margin-bottom:3px;}',
+            '.ai-train-item-content{font-size:11px;color:#555;line-height:1.5;',
+            'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}',
+            '.ai-train-del{background:none;border:none;color:#e53935;cursor:pointer;font-size:16px;flex-shrink:0;padding:0;line-height:1;}',
+            '#_aiKeySetup{padding:14px;border-bottom:1px solid #eee;flex-shrink:0;}',
+            '#_aiKeyInput{width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid #eee;',
+            'border-radius:8px;font-size:12px;font-family:inherit;margin-bottom:8px;}',
+            '#_aiKeyInput:focus{border-color:#1a73e8;outline:none;}',
+            '.ai-btn-sm{padding:7px 14px;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;transition:opacity .15s;}',
+            '.ai-btn-sm:hover{opacity:.85;}',
+            '.ai-btn-blue{background:#1a73e8;color:white;}',
+            '.ai-btn-gray{background:#eee;color:#555;}',
+            '#_aiAddForm{padding:10px 12px;border-top:1px solid #eee;flex-shrink:0;}',
+            '#_aiAddTitle,#_aiAddContent{width:100%;box-sizing:border-box;padding:7px 10px;border:1.5px solid #eee;',
+            'border-radius:8px;font-size:12px;font-family:inherit;margin-bottom:6px;}',
+            '#_aiAddContent{resize:vertical;min-height:60px;}',
+            '#_aiAddTitle:focus,#_aiAddContent:focus{border-color:#1a73e8;outline:none;}'
+        ].join('');
         document.head.appendChild(style);
 
-        const wrap = document.createElement('div');
+        var wrap = document.createElement('div');
         wrap.id = '_aiFloatWrap';
-        wrap.innerHTML = `
-            <div id="_aiChatWin">
-                <div id="_aiChatHdr">
-                    <div id="_aiChatHdrIcon">✨</div>
-                    <div style="flex:1;">
-                        <div style="font-weight:800;font-size:14px;">해정뉴스 AI 도우미</div>
-                        <div style="font-size:10px;opacity:.8;margin-top:1px;">powered by Puter AI · 무제한 무료</div>
-                    </div>
-                    <button onclick="document.getElementById('_aiChatWin').classList.remove('open')"
-                        style="background:none;border:none;color:white;font-size:20px;cursor:pointer;padding:0;line-height:1;">×</button>
-                </div>
-                <div id="_aiChatMsgs">
-                    <div class="aib b">안녕하세요! 해정뉴스 AI 도우미입니다 ✨<br><br>해정뉴스 이용 방법이나 궁금한 점을 물어보세요.<br><span style="font-size:11px;color:#aaa;">처음 사용 시 Puter 무료 가입이 필요합니다.</span></div>
-                </div>
-                <div id="_aiQuickBtns">
-                    <button class="aiq" onclick="window._aiQuick('글 쓰는 방법')">📝 글쓰기</button>
-                    <button class="aiq" onclick="window._aiQuick('나무아래키가 뭐야?')">📖 나무아래키</button>
-                    <button class="aiq" onclick="window._aiQuick('채팅 어떻게 해?')">💬 채팅</button>
-                    <button class="aiq" onclick="window._aiQuick('알림 설정 방법')">🔔 알림</button>
-                    <button class="aiq" onclick="window._aiQuick('AI 기능 뭐가 있어?')">🤖 AI 기능</button>
-                    <button class="aiq" onclick="window._aiQuick('투표 기능 어떻게 써?')">🗳️ 투표</button>
-                </div>
-                <div id="_aiChatInputRow">
-                    <textarea id="_aiChatInput" placeholder="메시지 입력... (Enter 전송)" rows="1"
-                        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();window._aiSend();}"></textarea>
-                    <button id="_aiSendBtn" onclick="window._aiSend()">
-                        <i class="fas fa-paper-plane" style="font-size:13px;"></i>
-                    </button>
-                </div>
-            </div>
-            <button id="_aiChatFab" onclick="window._aiOpenChat()" title="AI 도우미">
-                🤖<div class="ai-badge" id="_aiBadge"></div>
-            </button>`;
+
+        // 채팅 뷰
+        var chatView = document.createElement('div');
+        chatView.id = '_aiChatWin';
+        chatView.innerHTML = [
+            '<div id="_aiChatView" style="display:flex;flex-direction:column;height:100%;">',
+              '<div id="_aiChatHdr">',
+                '<div id="_aiChatHdrIcon">🤖</div>',
+                '<div style="flex:1;">',
+                  '<div style="font-weight:800;font-size:14px;">해정뉴스 AI</div>',
+                  '<div style="font-size:10px;opacity:.8;margin-top:1px;">powered by Groq · Llama 3.3 70B</div>',
+                '</div>',
+                '<button id="_aiTrainToggle" title="설정" style="background:rgba(255,255,255,.2);border:none;color:white;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;margin-right:4px;display:flex;align-items:center;justify-content:center;">⚙️</button>',
+                '<button onclick="document.getElementById(\'_aiChatWin\').classList.remove(\'open\')" style="background:none;border:none;color:white;font-size:20px;cursor:pointer;padding:0;line-height:1;">×</button>',
+              '</div>',
+              '<div id="_aiChatMsgs">',
+                '<div class="aib b">안녕하세요! 해정뉴스 AI 도우미입니다 ✨<br><br>해정뉴스 이용 방법이나 궁금한 점을 물어보세요.</div>',
+              '</div>',
+              '<div id="_aiQuickBtns">',
+                '<button class="aiq" onclick="window._aiQuick(\'글 쓰는 방법\')">📝 글쓰기</button>',
+                '<button class="aiq" onclick="window._aiQuick(\'나무아래키가 뭐야?\')">📖 나무아래키</button>',
+                '<button class="aiq" onclick="window._aiQuick(\'채팅 어떻게 해?\')">💬 채팅</button>',
+                '<button class="aiq" onclick="window._aiQuick(\'알림 설정 방법\')">🔔 알림</button>',
+                '<button class="aiq" onclick="window._aiQuick(\'AI 기능 뭐가 있어?\')">🤖 AI 기능</button>',
+              '</div>',
+              '<div id="_aiChatInputRow">',
+                '<textarea id="_aiChatInput" placeholder="메시지 입력... (Enter 전송)" rows="1" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();window._aiSend();}"></textarea>',
+                '<button id="_aiSendBtn" onclick="window._aiSend()"><i class="fas fa-paper-plane" style="font-size:13px;"></i></button>',
+              '</div>',
+            '</div>',
+            // 설정/학습 뷰
+            '<div id="_aiTrainPanel">',
+              '<div id="_aiChatHdr" style="background:linear-gradient(135deg,#37474f,#263238);">',
+                '<div id="_aiChatHdrIcon">⚙️</div>',
+                '<div style="flex:1;"><div style="font-weight:800;font-size:14px;">AI 설정 / 학습 관리</div><div style="font-size:10px;opacity:.8;">기본 키로 모든 유저 사용 가능</div></div>',
+                '<button id="_aiTrainClose" style="background:none;border:none;color:white;font-size:20px;cursor:pointer;padding:0;line-height:1;">×</button>',
+              '</div>',
+              '<div id="_aiKeySetup">',
+                '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">',
+                  '<div style="font-size:11px;font-weight:700;color:#555;">🔑 개인 Groq 키 (선택)</div>',
+                  '<span id="_aiKeyBadge" style="font-size:11px;font-weight:700;"></span>',
+                '</div>',
+                '<input id="_aiKeyInput" type="text" placeholder="개인 키 없어도 기본 키로 작동합니다" autocomplete="off">',
+                '<div style="display:flex;gap:6px;flex-wrap:wrap;">',
+                  '<button class="ai-btn-sm ai-btn-blue" onclick="window._aiSaveKey()">💾 저장 + 테스트</button>',
+                  '<button class="ai-btn-sm ai-btn-gray" onclick="window._aiTestKey()">🔄 연결 확인</button>',
+                  '<a href="https://console.groq.com/keys" target="_blank" style="font-size:11px;color:#1a73e8;text-decoration:none;display:flex;align-items:center;">키 발급 →</a>',
+                '</div>',
+                '<div id="_aiKeySaved" style="font-size:11px;color:#4caf50;margin-top:6px;display:none;">✅ 저장 완료!</div>',
+              '</div>',
+              '<div id="_aiTrainList"></div>',
+              '<div id="_aiAddForm">',
+                '<div style="font-size:11px;font-weight:700;color:#555;margin-bottom:6px;">➕ 학습 데이터 추가 (관리자)</div>',
+                '<input id="_aiAddTitle" type="text" placeholder="제목 (예: 공지사항, 규칙, FAQ...)">',
+                '<textarea id="_aiAddContent" placeholder="AI가 학습할 내용"></textarea>',
+                '<button class="ai-btn-sm ai-btn-blue" onclick="window._aiAddTraining()">추가하기</button>',
+              '</div>',
+            '</div>'
+        ].join('');
+
+        wrap.appendChild(chatView);
+
+        var fab = document.createElement('button');
+        fab.id = '_aiChatFab';
+        fab.onclick = window._aiOpenChat;
+        fab.title = 'AI 도우미';
+        fab.innerHTML = '🤖<div class="ai-badge" id="_aiBadge"></div>';
+        wrap.appendChild(fab);
+
         document.body.appendChild(wrap);
+
+        document.getElementById('_aiTrainToggle').addEventListener('click', _openTrainPanel);
+        document.getElementById('_aiTrainClose').addEventListener('click', _closeTrainPanel);
+        _refreshKeyStatus();
     }
 
-    // 채팅창 열고닫기 전용 (ai-toggle.js의 _aiFeatureToggle과 이름 충돌 방지)
-    window._aiOpenChat = function() {
+    function _openTrainPanel() {
+        var pw = prompt('관리자 비밀번호를 입력하세요:');
+        if (pw === null) return; // 취소
+        if (pw !== ADMIN_PW) { alert('비밀번호가 올바르지 않습니다.'); return; }
+        document.getElementById('_aiChatView').style.display = 'none';
+        document.getElementById('_aiTrainPanel').classList.add('open');
+        _renderTrainingList();
+        _refreshKeyStatus();
+    }
+
+    function _closeTrainPanel() {
+        document.getElementById('_aiTrainPanel').classList.remove('open');
+        document.getElementById('_aiChatView').style.display = 'flex';
+    }
+
+    function _refreshKeyStatus() {
+        var input = document.getElementById('_aiKeyInput');
+        var badge = document.getElementById('_aiKeyBadge');
+        if (!input) return;
+        var stored = '';
+        try { stored = localStorage.getItem(LS_APIKEY) || ''; } catch(e) {}
+        var hasPersonal = stored.startsWith('gsk_');
+        input.placeholder = hasPersonal ? '개인 키 저장됨 — 변경하려면 새 키 입력' : '개인 키 없어도 기본 키로 작동합니다';
+        if (badge) {
+            badge.textContent = hasPersonal ? '✅ 개인 키' : '🔑 기본 키';
+            badge.style.color = hasPersonal ? '#4caf50' : '#888';
+        }
+    }
+
+    function _renderTrainingList() {
+        var list = document.getElementById('_aiTrainList');
+        if (!list) return;
+        var items = getTraining();
+        if (!items.length) {
+            list.innerHTML = '<div style="text-align:center;color:#aaa;font-size:12px;padding:16px;">학습 데이터가 없습니다.</div>';
+            return;
+        }
+        list.innerHTML = items.map(function (item, i) {
+            return '<div class="ai-train-item">'
+                + '<div style="flex:1;"><div class="ai-train-item-title">' + _esc(item.title) + '</div>'
+                + '<div class="ai-train-item-content">' + _esc(item.content) + '</div></div>'
+                + '<button class="ai-train-del" onclick="window._aiDeleteTraining(' + i + ')" title="삭제">🗑️</button>'
+                + '</div>';
+        }).join('');
+    }
+
+    function _esc(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    window._aiSaveKey = function () {
+        var v = (document.getElementById('_aiKeyInput').value || '').trim();
+        if (!v) { alert('키를 입력하거나 그냥 닫으세요.\n기본 키가 이미 적용되어 있습니다.'); return; }
+        if (!v.startsWith('gsk_')) { if (!confirm('Groq 키는 gsk_로 시작합니다. 계속 저장할까요?')) return; }
+        setApiKey(v);
+        document.getElementById('_aiKeyInput').value = '';
+        _refreshKeyStatus();
+        var saved = document.getElementById('_aiKeySaved');
+        if (saved) { saved.style.display = 'block'; setTimeout(function () { saved.style.display = 'none'; }, 3000); }
+        window._aiTestKey();
+    };
+
+    window._aiTestKey = async function () {
+        var badge = document.getElementById('_aiKeyBadge');
+        if (badge) { badge.textContent = '🔄 테스트 중...'; badge.style.color = '#888'; }
+        try {
+            await _groqFetch([
+                { role: 'system', content: '한 단어로만 답해줘.' },
+                { role: 'user', content: '안녕' }
+            ]);
+            if (badge) { badge.textContent = '✅ 연결 성공!'; badge.style.color = '#4caf50'; }
+        } catch (err) {
+            if (badge) { badge.textContent = '❌ ' + err.message; badge.style.color = '#e53935'; }
+        }
+    };
+
+    window._aiAddTraining = function () {
+        var pw = prompt('학습 관리 비밀번호:');
+        if (pw !== ADMIN_PW) { if (pw !== null) alert('비밀번호 오류'); return; }
+        var title   = (document.getElementById('_aiAddTitle').value || '').trim();
+        var content = (document.getElementById('_aiAddContent').value || '').trim();
+        if (!title || !content) { alert('제목과 내용을 모두 입력해주세요.'); return; }
+        var items = getTraining();
+        items.push({ title: title, content: content, addedAt: new Date().toISOString() });
+        setTraining(items);
+        document.getElementById('_aiAddTitle').value   = '';
+        document.getElementById('_aiAddContent').value = '';
+        _renderTrainingList();
+        if (typeof showToastNotification === 'function') {
+            showToastNotification('✅ 학습 추가 완료', '"' + title + '" 내용이 AI에 학습되었습니다.');
+        }
+    };
+
+    window._aiDeleteTraining = function (idx) {
+        var pw = prompt('학습 관리 비밀번호:');
+        if (pw !== ADMIN_PW) { if (pw !== null) alert('비밀번호 오류'); return; }
+        if (!confirm('이 학습 데이터를 삭제할까요?')) return;
+        var items = getTraining();
+        items.splice(idx, 1);
+        setTraining(items);
+        _renderTrainingList();
+    };
+
+    // ════════════════════════════════════════════
+    // 채팅 기능
+    // ════════════════════════════════════════════
+    window._aiOpenChat = function () {
         document.getElementById('_aiChatWin')?.classList.toggle('open');
         document.getElementById('_aiBadge').style.display = 'none';
     };
-    // 하위 호환 (더보기 메뉴 등에서 _aiToggle() 직접 호출하는 경우)
     window._aiToggle = window._aiOpenChat;
 
-    window._aiQuick = function(q) {
-        const input = document.getElementById('_aiChatInput');
+    window._aiQuick = function (q) {
+        var input = document.getElementById('_aiChatInput');
         if (input) { input.value = q; window._aiSend(); }
     };
 
-    const _history = [];
+    var _history = [];
 
-    window._aiSend = async function() {
-        const input   = document.getElementById('_aiChatInput');
-        const msgs    = document.getElementById('_aiChatMsgs');
-        const sendBtn = document.getElementById('_aiSendBtn');
-        const text    = input?.value.trim();
+    window._aiSend = async function () {
+        var input   = document.getElementById('_aiChatInput');
+        var msgs    = document.getElementById('_aiChatMsgs');
+        var sendBtn = document.getElementById('_aiSendBtn');
+        var text    = input?.value.trim();
         if (!text || !msgs || sendBtn?.disabled) return;
 
         input.value = '';
@@ -395,29 +570,29 @@ A: 아니요, 현재 해정뉴스에는 주식 기능이 없습니다. 예전에
         _history.push({ r: 'user', t: text });
 
         sendBtn.disabled = true;
-        const thinking = _addBubble(msgs, '⏳ 답변 생성 중... (처음엔 Puter 팝업이 뜹니다)', 'b thinking');
+        var thinking = _addBubble(msgs, '⏳ AI 답변 생성 중...', 'b thinking');
 
         try {
-            // 해정뉴스 지식 + 대화 내역 포함
-            const ctx = _history.slice(-8).map(m => `${m.r === 'user' ? '사용자' : 'AI'}: ${m.t}`).join('\n');
-            const prompt = `당신은 해정뉴스 커뮤니티의 AI 도우미입니다. 아래 사이트 정보를 바탕으로 친절하고 간결하게 한국어로 답변하세요. 모르면 솔직하게 모른다고 하세요.
+            var messages = _history.slice(-10).map(function (m) {
+                return { role: m.r === 'user' ? 'user' : 'assistant', content: m.t };
+            });
+            messages.push({ role: 'user', content: text });
 
-${SITE_KNOWLEDGE}
-
-대화 내역:
-${ctx}
-AI:`;
-            const reply = await askAI(prompt);
-            thinking.textContent = reply;
+            var reply = await askAIWithHistory(messages);
+            thinking.innerHTML = reply.replace(/\n/g, '<br>');
             thinking.classList.remove('thinking');
             _history.push({ r: 'ai', t: reply });
 
-            // 뱃지 표시 (창이 닫혀있을 때)
             if (!document.getElementById('_aiChatWin')?.classList.contains('open')) {
                 document.getElementById('_aiBadge').style.display = 'block';
             }
         } catch (e) {
-            thinking.innerHTML = `<span style="color:#c62828;">오류: ${e.message}</span>`;
+            var isRate = e.message === 'rate_limit';
+            thinking.innerHTML = '<span style="color:#e53935;">'
+                + (isRate
+                    ? '⚠️ 잠시 후 다시 시도해주세요.<br><span style="font-size:11px;color:#aaa;">Groq 무료: 분당 30회 제한</span>'
+                    : '오류: ' + e.message)
+                + '</span>';
             thinking.classList.remove('thinking');
         } finally {
             sendBtn.disabled = false;
@@ -426,49 +601,49 @@ AI:`;
     };
 
     function _addBubble(container, text, cls) {
-        const el = document.createElement('div');
-        el.className = `aib ${cls}`;
+        var el = document.createElement('div');
+        el.className = 'aib ' + cls;
         el.textContent = text;
         container.appendChild(el);
         container.scrollTop = container.scrollHeight;
         return el;
     }
 
-    // ══════════════════════════════════════════════════════════════
-    // 3. 위키 편집 AI 초안 버튼
-    // ══════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════
+    // 3. 위키 AI 초안 버튼
+    // ════════════════════════════════════════════
     function injectWikiDraftBtn() {
-        const obs = new MutationObserver(() => {
-            const toolbar = document.getElementById('wikiToolbar');
+        var obs = new MutationObserver(function () {
+            var toolbar = document.getElementById('wikiToolbar');
             if (!toolbar || document.getElementById('_aiDraftBtn')) return;
-            const btn = document.createElement('button');
+            var btn = document.createElement('button');
             btn.id = '_aiDraftBtn';
             btn.innerHTML = '✨ AI 초안';
-            btn.title = 'AI로 위키 문서 초안 자동 생성 (Puter AI)';
-            btn.style.cssText = 'padding:4px 10px;font-size:12px;font-weight:700;border:1.5px solid #c62828;background:white;border-radius:4px;cursor:pointer;color:#c62828;';
+            btn.title = 'Groq AI로 위키 문서 초안 자동 생성';
+            btn.style.cssText = 'padding:4px 10px;font-size:12px;font-weight:700;border:1.5px solid #1a73e8;background:white;border-radius:4px;cursor:pointer;color:#1a73e8;';
             btn.onclick = window._aiWikiDraft;
             toolbar.appendChild(btn);
         });
         obs.observe(document.body, { childList: true, subtree: true });
     }
 
-    window._aiWikiDraft = async function() {
-        const titleEl  = document.getElementById('wikiNewTitle');
-        const textarea = document.getElementById('wikiEditArea');
+    window._aiWikiDraft = async function () {
+        var titleEl  = document.getElementById('wikiNewTitle');
+        var textarea = document.getElementById('wikiEditArea');
         if (!textarea) return;
-        const title = titleEl?.value.trim()
+        var title = (titleEl?.value.trim())
             || document.querySelector('.nk-article-title')?.textContent.trim() || '';
         if (!title) { alert('문서 제목을 먼저 입력해주세요.'); return; }
-        if (!confirm(`"${title}" 문서의 초안을 AI로 생성할까요?\n기존 내용이 대체됩니다.\n처음 사용 시 Puter 가입 팝업이 뜹니다.`)) return;
+        if (!confirm('"' + title + '" 문서의 초안을 Groq AI로 생성할까요?\n기존 내용이 대체됩니다.')) return;
 
-        const btn = document.getElementById('_aiDraftBtn');
+        var btn = document.getElementById('_aiDraftBtn');
         if (btn) { btn.disabled = true; btn.textContent = '⏳ 생성 중...'; }
 
         try {
-            const prompt = `나무위키 마크업 문법으로 "${title}" 문서를 작성해줘.
-규칙: == 제목 ==, === 소제목 ===, '''굵게''', [[내부링크]], * 목록 사용.
-3~5개 섹션, 각 2~4문장. 한국어. 마크업 문서 내용만 출력.`;
-            const draft = await askAI(prompt);
+            var prompt = '나무위키 마크업 문법으로 "' + title + '" 문서를 작성해줘.\n'
+                + '규칙: == 제목 ==, === 소제목 ===, 굵게는 따옴표 3개로 감싸기, [[내부링크]], * 목록 사용.\n'
+                + '3~5개 섹션, 각 2~4문장. 한국어. 마크업 문서 내용만 출력.';
+            var draft = await askAI(prompt);
             textarea.value = draft.trim();
             textarea.dispatchEvent(new Event('input'));
             if (typeof showToastNotification === 'function') {
@@ -481,46 +656,46 @@ AI:`;
         }
     };
 
-    // ══════════════════════════════════════════════════════════════
-    // 4. 더보기 메뉴에 AI 도우미 버튼
-    // ══════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════
+    // 4. 더보기 메뉴 AI 버튼 훅
+    // ════════════════════════════════════════════
     function hookMoreMenu() {
-        const orig = window.showMoreMenu;
+        var orig = window.showMoreMenu;
         if (typeof orig !== 'function' || orig._aiHooked) return;
-        window.showMoreMenu = function() {
+        window.showMoreMenu = function () {
             orig.apply(this, arguments);
-            setTimeout(() => {
-                const container = document.querySelector('.more-menu-container');
+            setTimeout(function () {
+                var container = document.querySelector('.more-menu-container');
                 if (!container || document.getElementById('_aiMoreBtn')) return;
-                const grid = container.querySelector('.menu-section div[style*="grid"]');
+                var grid = container.querySelector('.menu-section div[style*="grid"]');
                 if (!grid) return;
-                const btn = document.createElement('button');
+                var btn = document.createElement('button');
                 btn.id = '_aiMoreBtn';
                 btn.className = 'more-menu-btn';
                 btn.innerHTML = '✨ AI 도우미';
-                btn.onclick = () => window._aiOpenChat();
+                btn.onclick = function () { window._aiOpenChat(); };
                 grid.appendChild(btn);
             }, 80);
         };
         window.showMoreMenu._aiHooked = true;
     }
 
-    // ──────────────────────────────────────────────
+    // ════════════════════════════════════════════
     // 초기화
-    // ──────────────────────────────────────────────
+    // ════════════════════════════════════════════
     function init() {
+        // 이전에 저장된 잘못된 키(Gemini 등) 자동 정리
+        try {
+            var old = localStorage.getItem(LS_APIKEY);
+            if (old && !old.startsWith('gsk_')) {
+                localStorage.removeItem(LS_APIKEY);
+            }
+        } catch (e) {}
+
         injectChatFloat();
         injectWikiDraftBtn();
         setTimeout(hookMoreMenu, 1000);
-
-        // ✅ Puter.js를 백그라운드에서 미리 로드
-        // → 사용자가 AI 버튼을 누르기 전에 WebSocket 연결을 안정적으로 수립
-        // → "WebSocket closed before established" 에러 방지
-        setTimeout(() => {
-            loadPuter().catch(() => {}); // 실패해도 조용히 무시 (버튼 클릭 시 재시도)
-        }, 2000); // 페이지 초기 렌더링 완료 후 2초 뒤 선로드
-
-        console.log('✅ 해정뉴스 AI 도우미 로드 완료 (Puter.js)');
+        console.log('✅ 해정뉴스 AI v3 로드 완료 (Groq Llama 3.3) | 학습 데이터:', getTraining().length + '개');
     }
 
     if (document.readyState === 'loading') {
