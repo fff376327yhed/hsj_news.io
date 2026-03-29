@@ -5727,6 +5727,12 @@ window.adminResetArticleViews = async function(articleId) {
             db.ref(`articles/${articleId}/views`).set(0),
             db.ref(`articleReaders/${articleId}`).remove()
         ]);
+        // ✅ localStorage 조회 기록에서 해당 기사 항목 제거 (재방문 시 집계 가능)
+        try {
+            const viewedArticles = JSON.parse(localStorage.getItem('viewedArticles') || '{}');
+            delete viewedArticles[articleId];
+            localStorage.setItem('viewedArticles', JSON.stringify(viewedArticles));
+        } catch(e2) { /* 무시 */ }
         // 화면 즉시 반영
         const el = document.getElementById('viewCountDisplay');
         if (el) el.innerHTML = '👁️ 0';
@@ -6187,6 +6193,9 @@ window.resetAllViews = async function() {
         }
         
         await db.ref().update(updates);
+        
+        // ✅ 모든 사용자의 localStorage 조회 기록 초기화 (재방문 시 집계 가능하도록)
+        try { localStorage.removeItem('viewedArticles'); } catch(e2) { /* 무시 */ }
         
         hideLoadingIndicator();
         alert(`✅ ${count}개 기사의 조회수가 초기화되었습니다!`);
