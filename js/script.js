@@ -3311,7 +3311,7 @@ async function showArticleDetail(id) {
         }
         
         if (currentArticleId !== id) {
-            incrementView(id);
+            incrementView(id, A.viewsResetAt || 0, A.views || 0);
             currentArticleId = id;
         }
         
@@ -5723,16 +5723,12 @@ window.adminResetArticleViews = async function(articleId) {
     if (!isAdmin()) { alert('관리자 권한이 필요합니다.'); return; }
     if (!confirm('이 기사의 조회수를 0으로 초기화하시겠습니까?\n독자 기록도 함께 삭제됩니다.')) return;
     try {
+        const now = Date.now();
         await Promise.all([
             db.ref(`articles/${articleId}/views`).set(0),
+            db.ref(`articles/${articleId}/viewsResetAt`).set(now),  // ✅ 초기화 시각 기록 → 모든 사용자 이전 방문 무효화
             db.ref(`articleReaders/${articleId}`).remove()
         ]);
-        // ✅ localStorage 조회 기록에서 해당 기사 항목 제거 (재방문 시 집계 가능)
-        try {
-            const viewedArticles = JSON.parse(localStorage.getItem('viewedArticles') || '{}');
-            delete viewedArticles[articleId];
-            localStorage.setItem('viewedArticles', JSON.stringify(viewedArticles));
-        } catch(e2) { /* 무시 */ }
         // 화면 즉시 반영
         const el = document.getElementById('viewCountDisplay');
         if (el) el.innerHTML = '👁️ 0';
@@ -6181,8 +6177,10 @@ window.resetAllViews = async function() {
         const updates = {};
         let count = 0;
         
+        const now = Date.now();
         Object.keys(articlesData).forEach(articleId => {
             updates[`articles/${articleId}/views`] = 0;
+            updates[`articles/${articleId}/viewsResetAt`] = now;  // ✅ 초기화 시각 기록 → 모든 사용자 이전 방문 무효화
             count++;
         });
         
@@ -6193,9 +6191,6 @@ window.resetAllViews = async function() {
         }
         
         await db.ref().update(updates);
-        
-        // ✅ 모든 사용자의 localStorage 조회 기록 초기화 (재방문 시 집계 가능하도록)
-        try { localStorage.removeItem('viewedArticles'); } catch(e2) { /* 무시 */ }
         
         hideLoadingIndicator();
         alert(`✅ ${count}개 기사의 조회수가 초기화되었습니다!`);
@@ -6424,12 +6419,15 @@ function getViewedArticles() {
     }
 }
 
-function hasViewedArticle(articleId) {
+function hasViewedArticle(articleId, resetAt, currentDbViews) {
     const viewedArticles = getViewedArticles();
     const viewRecord = viewedArticles[articleId];
-    
-    // ✅ 기록이 있으면 true, 없으면 false (시간 체크 제거)
-    return !!viewRecord;
+    if (!viewRecord) return false;
+    // ✅ Firebase 조회수가 0이면 → 초기화된 것이므로 localStorage 기록 무효화 (재집계 허용)
+    if (typeof currentDbViews === 'number' && currentDbViews === 0) return false;
+    // ✅ resetAt이 있고, 내 방문 시각이 그 이전이면 → 초기화된 것으로 보고 재집계 허용
+    if (resetAt && (!viewRecord.timestamp || viewRecord.timestamp < resetAt)) return false;
+    return true;
 }
 
 function markArticleAsViewed(articleId) {
@@ -6438,7 +6436,7 @@ function markArticleAsViewed(articleId) {
         viewedArticles[articleId] = {
             timestamp: Date.now(),
             viewedAt: new Date().toLocaleString(),
-            permanent: true // ✅ 영구 저장 표시
+            permanent: true
         };
         localStorage.setItem('viewedArticles', JSON.stringify(viewedArticles));
         console.log("✅ 조회 기록 영구 저장:", articleId);
@@ -6447,8 +6445,8 @@ function markArticleAsViewed(articleId) {
     }
 }
 
-function incrementView(id) {
-    if (hasViewedArticle(id)) {
+function incrementView(id, resetAt, currentDbViews) {
+    if (hasViewedArticle(id, resetAt, currentDbViews)) {
         console.log("ℹ️ 이미 조회한 기사입니다 (영구 기록):", id);
         return;
     }
@@ -6505,7 +6503,7 @@ function updateViewCountOnScreen(newViewCount) {
     // 방법 2: 백업 - article-meta에서 찾기
     const articleMeta = document.querySelector('.article-meta');
     if (!articleMeta) {
-        console.warn("⚠️ article-meta를 찾을 수 없습니다");
+        // 기사 페이지를 벗어난 뒤 비동기 응답이 도착한 경우 — 정상 상황, 무시
         return;
     }
     
