@@ -327,7 +327,14 @@ window.showChatPage = async function () {
     if (!window._chat.isChatAuthReady()) {
         cu_showToast('⚠️ 채팅 인증 중...');
         await window._chat.syncChatAuth(auth.currentUser);
-        if (!window._chat.isChatAuthReady()) { _showChatAuthExpiredBanner(); return; }
+        if (!window._chat.isChatAuthReady()) {
+            if (typeof window._showChatAuthExpiredBanner === 'function') {
+                window._showChatAuthExpiredBanner();
+            } else {
+                cu_showToast('⚠️ 채팅 인증에 실패했습니다. 페이지를 새로고침해 주세요.');
+            }
+            return;
+        }
     }
     if (window._chat.chatMsgListener && window._chat.activeChatRoomId) {
         window._chat.getChatDb().ref(`chats/${window._chat.activeChatRoomId}/messages`).off('value', window._chat.chatMsgListener);
