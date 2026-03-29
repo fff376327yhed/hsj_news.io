@@ -1,3 +1,14 @@
+const LOG_DB_Config = {
+  apiKey: "AIzaSyAADKnFgYL7ols2LqFyr1kbmF7NjaZHN30",
+  authDomain: "haejeongnews.firebaseapp.com",
+  databaseURL: "https://haejeongnews-default-rtdb.firebaseio.com",
+  projectId: "haejeongnews",
+  storageBucket: "haejeongnews.firebasestorage.app",
+  messagingSenderId: "697931918096",
+  appId: "1:697931918096:web:166f46d06a824cb3cc9395",
+  measurementId: "G-GXP1CQ92RW"
+};
+
 // =====================================================================
 // ⚙️ 로딩 팁 설정 — 여기서 메세지를 자유롭게 추가/수정/삭제하세요!
 // 여러 개 입력 가능, 5초마다 랜덤으로 하나씩 표시됩니다.
@@ -182,6 +193,26 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const auth = firebase.auth();
+
+// ===================================================================
+// 🆕 보조 DB (로그/제보 전용) — errorLogs, articleReaders, bugReports,
+//    improvements, adminMemos 를 여기에 저장해 메인 DB 용량을 절약합니다.
+// ⚠️ 아래 설정을 새로 생성한 Firebase 프로젝트 정보로 교체하세요.
+//    Firebase Console → 새 프로젝트 → Realtime Database 활성화 후 교체
+// ===================================================================
+const LOG_DB_CONFIG = {
+  apiKey: "여기에_새_Firebase_API_키_입력",
+  authDomain: "hsj-logs.firebaseapp.com",
+  databaseURL: "https://hsj-logs-default-rtdb.firebaseio.com",
+  projectId: "hsj-logs",
+  storageBucket: "hsj-logs.firebasestorage.app",
+  messagingSenderId: "000000000000",
+  appId: "1:000000000000:web:000000000000000000000000"
+};
+const _logApp = firebase.apps.find(a => a.name === 'logApp')
+    || firebase.initializeApp(LOG_DB_CONFIG, 'logApp');
+const logsDb = _logApp.database();
+
 
 // 전역 캐시 객체
 const globalCache = {
@@ -1382,6 +1413,11 @@ function getOSInfo() {
 
 // ✅ 오류 Firebase에 저장
 async function logErrorToFirebase(errorInfo) {
+    // 중복 기록 방지 (30초 내 동일 메시지 재기록 차단)
+    const _key = (errorInfo.message || '').substring(0, 80);
+    const _last = _errorLogCache.get(_key) || 0;
+    if (Date.now() - _last < _ERROR_LOG_DEDUPE_MS) return;
+    _errorLogCache.set(_key, Date.now());
     try {
         const user = auth?.currentUser;
         const nav  = window.navigator;
@@ -1411,11 +1447,16 @@ async function logErrorToFirebase(errorInfo) {
                 : null,
             context:       errorInfo.context || null,   // 추가 컨텍스트 (선택)
         };
-        await db.ref('errorLogs').push(logEntry);
+        await logsDb.ref('errorLogs').push(logEntry);
     } catch (e) {
         // 로깅 자체 실패는 무시
     }
 }
+
+
+// ✅ [최적화] errorLog 중복 기록 방지: 30초 내 같은 메시지 재기록 차단
+const _errorLogCache = new Map();
+const _ERROR_LOG_DEDUPE_MS = 30000;
 
 // ✅ 전역 오류 자동 감지
 window.onerror = function(message, source, lineno, colno, error) {
@@ -2760,6 +2801,9 @@ function showMoreMenu() {
                     </button>
                     <button onclick="migrateCommentCounts()" class="more-menu-btn" style="border-color:#ffcdd2;">
                         <i class="fas fa-sync-alt" style="color:#c62828;"></i> 댓글 수 일괄 복구
+                    </button>
+                    <button onclick="showFirebaseUsageDashboard()" class="more-menu-btn" style="border-color:#ffcdd2;">
+                        <i class="fas fa-chart-pie" style="color:#c62828;"></i> Firebase 사용량
                     </button>
                 </div>
             </div>` : ''}
@@ -5840,7 +5884,7 @@ window.adminResetArticleViews = async function(articleId) {
         await Promise.all([
             db.ref(`articles/${articleId}/views`).set(0),
             db.ref(`articles/${articleId}/viewsResetAt`).set(now),  // ✅ 초기화 시각 기록 → 모든 사용자 이전 방문 무효화
-            db.ref(`articleReaders/${articleId}`).remove()
+            logsDb.ref(`articleReaders/${articleId}`).remove()
         ]);
         // 화면 즉시 반영
         const el = document.getElementById('viewCountDisplay');
@@ -6045,7 +6089,7 @@ window.adminShowArticleReaders = async function(articleId) {
     if (!isAdmin()) { alert('관리자 권한이 필요합니다.'); return; }
     document.getElementById('_adminReadersModal')?.remove();
 
-    const snap = await db.ref(`articleReaders/${articleId}`).once('value');
+    const snap = await logsDb.ref(`articleReaders/${articleId}`).once('value');
     const data = snap.val() || {};
     const readers = Object.values(data).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
@@ -6576,7 +6620,7 @@ function incrementView(id, resetAt, currentDbViews) {
         // ✅ 로그인 유저라면 독자 기록 저장 (관리자 확인용)
         const uid = getUserId();
         if (uid) {
-            db.ref(`articleReaders/${id}/${uid}`).set({
+            logsDb.ref(`articleReaders/${id}/${uid}`).set({
                 name: getNickname(),
                 email: getUserEmail(),
                 timestamp: Date.now(),
@@ -7403,28 +7447,30 @@ window.toggleSelectionMode = function() {
 
 // ⭐ 개별 알림 삭제
 window.deleteNotification = async function(notificationId) {
-    // ✅ confirm 제거 - 즉시 삭제
-    
     const myUid = getUserId();
-    
+
+    // 즉시 DOM에서 제거 (낙관적 UI — Firebase 응답 기다리지 않고 바로 숨김)
+    const notifElement = document.querySelector(`[data-notification-id="${notificationId}"]`);
+    if (notifElement) {
+        notifElement.style.transition = 'opacity 0.2s, transform 0.2s';
+        notifElement.style.opacity = '0';
+        notifElement.style.transform = 'translateX(10px)';
+        setTimeout(() => notifElement.remove(), 200);
+    }
+
     try {
         await db.ref(`notifications/${myUid}/${notificationId}`).remove();
-        
-        // 화면에서 제거
-        const notifElement = document.querySelector(`[data-notification-id="${notificationId}"]`);
-        if (notifElement) {
-            notifElement.style.animation = 'fadeOut 0.3s ease';
-            setTimeout(() => {
-                loadNotificationsList(currentFilter);
-            }, 300);
-        }
-        
-        await updateMessengerBadge();
-        
     } catch(error) {
         console.error("알림 삭제 실패:", error);
+        // 실패 시 목록을 다시 불러와서 원복
+        await loadNotificationsList(currentFilter);
         alert("삭제 중 오류가 발생했습니다.");
+        return;
     }
+
+    // 항상 목록 갱신 (요소 존재 여부 무관)
+    await loadNotificationsList(currentFilter);
+    await updateMessengerBadge();
 };
 
 // ⭐ 선택된 알림들 삭제
@@ -7466,72 +7512,119 @@ window.deleteSelectedNotifications = async function() {
     }
 };
 
-// ⭐ 관리자 전용: 전체 사용자 알림 관리 모달
+// ⭐ 관리자 전용: 전체 사용자 알림 관리 모달 (다중 선택 + 자동 삭제 설정)
 window.showAdminNotificationManager = async function() {
-    if (!isAdmin()) {
-        alert("🚫 관리자 권한이 필요합니다!");
-        return;
-    }
-    
+    if (!isAdmin()) { alert("🚫 관리자 권한이 필요합니다!"); return; }
+
     showLoadingIndicator("알림 목록 로딩 중...");
-    
+
     try {
-        // 모든 사용자의 알림 수집
+        // ── 자동삭제 설정 불러오기 ──
+        const autoSnap = await db.ref('adminSettings/notifAutoDeleteDays').once('value');
+        const savedDays = autoSnap.val(); // null이면 미설정
+
+        // ── 자동삭제 실행 (설정된 경우) ──
+        if (savedDays && savedDays > 0) {
+            await _runAutoDeleteOldNotifications(savedDays);
+        }
+
+        // ── 모든 사용자 알림 수집 ──
         const usersSnapshot = await db.ref('users').once('value');
         const usersData = usersSnapshot.val() || {};
-        
-        const notificationMap = new Map(); // notificationId -> { count, users[], data }
-        
-        for (const [uid, userData] of Object.entries(usersData)) {
-            const notificationsSnapshot = await db.ref(`notifications/${uid}`).once('value');
-            const notifications = notificationsSnapshot.val() || {};
-            
+        const notificationMap = new Map();
+
+        for (const [uid] of Object.entries(usersData)) {
+            const snap = await db.ref(`notifications/${uid}`).once('value');
+            const notifications = snap.val() || {};
             for (const [notifId, notifData] of Object.entries(notifications)) {
-                // timestamp 기준으로 같은 알림 그룹화
                 const key = `${notifData.timestamp}_${notifData.title}_${notifData.articleId || 'none'}`;
-                
                 if (!notificationMap.has(key)) {
-                    notificationMap.set(key, {
-                        sampleId: notifId,
-                        data: notifData,
-                        users: [],
-                        count: 0
-                    });
+                    notificationMap.set(key, { sampleId: notifId, data: notifData, users: [], count: 0 });
                 }
-                
                 const group = notificationMap.get(key);
                 group.users.push({ uid, notifId });
                 group.count++;
             }
         }
-        
+
         hideLoadingIndicator();
-        
-        // 모달 생성
+
         const existingModal = document.getElementById('adminNotificationModal');
         if (existingModal) existingModal.remove();
-        
+
         const notifications = Array.from(notificationMap.entries())
             .sort((a, b) => b[1].data.timestamp - a[1].data.timestamp);
-        
+
+        // ── 자동삭제 옵션 목록 ──
+        const dayOptions = [0, 1, 3, 7, 14, 30];
+        const dayOptionHTML = dayOptions.map(d => {
+            const selected = (savedDays === d || (d === 0 && !savedDays)) ? 'selected' : '';
+            return `<option value="${d}" ${selected}>${d === 0 ? '사용 안 함' : `${d}일 이상 된 알림`}</option>`;
+        }).join('');
+
         const modalHTML = `
             <div id="adminNotificationModal" class="modal active">
-                <div class="modal-content" style="max-width:900px; max-height:80vh; overflow-y:auto;">
-                    <div class="modal-header">
-                        <h3 style="color:#c62828;">
+                <div class="modal-content" style="max-width:900px; max-height:85vh; display:flex; flex-direction:column;">
+
+                    <!-- 헤더 -->
+                    <div class="modal-header" style="flex-shrink:0;">
+                        <h3 style="color:#c62828; margin:0; font-size:17px; font-weight:800;">
                             <i class="fas fa-shield-alt"></i> 관리자 알림 관리
                         </h3>
                         <button onclick="closeAdminNotificationModal()" class="modal-close">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
-                    
-                    <div style="padding:20px;">
-                        <div style="background:#fff3cd; padding:12px; border-radius:8px; margin-bottom:20px; border:1px solid #ffc107;">
-                            <i class="fas fa-exclamation-triangle" style="color:#856404;"></i>
-                            <strong>주의:</strong> 선택한 알림이 모든 사용자에게서 삭제됩니다.
+
+                    <div style="padding:16px 20px; flex:1; overflow-y:auto;">
+
+                        <!-- ① 자동 삭제 설정 카드 -->
+                        <div style="background:#e8f5e9; border:1.5px solid #a5d6a7; border-radius:10px; padding:14px 16px; margin-bottom:16px;">
+                            <div style="font-size:13px; font-weight:800; color:#2e7d32; margin-bottom:10px;">
+                                <i class="fas fa-clock"></i> 자동 삭제 설정 (모든 사용자 적용)
+                            </div>
+                            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                                <select id="autoDeleteDaysSelect"
+                                    style="padding:8px 12px; border:1.5px solid #a5d6a7; border-radius:8px; font-size:13px; font-weight:600; background:white; color:#212121; cursor:pointer; outline:none;">
+                                    ${dayOptionHTML}
+                                </select>
+                                <button onclick="saveAutoDeleteSetting()"
+                                    style="background:#2e7d32; color:white; border:none; padding:8px 16px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;">
+                                    <i class="fas fa-save"></i> 저장
+                                </button>
+                                <button onclick="runAutoDeleteNow()"
+                                    style="background:#f57c00; color:white; border:none; padding:8px 16px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;">
+                                    <i class="fas fa-bolt"></i> 지금 바로 실행
+                                </button>
+                            </div>
+                            <div style="font-size:11px; color:#388e3c; margin-top:8px; line-height:1.6;">
+                                • 설정 저장 시 관리자가 이 화면을 열 때마다 자동으로 오래된 알림을 삭제합니다.<br>
+                                • "지금 바로 실행"은 저장된 설정과 무관하게 현재 선택 값으로 즉시 실행합니다.
+                            </div>
                         </div>
-                        
+
+                        <!-- ② 주의 배너 -->
+                        <div style="background:#fff3cd; padding:11px 14px; border-radius:8px; margin-bottom:16px; border:1px solid #ffc107; font-size:13px;">
+                            <i class="fas fa-exclamation-triangle" style="color:#856404;"></i>
+                            <strong>주의:</strong> 삭제된 알림은 <b>모든 사용자</b>에게서 영구 삭제됩니다.
+                        </div>
+
+                        <!-- ③ 다중 선택 툴바 -->
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+                            <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; font-weight:700; color:#495057; user-select:none;">
+                                <input type="checkbox" id="adminNotifSelectAll" onchange="toggleAdminNotifSelectAll(this.checked)"
+                                    style="width:16px; height:16px; cursor:pointer; accent-color:#c62828;">
+                                전체 선택
+                            </label>
+                            <span id="adminNotifSelectedCount" style="font-size:12px; color:#868e96; margin-left:4px;">0개 선택됨</span>
+                            <button onclick="deleteAdminSelectedNotifications()"
+                                style="margin-left:auto; background:#c62828; color:white; border:none; padding:8px 16px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                                <i class="fas fa-trash"></i> 선택 항목 전체 삭제
+                            </button>
+                        </div>
+
+                        <!-- ④ 알림 목록 -->
+                        <div id="adminNotifList">
                         ${notifications.length === 0 ? `
                             <div style="text-align:center; padding:60px 20px; color:#868e96;">
                                 <i class="fas fa-inbox" style="font-size:48px; margin-bottom:15px; display:block;"></i>
@@ -7541,55 +7634,50 @@ window.showAdminNotificationManager = async function() {
                             const timeAgo = getTimeAgo(group.data.timestamp);
                             const icon = getNotificationIcon(group.data.type);
                             const bgColor = getNotificationColor(group.data.type);
-                            
+                            const safeKey = encodeURIComponent(key);
                             return `
-                                <div style="background:#f8f9fa; padding:16px; border-radius:8px; margin-bottom:12px; border:1px solid #dee2e6;">
-                                    <div style="display:flex; gap:12px; align-items:flex-start;">
-                                        <div style="width:40px; height:40px; border-radius:50%; background:${bgColor}; color:white; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                                            <i class="fas ${icon}"></i>
-                                        </div>
-                                        
-                                        <div style="flex:1;">
-                                            <div style="font-weight:600; color:#212529; margin-bottom:4px;">
-                                                ${group.data.title}
-                                            </div>
-                                            <div style="font-size:14px; color:#6c757d; margin-bottom:8px;">
-                                                ${group.data.text}
-                                            </div>
-                                            <div style="font-size:12px; color:#868e96;">
-                                                <i class="fas fa-users"></i> ${group.count}명에게 전송 · ${timeAgo}
-                                                ${group.data.articleId ? ` · 기사 ID: ${group.data.articleId}` : ''}
-                                            </div>
-                                        </div>
-                                        
-                                        <button onclick="deleteNotificationForAllUsers('${key}')" 
-                                                class="btn-danger" 
-                                                style="padding:8px 16px; white-space:nowrap;">
-                                            <i class="fas fa-trash"></i> 전체 삭제
-                                        </button>
+                            <div id="adminNotifCard-${safeKey}" style="background:#f8f9fa; padding:14px 16px; border-radius:8px; margin-bottom:10px; border:1.5px solid #dee2e6; transition:border-color 0.2s;">
+                                <div style="display:flex; gap:12px; align-items:center;">
+                                    <!-- 체크박스 -->
+                                    <input type="checkbox" class="adminNotifCheck" data-key="${escapeHTML(key)}"
+                                        onchange="updateAdminNotifSelectCount()"
+                                        style="width:17px; height:17px; flex-shrink:0; cursor:pointer; accent-color:#c62828;">
+
+                                    <!-- 아이콘 -->
+                                    <div style="width:38px; height:38px; border-radius:50%; background:${bgColor}; color:white; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:15px;">
+                                        <i class="fas ${icon}"></i>
                                     </div>
+
+                                    <!-- 내용 -->
+                                    <div style="flex:1; min-width:0;">
+                                        <div style="font-weight:700; color:#212529; font-size:13px; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                            ${escapeHTML(group.data.title || '')}
+                                        </div>
+                                        <div style="font-size:12px; color:#6c757d; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                            ${escapeHTML(group.data.text || '')}
+                                        </div>
+                                        <div style="font-size:11px; color:#adb5bd;">
+                                            <i class="fas fa-users"></i> ${group.count}명 · ${timeAgo}
+                                            ${group.data.articleId ? ` · 기사 ${group.data.articleId}` : ''}
+                                        </div>
+                                    </div>
+
+                                    <!-- 개별 삭제 -->
+                                    <button onclick="deleteNotificationForAllUsers('${escapeHTML(key)}')"
+                                        style="flex-shrink:0; background:#ffebee; border:1.5px solid #ef9a9a; color:#c62828; padding:6px 12px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
+                                        <i class="fas fa-trash"></i> 삭제
+                                    </button>
                                 </div>
-                            `;
+                            </div>`;
                         }).join('')}
+                        </div>
                     </div>
                 </div>
-            </div>
-            
-            <style>
-                @keyframes fadeOut {
-                    to {
-                        opacity: 0;
-                        transform: translateX(-20px);
-                    }
-                }
-            </style>
-        `;
-        
+            </div>`;
+
         document.body.insertAdjacentHTML('beforeend', modalHTML);
-        
-        // 전역 변수에 저장 (삭제 시 사용)
         window.adminNotificationMap = notificationMap;
-        
+
     } catch(error) {
         hideLoadingIndicator();
         console.error("관리자 알림 목록 로딩 실패:", error);
@@ -7597,48 +7685,127 @@ window.showAdminNotificationManager = async function() {
     }
 };
 
-// ⭐ 모든 사용자에게서 특정 알림 삭제
-window.deleteNotificationForAllUsers = async function(notificationKey) {
-    if (!isAdmin()) {
-        alert("🚫 관리자 권한이 필요합니다!");
-        return;
+// ── 전체 선택 토글 ──
+window.toggleAdminNotifSelectAll = function(checked) {
+    document.querySelectorAll('.adminNotifCheck').forEach(cb => { cb.checked = checked; });
+    updateAdminNotifSelectCount();
+};
+
+// ── 선택 개수 업데이트 ──
+window.updateAdminNotifSelectCount = function() {
+    const total = document.querySelectorAll('.adminNotifCheck:checked').length;
+    const countEl = document.getElementById('adminNotifSelectedCount');
+    if (countEl) countEl.textContent = `${total}개 선택됨`;
+    const allCb = document.getElementById('adminNotifSelectAll');
+    if (allCb) {
+        const all = document.querySelectorAll('.adminNotifCheck').length;
+        allCb.indeterminate = total > 0 && total < all;
+        allCb.checked = all > 0 && total === all;
     }
-    
-    const group = window.adminNotificationMap.get(notificationKey);
-    
-    if (!group) {
-        alert("알림 정보를 찾을 수 없습니다.");
-        return;
-    }
-    
-    if (!confirm(`이 알림을 ${group.count}명의 사용자에게서 모두 삭제하시겠습니까?\n\n"${group.data.title}"`)) {
-        return;
-    }
-    
-    showLoadingIndicator("삭제 중...");
-    
+};
+
+// ── 선택 항목 일괄 삭제 (모든 사용자) ──
+window.deleteAdminSelectedNotifications = async function() {
+    if (!isAdmin()) return;
+    const checked = Array.from(document.querySelectorAll('.adminNotifCheck:checked'));
+    if (checked.length === 0) { alert('삭제할 알림을 선택해주세요.'); return; }
+
+    const keys = checked.map(cb => cb.getAttribute('data-key'));
+    let totalUsers = 0;
+    keys.forEach(k => { totalUsers += (window.adminNotificationMap.get(k)?.count || 0); });
+
+    if (!confirm(`선택한 ${keys.length}개 알림을 모든 사용자(총 ${totalUsers}건)에서 삭제하시겠습니까?`)) return;
+
+    showLoadingIndicator('선택 삭제 중...');
     try {
         const updates = {};
-        
-        group.users.forEach(({ uid, notifId }) => {
-            updates[`notifications/${uid}/${notifId}`] = null;
+        keys.forEach(key => {
+            const group = window.adminNotificationMap.get(key);
+            if (!group) return;
+            group.users.forEach(({ uid, notifId }) => { updates[`notifications/${uid}/${notifId}`] = null; });
         });
-        
         await db.ref().update(updates);
-        
         hideLoadingIndicator();
-        
-        if (typeof showToastNotification === 'function') {
-            showToastNotification('삭제 완료', `${group.count}명의 사용자에게서 알림이 삭제되었습니다.`);
-        }
-        
-        // 모달 닫고 다시 열기
+        showToastNotification && showToastNotification('삭제 완료', `${keys.length}개 알림(${totalUsers}건) 삭제 완료`);
         closeAdminNotificationModal();
         setTimeout(() => showAdminNotificationManager(), 300);
-        
+    } catch(e) {
+        hideLoadingIndicator();
+        alert('삭제 중 오류: ' + e.message);
+    }
+};
+
+// ── 자동삭제 설정 저장 ──
+window.saveAutoDeleteSetting = async function() {
+    if (!isAdmin()) return;
+    const days = parseInt(document.getElementById('autoDeleteDaysSelect')?.value || '0');
+    try {
+        await db.ref('adminSettings/notifAutoDeleteDays').set(days === 0 ? null : days);
+        showToastNotification && showToastNotification(
+            '설정 저장 완료',
+            days === 0 ? '자동 삭제가 해제되었습니다.' : `${days}일 이상 된 알림을 자동 삭제합니다.`
+        );
+    } catch(e) { alert('저장 실패: ' + e.message); }
+};
+
+// ── 지금 바로 자동삭제 실행 ──
+window.runAutoDeleteNow = async function() {
+    if (!isAdmin()) return;
+    const days = parseInt(document.getElementById('autoDeleteDaysSelect')?.value || '0');
+    if (days === 0) { alert('"사용 안 함"이 선택되어 있습니다. 삭제할 기간을 선택해주세요.'); return; }
+    if (!confirm(`${days}일 이상 된 알림을 모든 사용자에게서 지금 즉시 삭제합니다.\n계속하시겠습니까?`)) return;
+    showLoadingIndicator('오래된 알림 삭제 중...');
+    try {
+        const deleted = await _runAutoDeleteOldNotifications(days);
+        hideLoadingIndicator();
+        showToastNotification && showToastNotification('자동 삭제 완료', `${deleted}건의 오래된 알림이 삭제되었습니다.`);
+        closeAdminNotificationModal();
+        setTimeout(() => showAdminNotificationManager(), 400);
+    } catch(e) {
+        hideLoadingIndicator();
+        alert('삭제 실패: ' + e.message);
+    }
+};
+
+// ── 실제 자동삭제 로직 (내부 함수) ──
+async function _runAutoDeleteOldNotifications(days) {
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    const usersSnap = await db.ref('users').once('value');
+    const usersData = usersSnap.val() || {};
+    const updates = {};
+    let deletedCount = 0;
+    for (const [uid] of Object.entries(usersData)) {
+        const snap = await db.ref(`notifications/${uid}`).once('value');
+        const notifs = snap.val() || {};
+        for (const [notifId, notifData] of Object.entries(notifs)) {
+            if ((notifData.timestamp || 0) < cutoff) {
+                updates[`notifications/${uid}/${notifId}`] = null;
+                deletedCount++;
+            }
+        }
+    }
+    if (deletedCount > 0) await db.ref().update(updates);
+    return deletedCount;
+}
+
+// ⭐ 모든 사용자에게서 특정 알림 개별 삭제
+window.deleteNotificationForAllUsers = async function(notificationKey) {
+    if (!isAdmin()) { alert("🚫 관리자 권한이 필요합니다!"); return; }
+    const group = window.adminNotificationMap.get(notificationKey);
+    if (!group) { alert("알림 정보를 찾을 수 없습니다."); return; }
+    if (!confirm(`이 알림을 ${group.count}명의 사용자에게서 모두 삭제하시겠습니까?\n\n"${group.data.title}"`)) return;
+
+    showLoadingIndicator("삭제 중...");
+    try {
+        const updates = {};
+        group.users.forEach(({ uid, notifId }) => { updates[`notifications/${uid}/${notifId}`] = null; });
+        await db.ref().update(updates);
+        hideLoadingIndicator();
+        showToastNotification && showToastNotification('삭제 완료', `${group.count}명의 사용자에게서 알림이 삭제되었습니다.`);
+        closeAdminNotificationModal();
+        setTimeout(() => showAdminNotificationManager(), 300);
     } catch(error) {
         hideLoadingIndicator();
-        console.error("알림 삭제 실패:", error);
         alert("삭제 중 오류가 발생했습니다: " + error.message);
     }
 };
@@ -7646,10 +7813,7 @@ window.deleteNotificationForAllUsers = async function(notificationKey) {
 // ⭐ 관리자 알림 모달 닫기
 window.closeAdminNotificationModal = function() {
     const modal = document.getElementById('adminNotificationModal');
-    if (modal) {
-        modal.classList.remove('active');
-        setTimeout(() => modal.remove(), 300);
-    }
+    if (modal) { modal.classList.remove('active'); setTimeout(() => modal.remove(), 300); }
 };
 
 console.log("✅ 알림 삭제 기능 추가 완료");
@@ -9376,7 +9540,7 @@ async function showErrorLogs() {
         </div>`;
 
     try {
-        const snap = await db.ref('errorLogs').orderByChild('timestamp').once('value');
+        const snap = await logsDb.ref('errorLogs').orderByChild('timestamp').once('value');
         const raw = snap.val() || {};
         window._errorLogsData = Object.entries(raw)
             .map(([id, v]) => ({ id, ...v }))
@@ -9532,14 +9696,14 @@ function toggleErrDetail(id) {
 
 async function deleteErrorLog(id) {
     if (!confirm('이 오류 로그를 삭제할까요?')) return;
-    await db.ref(`errorLogs/${id}`).remove();
+    await logsDb.ref(`errorLogs/${id}`).remove();
     window._errorLogsData = (window._errorLogsData || []).filter(e => e.id !== id);
     renderErrorLogs();
 }
 
 async function clearErrorLogs() {
     if (!confirm('⚠️ 모든 오류 로그를 삭제할까요?')) return;
-    await db.ref('errorLogs').remove();
+    await logsDb.ref('errorLogs').remove();
     window._errorLogsData = [];
     renderErrorLogs();
 }
@@ -10194,7 +10358,7 @@ window.submitBugReport = async function() {
 
         for (let i = 0; i < list.length; i++) {
             const item = list[i];
-            await db.ref('bugReports').push({
+            await logsDb.ref('bugReports').push({
                 title: item.title,
                 content: item.content,
                 device: item.device,
@@ -10262,7 +10426,7 @@ window.showAdminBugReports = async function() {
     `;
 
     try {
-        const snap = await db.ref('bugReports').once('value');
+        const snap = await logsDb.ref('bugReports').once('value');
         const reports = [];
         snap.forEach(child => { reports.push({ id: child.key, ...child.val() }); });
         reports.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -10342,8 +10506,8 @@ window.markBugFixed = async function(reportId, authorUid, reportTitle) {
     if (!confirm(`"${reportTitle}" 버그를 수정 완료 처리하고 해당 유저에게 알림을 보내시겠습니까?`)) return;
 
     try {
-        await db.ref(`bugReports/${reportId}/status`).set('fixed');
-        await db.ref(`bugReports/${reportId}/fixedAt`).set(Date.now());
+        await logsDb.ref(`bugReports/${reportId}/status`).set('fixed');
+        await logsDb.ref(`bugReports/${reportId}/fixedAt`).set(Date.now());
 
         if (authorUid) {
             const notifId = `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -10374,7 +10538,7 @@ window.deleteBugReport = async function(reportId) {
     if (!isAdmin()) return;
     if (!confirm('이 버그 제보를 삭제하시겠습니까?')) return;
     try {
-        await db.ref(`bugReports/${reportId}`).remove();
+        await logsDb.ref(`bugReports/${reportId}`).remove();
 
         // ✅ 배열에서도 제거 후 즉시 재렌더링
         window._allBugReports = (window._allBugReports || []).filter(r => r.id !== reportId);
@@ -10435,7 +10599,7 @@ async function loadAdminMemos() {
     const listEl = document.getElementById('adminMemoList');
     if (!listEl) return;
     try {
-        const snap = await db.ref('adminMemos').orderByChild('createdAt').once('value');
+        const snap = await logsDb.ref('adminMemos').orderByChild('createdAt').once('value');
         const memos = [];
         snap.forEach(child => memos.push({ id: child.key, ...child.val() }));
         memos.reverse();
@@ -10526,9 +10690,9 @@ window.saveAdminMemo = async function(formId, memoId) {
     if (!title && !content) { alert('제목 또는 내용을 입력해주세요.'); return; }
     try {
         if (memoId) {
-            await db.ref(`adminMemos/${memoId}`).update({ title: title || '', content: content || '', updatedAt: Date.now() });
+            await logsDb.ref(`adminMemos/${memoId}`).update({ title: title || '', content: content || '', updatedAt: Date.now() });
         } else {
-            await db.ref('adminMemos').push({ title: title || '', content: content || '', createdAt: Date.now() });
+            await logsDb.ref('adminMemos').push({ title: title || '', content: content || '', createdAt: Date.now() });
         }
         await loadAdminMemos();
     } catch(e) {
@@ -10539,7 +10703,7 @@ window.saveAdminMemo = async function(formId, memoId) {
 window.deleteAdminMemo = async function(memoId) {
     if (!confirm('이 메모를 삭제하시겠습니까?')) return;
     try {
-        await db.ref(`adminMemos/${memoId}`).remove();
+        await logsDb.ref(`adminMemos/${memoId}`).remove();
         const card = document.getElementById(`memoCard-${memoId}`);
         if (card) {
             card.style.transition = 'all 0.3s';
@@ -10884,7 +11048,7 @@ window.submitImprovementReport = async function() {
         const baseTime = Date.now();
         for (let i = 0; i < list.length; i++) {
             const item = list[i];
-            await db.ref('improvements').push({ title: item.title, content: item.content, category: item.category, time: item.time, authorName: getNickname(), authorEmail: getUserEmail(), authorUid: user.uid, imageBase64: item.imageBase64 || null, status: 'pending', createdAt: baseTime + i });
+            await logsDb.ref('improvements').push({ title: item.title, content: item.content, category: item.category, time: item.time, authorName: getNickname(), authorEmail: getUserEmail(), authorUid: user.uid, imageBase64: item.imageBase64 || null, status: 'pending', createdAt: baseTime + i });
         }
         window._improvementList = [];
         showToastNotification('💡 개선 제보 완료', `${list.length}건 제보 감사합니다! 검토 후 반영할게요 🙏`);
@@ -10939,7 +11103,7 @@ window.showAdminImprovements = async function() {
             </div>
         </div>`;
     try {
-        const snap = await db.ref('improvements').once('value');
+        const snap = await logsDb.ref('improvements').once('value');
         const reports = [];
         snap.forEach(child => { reports.push({ id: child.key, ...child.val() }); });
         reports.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -11013,7 +11177,7 @@ window.renderAdminImproveList = function(reports) {
 window.updateImproveStatus = async function(reportId, newStatus, authorUid, reportTitle) {
     if (!isAdmin()) return;
     try {
-        await db.ref(`improvements/${reportId}/status`).set(newStatus);
+        await logsDb.ref(`improvements/${reportId}/status`).set(newStatus);
         const msgs = {
             accepted: `제보하신 개선 사항 "${reportTitle}"이 반영 예정 목록에 추가되었습니다! 🎉`,
             done:     `제보하신 개선 사항 "${reportTitle}"이 반영 완료되었습니다! 감사합니다 🙏`,
@@ -11035,7 +11199,7 @@ window.deleteImprovement = async function(reportId) {
     if (!isAdmin()) return;
     if (!confirm('이 개선 제보를 삭제하시겠습니까?')) return;
     try {
-        await db.ref(`improvements/${reportId}`).remove();
+        await logsDb.ref(`improvements/${reportId}`).remove();
         window._allImprovements = (window._allImprovements || []).filter(r => r.id !== reportId);
         const countEl = document.getElementById('improveTotalCount');
         if (countEl) countEl.textContent = `총 ${window._allImprovements.length}건`;
@@ -11043,4 +11207,372 @@ window.deleteImprovement = async function(reportId) {
     } catch(e) {
         alert('삭제 중 오류가 발생했습니다.');
     }
+};
+// =====================================================================
+// 🔥 Firebase 사용량 대시보드 (관리자 전용)
+// Firebase Spark(무료) 플랜 기준: 저장소 1GB / 다운로드 10GB(월)
+// =====================================================================
+window.showFirebaseUsageDashboard = async function () {
+    if (!isAdmin()) { alert('관리자만 접근 가능합니다.'); return; }
+    hideAll();
+    window.scrollTo(0, 0);
+    const section = document.getElementById('moreMenuSection');
+    section.classList.add('active');
+
+    // ── 무료 플랜 한도 상수 ──
+    const STORAGE_LIMIT_BYTES = 1 * 1024 * 1024 * 1024; // 1 GB
+    const BW_LIMIT_BYTES      = 10 * 1024 * 1024 * 1024; // 10 GB / 월
+
+    function fmtBytes(b) {
+        if (b === 0) return '0 B';
+        const u = ['B','KB','MB','GB'];
+        const i = Math.floor(Math.log(b) / Math.log(1024));
+        return (b / Math.pow(1024, i)).toFixed(2) + ' ' + u[i];
+    }
+    function fmtCount(n) { return n.toLocaleString('ko-KR') + '건'; }
+
+    // 다음 달 1일 (대역폭 초기화일)
+    const now   = new Date();
+    const reset = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const diffMs   = reset - now;
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const resetStr = reset.toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric' });
+
+    section.innerHTML = `
+    <div style="max-width:720px;margin:0 auto;padding:20px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+            <button onclick="showMoreMenu()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#495057;">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h2 style="margin:0;font-size:20px;font-weight:800;color:#c62828;flex:1;">
+                <i class="fas fa-chart-pie"></i> Firebase 사용량 대시보드
+            </h2>
+            <button onclick="showFirebaseUsageDashboard()" style="background:#f8f9fa;border:1.5px solid #dee2e6;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;color:#495057;">
+                <i class="fas fa-sync-alt"></i> 새로고침
+            </button>
+        </div>
+
+        <!-- 플랜 정보 카드 -->
+        <div style="background:linear-gradient(135deg,#1a237e,#283593);color:white;border-radius:14px;padding:18px 22px;margin-bottom:16px;box-shadow:0 4px 14px rgba(26,35,126,0.3);">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                <span style="font-size:22px;">🔥</span>
+                <div>
+                    <div style="font-size:15px;font-weight:800;">Firebase Spark 플랜 (무료)</div>
+                    <div style="font-size:12px;opacity:0.8;">Realtime Database 기준</div>
+                </div>
+                <div style="margin-left:auto;text-align:right;">
+                    <div style="font-size:11px;opacity:0.75;">대역폭 초기화까지</div>
+                    <div style="font-size:20px;font-weight:900;">${diffDays}일</div>
+                    <div style="font-size:11px;opacity:0.75;">${resetStr} 초기화</div>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+                <div style="background:rgba(255,255,255,0.12);border-radius:8px;padding:10px 14px;">
+                    <div style="font-size:11px;opacity:0.8;">💾 저장소 한도</div>
+                    <div style="font-size:16px;font-weight:800;">1 GB</div>
+                    <div style="font-size:11px;opacity:0.7;">초과시 쓰기 차단</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.12);border-radius:8px;padding:10px 14px;">
+                    <div style="font-size:11px;opacity:0.8;">📡 다운로드 한도</div>
+                    <div style="font-size:16px;font-weight:800;">10 GB / 월</div>
+                    <div style="font-size:11px;opacity:0.7;">매월 1일 00:00 초기화</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 로딩 상태 -->
+        <div id="usageLoadingState" style="text-align:center;padding:50px 20px;color:#adb5bd;">
+            <i class="fas fa-spinner fa-spin" style="font-size:28px;"></i>
+            <p style="margin-top:12px;font-size:14px;">Firebase 데이터 크기 측정 중...<br>
+            <span style="font-size:12px;color:#ced4da;">각 노드를 순서대로 읽고 있습니다</span></p>
+        </div>
+
+        <!-- 결과 영역 (로딩 후 표시) -->
+        <div id="usageResultArea" style="display:none;"></div>
+    </div>
+    `;
+
+    // ── 타임아웃 래퍼: ms 안에 응답 없으면 reject ──
+    function fetchWithTimeout(ref, ms = 6000) {
+        return Promise.race([
+            ref.once('value'),
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('TIMEOUT')), ms)
+            )
+        ]);
+    }
+
+    // ── 로딩 텍스트 업데이트 헬퍼 ──
+    function setLoadingText(label) {
+        const el = document.getElementById('usageLoadingLabel');
+        if (el) el.textContent = `"${label}" 측정 중...`;
+    }
+
+    // ── 보조 DB(logsDb) 연결 가능 여부 먼저 확인 (3초 타임아웃) ──
+    let logsDbAvailable = false;
+    try {
+        await fetchWithTimeout(logsDb.ref('.info/connected'), 3000);
+        logsDbAvailable = true;
+    } catch(_) {
+        logsDbAvailable = false;
+    }
+
+    // ── 노드별 크기 측정 ──
+    const nodes = [
+        // 메인 DB
+        { label: '기사 (articles)',           ref: db.ref('articles'),       emoji: '📰', color: '#1565c0' },
+        { label: '댓글 (comments)',           ref: db.ref('comments'),       emoji: '💬', color: '#6a1b9a' },
+        { label: '유저 (users)',               ref: db.ref('users'),          emoji: '👤', color: '#00695c' },
+        { label: '알림 (notifications)',      ref: db.ref('notifications'),  emoji: '🔔', color: '#e65100' },
+        { label: '투표 (votes)',               ref: db.ref('votes'),          emoji: '🗳️', color: '#4527a0' },
+        { label: '설문 (polls)',               ref: db.ref('polls'),          emoji: '📊', color: '#00838f' },
+        { label: '채팅 (messages)',           ref: db.ref('messages'),       emoji: '✉️', color: '#37474f' },
+        { label: '위키 (wiki_articles)',      ref: db.ref('wiki_articles'),  emoji: '📖', color: '#558b2f' },
+        { label: '쿠폰 (coupons)',            ref: db.ref('coupons'),        emoji: '🎫', color: '#f57c00' },
+        { label: '주식 (stocks)',              ref: db.ref('stocks'),         emoji: '📈', color: '#2e7d32' },
+        { label: '광고 (advertisements)',     ref: db.ref('advertisements'), emoji: '📢', color: '#bf360c' },
+        { label: '사이트설정 (siteSettings)',  ref: db.ref('siteSettings'),   emoji: '⚙️', color: '#546e7a' },
+        { label: '팝업 (popups)',              ref: db.ref('popups'),         emoji: '🪟', color: '#ad1457' },
+        { label: '패치노트 (patchNotes)',     ref: db.ref('patchNotes'),    emoji: '📋', color: '#0277bd' },
+        // 보조 DB (logsDb) — 연결 실패 시 자동 스킵
+        { label: '에러로그 (errorLogs)',      ref: logsDbAvailable ? logsDb.ref('errorLogs')      : null, emoji: '🐛', color: '#b71c1c', secondary: true },
+        { label: '버그제보 (bugReports)',     ref: logsDbAvailable ? logsDb.ref('bugReports')     : null, emoji: '🔧', color: '#d32f2f', secondary: true },
+        { label: '개선제보 (improvements)',   ref: logsDbAvailable ? logsDb.ref('improvements')   : null, emoji: '💡', color: '#e65100', secondary: true },
+        { label: '독자기록 (articleReaders)', ref: logsDbAvailable ? logsDb.ref('articleReaders') : null, emoji: '👁️', color: '#c62828', secondary: true },
+        { label: '관리자메모 (adminMemos)',   ref: logsDbAvailable ? logsDb.ref('adminMemos')     : null, emoji: '🗒️', color: '#880e4f', secondary: true },
+    ];
+
+    // 로딩 UI에 라벨 텍스트 영역 추가
+    const loadingState = document.getElementById('usageLoadingState');
+    if (loadingState) {
+        loadingState.innerHTML = `
+            <i class="fas fa-spinner fa-spin" style="font-size:28px;color:#c62828;"></i>
+            <p style="margin-top:12px;font-size:14px;color:#495057;font-weight:600;">Firebase 데이터 크기 측정 중...</p>
+            <p id="usageLoadingLabel" style="font-size:12px;color:#adb5bd;margin-top:4px;">준비 중...</p>
+            ${!logsDbAvailable ? `<div style="margin-top:12px;background:#fff3e0;border-radius:8px;padding:10px 14px;font-size:12px;color:#e65100;display:inline-block;">
+                ⚠️ 보조 DB 연결 불가 — 보조 DB 노드는 스킵됩니다
+            </div>` : ''}
+        `;
+    }
+
+    const results = [];
+    let totalMainBytes = 0;
+    let totalLogBytes  = 0;
+
+    for (const node of nodes) {
+        setLoadingText(node.label);
+
+        // 보조 DB 연결 실패 → ref가 null → 바로 스킵
+        if (!node.ref) {
+            results.push({ ...node, bytes: 0, count: 0, ok: false, err: 'DB 연결 불가' });
+            continue;
+        }
+
+        try {
+            const snap = await fetchWithTimeout(node.ref, 8000);
+            const val  = snap.val();
+            const json = val ? JSON.stringify(val) : '';
+            const bytes = new TextEncoder().encode(json).length;
+            const count = val && typeof val === 'object' ? Object.keys(val).length : 0;
+            results.push({ ...node, bytes, count, ok: true });
+            if (node.secondary) totalLogBytes  += bytes;
+            else                totalMainBytes += bytes;
+        } catch(e) {
+            const reason = e.message === 'TIMEOUT' ? '응답 시간 초과(8초)' : e.message;
+            results.push({ ...node, bytes: 0, count: 0, ok: false, err: reason });
+        }
+    }
+
+    const totalBytes  = totalMainBytes + totalLogBytes;
+    const storagePct  = Math.min((totalBytes / STORAGE_LIMIT_BYTES) * 100, 100);
+    const warnLevel   = storagePct >= 80 ? 'danger' : storagePct >= 60 ? 'warn' : 'ok';
+
+    // 경고 색상
+    const barColor = warnLevel === 'danger' ? '#c62828' : warnLevel === 'warn' ? '#f57c00' : '#2e7d32';
+
+    // 노드 내림차순 정렬
+    const sorted = [...results].sort((a,b) => b.bytes - a.bytes);
+
+    // 랭킹 TOP3
+    const top3 = sorted.slice(0, 3);
+
+    // 경고 배너
+    const warnBanner = warnLevel === 'danger'
+        ? `<div style="background:#ffebee;border:2px solid #c62828;border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+             <span style="font-size:22px;">🚨</span>
+             <div><div style="font-weight:800;color:#c62828;font-size:14px;">저장소 사용량 80% 이상 — 즉시 정리 필요!</div>
+             <div style="font-size:12px;color:#b71c1c;margin-top:3px;">100% 도달 시 모든 쓰기 작업이 차단됩니다. 에러로그·독자기록 등 대용량 노드 정리를 권장합니다.</div></div>
+           </div>`
+        : warnLevel === 'warn'
+        ? `<div style="background:#fff8e1;border:2px solid #f57c00;border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+             <span style="font-size:22px;">⚠️</span>
+             <div><div style="font-weight:800;color:#e65100;font-size:14px;">저장소 60% 이상 사용 중 — 주의 필요</div>
+             <div style="font-size:12px;color:#bf360c;margin-top:3px;">사용량이 꾸준히 증가 중입니다. 오래된 로그나 기록을 주기적으로 삭제하세요.</div></div>
+           </div>`
+        : '';
+
+    // 행 HTML 생성
+    const rowsHtml = sorted.map((r, i) => {
+        const pct = totalBytes > 0 ? ((r.bytes / totalBytes) * 100).toFixed(1) : '0.0';
+        const dbTag = r.secondary
+            ? `<span style="font-size:10px;background:#fff3e0;color:#e65100;padding:1px 6px;border-radius:6px;font-weight:700;">보조DB</span>`
+            : `<span style="font-size:10px;background:#e3f2fd;color:#1565c0;padding:1px 6px;border-radius:6px;font-weight:700;">메인DB</span>`;
+        const errTag = !r.ok
+            ? `<span style="font-size:10px;color:#dc3545;"> ⚠️ ${r.err === 'DB 연결 불가' ? 'DB 연결 불가' : r.err === '응답 시간 초과(8초)' ? '타임아웃' : '오류'}</span>`
+            : '';
+        const rankBadge = i < 3
+            ? `<span style="font-size:14px;">${['🥇','🥈','🥉'][i]}</span>`
+            : `<span style="font-size:12px;color:#adb5bd;">${i+1}</span>`;
+        return `
+        <tr style="border-bottom:1px solid #f0f0f0;">
+            <td style="padding:10px 8px;text-align:center;width:32px;">${rankBadge}</td>
+            <td style="padding:10px 8px;">
+                <span style="font-size:16px;">${r.emoji}</span>
+                <span style="font-size:13px;font-weight:600;color:#212121;margin-left:6px;">${r.label}</span>
+                ${errTag}
+                <div style="margin-top:3px;">${dbTag}</div>
+            </td>
+            <td style="padding:10px 8px;text-align:right;font-size:13px;font-weight:700;color:${r.color};">${fmtBytes(r.bytes)}</td>
+            <td style="padding:10px 8px;text-align:right;font-size:12px;color:#868e96;">${r.ok ? fmtCount(r.count) : '-'}</td>
+            <td style="padding:10px 8px;min-width:80px;">
+                <div style="background:#f0f0f0;border-radius:4px;height:8px;overflow:hidden;">
+                    <div style="background:${r.color};width:${pct}%;height:100%;border-radius:4px;transition:width 0.6s;"></div>
+                </div>
+                <div style="font-size:10px;color:#adb5bd;text-align:right;margin-top:2px;">${pct}%</div>
+            </td>
+        </tr>`;
+    }).join('');
+
+    const resultHtml = `
+        ${warnBanner}
+
+        <!-- 전체 저장소 게이지 -->
+        <div style="background:white;border-radius:12px;padding:18px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.07);">
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px;">
+                <div>
+                    <div style="font-size:13px;font-weight:800;color:#495057;">💾 저장소 사용량 (추정)</div>
+                    <div style="font-size:11px;color:#adb5bd;margin-top:2px;">* 실제 Firebase 내부 인코딩과 다를 수 있습니다</div>
+                </div>
+                <div style="text-align:right;">
+                    <span style="font-size:18px;font-weight:900;color:${barColor};">${fmtBytes(totalBytes)}</span>
+                    <span style="font-size:13px;color:#adb5bd;"> / 1 GB</span>
+                </div>
+            </div>
+            <div style="background:#f0f0f0;border-radius:8px;height:16px;overflow:hidden;margin-bottom:8px;">
+                <div style="background:${barColor};width:${storagePct.toFixed(1)}%;height:100%;border-radius:8px;transition:width 0.8s;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:#868e96;">
+                <span>${storagePct.toFixed(1)}% 사용 중</span>
+                <span>잔여 ${fmtBytes(Math.max(STORAGE_LIMIT_BYTES - totalBytes, 0))}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+                <div style="background:#f8f9fa;border-radius:8px;padding:10px;">
+                    <div style="font-size:11px;color:#868e96;">메인 DB</div>
+                    <div style="font-size:14px;font-weight:800;color:#1565c0;">${fmtBytes(totalMainBytes)}</div>
+                </div>
+                <div style="background:#fff3e0;border-radius:8px;padding:10px;">
+                    <div style="font-size:11px;color:#868e96;">보조 DB (로그용)</div>
+                    <div style="font-size:14px;font-weight:800;color:#e65100;">${fmtBytes(totalLogBytes)}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 대역폭 안내 -->
+        <div style="background:white;border-radius:12px;padding:18px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.07);">
+            <div style="font-size:13px;font-weight:800;color:#495057;margin-bottom:12px;">📡 다운로드 대역폭</div>
+            <div style="background:#e3f2fd;border-radius:8px;padding:12px 14px;font-size:13px;color:#0d47a1;line-height:1.7;">
+                <b>⚠️ 대역폭 실시간 측정 불가</b><br>
+                Firebase 클라이언트 SDK는 대역폭 사용량을 직접 제공하지 않습니다.<br>
+                정확한 수치는 <b>Firebase Console → 사용량</b> 탭에서 확인하세요.<br>
+                <a href="https://console.firebase.google.com/" target="_blank" style="color:#1565c0;font-weight:700;">🔗 Firebase Console 바로가기</a>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px;">
+                <div style="background:#f8f9fa;border-radius:8px;padding:10px;text-align:center;">
+                    <div style="font-size:11px;color:#868e96;">월 한도</div>
+                    <div style="font-size:15px;font-weight:800;color:#212121;">10 GB</div>
+                </div>
+                <div style="background:#e8f5e9;border-radius:8px;padding:10px;text-align:center;">
+                    <div style="font-size:11px;color:#868e96;">다음 초기화</div>
+                    <div style="font-size:13px;font-weight:800;color:#2e7d32;">${resetStr}</div>
+                </div>
+                <div style="background:#fff8e1;border-radius:8px;padding:10px;text-align:center;">
+                    <div style="font-size:11px;color:#868e96;">남은 일수</div>
+                    <div style="font-size:15px;font-weight:800;color:#f57c00;">${diffDays}일</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOP3 용량 차지 노드 -->
+        <div style="background:white;border-radius:12px;padding:18px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.07);">
+            <div style="font-size:13px;font-weight:800;color:#495057;margin-bottom:12px;">🏆 가장 많이 차지하는 노드 TOP 3</div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                ${top3.map((r, i) => {
+                    const pct = totalBytes > 0 ? ((r.bytes / totalBytes) * 100).toFixed(1) : '0.0';
+                    const medals = ['🥇','🥈','🥉'];
+                    return `<div style="display:flex;align-items:center;gap:10px;background:#f8f9fa;border-radius:8px;padding:10px 14px;">
+                        <span style="font-size:20px;">${medals[i]}</span>
+                        <span style="font-size:16px;">${r.emoji}</span>
+                        <div style="flex:1;">
+                            <div style="font-size:13px;font-weight:700;color:#212121;">${r.label}</div>
+                            <div style="background:#e0e0e0;border-radius:4px;height:6px;margin-top:4px;overflow:hidden;">
+                                <div style="background:${r.color};width:${pct}%;height:100%;border-radius:4px;"></div>
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:13px;font-weight:800;color:${r.color};">${fmtBytes(r.bytes)}</div>
+                            <div style="font-size:11px;color:#adb5bd;">${pct}%</div>
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>
+
+        <!-- 전체 노드 표 -->
+        <div style="background:white;border-radius:12px;padding:18px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.07);">
+            <div style="font-size:13px;font-weight:800;color:#495057;margin-bottom:12px;">📋 전체 노드 사용량 상세</div>
+            <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <thead>
+                        <tr style="background:#f8f9fa;border-bottom:2px solid #dee2e6;">
+                            <th style="padding:10px 8px;text-align:center;width:32px;">#</th>
+                            <th style="padding:10px 8px;text-align:left;">노드</th>
+                            <th style="padding:10px 8px;text-align:right;">크기</th>
+                            <th style="padding:10px 8px;text-align:right;">항목 수</th>
+                            <th style="padding:10px 8px;min-width:80px;">비율</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rowsHtml}</tbody>
+                    <tfoot>
+                        <tr style="background:#f8f9fa;font-weight:800;border-top:2px solid #dee2e6;">
+                            <td colspan="2" style="padding:12px 8px;color:#212121;">합계</td>
+                            <td style="padding:12px 8px;text-align:right;color:${barColor};">${fmtBytes(totalBytes)}</td>
+                            <td colspan="2" style="padding:12px 8px;text-align:right;color:#868e96;">${storagePct.toFixed(1)}% / 1GB</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- 절약 팁 -->
+        <div style="background:#f3e5f5;border-radius:12px;padding:18px;margin-bottom:20px;">
+            <div style="font-size:13px;font-weight:800;color:#6a1b9a;margin-bottom:10px;">💡 용량 절약 팁</div>
+            <ul style="margin:0;padding-left:18px;font-size:13px;color:#4a148c;line-height:1.9;">
+                <li>에러로그(errorLogs)는 오래된 항목을 주기적으로 삭제하세요.</li>
+                <li>기사 독자기록(articleReaders)은 삭제해도 통계에 영향이 없습니다.</li>
+                <li>이미지는 <b>Firebase Storage</b> 또는 외부 CDN에 저장하고 URL만 DB에 저장하세요.</li>
+                <li>버그/개선 제보는 처리 완료 후 삭제하면 용량을 줄일 수 있습니다.</li>
+                <li>알림(notifications)은 오래된 읽은 알림을 일괄 삭제하는 기능을 추가하면 좋습니다.</li>
+            </ul>
+        </div>
+
+        <div style="text-align:center;font-size:11px;color:#adb5bd;padding-bottom:30px;">
+            측정 기준: ${new Date().toLocaleString('ko-KR')} &nbsp;|&nbsp;
+            ⚠️ 이 수치는 JSON 직렬화 기반 추정치이며 Firebase 실제 저장 방식과 다를 수 있습니다.
+        </div>
+    `;
+
+    document.getElementById('usageLoadingState').style.display = 'none';
+    const resultArea = document.getElementById('usageResultArea');
+    resultArea.style.display = 'block';
+    resultArea.innerHTML = resultHtml;
 };
