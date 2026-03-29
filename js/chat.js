@@ -287,6 +287,8 @@ function _showChatAuthExpiredBanner() {
     document.body.appendChild(banner);
     setTimeout(() => banner?.remove(), 10000);
 }
+// ✅ IIFE 외부 파일(Chat-upgrade.js)에서 접근 가능하도록 전역 노출
+window._showChatAuthExpiredBanner = _showChatAuthExpiredBanner;
 
 // ===== 메인 Auth 상태 변경 시 chatApp Auth 동기화 =====
 auth.onAuthStateChanged(async (user) => {
