@@ -473,8 +473,9 @@ async function cu_loadChatRoomList() {
 
             const item = document.createElement('div');
             item.className = 'cu-list-row';
-            item.dataset.roomId = roomId;
-            item.dataset.name   = displayName.toLowerCase();
+            item.dataset.roomId    = roomId;
+            item.dataset.name      = displayName.toLowerCase();
+            item.dataset.friendUid = friendUid || ''; // ✅ 별명 DOM 적용용
 
             // 아바타
             const avatarWrap = document.createElement('div');
@@ -539,6 +540,8 @@ async function cu_loadChatRoomList() {
             ❌ 로드 실패: ${err.message}</div>`;
     }
 }
+
+        window.cu_loadChatRoomList = cu_loadChatRoomList; // ✅ Chat-nickname-dot.js 패치용 전역 노출
 
 window.cu_filterRooms = function(kw) {
     const q = kw.toLowerCase();
