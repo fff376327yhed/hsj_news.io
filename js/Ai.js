@@ -14,7 +14,7 @@
 
     var LS_APIKEY   = 'groq_api_key';
     var LS_TRAINING = 'haejung_ai_training';
-    var ADMIN_PW    = '';
+    var ADMIN_PW    = 'hejung2026';
 
     // ────────────────────────────────────────────
     // 기본 사이트 지식베이스
