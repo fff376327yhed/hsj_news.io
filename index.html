@@ -319,6 +319,46 @@ if ('serviceWorker' in navigator) {
     flex-wrap: wrap;
 }
 
+/* ===== 🆕 새 기사 카드 (마지막 방문 이후 새로 올라온 기사) ===== */
+.article-card--new {
+    border-left: 4px solid #1565c0 !important;
+    background: linear-gradient(105deg, #e8f0fe 0%, #ffffff 55%) !important;
+    position: relative;
+}
+.article-card--new::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #1565c0, #42a5f5, #1565c0);
+    background-size: 200% 100%;
+    animation: newShimmer 2.4s linear infinite;
+    border-radius: 0 2px 0 0;
+}
+@keyframes newShimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+.new-article-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: #1565c0;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 20px;
+    letter-spacing: 0.6px;
+    margin-right: 4px;
+    vertical-align: middle;
+    animation: newBadgePop 0.35s cubic-bezier(.22,.68,0,1.4) both;
+}
+@keyframes newBadgePop {
+    from { transform: scale(0.6); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+}
+
 /* ===== PWA 애니메이션 ===== */
 #pwaInstallBanner[style*="flex"] {
     animation: _pwaBannerUp 0.35s cubic-bezier(.22,.68,0,1.2) both;
@@ -1175,6 +1215,8 @@ if ('serviceWorker' in navigator) {
 
 <!-- 🤖 AI 기능 ON/OFF 토글 -->
 <script src="./js/ai-toggle.js"></script>
+
+<script src="./js/만우절.js"></script>
 
 <!-- 🔧 점검모드 버튼 표시 스크립트 -->
 <script>
