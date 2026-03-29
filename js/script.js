@@ -107,8 +107,8 @@ const SITE_LOADING_TIPS = [
     "관리자가 작성할 메세지가 없어 아무거나 적은 메세지.",
     "정아영 ㅄ",
     "이 메세지는 오후 2시 19분에 작성되었습니다.",
-    "이것은 메세지 중 마지막 메세지 입니다."
-
+    "이것은 메세지 중 마지막 메세지 입니다.",
+    "설정에서 해정뉴스 앱을 설치해보세요."
 ];
 
 // ── 로딩 화면 표시/숨김 ──
@@ -253,6 +253,9 @@ const authReady = new Promise(resolve => { _authReadyResolve = resolve; });
 
 // ===== Firebase Messaging 초기화 (Service Worker 준비 후) =====
 let messaging = null;
+// ✅ [중복 수신 버그 수정] FCM 포그라운드 메시지로 이미 Toast를 보여준 notificationId 집합
+// setupNotificationListener(child_added)가 같은 알림을 감지할 때 중복 Toast 방지용
+window._shownByFCM = new Set();
 
 async function initializeMessaging() {
     try {
@@ -272,13 +275,17 @@ async function initializeMessaging() {
         window.messaging = messaging; // 전역 변수로 저장
         console.log("✅ Firebase Messaging 초기화 성공!");
         
-        // 4. 포그라운드 메시지 수신 핸들러 설정
+        // 4. 포그라운드 메시지 수신 핸들러 설정 (단 1회만 등록)
         messaging.onMessage((payload) => {
             console.log('📨 포그라운드 메시지 수신:', payload);
             
             const title = payload.data?.title || payload.notification?.title || '📰 해정뉴스';
             const body = payload.data?.body || payload.data?.text || payload.notification?.body || '새로운 알림';
             const articleId = payload.data?.articleId || null;
+            // ✅ [중복 수신 버그 수정] FCM으로 이미 Toast를 보여준 notificationId를 기록
+            // setupNotificationListener의 child_added가 같은 알림을 감지해도 Toast를 중복 표시하지 않음
+            const notifId = payload.data?.notificationId;
+            if (notifId) window._shownByFCM.add(notifId);
             
             if (typeof showToastNotification === 'function') {
                 showToastNotification(title, body, articleId);
@@ -1450,18 +1457,10 @@ window.onunhandledrejection = function(event) {
     };
 })();
 
-// 포그라운드 메시지 수신 핸들러
-if (messaging) {
-    messaging.onMessage((payload) => {
-        console.log('📨 포그라운드 메시지 수신:', payload);
-        
-        const title = payload.data?.title || payload.notification?.title || '📰 해정뉴스';
-        const body = payload.data?.body || payload.data?.text || payload.notification?.body || '새로운 알림';
-        const articleId = payload.data?.articleId || null;
-        
-        showToastNotification(title, body, articleId);
-    });
-}
+// ✅ [중복 수신 버그 수정] 포그라운드 메시지 수신 핸들러 중복 등록 제거
+// messaging.onMessage는 initializeMessaging() 내부에서만 단 1회 등록합니다.
+// 이 위치에서 재등록하면 동일한 메시지에 대해 Toast가 2번 발생합니다.
+// (이전 코드에서 이중 등록이 중복 알림 버그의 1순위 원인이었습니다)
 
 // ===== 기존 setupNotificationListener 함수 수정 =====
 let notificationListenerActive = false;
@@ -1486,6 +1485,14 @@ function setupNotificationListener(uid) {
             
             if (shownNotifications.has(notifId)) return;
             if (notification.timestamp < pageLoadTime) return;
+            
+            // ✅ [중복 수신 버그 수정] FCM onMessage가 이미 이 알림을 Toast로 보여줬다면 스킵
+            // 포그라운드 상태에서 FCM과 DB 리스너가 동시에 발화하는 경우 Toast 2회 방지
+            if (window._shownByFCM && window._shownByFCM.has(notifId)) {
+                shownNotifications.add(notifId);
+                window._shownByFCM.delete(notifId); // 메모리 누수 방지
+                return;
+            }
             
             if (!notification.read) {
                 shownNotifications.add(notifId);
@@ -1656,6 +1663,13 @@ function startNotificationListener(uid) {
             
             if (shownNotifications.has(notifId)) return;
             if (notification.timestamp < pageLoadTime) return;
+            
+            // ✅ [중복 수신 버그 수정] FCM onMessage가 이미 이 알림을 Toast로 보여줬다면 스킵
+            if (window._shownByFCM && window._shownByFCM.has(notifId)) {
+                shownNotifications.add(notifId);
+                window._shownByFCM.delete(notifId);
+                return;
+            }
             
             if (!notification.read) {
                 shownNotifications.add(notifId);
