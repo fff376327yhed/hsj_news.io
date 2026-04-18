@@ -1,13 +1,5 @@
-const LOG_DB_Config = {
-  apiKey: "AIzaSyAADKnFgYL7ols2LqFyr1kbmF7NjaZHN30",
-  authDomain: "haejeongnews.firebaseapp.com",
-  databaseURL: "https://haejeongnews-default-rtdb.firebaseio.com",
-  projectId: "haejeongnews",
-  storageBucket: "haejeongnews.firebasestorage.app",
-  messagingSenderId: "697931918096",
-  appId: "1:697931918096:web:166f46d06a824cb3cc9395",
-  measurementId: "G-GXP1CQ92RW"
-};
+// ✅ imgBB API 키 — https://api.imgbb.com/ 에서 무료 발급
+const IMGBB_API_KEY = "2069e472d5e74a23a269158ac2924375";
 
 // =====================================================================
 // ⚙️ 로딩 팁 설정 — 여기서 메세지를 자유롭게 추가/수정/삭제하세요!
@@ -194,24 +186,8 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const auth = firebase.auth();
 
-// ===================================================================
-// 🆕 보조 DB (로그/제보 전용) — errorLogs, articleReaders, bugReports,
-//    improvements, adminMemos 를 여기에 저장해 메인 DB 용량을 절약합니다.
-// ⚠️ 아래 설정을 새로 생성한 Firebase 프로젝트 정보로 교체하세요.
-//    Firebase Console → 새 프로젝트 → Realtime Database 활성화 후 교체
-// ===================================================================
-const LOG_DB_CONFIG = {
-  apiKey: "여기에_새_Firebase_API_키_입력",
-  authDomain: "hsj-logs.firebaseapp.com",
-  databaseURL: "https://hsj-logs-default-rtdb.firebaseio.com",
-  projectId: "hsj-logs",
-  storageBucket: "hsj-logs.firebasestorage.app",
-  messagingSenderId: "000000000000",
-  appId: "1:000000000000:web:000000000000000000000000"
-};
-const _logApp = firebase.apps.find(a => a.name === 'logApp')
-    || firebase.initializeApp(LOG_DB_CONFIG, 'logApp');
-const logsDb = _logApp.database();
+// ✅ 단일 DB 사용: logsDb → db 로 통합 (errorLogs, bugReports, improvements, articleReaders, adminMemos 모두 메인 DB에 저장)
+const logsDb = db; // 하위 호환성 유지: logsDb 변수는 db를 그대로 가리킵니다
 
 
 // 전역 캐시 객체
@@ -3851,14 +3827,12 @@ function setupEditForm(article, articleId) {
         
         showLoadingIndicator("기사 수정 중...");
         
-        // 썸네일 처리
+        // 썸네일 처리 (imgBB 업로드)
         if (fileInput.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                article.thumbnail = e.target.result;
+            compressImageToBase64(fileInput.files[0], 1200, 0.82).then(url => {
+                article.thumbnail = url;
                 saveUpdatedArticle();
-            };
-            reader.readAsDataURL(fileInput.files[0]);
+            }).catch(() => saveUpdatedArticle());
         } else {
             saveUpdatedArticle();
         }
@@ -3948,12 +3922,15 @@ function saveDraftContent() {
     if (!window.quillEditor) return;
     
     try {
+        const previewSrc = document.getElementById('thumbnailPreview')?.src || '';
         const draftData = {
             category: document.getElementById("category")?.value || '',
             title: document.getElementById("title")?.value || '',
             summary: document.getElementById("summary")?.value || '',
             content: window.quillEditor.root.innerHTML || '',
-            thumbnail: document.getElementById('thumbnailPreview')?.src || '',
+            // ✅ base64 이미지는 localStorage에 저장하지 않음 (용량 문제)
+            // URL 형태(imgBB)인 경우만 저장
+            thumbnail: (previewSrc && !previewSrc.startsWith('data:')) ? previewSrc : '',
             timestamp: Date.now()
         };
         
@@ -3998,8 +3975,8 @@ function restoreDraftContent() {
                 window.quillEditor.root.innerHTML = draftData.content;
             }
             
-            // 썸네일 복원
-            if (draftData.thumbnail && draftData.thumbnail.startsWith('data:')) {
+            // 썸네일 복원 (URL만 저장되므로 http/https로 시작하는 경우만)
+            if (draftData.thumbnail && (draftData.thumbnail.startsWith('http') || draftData.thumbnail.startsWith('data:'))) {
                 const preview = document.getElementById('thumbnailPreview');
                 const uploadText = document.getElementById('uploadText');
                 if (preview && uploadText) {
@@ -4472,27 +4449,28 @@ function setupArticleForm() {
         
         const fileInputSubmit = document.getElementById('thumbnailInput');
         if (fileInputSubmit && fileInputSubmit.files[0]) {
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                article.thumbnail = e.target.result;
-                saveArticle(article, async () => {
-                    resetFormAfterSubmit();
-                    window.isSubmitting = false;
-                    
-                    if (!article.noNotify) {
-                        await sendNotification('article', {
-                            authorEmail: article.authorEmail,
-                            authorName: article.anonymous ? '익명 유저' : article.author,
-                            title: article.title,
-                            articleId: article.id,
-                            anonymous: article.anonymous || false
-                        });
-                        triggerGithubNotification(true); // ✅ noNotify가 아닐 때만 트리거
-                    }
-                    showArticles();
-                });
-            };
-            reader.readAsDataURL(fileInputSubmit.files[0]);
+            try {
+                article.thumbnail = await compressImageToBase64(fileInputSubmit.files[0], 1200, 0.82);
+            } catch(e) {
+                console.error('썸네일 업로드 실패:', e);
+                article.thumbnail = null;
+            }
+            saveArticle(article, async () => {
+                resetFormAfterSubmit();
+                window.isSubmitting = false;
+                
+                if (!article.noNotify) {
+                    await sendNotification('article', {
+                        authorEmail: article.authorEmail,
+                        authorName: article.anonymous ? '익명 유저' : article.author,
+                        title: article.title,
+                        articleId: article.id,
+                        anonymous: article.anonymous || false
+                    });
+                    triggerGithubNotification(true); // ✅ noNotify가 아닐 때만 트리거
+                }
+                showArticles();
+            });
         } else {
             saveArticle(article, async () => {
                 resetFormAfterSubmit();
@@ -4583,12 +4561,10 @@ function setupEditForm(article, articleId) {
         }
         
         if (fileInput.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                article.thumbnail = e.target.result;
+            compressImageToBase64(fileInput.files[0], 1200, 0.82).then(url => {
+                article.thumbnail = url;
                 saveUpdatedArticle();
-            };
-            reader.readAsDataURL(fileInput.files[0]);
+            }).catch(() => saveUpdatedArticle());
         } else {
             saveUpdatedArticle();
         }
@@ -9114,15 +9090,14 @@ window.saveMaintenanceMode = async function() {
             updatedAt: Date.now()
         };
         
-        // 이미지 처리
+        // 이미지 처리 (imgBB 업로드)
         if (imageInput && imageInput.files && imageInput.files[0]) {
-            const reader = new FileReader();
-            const imageData = await new Promise((resolve, reject) => {
-                reader.onload = (e) => resolve(e.target.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(imageInput.files[0]);
-            });
-            data.image = imageData;
+            try {
+                data.image = await compressImageToBase64(imageInput.files[0], 1200, 0.82);
+            } catch(e) {
+                console.warn('점검모드 이미지 업로드 실패:', e);
+                data.image = '';
+            }
         } else if (previewEl && previewEl.src && !previewEl.src.includes('data:,')) {
             data.image = previewEl.src;
         }
@@ -10076,9 +10051,12 @@ async function triggerGithubNotification(silent = false) {
     }
 }
 
-// ✅ 이미지 Canvas 압축 → base64
-function compressImageToBase64(file, maxPx = 800, quality = 0.72) {
-    return new Promise((resolve, reject) => {
+// ✅ 이미지 Canvas 압축 → imgBB 업로드 → URL 반환
+// imgBB API를 사용해 이미지를 외부 CDN에 저장하고 URL만 DB에 저장합니다.
+// (DB 용량 대폭 절약: 이미지 1장당 수십~수백 KB → URL 약 60바이트)
+async function compressImageToBase64(file, maxPx = 800, quality = 0.72) {
+    // 1단계: Canvas로 리사이즈 + 압축 → base64
+    const base64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = e => {
             const img = new Image();
@@ -10099,6 +10077,27 @@ function compressImageToBase64(file, maxPx = 800, quality = 0.72) {
         reader.onerror = reject;
         reader.readAsDataURL(file);
     });
+
+    // 2단계: imgBB API에 업로드 → URL 반환
+    try {
+        const pureBase64 = base64.split(',')[1]; // data:image/jpeg;base64, 제거
+        const formData = new FormData();
+        formData.append('image', pureBase64);
+        const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+            method: 'POST',
+            body: formData
+        });
+        const json = await res.json();
+        if (json.success && json.data?.url) {
+            return json.data.url; // ✅ URL만 반환 (DB 용량 절약)
+        }
+        // imgBB 실패 시 base64 폴백 (임시)
+        console.warn('⚠️ imgBB 업로드 실패, base64 폴백:', json);
+        return base64;
+    } catch (err) {
+        console.warn('⚠️ imgBB 업로드 오류, base64 폴백:', err);
+        return base64;
+    }
 }
 
 // ===== 댓글/답글 이미지 미리보기 헬퍼 =====
@@ -11308,18 +11307,12 @@ window.showFirebaseUsageDashboard = async function () {
         if (el) el.textContent = `"${label}" 측정 중...`;
     }
 
-    // ── 보조 DB(logsDb) 연결 가능 여부 먼저 확인 (3초 타임아웃) ──
-    let logsDbAvailable = false;
-    try {
-        await fetchWithTimeout(logsDb.ref('.info/connected'), 3000);
-        logsDbAvailable = true;
-    } catch(_) {
-        logsDbAvailable = false;
-    }
+    // ── 단일 DB — logsDbAvailable 체크 불필요 ──
+    const logsDbAvailable = true; // logsDb = db 이므로 항상 사용 가능
 
     // ── 노드별 크기 측정 ──
     const nodes = [
-        // 메인 DB
+        // 단일 DB (메인 + 로그 통합)
         { label: '기사 (articles)',           ref: db.ref('articles'),       emoji: '📰', color: '#1565c0' },
         { label: '댓글 (comments)',           ref: db.ref('comments'),       emoji: '💬', color: '#6a1b9a' },
         { label: '유저 (users)',               ref: db.ref('users'),          emoji: '👤', color: '#00695c' },
@@ -11334,12 +11327,12 @@ window.showFirebaseUsageDashboard = async function () {
         { label: '사이트설정 (siteSettings)',  ref: db.ref('siteSettings'),   emoji: '⚙️', color: '#546e7a' },
         { label: '팝업 (popups)',              ref: db.ref('popups'),         emoji: '🪟', color: '#ad1457' },
         { label: '패치노트 (patchNotes)',     ref: db.ref('patchNotes'),    emoji: '📋', color: '#0277bd' },
-        // 보조 DB (logsDb) — 연결 실패 시 자동 스킵
-        { label: '에러로그 (errorLogs)',      ref: logsDbAvailable ? logsDb.ref('errorLogs')      : null, emoji: '🐛', color: '#b71c1c', secondary: true },
-        { label: '버그제보 (bugReports)',     ref: logsDbAvailable ? logsDb.ref('bugReports')     : null, emoji: '🔧', color: '#d32f2f', secondary: true },
-        { label: '개선제보 (improvements)',   ref: logsDbAvailable ? logsDb.ref('improvements')   : null, emoji: '💡', color: '#e65100', secondary: true },
-        { label: '독자기록 (articleReaders)', ref: logsDbAvailable ? logsDb.ref('articleReaders') : null, emoji: '👁️', color: '#c62828', secondary: true },
-        { label: '관리자메모 (adminMemos)',   ref: logsDbAvailable ? logsDb.ref('adminMemos')     : null, emoji: '🗒️', color: '#880e4f', secondary: true },
+        // 로그 노드 (통합 DB)
+        { label: '에러로그 (errorLogs)',      ref: db.ref('errorLogs'),      emoji: '🐛', color: '#b71c1c' },
+        { label: '버그제보 (bugReports)',     ref: db.ref('bugReports'),     emoji: '🔧', color: '#d32f2f' },
+        { label: '개선제보 (improvements)',   ref: db.ref('improvements'),   emoji: '💡', color: '#e65100' },
+        { label: '독자기록 (articleReaders)', ref: db.ref('articleReaders'), emoji: '👁️', color: '#c62828' },
+        { label: '관리자메모 (adminMemos)',   ref: db.ref('adminMemos'),     emoji: '🗒️', color: '#880e4f' },
     ];
 
     // 로딩 UI에 라벨 텍스트 영역 추가
@@ -11349,24 +11342,14 @@ window.showFirebaseUsageDashboard = async function () {
             <i class="fas fa-spinner fa-spin" style="font-size:28px;color:#c62828;"></i>
             <p style="margin-top:12px;font-size:14px;color:#495057;font-weight:600;">Firebase 데이터 크기 측정 중...</p>
             <p id="usageLoadingLabel" style="font-size:12px;color:#adb5bd;margin-top:4px;">준비 중...</p>
-            ${!logsDbAvailable ? `<div style="margin-top:12px;background:#fff3e0;border-radius:8px;padding:10px 14px;font-size:12px;color:#e65100;display:inline-block;">
-                ⚠️ 보조 DB 연결 불가 — 보조 DB 노드는 스킵됩니다
-            </div>` : ''}
         `;
     }
 
     const results = [];
     let totalMainBytes = 0;
-    let totalLogBytes  = 0;
 
     for (const node of nodes) {
         setLoadingText(node.label);
-
-        // 보조 DB 연결 실패 → ref가 null → 바로 스킵
-        if (!node.ref) {
-            results.push({ ...node, bytes: 0, count: 0, ok: false, err: 'DB 연결 불가' });
-            continue;
-        }
 
         try {
             const snap = await fetchWithTimeout(node.ref, 8000);
@@ -11375,15 +11358,15 @@ window.showFirebaseUsageDashboard = async function () {
             const bytes = new TextEncoder().encode(json).length;
             const count = val && typeof val === 'object' ? Object.keys(val).length : 0;
             results.push({ ...node, bytes, count, ok: true });
-            if (node.secondary) totalLogBytes  += bytes;
-            else                totalMainBytes += bytes;
+            totalMainBytes += bytes;
         } catch(e) {
             const reason = e.message === 'TIMEOUT' ? '응답 시간 초과(8초)' : e.message;
             results.push({ ...node, bytes: 0, count: 0, ok: false, err: reason });
         }
     }
 
-    const totalBytes  = totalMainBytes + totalLogBytes;
+    const totalLogBytes  = 0; // 단일 DB — 로그/메인 구분 없음
+    const totalBytes  = totalMainBytes;
     const storagePct  = Math.min((totalBytes / STORAGE_LIMIT_BYTES) * 100, 100);
     const warnLevel   = storagePct >= 80 ? 'danger' : storagePct >= 60 ? 'warn' : 'ok';
 
@@ -11414,9 +11397,8 @@ window.showFirebaseUsageDashboard = async function () {
     // 행 HTML 생성
     const rowsHtml = sorted.map((r, i) => {
         const pct = totalBytes > 0 ? ((r.bytes / totalBytes) * 100).toFixed(1) : '0.0';
-        const dbTag = r.secondary
-            ? `<span style="font-size:10px;background:#fff3e0;color:#e65100;padding:1px 6px;border-radius:6px;font-weight:700;">보조DB</span>`
-            : `<span style="font-size:10px;background:#e3f2fd;color:#1565c0;padding:1px 6px;border-radius:6px;font-weight:700;">메인DB</span>`;
+        // ✅ 단일 DB — 메인DB 태그만 표시
+        const dbTag = `<span style="font-size:10px;background:#e3f2fd;color:#1565c0;padding:1px 6px;border-radius:6px;font-weight:700;">메인DB</span>`;
         const errTag = !r.ok
             ? `<span style="font-size:10px;color:#dc3545;"> ⚠️ ${r.err === 'DB 연결 불가' ? 'DB 연결 불가' : r.err === '응답 시간 초과(8초)' ? '타임아웃' : '오류'}</span>`
             : '';
@@ -11465,14 +11447,10 @@ window.showFirebaseUsageDashboard = async function () {
                 <span>${storagePct.toFixed(1)}% 사용 중</span>
                 <span>잔여 ${fmtBytes(Math.max(STORAGE_LIMIT_BYTES - totalBytes, 0))}</span>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+            <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px;">
                 <div style="background:#f8f9fa;border-radius:8px;padding:10px;">
-                    <div style="font-size:11px;color:#868e96;">메인 DB</div>
-                    <div style="font-size:14px;font-weight:800;color:#1565c0;">${fmtBytes(totalMainBytes)}</div>
-                </div>
-                <div style="background:#fff3e0;border-radius:8px;padding:10px;">
-                    <div style="font-size:11px;color:#868e96;">보조 DB (로그용)</div>
-                    <div style="font-size:14px;font-weight:800;color:#e65100;">${fmtBytes(totalLogBytes)}</div>
+                    <div style="font-size:11px;color:#868e96;">단일 DB (통합)</div>
+                    <div style="font-size:14px;font-weight:800;color:#1565c0;">${fmtBytes(totalBytes)}</div>
                 </div>
             </div>
         </div>
@@ -11559,7 +11537,7 @@ window.showFirebaseUsageDashboard = async function () {
             <ul style="margin:0;padding-left:18px;font-size:13px;color:#4a148c;line-height:1.9;">
                 <li>에러로그(errorLogs)는 오래된 항목을 주기적으로 삭제하세요.</li>
                 <li>기사 독자기록(articleReaders)은 삭제해도 통계에 영향이 없습니다.</li>
-                <li>이미지는 <b>Firebase Storage</b> 또는 외부 CDN에 저장하고 URL만 DB에 저장하세요.</li>
+                <li>✅ 이미지는 <b>imgBB CDN</b>에 업로드되어 URL만 DB에 저장됩니다.</li>
                 <li>버그/개선 제보는 처리 완료 후 삭제하면 용량을 줄일 수 있습니다.</li>
                 <li>알림(notifications)은 오래된 읽은 알림을 일괄 삭제하는 기능을 추가하면 좋습니다.</li>
             </ul>
