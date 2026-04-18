@@ -158,7 +158,7 @@ window.saveProfilePhoto = async function() {
     showLoadingIndicator("사진 업로드 중...");
 
     try {
-        // ✅ 프로필 사진 압축 (최대 200px, 고품질)
+        // ✅ 프로필 사진 압축 후 imgBB 업로드 → URL 저장 (DB 용량 절약)
         const photoData = await compressImageToBase64(file, 200, 0.92);
 
         await db.ref("users/" + user.uid).update({
