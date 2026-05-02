@@ -1,0 +1,13 @@
+{
+  "name": "hsj-news-bot",
+  "version": "1.0.0",
+  "description": "해정뉴스 자동 테스트 봇",
+  "main": "bot.js",
+  "scripts": {
+    "test": "node bot.js",
+    "install-browser": "npx playwright install chromium"
+  },
+  "dependencies": {
+    "playwright": "^1.40.0"
+  }
+}

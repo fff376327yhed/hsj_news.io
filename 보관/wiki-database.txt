@@ -1,0 +1,12 @@
+{
+  "rules": {
+    "articles": {
+      ".read": true,
+      "$articleId": { ".write": "auth != null" }
+    },
+    "history": {
+      ".read": true,
+      "$articleId": { "$revId": { ".write": "auth != null" } }
+    }
+  }
+}

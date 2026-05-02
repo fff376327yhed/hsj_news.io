@@ -1,0 +1,249 @@
+{
+  "rules": {
+
+    "users": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
+
+        "isAdmin": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true"
+        },
+        "warningCount": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true"
+        },
+        "isBanned": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true"
+        },
+        "bannedAt": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true"
+        },
+        ".indexOn": ["read", "timestamp"]
+      }
+    },
+
+    "friendRequests": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$requestId": {
+          ".write": "auth != null"
+        }
+      }
+    },
+
+    "friends": {
+      ".read": "auth != null",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    "userIDs": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+
+    "notifications": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('isAdmin').val() === true)",
+        ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('isAdmin').val() === true)",
+        ".indexOn": ["read", "pushed", "timestamp"]
+      }
+    },
+
+    "messages": {
+      "$roomId": {
+        ".read": "auth != null && $roomId.contains(auth.uid)",
+        ".write": "auth != null && $roomId.contains(auth.uid)"
+      }
+    },
+
+    "articles": {
+      ".read": true,
+      "$articleId": {
+        ".read": true,
+        ".write": "auth != null && (!data.exists() || data.child('authorEmail').val() === auth.token.email || root.child('users').child(auth.uid).child('isAdmin').val() === true)",
+        "views": {
+          ".write": "auth != null"
+        }
+      }
+    },
+
+    "votes": {
+      ".read": true,
+      "$articleId": {
+        ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true",
+        "$uid": {
+          ".read": true,
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      }
+    },
+
+    "comments": {
+      ".read": true,
+      "$articleId": {
+        ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true",
+        "$commentId": {
+          ".read": true,
+          ".write": "auth != null && (!data.exists() || data.child('authorEmail').val() === auth.token.email || root.child('users').child(auth.uid).child('isAdmin').val() === true)",
+          "replies": {
+            "$replyId": {
+              ".write": "auth != null && (!data.exists() || data.child('authorEmail').val() === auth.token.email || root.child('users').child(auth.uid).child('isAdmin').val() === true)"
+            }
+          }
+        }
+      }
+    },
+
+    "pinnedArticles": {
+      ".read": true,
+      ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true"
+    },
+
+    "advertisements": {
+      ".read": true,
+      ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true"
+    },
+
+    "adminSettings": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true",
+      ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true"
+    },
+
+    "qna": {
+      ".read": true,
+      ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true"
+    },
+
+    "popups": {
+      ".read": true,
+      ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true"
+    },
+
+    "patchNotes": {
+      ".read": true,
+      ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true"
+    },
+
+    "siteSettings": {
+      ".read": true,
+      ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true"
+    },
+
+    "couponUsage": {
+      "$uid": {
+        ".read": "auth != null && ($uid === auth.uid || root.child('users').child(auth.uid).child('isAdmin').val() === true)",
+        ".write": "auth != null && auth.uid === $uid",
+        "$couponCode": {
+          ".validate": "newData.hasChildren(['usedAt']) && newData.child('usedAt').isNumber() && (!newData.hasChild('reward') || newData.child('reward').isNumber()) && (!newData.hasChild('description') || newData.child('description').isString())"
+        }
+      }
+    },
+
+    "coupons": {
+      ".read": "auth != null",
+      "$couponCode": {
+        ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true",
+        "currentUses": {
+          ".write": "auth != null",
+          ".validate": "newData.isNumber() && newData.val() === data.val() + 1"
+        },
+        ".validate": "newData.hasChildren(['currentUses']) && newData.child('currentUses').isNumber()"
+      }
+    },
+
+    "bugReports": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true",
+      ".write": "auth != null",
+      "$reportId": {
+        ".read": "auth != null && (data.child('reporterEmail').val() === auth.token.email || root.child('users').child(auth.uid).child('isAdmin').val() === true)"
+      }
+    },
+
+    "pendingGames": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+
+    "errorLogs": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true",
+      ".write": true
+    },
+
+    "stocks": {
+      "prices": {
+        ".read": true,
+        "$stockId": {
+          ".read": true,
+          ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true",
+          ".indexOn": ["lastUpdate"]
+        }
+      },
+      "userStocks": {
+        "$uid": {
+          ".read": "auth != null && ($uid === auth.uid || root.child('users').child(auth.uid).child('isAdmin').val() === true)",
+          ".write": "auth != null && auth.uid === $uid",
+          "$stockId": {
+            ".read": "auth != null && ($uid === auth.uid || root.child('users').child(auth.uid).child('isAdmin').val() === true)",
+            ".write": "auth != null && auth.uid === $uid",
+            ".indexOn": ["lastUpdate"]
+          }
+        }
+      },
+      "transactions": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true",
+        ".indexOn": ["uid", "timestamp", "stockId"],
+        "$transactionId": {
+          ".read": "auth != null && data.child('uid').val() === auth.uid",
+          ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid"
+        }
+      },
+      "gifts": {
+        ".indexOn": ["fromUid", "toUid", "timestamp"],
+        "$giftId": {
+          ".read": "auth != null && (data.child('fromUid').val() === auth.uid || data.child('toUid').val() === auth.uid)",
+          ".write": "auth != null && !data.exists() && newData.child('fromUid').val() === auth.uid"
+        }
+      },
+      "alerts": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid",
+          "$stockId": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && auth.uid === $uid"
+          }
+        }
+      }
+    },
+
+    "userChats": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$roomId": {
+          ".write": "auth != null && $roomId.contains(auth.uid)"
+        }
+      }
+    },
+
+    "chats": {
+      "$roomId": {
+        ".read": "auth != null && $roomId.contains(auth.uid)",
+        ".write": "auth != null && $roomId.contains(auth.uid)",
+        "messages": {
+          ".indexOn": ["timestamp", "read"]
+        }
+      }
+    },
+
+    "maintenanceMode": {
+      ".read": true,
+      ".write": "auth != null && root.child('users').child(auth.uid).child('isAdmin').val() === true"
+    }
+
+  }
+}

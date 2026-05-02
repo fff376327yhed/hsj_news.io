@@ -1,0 +1,43 @@
+name: 📱 Push Notifications Sender
+
+on:
+  # ⭐ 실시간 트리거 (웹사이트에서 호출)
+  repository_dispatch:
+    types: [send-notification]
+  
+  # ⭐ 5분마다 자동 실행
+  schedule:
+    - cron: '*/5 * * * *'
+  
+  # 수동 실행
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  send-notifications:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: 📥 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: 🟢 Node.js 설치
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 📦 의존성 설치
+        run: npm install --no-package-lock --omit=dev
+
+      - name: 🚀 알림 전송 실행
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+        run: node send-notifications.js
+
+      - name: 📊 결과 요약
+        if: always()
+        run: echo "✅ 알림 전송 작업 완료 (5분 간격)"

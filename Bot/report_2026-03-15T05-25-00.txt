@@ -1,0 +1,123 @@
+════════════════════════════════════════════════════════════
+         🤖  해정뉴스 자동 테스트 리포트  v2.0
+════════════════════════════════════════════════════════════
+  실행 시작 : 2026-03-15T05:20:58.514Z
+  실행 시간 : 4분 2초
+
+  ✅ 통과   : 39건
+  ❌ 실패   : 2건
+  ⚠️  경고   : 10건
+  📈 통과율 : 95%  (39/41)
+
+────────────────────────────────────────────────────────────
+  ❌ 실패 목록
+────────────────────────────────────────────────────────────
+   1. [UI: 카테고리 셀렉트]
+      → 요소 없음
+   2. [전체 실행]
+      → elementHandle.click: Timeout 30000ms exceeded.
+Call log:
+[2m  - attempting click action[22m
+[2m    2 × waiting for element to be visible, enabled and stable[22m
+[2m      - element is visible, enabled and stable[22m
+[2m      - scrolling into view if needed[22m
+[2m      - done scrolling[22m
+[2m      - <div id="ct-card">…</div> from <div id="ct-overlay">…</div> subtree intercepts pointer events[22m
+[2m    - retrying click action[22m
+[2m    - waiting 20ms[22m
+[2m    2 × waiting for element to be visible, enabled and stable[22m
+[2m      - element is visible, enabled and stable[22m
+[2m      - scrolling into view if needed[22m
+[2m      - done scrolling[22m
+[2m      - <div id="ct-card">…</div> from <div id="ct-overlay">…</div> subtree intercepts pointer events[22m
+[2m    - retrying click action[22m
+[2m      - waiting 100ms[22m
+[2m    43 × waiting for element to be visible, enabled and stable[22m
+[2m       - element is visible, enabled and stable[22m
+[2m       - scrolling into view if needed[22m
+[2m       - done scrolling[22m
+[2m       - <div id="ct-card">…</div> from <div id="ct-overlay">…</div> subtree intercepts pointer events[22m
+[2m     - retrying click action[22m
+[2m       - waiting 500ms[22m
+
+
+────────────────────────────────────────────────────────────
+  ⚠️  경고 목록
+────────────────────────────────────────────────────────────
+   1. [DB 경로: /users]
+      → 접근 실패 또는 권한 없음
+   2. [DB 경로: /notifications]
+      → 접근 실패 또는 권한 없음
+   3. [카테고리 필터: 자유게시판]
+      → page.selectOption: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('#searchCategory')[22m
+[2m    - locator resolved to <select id="searchCategory" data-listener-added="true">…</select>[22m
+[2m  - attempting select option action[22m
+[2m    2 × waiting for element to be visible and enabled[22m
+[2m      - element is not visible[22m
+[2m    - retrying select option action[22m
+[2m    - waiting 20ms[22m
+[2m    2 × waiting for element to be visible and enabled[22m
+[2m      - element is not visible[22m
+[2m    - retrying select option action[22m
+[2m      - waiting 100ms[22m
+[2m    57 × waiting for element to be visible and enabled[22m
+[2m       - element is not visible[22m
+[2m     - retrying select option action[22m
+[2m       - waiting 500ms[22m
+
+   4. [카테고리 필터: 마크]
+      → page.selectOption: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('#searchCategory')[22m
+[2m    - locator resolved to <select id="searchCategory" data-listener-added="true">…</select>[22m
+[2m  - attempting select option action[22m
+[2m    2 × waiting for element to be visible and enabled[22m
+[2m      - element is not visible[22m
+[2m    - retrying select option action[22m
+[2m    - waiting 20ms[22m
+[2m    2 × waiting for element to be visible and enabled[22m
+[2m      - element is not visible[22m
+[2m    - retrying select option action[22m
+[2m      - waiting 100ms[22m
+[2m    55 × waiting for element to be visible and enabled[22m
+[2m       - element is not visible[22m
+[2m     - retrying select option action[22m
+[2m       - waiting 500ms[22m
+
+   5. [상세: 기사 제목]
+      → 요소 없음
+   6. [상세: 기사 본문]
+      → 요소 없음
+   7. [URL 라우팅: /?page=chat]
+      → section 미활성
+   8. [설정: 알림 토글]
+      → 비로그인 또는 요소 없음
+   9. [설정: 알림 타입 설정]
+      → 비로그인 또는 요소 없음
+  10. [chatSection]
+      → active 안 됨
+
+────────────────────────────────────────────────────────────
+  🖥️  콘솔 에러 (13건, 최대 15개 표시)
+────────────────────────────────────────────────────────────
+   1. Failed to load resource: the server responded with a status of 404 ()
+   2. ❌ 조회수 증가 실패: Error: permission_denied
+    at https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js:1:146558
+    at ze (https://www.
+   3. Failed to load resource: the server responded with a status of 404 ()
+   4. Failed to load resource: the server responded with a status of 404 ()
+   5. Failed to load resource: the server responded with a status of 404 ()
+   6. Failed to load resource: the server responded with a status of 404 ()
+   7. Failed to load resource: the server responded with a status of 404 ()
+   8. Failed to load resource: the server responded with a status of 404 ()
+   9. Failed to load resource: the server responded with a status of 404 ()
+  10. Failed to load resource: the server responded with a status of 404 ()
+  11. Failed to load resource: the server responded with a status of 404 ()
+  12. Failed to load resource: the server responded with a status of 404 ()
+  13. Failed to load resource: the server responded with a status of 404 ()
+
+════════════════════════════════════════════════════════════
+  🎉 전체 결과: 우수
+════════════════════════════════════════════════════════════
