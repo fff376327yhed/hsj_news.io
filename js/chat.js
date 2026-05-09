@@ -121,14 +121,17 @@ async function syncChatAuth(mainUser) {
         chatUser = await waitForChatAuth(3000);
     }
 
-    // 이미 로그인됨 → chatUid가 메인 DB에 없으면 저장
     if (chatUser) {
         const mainUid = mainUser.uid;
         const snap = await db.ref(`users/${mainUid}/chatUid`).once('value');
         if (!snap.val()) {
             await db.ref(`users/${mainUid}/chatUid`).set(chatUser.uid);
-            console.log('✅ chatUid 보완 저장:', chatUser.uid);
         }
+
+        // ✅ 메인 DB에서 관리자 여부 직접 조회 → 전역 캐싱
+        const adminSnap = await db.ref(`users/${mainUid}/isAdmin`).once('value');
+        window._chatIsAdmin = adminSnap.val() === true;
+        console.log('✅ 채팅 관리자 캐싱:', window._chatIsAdmin);
         return;
     }
 
@@ -148,11 +151,21 @@ window._signInChatAppSilently = async function _signInChatAppSilently(mainUser) 
         console.log('✅ chatApp 인증 완료:', result.user.email);
         document.getElementById('_chatAuthBanner')?.remove();
         
-        // 전달받은 mainUser.uid 우선 사용, 없으면 auth.currentUser 폴백
         const mainUid = mainUser?.uid ?? auth.currentUser?.uid;
         if (mainUid) {
             await db.ref(`users/${mainUid}/chatUid`).set(result.user.uid);
             console.log('✅ chatUid 메인DB 저장 완료');
+
+            // ✅ 관리자 여부 캐싱
+            const adminSnap = await db.ref(`users/${mainUid}/isAdmin`).once('value');
+            window._chatIsAdmin = adminSnap.val() === true;
+            console.log('✅ 채팅 관리자 캐싱 (popup):', window._chatIsAdmin);
+        }
+
+        // ✅ 관리자라면 채팅 DB admins 노드에 등록
+        if (typeof isAdmin === 'function' && isAdmin()) {
+            await getChatDb().ref(`admins/${result.user.uid}`).set(true);
+            console.log('✅ 채팅 DB 관리자 등록 (popup):', result.user.uid);
         }
     } catch (e) {
         if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') return;
@@ -287,6 +300,8 @@ function _showChatAuthExpiredBanner() {
     document.body.appendChild(banner);
     setTimeout(() => banner?.remove(), 10000);
 }
+// ✅ IIFE 외부 파일(Chat-upgrade.js)에서 접근 가능하도록 전역 노출
+window._showChatAuthExpiredBanner = _showChatAuthExpiredBanner;
 
 // ===== 메인 Auth 상태 변경 시 chatApp Auth 동기화 =====
 auth.onAuthStateChanged(async (user) => {
@@ -325,10 +340,11 @@ window.showChatPage = async function () {
     }
 
     if (chatMsgListener && activeChatRoomId) {
-        getChatDb().ref(`chats/${activeChatRoomId}/messages`).off('value', chatMsgListener);
+        getChatDb().ref(`chats/${activeChatRoomId}/messages`).off('child_added', chatMsgListener);
         chatMsgListener = null;
-        activeChatRoomId = null;
     }
+    if (window._chatMsgChangedOff) { window._chatMsgChangedOff(); window._chatMsgChangedOff = null; }
+    activeChatRoomId = null;
 
     document.querySelectorAll('.page-section').forEach(sec => { sec.style.cssText = ''; });
     hideAll();
@@ -443,9 +459,36 @@ async function loadChatRoomList() {
             return;
         }
 
-        // [최적화] users 전체 로드 제거 — participantInfo 우선 참조
-        const [chatSnaps, savedOrder] = await Promise.all([
-            Promise.all(myRoomIds.map(id => getChatDb().ref(`chats/${id}`).once('value'))),
+        // ✅ [최적화] chats/${id} 전체 로드(메시지 포함) 제거 → 메타 필드만 병렬 쿼리
+        // messages 노드는 채팅방 목록에 불필요 — 수백 건 다운로드 방지
+        const [metaList, savedOrder] = await Promise.all([
+            Promise.all(myRoomIds.map(async id => {
+                const r = getChatDb().ref(`chats/${id}`);
+                const [metaSnaps, recentMsgsSnap] = await Promise.all([
+                    Promise.all([
+                        r.child('isGroup').once('value'),
+                        r.child('groupName').once('value'),
+                        r.child('participants').once('value'),
+                        r.child('participantInfo').once('value'),
+                        r.child('mainUids').once('value'),
+                        r.child('lastMessage').once('value'),
+                        r.child('lastMessageAt').once('value'),
+                    ]),
+                    // unread 계산: 최근 10개만 로드 (전체 다운로드 방지)
+                    r.child('messages').orderByChild('timestamp').limitToLast(10).once('value')
+                ]);
+                return {
+                    key: id,
+                    isGroup:         metaSnaps[0].val(),
+                    groupName:       metaSnaps[1].val(),
+                    participants:    metaSnaps[2].val(),
+                    participantInfo: metaSnaps[3].val(),
+                    mainUids:        metaSnaps[4].val(),
+                    lastMessage:     metaSnaps[5].val(),
+                    lastMessageAt:   metaSnaps[6].val(),
+                    messages:        recentMsgsSnap.val()
+                };
+            })),
             loadChatRoomOrder(mainUid)
         ]);
 
@@ -461,12 +504,11 @@ async function loadChatRoomList() {
                 return data;
             } catch(e) { return {}; }
         }
-        const usersData = {}; // 호환성 유지
 
         // 기본 정렬: lastMessageAt 내림차순
-        let rooms = chatSnaps
-            .map(s => [s.key, s.val()])
-            .filter(([_, c]) => c !== null)
+        let rooms = metaList
+            .filter(c => c !== null)
+            .map(c => [c.key, c])
             .sort((a, b) => (b[1].lastMessageAt || 0) - (a[1].lastMessageAt || 0));
 
         // 저장된 순서가 있으면 적용 (목록에 없는 새 방은 맨 뒤에 추가)
@@ -744,9 +786,10 @@ function _initChatRoomDnD(listEl, mainUid) {
 // ===== 채팅방 열기 =====
 window.openChatRoom = async function (roomId, friendUid, friendName, friendPhoto, friendMainUid) {
     if (chatMsgListener && activeChatRoomId) {
-        getChatDb().ref(`chats/${activeChatRoomId}/messages`).off('value', chatMsgListener);
+        getChatDb().ref(`chats/${activeChatRoomId}/messages`).off('child_added', chatMsgListener);
         chatMsgListener = null;
     }
+    if (window._chatMsgChangedOff) { window._chatMsgChangedOff(); window._chatMsgChangedOff = null; }
     activeChatRoomId = roomId;
 
     const myUid = getChatUserId();
@@ -815,10 +858,9 @@ window.openChatRoom = async function (roomId, friendUid, friendName, friendPhoto
                 <div id="chatFilePreview_${roomId}" style="display:none;padding:8px 12px 4px;gap:6px;flex-wrap:wrap;border-bottom:1px solid #f5f5f5;"></div>
                 <input type="file" id="chatFileInput" multiple accept="*/*"
                     style="display:none;" onchange="previewChatFiles(this,'${roomId}')">
-                <div id="chatImgPreview" style="display:none;padding:8px 12px 0;position:relative;">
-                    <img id="chatImgPreviewImg"
-                        style="max-height:100px;max-width:200px;border-radius:10px;
-                        object-fit:cover;border:1.5px solid #dee2e6;">
+                <!-- ✅ 다중 사진 미리보기 -->
+                <div id="chatImgPreview" style="display:none;padding:8px 12px 0;position:relative;padding-right:32px;">
+                    <div id="chatImgPreviewGrid" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
                     <button onclick="clearChatImage()"
                         style="position:absolute;top:4px;right:8px;background:rgba(0,0,0,0.55);
                         color:white;border:none;border-radius:50%;width:22px;height:22px;
@@ -826,14 +868,44 @@ window.openChatRoom = async function (roomId, friendUid, friendName, friendPhoto
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
+                <!-- ✅ 영상 미리보기 -->
+                <div id="chatVideoPreview" style="display:none;padding:8px 12px 0;position:relative;padding-right:32px;">
+                    <video id="chatVideoPreviewEl" controls
+                        style="max-height:80px;max-width:160px;border-radius:8px;border:1.5px solid #dee2e6;"></video>
+                    <button onclick="clearChatVideo()"
+                        style="position:absolute;top:4px;right:8px;background:rgba(0,0,0,0.55);
+                        color:white;border:none;border-radius:50%;width:22px;height:22px;
+                        font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <!-- ✅ 영상 업로드 진행 바 -->
+                <div id="chatVideoUploadProgress" style="display:none;padding:4px 14px 2px;">
+                    <div style="font-size:12px;color:#c62828;font-weight:600;margin-bottom:3px;">🎬 YouTube 업로드 중...</div>
+                    <div style="background:#f0f0f0;border-radius:8px;height:6px;overflow:hidden;">
+                        <div id="chatVideoProgressBar" style="background:linear-gradient(90deg,#c62828,#e53935);height:100%;width:0%;border-radius:8px;transition:width 0.3s;"></div>
+                    </div>
+                    <div id="chatVideoProgressText" style="font-size:11px;color:#999;text-align:right;margin-top:2px;">0%</div>
+                </div>
                 <div style="padding:10px 12px;display:flex;gap:8px;align-items:flex-end;">
-                    <input type="file" id="chatImageInput" accept="image/*" style="display:none;"
+                    <!-- ✅ multiple 추가 -->
+                    <input type="file" id="chatImageInput" accept="image/*" multiple style="display:none;"
                         onchange="previewChatImage(this)">
+                    <!-- ✅ 신규: 영상 입력 -->
+                    <input type="file" id="chatVideoInput" accept="video/*" style="display:none;"
+                        onchange="previewChatVideo(this)">
                     <button onclick="document.getElementById('chatImageInput').click()"
                         style="background:#f1f3f4;border:none;color:#555;width:38px;height:38px;
                         border-radius:50%;cursor:pointer;font-size:15px;flex-shrink:0;
-                        display:flex;align-items:center;justify-content:center;" title="사진">
+                        display:flex;align-items:center;justify-content:center;" title="사진 (여러 장 선택 가능)">
                         <i class="fas fa-camera"></i>
+                    </button>
+                    <!-- ✅ 신규: 영상 버튼 -->
+                    <button onclick="document.getElementById('chatVideoInput').click()" title="동영상"
+                        style="background:#f1f3f4;border:none;color:#555;width:38px;height:38px;
+                        border-radius:50%;cursor:pointer;font-size:15px;flex-shrink:0;
+                        display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-video"></i>
                     </button>
                     <button onclick="document.getElementById('chatFileInput').click()" title="파일 첨부"
                         style="background:#f1f3f4;border:none;color:#555;width:38px;height:38px;
@@ -882,14 +954,40 @@ window.openChatRoom = async function (roomId, friendUid, friendName, friendPhoto
             if (window._lastMsgs) updateReadAvatars(window._lastMsgs, myUid, roomId);
         });
 
-    chatMsgListener = getChatDb().ref(`chats/${roomId}/messages`)
+    chatMsgListener = null;
+    window._lastMsgs = {};
+
+    // ✅ [최적화 Step 1] 초기 50개만 빠르게 로드 → 전체 재렌더
+    getChatDb().ref(`chats/${roomId}/messages`)
         .orderByChild('timestamp')
-        .limitToLast(200)
-        .on('value', (snap) => {
+        .limitToLast(50)
+        .once('value', (snap) => {
             window._lastMsgs = snap.val() || {};
             renderChatMessages(window._lastMsgs, myUid, roomId);
             markMessagesAsRead(roomId, myUid);
+
+            // ✅ [최적화 Step 2] 이후 신규 메시지만 증분 수신 (child_added)
+            const lastTs = Object.values(window._lastMsgs)
+                .reduce((max, m) => Math.max(max, m.timestamp || 0), 0);
+
+            chatMsgListener = getChatDb().ref(`chats/${roomId}/messages`)
+                .orderByChild('timestamp')
+                .startAt(lastTs + 1)
+                .on('child_added', (snap) => {
+                    if (window._lastMsgs[snap.key]) return; // 중복 방지
+                    window._lastMsgs[snap.key] = snap.val();
+                    _appendOneChatMsg(snap.key, snap.val(), myUid, roomId);
+                    markMessagesAsRead(roomId, myUid);
+                });
         });
+
+    // ✅ [최적화 Step 3] 수정·삭제 감지 (child_changed — 별도 리스너)
+    const _changedRef = getChatDb().ref(`chats/${roomId}/messages`);
+    const _changedHandler = _changedRef.on('child_changed', (snap) => {
+        window._lastMsgs[snap.key] = snap.val();
+        _updateOneChatMsg(snap.key, snap.val(), myUid, roomId);
+    });
+    window._chatMsgChangedOff = () => _changedRef.off('child_changed', _changedHandler);
 
     setTimeout(() => document.getElementById('chatInput')?.focus(), 100);
 
@@ -905,6 +1003,7 @@ function renderChatMessages(msgs, myUid, roomId) {
     const container = document.getElementById('chatMessages');
     if (!container) return;
 
+    const _isAdmin = window._chatIsAdmin === true; // ✅ 루프 밖에서 한 번만 평가
     const msgList     = Object.entries(msgs).sort((a, b) => a[1].timestamp - b[1].timestamp);
     const wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 140;
     container.innerHTML = '';
@@ -994,10 +1093,13 @@ function renderChatMessages(msgs, myUid, roomId) {
             touch-action:manipulation;-webkit-tap-highlight-color:transparent;pointer-events:auto;`;
         let bubbleContent = '';
         if (msg.text) bubbleContent += escapeHTML(msg.text).replace(/\n/g, '<br>');
-        if (msg.imageBase64) {
-            bubbleContent += `${msg.text ? '<br>' : ''}
-                <div style="position:relative;display:inline-block;margin-top:${msg.text ? '6px' : '0'};">
-                    <img src="${msg.imageBase64}"
+       // ✅ 수정 후 코드
+const _imgSrc = msg.imageUrl || msg.imageBase64;
+if (_imgSrc) {
+    bubbleContent += `${msg.text ? '<br>' : ''}
+        <div style="position:relative;display:inline-block;margin-top:${msg.text ? '6px' : '0'};">
+            <img src="${_imgSrc}"
+                        loading="lazy" decoding="async"
                         onclick="openChatImageModal('${msgId}')"
                         style="max-width:220px;max-height:220px;border-radius:10px;
                         display:block;cursor:zoom-in;object-fit:cover;">
@@ -1040,8 +1142,34 @@ function renderChatMessages(msgs, myUid, roomId) {
             bubble.dataset.fileId = msgId;
         }
         bubble.innerHTML = bubbleContent;
-        bubble.dataset.img = msg.imageBase64 || '';
-        if (msg.imageBase64) bubble.style.padding = '6px';
+        // ✅ 수정 후 코드
+// ✅ 다중 이미지 렌더링
+if (msg.imageUrls?.length > 0) {
+    const cols = msg.imageUrls.length === 1 ? 1 : msg.imageUrls.length <= 4 ? 2 : 3;
+    bubbleContent += `${msg.text ? '<br>' : ''}
+        <div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:3px;
+            margin-top:${msg.text ? '6px' : '0'};max-width:220px;">
+        ${msg.imageUrls.map((url, i) => `
+            <img src="${url}" loading="lazy" decoding="async" onclick="openChatImageModal('${msgId}',${i})"
+                style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:zoom-in;">`
+        ).join('')}
+        </div>`;
+    bubble.style.padding = '6px';
+}
+
+// ✅ 영상 렌더링 (YouTube iframe)
+if (msg.videoUrl) {
+    bubbleContent += `${msg.text ? '<br>' : ''}
+        <div style="margin-top:${msg.text ? '6px' : '0'};">
+            <iframe src="${msg.videoUrl}" frameborder="0"
+                allow="autoplay; encrypted-media" allowfullscreen
+                style="width:220px;height:130px;border-radius:10px;display:block;"></iframe>
+        </div>`;
+    bubble.style.padding = '6px';
+}
+
+bubble.dataset.img = msg.imageUrl || msg.imageBase64 || '';
+if (msg.imageUrl || msg.imageBase64) bubble.style.padding = '6px';
 
         // ✅ 내 메시지: bubble 직접 클릭
         if (isMe) {
@@ -1132,6 +1260,27 @@ function renderChatMessages(msgs, myUid, roomId) {
 
         msgEl.id = `msgEl-${msgId}`;
         msgEl.appendChild(bubbleWrap);
+
+        // ✅ [신규] 관리자 전용: 상대방 메시지에 ⋮ 3-dot 버튼 표시
+        if (!isMe && _isAdmin) {
+            const adminDotBtn = document.createElement('button');
+            adminDotBtn.title = '🛡️ 관리자 메뉴';
+            adminDotBtn.style.cssText = [
+                'background:none','border:none','cursor:pointer',
+                'color:#ccc','font-size:20px','padding:0 4px',
+                'flex-shrink:0','align-self:center','line-height:1',
+                'transition:color 0.15s','font-weight:700'
+            ].join(';');
+            adminDotBtn.textContent = '⋮';
+            adminDotBtn.onmouseover = () => adminDotBtn.style.color = '#c62828';
+            adminDotBtn.onmouseout  = () => adminDotBtn.style.color = '#ccc';
+            adminDotBtn.onclick = (e) => {
+                e.stopPropagation();
+                showChatMsgMenu(msgId, roomId, bubble, false, msg.text || '');
+            };
+            msgEl.appendChild(adminDotBtn);
+        }
+
         container.appendChild(msgEl);
     }
 
@@ -1183,7 +1332,8 @@ window.showChatMsgMenu = function (msgId, roomId, el, isMe, msgText) {
             <i class="fas fa-copy" style="color:#1565c0;width:20px;font-size:16px;"></i> 복사
         </button>` : '';
 
-    // 수정/삭제 (내 메시지만)
+    // 수정/삭제 (내 메시지) + 관리자는 남의 메시지도 수정·삭제 가능
+    const _isAdmin = window._chatIsAdmin === true;
     const editDeleteBtns = isMe ? `
         <button onclick="editChatMessage('${msgId}','${roomId}')"
             style="display:flex;align-items:center;gap:10px;width:100%;padding:14px 20px;
@@ -1198,7 +1348,22 @@ window.showChatMsgMenu = function (msgId, roomId, el, isMe, msgText) {
             text-align:left;"
             onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='none'">
             <i class="fas fa-trash-alt" style="width:20px;font-size:16px;"></i> 삭제
-        </button>` : '';
+        </button>`
+    : (_isAdmin ? `
+        ${msgText ? `<button onclick="editChatMessage('${msgId}','${roomId}')"
+            style="display:flex;align-items:center;gap:10px;width:100%;padding:14px 20px;
+            border:none;background:none;cursor:pointer;font-size:15px;color:#262626;font-weight:600;
+            border-top:1px solid #f5f5f5;text-align:left;"
+            onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='none'">
+            <i class="fas fa-shield-alt" style="color:#405de6;width:20px;font-size:16px;"></i> 🛡️ 관리자 수정
+        </button>` : ''}
+        <button onclick="deleteChatMessage('${msgId}','${roomId}')"
+            style="display:flex;align-items:center;gap:10px;width:100%;padding:14px 20px;
+            border:none;background:none;cursor:pointer;font-size:15px;color:#c62828;font-weight:600;
+            border-top:1px solid #f5f5f5;text-align:left;"
+            onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='none'">
+            <i class="fas fa-shield-alt" style="width:20px;font-size:16px;"></i> 🛡️ 관리자 삭제
+        </button>` : '');
 
     overlay.innerHTML = `
         <div style="background:white;width:100%;max-width:600px;margin:0 auto;
@@ -1282,6 +1447,28 @@ window.deleteChatMessage = async function (msgId, roomId) {
     try {
         await getChatDb().ref(`chats/${roomId}/messages/${msgId}`).remove();
         showChatToast('✅ 메시지가 삭제되었습니다');
+
+        // ✅ 채팅 목록 미리보기 갱신: 삭제 후 실제 마지막 메시지로 업데이트
+        const snap = await getChatDb().ref(`chats/${roomId}/messages`)
+            .orderByChild('timestamp').limitToLast(1).once('value');
+        const remaining = snap.val();
+        if (remaining) {
+            const last = Object.values(remaining)[0];
+            let preview = '';
+            if (last.deleted) preview = '메시지가 삭제되었습니다';
+            else if (last.videoUrl) preview = '🎬 동영상';
+            else if (last.imageUrls?.length > 0) preview = last.text ? last.text : `📷 사진 ${last.imageUrls.length}장`;
+            else if (last.imageUrl || last.imageBase64) preview = last.text ? last.text : '📷 사진';
+            else if (last.fileName) preview = `📎 ${last.fileName}`;
+            else preview = last.text?.length > 30 ? last.text.substring(0, 30) + '...' : (last.text || '메시지');
+            await getChatDb().ref(`chats/${roomId}`).update({
+                lastMessage: preview,
+                lastMessageAt: last.timestamp
+            });
+        } else {
+            // 메시지가 하나도 없으면 미리보기 비움
+            await getChatDb().ref(`chats/${roomId}`).update({ lastMessage: '', lastMessageAt: 0 });
+        }
     } catch (e) {
         showChatToast('❌ 삭제 실패: ' + e.message);
     }
@@ -1364,11 +1551,13 @@ window.sendChatMessage = async function (roomId) {
     const input      = document.getElementById('chatInput');
     const imageInput = document.getElementById('chatImageInput');
     const fileInput  = document.getElementById('chatFileInput');
+    const videoInput = document.getElementById('chatVideoInput');
     const text       = input?.value.trim();
-    const hasImage   = imageInput?.files?.[0];
+    const hasImage   = imageInput?.files?.length > 0;
     const hasFiles   = fileInput?.files?.length > 0;
+    const hasVideo   = !!videoInput?.files?.[0];
 
-    if (!text && !hasImage && !hasFiles) return;
+    if (!text && !hasImage && !hasFiles && !hasVideo) return;
 
     const now = Date.now();
     if (now - CHAT_RATE.lastReset > CHAT_RATE.WINDOW) { CHAT_RATE.count = 0; CHAT_RATE.lastReset = now; }
@@ -1380,14 +1569,37 @@ window.sendChatMessage = async function (roomId) {
         showChatToast('⚠️ 메시지는 500자 이하로 입력해주세요.'); return;
     }
 
-    // 이미지 압축
-    let imageBase64 = null;
+   // ✅ 이미지 처리 (여러 장 지원)
+    let imageResults = [];
     if (hasImage) {
-        try {
-            imageBase64 = await compressChatImage(imageInput.files[0]);
-        } catch(e) {
-            showChatToast('❌ 이미지 처리 실패'); return;
+        for (const file of Array.from(imageInput.files)) {
+            try {
+                const result = await compressChatImage(file);
+                imageResults.push(result);
+            } catch(e) {
+                showChatToast(`❌ ${file.name} 이미지 처리 실패`);
+            }
         }
+    }
+
+    // ✅ 영상 처리 — YouTube 업로드
+    let videoUrl = null;
+    if (hasVideo) {
+        const progWrap = document.getElementById('chatVideoUploadProgress');
+        const progBar  = document.getElementById('chatVideoProgressBar');
+        const progText = document.getElementById('chatVideoProgressText');
+        if (progWrap) progWrap.style.display = 'block';
+        try {
+            videoUrl = await uploadVideoToYouTube(videoInput.files[0], (pct) => {
+                if (progBar)  progBar.style.width  = pct + '%';
+                if (progText) progText.textContent = pct + '%';
+            });
+        } catch(e) {
+            if (progWrap) progWrap.style.display = 'none';
+            showChatToast('❌ 영상 업로드 실패: ' + e.message);
+            return;
+        }
+        if (progWrap) progWrap.style.display = 'none';
     }
 
     // 파일 처리 (파일별로 별도 메시지 전송)
@@ -1410,6 +1622,7 @@ window.sendChatMessage = async function (roomId) {
     if (input) { input.value = ''; input.style.height = 'auto'; }
     clearChatImage();
     clearChatFiles();
+    clearChatVideo(); // ✅ 영상 미리보기 초기화
 
     const myUid  = getChatUserId();
     const myName = getMyNickname();
@@ -1419,12 +1632,32 @@ window.sendChatMessage = async function (roomId) {
         const messagesRef = getChatDb().ref(`chats/${roomId}/messages`);
         let preview = '';
 
-        // 텍스트+이미지 메시지
-        if (text || imageBase64) {
+        // ✅ 텍스트 + 이미지(단일/다중) 메시지
+        if (text || imageResults.length > 0) {
             const msgData = { senderId: myUid, senderName: myName, text: text || '', timestamp: ts, read: false };
-            if (imageBase64) msgData.imageBase64 = imageBase64;
+            if (imageResults.length === 1) {
+                // 단일 이미지 → 기존 방식 유지
+                const r = imageResults[0];
+                if (r.isUrl) { msgData.imageUrl    = r.url; }
+                else         { msgData.imageBase64  = r.url; }
+            } else if (imageResults.length > 1) {
+                // 다중 이미지 → imageUrls 배열
+                msgData.imageUrls = imageResults.map(r => r.url);
+            }
             await messagesRef.push(msgData);
-            preview = imageBase64 && !text ? '📷 사진' : (text.length > 30 ? text.substring(0, 30) + '...' : text);
+            preview = imageResults.length > 0 && !text
+                ? `📷 사진 ${imageResults.length}장`
+                : (text.length > 30 ? text.substring(0, 30) + '...' : text);
+        }
+
+        // ✅ 영상 메시지
+        if (videoUrl) {
+            const videoMsg = {
+                senderId: myUid, senderName: myName, text: '',
+                timestamp: Date.now(), read: false, videoUrl
+            };
+            await messagesRef.push(videoMsg);
+            preview = '🎬 동영상';
         }
 
         // 파일 메시지 (각각 별도 전송)
@@ -1533,9 +1766,10 @@ window.handleChatKeydown = function (e, roomId) {
     }
 };
 
-// ===== 채팅 이미지 압축 =====
-function compressChatImage(file) {
-    return new Promise((resolve, reject) => {
+// ✅ 수정 후 코드 — imgBB 업로드 추가
+async function compressChatImage(file) {
+    // 1단계: Canvas로 리사이즈 + 압축 → base64
+    const base64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = e => {
             const img = new Image();
@@ -1557,6 +1791,26 @@ function compressChatImage(file) {
         reader.onerror = reject;
         reader.readAsDataURL(file);
     });
+
+    // 2단계: imgBB API에 업로드 → URL 반환
+    try {
+        const pureBase64 = base64.split(',')[1];
+        const formData = new FormData();
+        formData.append('image', pureBase64);
+        const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+            method: 'POST',
+            body: formData
+        });
+        const json = await res.json();
+        if (json.success && json.data?.url) {
+            return { url: json.data.url, isUrl: true }; // ✅ URL 반환
+        }
+        console.warn('⚠️ imgBB 업로드 실패, base64 폴백:', json);
+        return { url: base64, isUrl: false }; // 폴백
+    } catch (err) {
+        console.warn('⚠️ imgBB 업로드 오류, base64 폴백:', err);
+        return { url: base64, isUrl: false }; // 폴백
+    }
 }
 
 window.previewChatImage = function (input) {
@@ -1574,10 +1828,31 @@ window.previewChatImage = function (input) {
 window.clearChatImage = function () {
     const preview    = document.getElementById('chatImgPreview');
     const imageInput = document.getElementById('chatImageInput');
-    const img        = document.getElementById('chatImgPreviewImg');
+    const grid       = document.getElementById('chatImgPreviewGrid');
     if (preview) preview.style.display = 'none';
-    if (img) img.src = '';
+    if (grid) grid.innerHTML = '';
     if (imageInput) imageInput.value = '';
+};
+
+// ✅ 신규: 영상 미리보기 초기화
+window.previewChatVideo = function (input) {
+    if (!input.files?.[0]) return;
+    const preview = document.getElementById('chatVideoPreview');
+    const video   = document.getElementById('chatVideoPreviewEl');
+    if (video) video.src = URL.createObjectURL(input.files[0]);
+    if (preview) preview.style.display = 'block';
+};
+
+// ✅ 신규: 영상 미리보기 제거
+window.clearChatVideo = function () {
+    const preview    = document.getElementById('chatVideoPreview');
+    const videoInput = document.getElementById('chatVideoInput');
+    const video      = document.getElementById('chatVideoPreviewEl');
+    const progWrap   = document.getElementById('chatVideoUploadProgress');
+    if (video && video.src) { URL.revokeObjectURL(video.src); video.src = ''; }
+    if (preview)  preview.style.display  = 'none';
+    if (progWrap) progWrap.style.display = 'none';
+    if (videoInput) videoInput.value = '';
 };
 
 // ===== 파일 첨부 헬퍼 =====
@@ -1659,7 +1934,8 @@ window.downloadChatFile = function (msgId) {
 window.downloadChatImage = function (msgId) {
     const msgs = window._lastMsgs || {};
     const msg  = msgs[msgId];
-    const src  = msg?.imageBase64 || document.querySelector(`[data-msgid="${msgId}"]`)?.dataset?.img;
+    // ✅ 수정 후 코드
+const src = msg?.imageUrl || msg?.imageBase64 || document.querySelector(`[data-msgid="${msgId}"]`)?.dataset?.img;
     if (!src) { showChatToast('❌ 이미지를 찾을 수 없습니다'); return; }
     const ext = src.startsWith('data:image/png') ? 'png' : 'jpg';
     const a   = document.createElement('a');
@@ -2479,7 +2755,8 @@ window.switchGalleryTab = function (tab) {
     };
 
     if (tab === 'photo') {
-        const photos = msgs.filter(m => m.imageBase64);
+        // ✅ 수정 후 코드
+const photos = msgs.filter(m => m.imageUrl || m.imageBase64);
         if (photos.length === 0) {
             body.innerHTML = `<div style="text-align:center;padding:60px 20px;color:#aaa;">
                 <i class="fas fa-image" style="font-size:40px;display:block;margin-bottom:12px;opacity:0.3;"></i>
@@ -2501,7 +2778,8 @@ window.switchGalleryTab = function (tab) {
                     ${items.map(m => `
                         <div style="position:relative;aspect-ratio:1;overflow:hidden;border-radius:8px;cursor:pointer;"
                             onclick="openGalleryImage('${m.id}')" title="${fmtFull(m.timestamp)} · ${escapeHTML(m.senderName||'')}">
-                            <img src="${m.imageBase64}"
+                            // ✅ 수정 후 코드
+<img src="${m.imageUrl || m.imageBase64}"
                                 style="width:100%;height:100%;object-fit:cover;display:block;transition:opacity 0.2s;"
                                 onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1">
                             <div style="position:absolute;bottom:0;left:0;right:0;padding:4px 6px;
@@ -2617,18 +2895,19 @@ window.openGalleryImage = function (msgId) {
     const d = new Date(m.timestamp);
     const dateStr = `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 `+
         `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-    const ext = (m.imageBase64||'').startsWith('data:image/png') ? 'png' : 'jpg';
+    const _galSrc = m.imageUrl || m.imageBase64 || '';
+const ext = _galSrc.startsWith('data:image/png') ? 'png' : 'jpg';
     modal.innerHTML = `
         <div style="color:white;font-size:13px;margin-bottom:12px;opacity:0.8;">
             ${escapeHTML(m.senderName||'')} · ${dateStr}
         </div>
-        <img src="${m.imageBase64}"
+        <img src="${_galSrc}"
             style="max-width:95vw;max-height:76vh;border-radius:10px;object-fit:contain;cursor:zoom-out;"
             onclick="this.closest('div').remove()">
         <div style="display:flex;gap:12px;margin-top:16px;">
             <button onclick="(function(){
                     const a=document.createElement('a');
-                    a.href='${m.imageBase64}';
+                    a.href='${_galSrc}';
                     a.download='chat_image_${msgId}.${ext}';
                     document.body.appendChild(a);a.click();document.body.removeChild(a);
                 })()"
@@ -2746,7 +3025,8 @@ window.doChatSearch = function () {
                 <div style="font-size:13px;color:#444;line-height:1.55;word-break:keep-all;">
                     ${hl(preview, kw)}
                 </div>
-                ${m.imageBase64 ? `<div style="margin-top:8px;font-size:11px;color:#aaa;">📷 사진 포함</div>` : ''}
+                // ✅ 수정 후 코드
+${(m.imageUrl || m.imageBase64) ? `<div style="margin-top:8px;font-size:11px;color:#aaa;">📷 사진 포함</div>` : ''}
             </div>`;
     }).join('');
 };

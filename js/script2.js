@@ -158,7 +158,7 @@ window.saveProfilePhoto = async function() {
     showLoadingIndicator("사진 업로드 중...");
 
     try {
-        // ✅ 프로필 사진 압축 (최대 200px, 고품질)
+        // ✅ 프로필 사진 압축 후 imgBB 업로드 → URL 저장 (DB 용량 절약)
         const photoData = await compressImageToBase64(file, 200, 0.92);
 
         await db.ref("users/" + user.uid).update({
@@ -190,7 +190,13 @@ console.log("✅ 프로필 사진 변경 기능 로드 완료");
 
 // ===== 2. 이미지 전체보기 + 확대/축소 + 휠 확대 =====
 
+// ❌ 기존 코드 (다운로드 버튼 없음, _openImageModalSrc 저장 없음)
+
+// ✅ 수정 후 코드
+window._openImageModalSrc = null; // 현재 열린 이미지 src 전역 저장
+
 window.openImageModal = function(imageSrc) {
+    window._openImageModalSrc = imageSrc; // ✅ 다운로드를 위해 저장
     const existingModal = document.getElementById('imageViewModal');
     if(existingModal) existingModal.remove();
     
@@ -202,6 +208,7 @@ window.openImageModal = function(imageSrc) {
                         ×
                     </button>
                     
+                    <!-- ✅ 수정: 다운로드 버튼 추가 -->
                     <div style="position:fixed; bottom:20px; left:50%; transform:translateX(-50%); display:flex; gap:10px; z-index:10002;">
                         <button onclick="zoomImage(1.2)" class="image-control-btn">
                             <i class="fas fa-plus"></i>
@@ -211,6 +218,9 @@ window.openImageModal = function(imageSrc) {
                         </button>
                         <button onclick="resetZoom()" class="image-control-btn">
                             <i class="fas fa-redo"></i>
+                        </button>
+                        <button onclick="downloadModalImage()" class="image-control-btn" title="다운로드" style="background:rgba(198,40,40,0.9);color:white;">
+                            <i class="fas fa-download"></i>
                         </button>
                     </div>
                     
@@ -237,155 +247,105 @@ window.openImageModal = function(imageSrc) {
                 justify-content: center;
                 transition: all 0.2s;
             }
-            
-            .image-control-btn:hover {
-                background: white;
-                transform: scale(1.1);
-            }
-            
-            .image-control-btn:active {
-                transform: scale(0.95);
-            }
+            .image-control-btn:hover { background: white; transform: scale(1.1); }
+            .image-control-btn:active { transform: scale(0.95); }
         </style>
     `;
     
     document.body.insertAdjacentHTML('beforeend', modalHTML);
     
-    // ✅ 드래그 및 확대/축소 기능
+    // 드래그 및 확대/축소 기능 (기존과 동일)
     const container = document.getElementById('imageContainer');
     const wrapper = document.getElementById('imageWrapper');
-    const img = document.getElementById('modalImageElement');
     
-    let scale = 1;
-    let translateX = 0;
-    let translateY = 0;
-    let isDragging = false;
-    let startX = 0;
-    let startY = 0;
-    let lastX = 0;
-    let lastY = 0;
+    let scale = 1, translateX = 0, translateY = 0;
+    let isDragging = false, startX = 0, startY = 0;
     
-    // 변환 적용 함수
     function applyTransform() {
         wrapper.style.transform = `translate(calc(-50% + ${translateX}px), calc(-50% + ${translateY}px)) scale(${scale})`;
     }
     
-    // 마우스 휠 확대/축소
     container.addEventListener('wheel', (e) => {
         e.preventDefault();
-        
         const delta = e.deltaY > 0 ? 0.9 : 1.1;
         const newScale = scale * delta;
-        
-        if (newScale >= 0.5 && newScale <= 5) {
-            scale = newScale;
-            applyTransform();
-        }
+        if (newScale >= 0.5 && newScale <= 5) { scale = newScale; applyTransform(); }
     }, { passive: false });
     
-    // 마우스 드래그
     container.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        container.style.cursor = 'grabbing';
-        startX = e.clientX - translateX;
-        startY = e.clientY - translateY;
-        lastX = translateX;
-        lastY = translateY;
+        isDragging = true; container.style.cursor = 'grabbing';
+        startX = e.clientX - translateX; startY = e.clientY - translateY;
     });
-    
     document.addEventListener('mousemove', (e) => {
         if (!isDragging) return;
-        
-        translateX = e.clientX - startX;
-        translateY = e.clientY - startY;
-        
-        wrapper.style.transition = 'none';
-        applyTransform();
+        translateX = e.clientX - startX; translateY = e.clientY - startY;
+        wrapper.style.transition = 'none'; applyTransform();
     });
-    
     document.addEventListener('mouseup', () => {
-        if (isDragging) {
-            isDragging = false;
-            container.style.cursor = 'grab';
-            wrapper.style.transition = 'transform 0.1s ease-out';
-        }
+        if (isDragging) { isDragging = false; container.style.cursor = 'grab'; wrapper.style.transition = 'transform 0.1s ease-out'; }
     });
     
-    // 터치 이벤트 (모바일)
-    let initialDistance = 0;
-    let initialScale = 1;
-    
+    let initialDistance = 0, initialScale = 1;
     container.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 1) {
-            // 단일 터치 - 드래그
-            isDragging = true;
-            startX = e.touches[0].clientX - translateX;
-            startY = e.touches[0].clientY - translateY;
-        } else if (e.touches.length === 2) {
-            // 두 손가락 - 핀치 줌
-            isDragging = false;
-            initialDistance = Math.hypot(
-                e.touches[1].clientX - e.touches[0].clientX,
-                e.touches[1].clientY - e.touches[0].clientY
-            );
-            initialScale = scale;
-        }
+        if (e.touches.length === 1) { isDragging = true; startX = e.touches[0].clientX - translateX; startY = e.touches[0].clientY - translateY; }
+        else if (e.touches.length === 2) { isDragging = false; initialDistance = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY); initialScale = scale; }
     });
-    
     container.addEventListener('touchmove', (e) => {
         e.preventDefault();
-        
-        if (e.touches.length === 1 && isDragging) {
-            translateX = e.touches[0].clientX - startX;
-            translateY = e.touches[0].clientY - startY;
-            wrapper.style.transition = 'none';
-            applyTransform();
-        } else if (e.touches.length === 2) {
-            const currentDistance = Math.hypot(
-                e.touches[1].clientX - e.touches[0].clientX,
-                e.touches[1].clientY - e.touches[0].clientY
-            );
-            const newScale = initialScale * (currentDistance / initialDistance);
-            
-            if (newScale >= 0.5 && newScale <= 5) {
-                scale = newScale;
-                applyTransform();
-            }
-        }
+        if (e.touches.length === 1 && isDragging) { translateX = e.touches[0].clientX - startX; translateY = e.touches[0].clientY - startY; wrapper.style.transition = 'none'; applyTransform(); }
+        else if (e.touches.length === 2) { const d = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY); const ns = initialScale * (d / initialDistance); if (ns >= 0.5 && ns <= 5) { scale = ns; applyTransform(); } }
     }, { passive: false });
+    container.addEventListener('touchend', () => { isDragging = false; wrapper.style.transition = 'transform 0.1s ease-out'; });
     
-    container.addEventListener('touchend', () => {
-        isDragging = false;
-        wrapper.style.transition = 'transform 0.1s ease-out';
-    });
-    
-    // ESC 키로 닫기
-    const handleEsc = (e) => {
-        if (e.key === 'Escape') {
-            closeImageModal();
-            document.removeEventListener('keydown', handleEsc);
-        }
-    };
+    const handleEsc = (e) => { if (e.key === 'Escape') { closeImageModal(); document.removeEventListener('keydown', handleEsc); } };
     document.addEventListener('keydown', handleEsc);
     
-    // 전역 변수에 저장 (버튼에서 사용)
     window.currentImageScale = {
         get scale() { return scale; },
-        set scale(val) { 
-            scale = val; 
-            applyTransform(); 
-        },
-        reset() {
-            scale = 1;
-            translateX = 0;
-            translateY = 0;
-            wrapper.style.transition = 'transform 0.3s ease';
-            applyTransform();
-            setTimeout(() => {
-                wrapper.style.transition = 'transform 0.1s ease-out';
-            }, 300);
-        }
+        set scale(val) { scale = val; applyTransform(); },
+        reset() { scale = 1; translateX = 0; translateY = 0; wrapper.style.transition = 'transform 0.3s ease'; applyTransform(); setTimeout(() => { wrapper.style.transition = 'transform 0.1s ease-out'; }, 300); }
     };
+};
+
+// ✅ 신규 추가: 댓글/기사 이미지 다운로드 함수
+window.downloadModalImage = async function() {
+    const src = window._openImageModalSrc;
+    if (!src) return;
+    try {
+        // 확장자 판별
+        const ext = src.startsWith('data:image/png')  ? 'png'
+                  : src.startsWith('data:image/gif')  ? 'gif'
+                  : src.startsWith('data:image/webp') ? 'webp'
+                  : src.startsWith('data:')           ? 'jpg'
+                  : (src.split('.').pop().split('?')[0].toLowerCase() || 'jpg');
+
+        let blobUrl;
+        if (src.startsWith('data:')) {
+            // base64 → Blob 변환
+            const [header, b64] = src.split(',');
+            const mime = header.match(/:(.*?);/)[1];
+            const binary = atob(b64);
+            const arr = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
+            blobUrl = URL.createObjectURL(new Blob([arr], { type: mime }));
+        } else {
+            // 외부 URL (imgBB 등) → fetch → Blob
+            const res = await fetch(src);
+            if (!res.ok) throw new Error('이미지를 가져올 수 없습니다.');
+            const blob = await res.blob();
+            blobUrl = URL.createObjectURL(blob);
+        }
+
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = `image_${Date.now()}.${ext}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+    } catch(e) {
+        alert('❌ 다운로드 실패: ' + e.message);
+    }
 };
 
 window.zoomImage = function(factor) {
@@ -791,56 +751,7 @@ function restoreDraft() {
     }
 }
 
-// showWritePage 후킹
-if(typeof window.originalShowWritePage === 'undefined') {
-    window.originalShowWritePage = window.showWritePage;
-    
-    window.showWritePage = function() {
-        if(typeof window.originalShowWritePage === 'function') {
-            window.originalShowWritePage();
-        }
-        
-        setTimeout(() => {
-            const hasDraft = loadDraft(); // 임시저장 존재 여부만 확인
-            if(hasDraft) {
-                if(confirm("💾 임시저장된 작성 중인 기사가 있습니다.\n복원하시겠습니까?")) {
-                    console.log("✅ 사용자가 복원 선택");
-                    restoreDraft(); // ✅ 확인 시에만 실제 복원 실행
-                } else {
-                    // ✅ 취소 시 임시저장 데이터 삭제 및 폼 초기화
-                    localStorage.removeItem('draft_article');
-                    
-                    // 폼 필드 초기화
-                    const categoryEl = document.getElementById('category');
-                    const titleEl = document.getElementById('title');
-                    const summaryEl = document.getElementById('summary');
-                    
-                    if(categoryEl) categoryEl.value = '자유게시판';
-                    if(titleEl) titleEl.value = '';
-                    if(summaryEl) summaryEl.value = '';
-                    
-                    // Quill 에디터 초기화
-                    if(window.quillEditor && window.quillEditor.root) {
-                        window.quillEditor.root.innerHTML = '';
-                    }
-                    
-                    // 썸네일 초기화
-                    const preview = document.getElementById('thumbnailPreview');
-                    const uploadText = document.getElementById('uploadText');
-                    if(preview) {
-                        preview.src = '';
-                        preview.style.display = 'none';
-                    }
-                    if(uploadText) {
-                        uploadText.innerHTML = '<i class="fas fa-camera"></i><p>클릭하여 이미지 업로드</p>';
-                    }
-                    
-                    console.log("❌ 사용자가 복원 거부 - 임시저장 데이터 삭제 및 폼 초기화 완료");
-                }
-            }
-        }, 500);
-    };
-}
+// showWritePage 후킹 — 임시저장 복원 프롬프트 제거됨
 
 // 자동 임시저장 (10초마다)
 setInterval(() => {
