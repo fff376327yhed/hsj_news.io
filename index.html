@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+
     <!-- preconnect -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,7 +31,6 @@
       window.addEventListener('beforeinstallprompt', function(e) {
         e.preventDefault();
         window.__pwaEarlyPrompt = e;
-        console.log('🎯 [Early] beforeinstallprompt 캡처 완료 (Pwa.js 로드 전)');
       });
     </script>
 
@@ -53,6 +53,9 @@
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="./css/style.css">
+
+    <!-- Google Identity Services (YouTube OAuth) -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <script>
 // ===== Service Worker 등록 (GitHub Pages 완벽 호환 버전) =====
@@ -319,6 +322,46 @@ if ('serviceWorker' in navigator) {
     flex-wrap: wrap;
 }
 
+/* ===== 🆕 새 기사 카드 (마지막 방문 이후 새로 올라온 기사) ===== */
+.article-card--new {
+    border-left: 4px solid #1565c0 !important;
+    background: linear-gradient(105deg, #e8f0fe 0%, #ffffff 55%) !important;
+    position: relative;
+}
+.article-card--new::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #1565c0, #42a5f5, #1565c0);
+    background-size: 200% 100%;
+    animation: newShimmer 2.4s linear infinite;
+    border-radius: 0 2px 0 0;
+}
+@keyframes newShimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+.new-article-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: #1565c0;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 20px;
+    letter-spacing: 0.6px;
+    margin-right: 4px;
+    vertical-align: middle;
+    animation: newBadgePop 0.35s cubic-bezier(.22,.68,0,1.4) both;
+}
+@keyframes newBadgePop {
+    from { transform: scale(0.6); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+}
+
 /* ===== PWA 애니메이션 ===== */
 #pwaInstallBanner[style*="flex"] {
     animation: _pwaBannerUp 0.35s cubic-bezier(.22,.68,0,1.2) both;
@@ -466,11 +509,26 @@ if ('serviceWorker' in navigator) {
                 </div>
                 <div onclick="selectCategory('마크')" data-cat="마크" class="_catItem"
                     style="display:flex; align-items:center; justify-content:space-between;
-                    padding:11px 16px; font-size:14px; cursor:pointer;">
+                    padding:11px 16px; font-size:14px; cursor:pointer; border-bottom:1px solid #f5f5f5;">
                     마크
                     <span class="_catDot" style="display:none; width:8px; height:8px;
                         background:#dc3545; border-radius:50%; flex-shrink:0;
                         box-shadow:0 0 4px rgba(220,53,69,0.5);"></span>
+                </div>
+                <div onclick="selectCategory('과제방')" data-cat="과제방" class="_catItem"
+                    style="display:flex; align-items:center; justify-content:space-between;
+                    padding:11px 16px; font-size:14px; cursor:pointer; border-bottom:1px solid #f5f5f5;">
+                    과제방
+                    <span class="_catDot" style="display:none; width:8px; height:8px;
+                        background:#dc3545; border-radius:50%; flex-shrink:0;
+                        box-shadow:0 0 4px rgba(220,53,69,0.5);"></span>
+                </div>
+                <div onclick="showCategoryRequestModal()" data-cat="_request_"
+                    style="display:flex; align-items:center; gap:8px;
+                    padding:10px 16px; font-size:13px; cursor:pointer;
+                    color:#6c757d; background:#fafafa; border-top:2px solid #f0f0f0;">
+                    <i class="fas fa-plus-circle" style="color:#c62828;"></i>
+                    카테고리 추가 요청
                 </div>
             </div>
         </div>
@@ -483,6 +541,7 @@ if ('serviceWorker' in navigator) {
             <option>게넥도</option>
             <option>게임</option>
             <option>마크</option>
+            <option>과제방</option>
         </select>
         <div class="search-input-wrapper">
             <input id="searchKeyword" placeholder="검색..." class="search-input">
@@ -523,6 +582,7 @@ if ('serviceWorker' in navigator) {
                 <option>게넥도</option>
                 <option>게임</option>
                 <option>마크</option>
+                <option>과제방</option>
             </select>
         </div>
         
@@ -639,21 +699,40 @@ if ('serviceWorker' in navigator) {
             <div style="padding:8px;font-size:12px;color:#aaa;text-align:center;">로딩 중...</div>
         </div>
     </div>
+
+    <!-- ✅ 미디어 미리보기 (이미지 + 동영상 공용) -->
     <div id="commentImagePreview" style="display:none; position:relative; margin-bottom:4px;">
-        <img id="commentImagePreviewImg" style="max-height:120px; max-width:100%; border-radius:10px; object-fit:contain; border:1px solid #dee2e6;">
+        <img id="commentImagePreviewImg" style="max-height:120px; max-width:100%; border-radius:10px; object-fit:contain; border:1px solid #dee2e6; display:none;">
+        <video id="commentVideoPreviewEl" controls style="max-height:120px; max-width:100%; border-radius:10px; display:none;"></video>
         <button onclick="clearCommentImage()" style="position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.55); color:white; border:none; border-radius:50%; width:22px; height:22px; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center;"><i class="fas fa-times"></i></button>
     </div>
+
+    <!-- ✅ 업로드 진행률 바 -->
+    <div id="commentVideoUploadProgress" style="display:none; margin-bottom:4px;">
+        <div style="font-size:12px; color:#c62828; margin-bottom:4px; font-weight:600;">🎬 YouTube 업로드 중...</div>
+        <div style="background:#f0f0f0; border-radius:8px; height:8px; overflow:hidden;">
+            <div id="commentVideoProgressBar" style="background:linear-gradient(90deg,#c62828,#e53935); height:100%; width:0%; border-radius:8px; transition:width 0.3s;"></div>
+        </div>
+        <div id="commentVideoProgressText" style="font-size:11px; color:#999; margin-top:3px; text-align:right;">0%</div>
+    </div>
+
     <div style="display:flex; gap:6px; align-items:flex-end;">
         <textarea id="commentInput" placeholder="댓글을 입력하세요" class="comment-input" rows="1"
             style="flex:1; resize:none; overflow:hidden; min-height:42px; max-height:140px;
             line-height:1.4; padding:10px 14px; border-radius:20px; width:0;"
             onkeydown="handleCommentKey(event)"
             oninput="autoResizeTextarea(this)"></textarea>
-        <input type="file" id="commentImageInput" accept="image/*" style="display:none;" onchange="previewCommentImage(this)">
+
+        <!-- 이미지/동영상 파일 입력 (둘 다 허용) -->
+        <input type="file" id="commentImageInput" accept="image/*,video/*" style="display:none;" onchange="previewCommentImage(this)">
+
+        <!-- 이미지 버튼 -->
         <button onclick="document.getElementById('commentImageInput').click()" class="comment-submit-btn"
-            style="flex-shrink:0; width:38px; height:38px; background:#f0f4f8; color:#495057; padding:0;">
+            style="flex-shrink:0; width:38px; height:38px; background:#f0f4f8; color:#495057; padding:0;"
+            title="이미지 / 동영상 업로드">
             <i class="fas fa-camera"></i>
         </button>
+
         <button onclick="submitCommentFromDetail()" class="comment-submit-btn"
             style="flex-shrink:0; width:38px; height:38px; padding:0;">
             <i class="fas fa-paper-plane"></i>
@@ -1155,57 +1234,45 @@ if ('serviceWorker' in navigator) {
 <!-- Quill 에디터 JS -->
 <script src="https://cdn.quilljs.com/1.3.7/quill.js"></script>
 
-<!-- 스크립트 로드 -->
-<script src="./js/script.js"></script>
-<script src="./js/script2.js"></script>
-<script src="./js/ganadi-helper.js"></script>
-<script src="./js/category-tutorial.js"></script>
-<script src="./js/chat.js"></script>
-<script src="./js/vote.js"></script>
-<script src="./js/Console-toggle.js"></script>
-<script src="./js/Chat-upgrade.js"></script>
-<script src="./js/Device-detect.js"></script>
-<script src="./js/Ai.js"></script>
-
-<!-- 🌳 나무아래키 위키 시스템 -->
-<script src="./js/wiki.js"></script>
-
-<!-- 📱 PWA 설치 관리 -->
-<script src="./js/Pwa.js"></script>
-
-<!-- 🤖 AI 기능 ON/OFF 토글 -->
-<script src="./js/ai-toggle.js"></script>
-
-<!-- 🔧 점검모드 버튼 표시 스크립트 -->
+<!-- 스크립트 로드 — .js 직접 로드 (모든 유저 동일) -->
 <script>
-// 관리자 로그인 시 점검모드 버튼 표시
-// isAdmin()이 Firebase 데이터 로드 후에 정확한 값을 반환하도록 딜레이 적용
-auth.onAuthStateChanged(async function(user) {
-    const maintenanceBtn = document.getElementById('maintenanceModeBtn');
-    if (!maintenanceBtn) return;
+(async function () {
+    // ── JS 파일 목록 ──
+    var _files = [
+        'script.js',
+        'script2.js',
+        'ganadi-helper.js',
+        'category-tutorial.js',
+        'chat.js',
+        'vote.js',
+        'console-toggle.js',
+        'chat-upgrade.js',
+        'chat-nickname-dot.js',
+        'device-detect.js',
+        'ai.js',
+        'wiki.js',
+        'pwa.js',
+        'ai-toggle.js',
+        'category-manager.js'
+    ];
 
-    if (!user) {
-        // 로그아웃 상태면 즉시 숨김
-        maintenanceBtn.style.display = 'none';
-        return;
+    // ── 모든 유저: .js 직접 로드 ──
+    for (var i = 0; i < _files.length; i++) {
+        try {
+            await new Promise(function (ok) {
+                var s = document.createElement('script');
+                s.src = './js/' + _files[i];
+                s.onload  = function () { ok(); };
+                s.onerror = function () { ok(); };
+                document.head.appendChild(s);
+            });
+        } catch (e) { /* silent */ }
     }
 
-    // Firebase에서 관리자 정보 로드 대기 (1초)
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    try {
-        // isAdmin이 async 함수인 경우와 sync인 경우 모두 대응
-        const adminResult = isAdmin();
-        const isAdminUser = (adminResult instanceof Promise)
-            ? await adminResult
-            : adminResult;
-
-        maintenanceBtn.style.display = isAdminUser ? 'block' : 'none';
-    } catch(e) {
-        console.warn('관리자 확인 오류:', e);
-        maintenanceBtn.style.display = 'none';
-    }
-});
+    // ── 로드 완료 이벤트 재발생 ──
+    document.dispatchEvent(new Event('DOMContentLoaded', { bubbles: true }));
+    window.dispatchEvent(new Event('load', { bubbles: false }));
+})();
 </script>
 
 <!-- ================================================================ -->
