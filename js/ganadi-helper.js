@@ -43,6 +43,17 @@ function activateEasterEgg() {
     
     // 축하 메시지 표시
     showEasterEggMessage();
+
+    // 🏅 가나디 찾기 달인 칭호 해금 (script.js가 로드된 뒤 호출)
+    if (typeof window.onGanadiMasterAchieved === 'function') {
+        setTimeout(() => window.onGanadiMasterAchieved(), 600);
+    } else {
+        setTimeout(() => {
+            if (typeof window.onGanadiMasterAchieved === 'function') {
+                window.onGanadiMasterAchieved();
+            }
+        }, 2000);
+    }
 }
 
 /**
