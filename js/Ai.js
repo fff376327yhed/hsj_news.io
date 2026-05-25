@@ -10,7 +10,7 @@
     // ────────────────────────────────────────────
     var GROQ_ENDPOINT    = 'https://api.groq.com/openai/v1/chat/completions';
     var GROQ_MODEL       = 'llama-3.3-70b-versatile';
-    var GROQ_DEFAULT_KEY = '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'; // 공용 기본 키
+    var GROQ_DEFAULT_KEY = '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'; // 공용 기본 키
 
     var LS_APIKEY   = 'groq_api_key';
     var LS_TRAINING = 'haejung_ai_training';
