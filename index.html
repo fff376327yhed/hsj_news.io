@@ -54,6 +54,9 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="./css/style.css">
 
+    <!-- 기존 style.css + 1style.css 대신 dog-style.css 로드 -->
+    <link rel="stylesheet" href="./css/2style.css">
+
 <script>
 // ===== Service Worker 등록 (GitHub Pages 완벽 호환 버전) =====
 if ('serviceWorker' in navigator) {
@@ -385,6 +388,191 @@ if ('serviceWorker' in navigator) {
     color: #FFE066 !important;
 }
 
+
+/* ═══════════════════════════════════════════════════════════════
+   🐶 가나디 테마 전체 오버라이드 — 인라인 <style> 최우선 적용
+   emperor 다크골드 스타일을 크리미 베이지로 덮어씀
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── 기사 카드 ── */
+body.ganadi-theme .emperor-card-decor,
+body.ganadi-theme .article-card {
+    background: linear-gradient(160deg, #FFFBF4 0%, #FFF8EE 30%, #FFFCF5 60%, #FFF9F0 100%) !important;
+    border-left: 3px solid #C49A6C !important;
+    border-top: 1px solid rgba(196, 154, 108, 0.3) !important;
+    border-right: 1px solid rgba(196, 154, 108, 0.3) !important;
+    border-bottom: 1px solid rgba(196, 154, 108, 0.3) !important;
+    outline: none !important;
+    box-shadow: 0 2px 14px rgba(139, 99, 71, 0.18), inset 0 0 24px rgba(255, 248, 235, 0.6) !important;
+    border-radius: 14px !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+body.ganadi-theme .emperor-card-decor::before,
+body.ganadi-theme .article-card::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important; left: 0 !important; right: 0 !important;
+    height: 3px !important;
+    border-radius: 14px 14px 0 0 !important;
+    background: linear-gradient(90deg,
+        transparent 0%, #E8C49A 8%, #FFD54F 25%,
+        #FFAB91 50%, #FFD54F 75%, #E8C49A 92%, transparent 100%
+    ) !important;
+    background-size: unset !important;
+    box-shadow: 0 0 8px rgba(255, 213, 79, 0.5) !important;
+    font-size: unset !important;
+    color: transparent !important;
+    pointer-events: none !important;
+    z-index: 10 !important;
+    animation: none !important;
+}
+body.ganadi-theme .emperor-card-decor::after,
+body.ganadi-theme .article-card::after {
+    content: '🐾' !important;
+    position: absolute !important;
+    top: 7px !important; right: 11px !important;
+    left: unset !important; bottom: unset !important;
+    font-size: 13px !important;
+    color: rgba(196, 154, 108, 0.6) !important;
+    opacity: 0.3 !important;
+    background: none !important;
+    filter: none !important;
+    border-radius: 0 !important;
+    height: unset !important; width: unset !important;
+    pointer-events: none !important;
+    z-index: 10 !important;
+    line-height: 1 !important;
+    animation: none !important;
+}
+
+/* 카드 내 텍스트 */
+body.ganadi-theme .emperor-card-decor .article-title,
+body.ganadi-theme .article-card .article-title,
+body.ganadi-theme .emperor-card-decor h3,
+body.ganadi-theme .article-card h3 { color: #4A3728 !important; text-shadow: none !important; }
+body.ganadi-theme .emperor-card-decor .article-summary,
+body.ganadi-theme .article-card .article-summary,
+body.ganadi-theme .emperor-card-decor p,
+body.ganadi-theme .article-card p  { color: #7D5A4A !important; }
+body.ganadi-theme .emperor-card-decor .article-meta,
+body.ganadi-theme .article-card .article-meta { color: #B09080 !important; }
+body.ganadi-theme .article-card .stat-item,
+body.ganadi-theme .emperor-card-decor .stat-item { color: #B09080 !important; }
+body.ganadi-theme .article-card .category-badge,
+body.ganadi-theme .emperor-card-decor .category-badge {
+    background: linear-gradient(90deg, #C49A6C 0%, #D4B080 50%, #C49A6C 100%) !important;
+    color: #FFF8F0 !important; font-weight: 700 !important;
+    border: 1px solid rgba(196, 154, 108, 0.5) !important;
+    text-shadow: 0 1px 2px rgba(92, 61, 30, 0.3) !important;
+    border-radius: 12px !important;
+}
+
+/* ── 기사 상세 본문 ── */
+body.ganadi-theme .emperor-detail-content,
+body.ganadi-theme [data-detail-article-content] {
+    background: linear-gradient(175deg, #FFFCF5 0%, #FFF8EE 35%, #FFFBF4 65%, #FFF6E8 100%) !important;
+    border: 1px solid rgba(196, 154, 108, 0.25) !important;
+    border-left: 3px solid rgba(196, 154, 108, 0.55) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 4px 22px rgba(139, 99, 71, 0.18), inset 0 0 40px rgba(255, 248, 235, 0.5) !important;
+    color: #4A3728 !important;
+}
+body.ganadi-theme .emperor-detail-content::before,
+body.ganadi-theme [data-detail-article-content]::before {
+    background: linear-gradient(90deg,
+        transparent 0%, #E8C49A 8%, #FFD54F 22%,
+        #FFAB91 40%, #87CEEB 60%, #FFD54F 78%, #E8C49A 92%, transparent 100%
+    ) !important;
+    background-size: unset !important;
+    box-shadow: 0 0 10px rgba(255, 213, 79, 0.5) !important;
+    animation: none !important;
+}
+body.ganadi-theme .emperor-detail-content::after,
+body.ganadi-theme [data-detail-article-content]::after {
+    content: '' !important;
+    font-size: 0 !important;
+    opacity: 0 !important;
+    display: none !important;
+}
+body.ganadi-theme .emperor-detail-content p,
+body.ganadi-theme [data-detail-article-content] p { color: #6B4E3A !important; }
+body.ganadi-theme .emperor-detail-content [style*="color:#333"],
+body.ganadi-theme .emperor-detail-content [style*="color: #333"],
+body.ganadi-theme [data-detail-article-content] [style*="color:#333"],
+body.ganadi-theme [data-detail-article-content] [style*="color: #333"] { color: #6B4E3A !important; }
+
+/* ── 메타 구분선 ── */
+body.ganadi-theme .emperor-detail-meta::after {
+    background: linear-gradient(90deg,
+        transparent 0%, rgba(196,154,108,0.2) 8%,
+        rgba(255,213,79,0.6) 28%, rgba(255,171,145,0.8) 50%,
+        rgba(255,213,79,0.6) 72%, rgba(196,154,108,0.2) 92%, transparent 100%
+    ) !important;
+    background-size: unset !important;
+    box-shadow: 0 0 4px rgba(255, 213, 79, 0.3) !important;
+    left: 0 !important; right: 0 !important;
+}
+body.ganadi-theme .emperor-detail-meta div[style],
+body.ganadi-theme .emperor-detail-meta span[style] { color: inherit !important; }
+body.ganadi-theme .emperor-detail-meta [data-title-uid],
+body.ganadi-theme .emperor-detail-meta .article-meta > div > div:first-child { color: #5C3D1E !important; }
+body.ganadi-theme .emperor-detail-meta .article-meta > div > div:not(:first-child) { color: #9A7060 !important; }
+body.ganadi-theme .emperor-detail-meta #viewCountDisplay,
+body.ganadi-theme .emperor-detail-meta span:not(.hsj-title-badge) { color: #9A7060 !important; }
+
+/* ── 기사 상세 래퍼 ── */
+body.ganadi-theme .emperor-article-wrapper,
+body.ganadi-theme #articleDetail > div {
+    background: linear-gradient(165deg, #FFFCF5 0%, #FFF8EE 30%, #FFFAF2 65%, #FFF5E5 100%) !important;
+    border: 1px solid rgba(196, 154, 108, 0.22) !important;
+    border-top: 3px solid rgba(255, 213, 79, 0.7) !important;
+    box-shadow: 0 6px 32px rgba(139, 99, 71, 0.18) !important;
+    border-radius: 18px !important;
+}
+body.ganadi-theme .emperor-article-wrapper h1[style],
+body.ganadi-theme .emperor-article-wrapper > h1,
+body.ganadi-theme #articleDetail h1 { color: #4A3728 !important; text-shadow: none !important; }
+body.ganadi-theme .emperor-article-wrapper #_aiSummaryBtn {
+    background: rgba(196, 154, 108, 0.07) !important;
+    color: #8B6347 !important;
+    border-color: rgba(196, 154, 108, 0.3) !important;
+}
+body.ganadi-theme .emperor-article-wrapper #_aiSummaryResult {
+    background: rgba(196, 154, 108, 0.05) !important;
+    border-color: rgba(196, 154, 108, 0.3) !important;
+    color: #4A3728 !important;
+}
+
+/* ── 댓글 섹션 ── */
+body.ganadi-theme .emperor-comments-section,
+body.ganadi-theme .comments-section {
+    background: linear-gradient(178deg, #FFFCF5 0%, #FFF9F0 50%, #FFFBF4 100%) !important;
+    border-top: 1px solid rgba(196, 154, 108, 0.2) !important;
+}
+body.ganadi-theme .emperor-comments-section h3,
+body.ganadi-theme .comments-section h3 { color: #4A3728 !important; text-shadow: none !important; }
+body.ganadi-theme .emperor-comments-section #commentSortSelect,
+body.ganadi-theme .comments-section #commentSortSelect {
+    background: rgba(196, 154, 108, 0.07) !important;
+    color: #9A7060 !important; border-color: rgba(196, 154, 108, 0.28) !important;
+}
+body.ganadi-theme .emperor-comments-section .comment-input,
+body.ganadi-theme .comments-section .comment-input {
+    background: rgba(255,255,255,0.85) !important;
+    color: #4A3728 !important; border-color: rgba(196, 154, 108, 0.3) !important;
+}
+body.ganadi-theme .emperor-comments-section .comment-card,
+body.ganadi-theme .comments-section .comment-card {
+    background: rgba(255,255,255,0.75) !important;
+    border: 1px solid rgba(196,154,108,0.18) !important;
+    border-left: 3px solid rgba(255,213,79,0.6) !important;
+    border-radius: 12px !important;
+}
+body.ganadi-theme .emperor-comments-section .comment-author,
+body.ganadi-theme .comments-section .comment-author { color: #4A3728 !important; }
+body.ganadi-theme .emperor-comments-section .comment-body,
+body.ganadi-theme .comments-section .comment-body { color: #6B4E3A !important; }
 
 #quillEditor {
     background: white;
