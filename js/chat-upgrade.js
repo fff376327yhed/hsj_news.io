@@ -8,10 +8,12 @@ console.log('📱 chat-upgrade.js 로드 중...');
 // 기존 100ms × 150회 setTimeout 폴링 → 이벤트 기반으로 교체
 // chat.js 마지막에 window.dispatchEvent(new CustomEvent('chatReady')) 추가 필요
 function _waitForChat(cb) {
+    // 이미 준비됐으면 즉시 실행
     if (window._chat && typeof window._chat.isChatAuthReady === 'function') {
         cb();
         return;
     }
+    // CustomEvent 대기 (저속 환경 대비 최대 15초 타임아웃 1개만 유지)
     let resolved = false;
     function _onReady() {
         if (resolved) return;
@@ -20,6 +22,7 @@ function _waitForChat(cb) {
         cb();
     }
     window.addEventListener('chatReady', _onReady);
+    // 안전장치: 15초 후 폴백 (setTimeout 1회만 사용)
     setTimeout(() => {
         if (resolved) return;
         resolved = true;
@@ -240,10 +243,10 @@ function _waitForChat(cb) {
             position:relative; z-index:1;
         }
 
-        /* ── 스크롤바 숨김 ── */
-        #chatRoomList::-webkit-scrollbar,
-        #chatMessages::-webkit-scrollbar { display:none; }
-        #chatRoomList, #chatMessages { scrollbar-width:none; -ms-overflow-style:none; }
+        /* ── 스크롤바 숨김 ── */ 
+        #chatRoomList::-webkit-scrollbar, 
+        #chatMessages::-webkit-scrollbar { display:none; } 
+        #chatRoomList, #chatMessages { scrollbar-width:none; -ms-overflow-style:none; } 
 
         /* ── 채팅 배경 ── */
         #chatMessages.cu-bg {
@@ -272,12 +275,9 @@ function cu_fmtMsgTime(ts) {
     const d = new Date(ts);
     return d.toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit' });
 }
-
-// ✅ [최적화] loading="lazy" decoding="async" 추가 — 아바타 이미지 로딩 지연으로 초기 렌더 속도 향상
 function cu_avatarHTML(photoUrl, size = 56, name = '') {
     const initial = (name || '?')[0].toUpperCase();
-    if (photoUrl) return `<img src="${photoUrl}" class="cu-avatar"
-        style="width:${size}px;height:${size}px;" loading="lazy" decoding="async">`;
+    if (photoUrl) return `<img src="${photoUrl}" class="cu-avatar" style="width:${size}px;height:${size}px;">`;
     return `<div class="cu-avatar-placeholder" style="width:${size}px;height:${size}px;">
         <span style="font-size:${Math.round(size*0.4)}px;font-weight:700;color:#9e9e9e;">${initial}</span>
     </div>`;
@@ -297,14 +297,18 @@ _waitForChat(function() {
     console.log('✅ Chat-upgrade: window._chat 준비 완료 — 업그레이드 적용');
 
     // ✅ 채팅 이미지 모달 전역 자동 정리
+    // wiki, 더보기 등 다른 섹션으로 이동 시 열린 모달 자동 닫기
     (function() {
         function _cleanChatModal() {
             document.getElementById('_chatImgModal')?.remove();
         }
+        // popstate: URL 변경 시
         window.addEventListener('popstate', _cleanChatModal);
+        // 페이지 숨김 시 (모바일 홈 버튼 등)
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'hidden') _cleanChatModal();
         });
+        // hideAll이 호출될 때 (다른 섹션 이동 시 script.js에서 호출)
         const _origHideAll = window.hideAll;
         if (typeof _origHideAll === 'function') {
             window.hideAll = function() {
@@ -316,20 +320,14 @@ _waitForChat(function() {
 
 // ===== 1. 채팅 목록 페이지 (완전 재작성) =====
 window.showChatPage = async function () {
+    // ✅ 다른 페이지 이동 전 이미지 모달 제거
     document.getElementById('_chatImgModal')?.remove();
     if (!isLoggedIn()) { alert('로그인이 필요합니다!'); return; }
     if (!window._chat) { alert('채팅 초기화 중입니다. 잠시 후 다시 시도해주세요.'); return; }
     if (!window._chat.isChatAuthReady()) {
         cu_showToast('⚠️ 채팅 인증 중...');
         await window._chat.syncChatAuth(auth.currentUser);
-        if (!window._chat.isChatAuthReady()) {
-            if (typeof window._showChatAuthExpiredBanner === 'function') {
-                window._showChatAuthExpiredBanner();
-            } else {
-                cu_showToast('⚠️ 채팅 인증에 실패했습니다. 페이지를 새로고침해 주세요.');
-            }
-            return;
-        }
+        if (!window._chat.isChatAuthReady()) { window._chat.showChatLoginOverlay(); return; }
     }
     if (window._chat.chatMsgListener && window._chat.activeChatRoomId) {
         window._chat.getChatDb().ref(`chats/${window._chat.activeChatRoomId}/messages`).off('value', window._chat.chatMsgListener);
@@ -401,15 +399,12 @@ window.showChatPage = async function () {
     window._chat.updateBadge();
 };
 
-// ===== 채팅 목록 렌더링 (최적화) =====
+// ===== 채팅 목록 렌더링 (인스타 스타일) =====
 async function cu_loadChatRoomList() {
     const myUid   = window._chat.getChatUserId();
+    const mainUid = auth.currentUser?.uid;
     const listEl  = document.getElementById('chatRoomList');
     if (!listEl) return;
-
-    // ✅ [최적화] 유저 데이터 캐시 초기화 (세션 동안 유지)
-    if (!window._chatUserCache) window._chatUserCache = {};
-    const cache = window._chatUserCache;
 
     try {
         const myRoomsSnap = await window._chat.getChatDb().ref(`userChats/${myUid}`).once('value');
@@ -430,37 +425,20 @@ async function cu_loadChatRoomList() {
             return;
         }
 
-        // ✅ [최적화] 채팅룸 데이터 로드 (messages 제외 필드만 필요하지만 RTDB는 필드 제외 불가 — 구조 유지)
-        const chatSnaps = await Promise.all(
-            myRoomIds.map(id => window._chat.getChatDb().ref(`chats/${id}`).once('value'))
-        );
+        const [chatSnaps, usersSnap] = await Promise.all([
+            Promise.all(myRoomIds.map(id => window._chat.getChatDb().ref(`chats/${id}`).once('value'))),
+            db.ref('users').once('value')
+        ]);
+        const usersData = usersSnap.val() || {};
 
-        // ✅ [최적화] 필요한 mainUid만 추출 후 캐시에 없는 것만 fetch
-        const neededUids = new Set();
-        const roomList = chatSnaps
+        let rooms = chatSnaps
             .map(s => [s.key, s.val()])
             .filter(([_, c]) => c !== null)
             .sort((a, b) => (b[1].lastMessageAt || 0) - (a[1].lastMessageAt || 0));
 
-        roomList.forEach(([_, chat]) => {
-            if (chat.isGroup) return;
-            const fChatUid  = Object.keys(chat.participants || {}).find(u => u !== myUid);
-            const fMainUid  = chat.mainUids?.[fChatUid];
-            if (fMainUid && !cache[fMainUid]) neededUids.add(fMainUid);
-        });
-
-        // ✅ [최적화] 캐시에 없는 유저만 병렬 로드 (전체 users 테이블 로드 불필요)
-        if (neededUids.size > 0) {
-            const snaps = await Promise.all([...neededUids].map(u => db.ref(`users/${u}`).once('value')));
-            snaps.forEach(s => { if (s.val()) cache[s.key] = s.val(); });
-        }
-
         listEl.innerHTML = '';
 
-        // ✅ [최적화] DocumentFragment로 배치 DOM 삽입 (N번 reflow → 1번)
-        const frag = document.createDocumentFragment();
-
-        for (const [roomId, chat] of roomList) {
+        for (const [roomId, chat] of rooms) {
             const isGroup = !!chat.isGroup;
             let displayName, photoUrl, friendUid, friendMainUid;
 
@@ -470,8 +448,9 @@ async function cu_loadChatRoomList() {
                 friendUid     = null; friendMainUid = null;
             } else {
                 const friendChatUid = Object.keys(chat.participants || {}).find(u => u !== myUid);
-                friendMainUid = chat.mainUids?.[friendChatUid] || null;
-                const friend  = (friendMainUid && cache[friendMainUid]) || {};
+                friendMainUid = chat.mainUids?.[friendChatUid]
+                    || Object.keys(usersData).find(uid => usersData[uid]?.chatUid === friendChatUid) || null;
+                const friend  = usersData[friendMainUid] || {};
                 displayName   = window._chat.resolveNickname(friend);
                 photoUrl      = friend.profilePhoto || null;
                 friendUid     = friendChatUid;
@@ -487,9 +466,8 @@ async function cu_loadChatRoomList() {
 
             const item = document.createElement('div');
             item.className = 'cu-list-row';
-            item.dataset.roomId    = roomId;
-            item.dataset.name      = displayName.toLowerCase();
-            item.dataset.friendUid = friendUid || '';
+            item.dataset.roomId = roomId;
+            item.dataset.name   = displayName.toLowerCase();
 
             // 아바타
             const avatarWrap = document.createElement('div');
@@ -500,8 +478,8 @@ async function cu_loadChatRoomList() {
                         <i class="fas fa-users" style="color:white;font-size:22px;"></i>
                     </div>`;
             } else {
-                // ✅ cu_avatarHTML에 loading="lazy" 포함됨
                 avatarWrap.innerHTML = cu_avatarHTML(photoUrl, 56, displayName);
+                // 아바타 클릭 → 프로필 시트
                 if (friendMainUid) {
                     avatarWrap.style.cursor = 'pointer';
                     avatarWrap.onclick = (e) => {
@@ -542,10 +520,8 @@ async function cu_loadChatRoomList() {
             item.onclick = () => openChatRoom(roomId, friendUid, displayName, photoUrl, friendMainUid);
             item.appendChild(avatarWrap);
             item.appendChild(body);
-            frag.appendChild(item);
+            listEl.appendChild(item);
         }
-
-        listEl.appendChild(frag); // ✅ 단 1회 DOM 삽입
 
         // 검색 필터 유지
         const searchVal = document.getElementById('cuChatSearchInput')?.value;
@@ -556,8 +532,6 @@ async function cu_loadChatRoomList() {
             ❌ 로드 실패: ${err.message}</div>`;
     }
 }
-
-        window.cu_loadChatRoomList = cu_loadChatRoomList;
 
 window.cu_filterRooms = function(kw) {
     const q = kw.toLowerCase();
@@ -578,24 +552,15 @@ window.openChatRoom = async function (roomId, friendUid, friendName, friendPhoto
     const myUid    = window._chat.getChatUserId();
     const isGroup  = roomId.startsWith('group_');
 
-    // 최신 친구 프로필 로드 (캐시 우선 사용)
+    // 최신 친구 프로필 로드
     let latestPhoto = friendPhoto;
     let latestName  = friendName;
     if (friendMainUid && !isGroup) {
         try {
-            // ✅ [최적화] 캐시에 있으면 DB 재조회 생략
-            const cached = window._chatUserCache?.[friendMainUid];
-            if (cached) {
-                latestPhoto = cached.profilePhoto || friendPhoto || null;
-                latestName  = window._chat.resolveNickname(cached) || friendName;
-            } else {
-                const snap = await db.ref(`users/${friendMainUid}`).once('value');
-                const u = snap.val() || {};
-                latestPhoto = u.profilePhoto || friendPhoto || null;
-                latestName  = window._chat.resolveNickname(u) || friendName;
-                if (!window._chatUserCache) window._chatUserCache = {};
-                window._chatUserCache[friendMainUid] = u;
-            }
+            const snap = await db.ref(`users/${friendMainUid}`).once('value');
+            const u = snap.val() || {};
+            latestPhoto = u.profilePhoto || friendPhoto || null;
+            latestName  = window._chat.resolveNickname(u) || friendName;
         } catch(e) {}
     }
 
@@ -607,6 +572,7 @@ window.openChatRoom = async function (roomId, friendUid, friendName, friendPhoto
     }
     section.classList.add('active');
 
+    // 헤더 아바타
     const headerAvatarHTML = isGroup
         ? `<div style="width:36px;height:36px;border-radius:50%;
             background:linear-gradient(135deg,#c62828,#e53935);
@@ -711,7 +677,7 @@ window.openChatRoom = async function (roomId, friendUid, friendName, friendPhoto
             </div>
         </div>`;
 
-    // 읽음 리스너
+    // 활성 리스너
     if (window._readReceiptListener && window._readReceiptRoomId) {
         window._chat.getChatDb().ref(`chats/${window._readReceiptRoomId}/readReceipts`).off('value', window._readReceiptListener);
     }
@@ -734,7 +700,7 @@ window.openChatRoom = async function (roomId, friendUid, friendName, friendPhoto
             window._chat.markAsRead(roomId, myUid);
         });
 
-    // ✅ PC 힌트
+    // ✅ PC 힌트 - cu-input-area 상단에 삽입 (중복 방지)
     if (!/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
         const existing = document.querySelector('.cu-pc-hint');
         if (!existing) {
@@ -748,7 +714,7 @@ window.openChatRoom = async function (roomId, friendUid, friendName, friendPhoto
     }
 };
 
-// ===== 메시지 렌더링 (인스타 스타일 — 최적화) =====
+// ===== 메시지 렌더링 (인스타 스타일) =====
 function cu_renderMessages(msgs, myUid, roomId, friendMainUid) {
     const container = document.getElementById('chatMessages');
     if (!container) return;
@@ -761,25 +727,8 @@ function cu_renderMessages(msgs, myUid, roomId, friendMainUid) {
         return;
     }
 
-    // ✅ [최적화] DocumentFragment 사용 — 모든 메시지를 메모리에서 조립 후 단 1회 DOM 삽입
     container.innerHTML = '';
-    const frag = document.createDocumentFragment();
     let lastDate = null;
-
-    // ── 연속 메시지 중 첫/마지막 판별 (인스타 스타일 아바타/이름 표시용)
-    const firstInSeq = new Set();
-    const lastInSeq  = new Set();
-    for (let i = 0; i < msgEntries.length; i++) {
-        const [id, m] = msgEntries[i];
-        if (m.senderId === myUid || m.deleted) continue;
-        const prev = msgEntries[i - 1];
-        const next = msgEntries[i + 1];
-        if (!prev || prev[1].senderId !== m.senderId || prev[1].deleted) firstInSeq.add(id);
-        if (!next || next[1].senderId !== m.senderId || next[1].deleted) lastInSeq.add(id);
-    }
-
-    // ✅ [최적화] _chatIsAdmin 루프 밖에서 1회 평가
-    const _isAdmin = window._chatIsAdmin === true;
 
     for (const [msgId, msg] of msgEntries) {
         const isMe = msg.senderId === myUid;
@@ -792,7 +741,7 @@ function cu_renderMessages(msgs, myUid, roomId, friendMainUid) {
             divider.className = 'cu-date-divider';
             const d = new Date(msg.timestamp);
             divider.innerHTML = `<span>${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일</span>`;
-            frag.appendChild(divider);
+            container.appendChild(divider);
         }
 
         // ── 삭제된 메시지
@@ -801,7 +750,7 @@ function cu_renderMessages(msgs, myUid, roomId, friendMainUid) {
             del.style.cssText = `text-align:${isMe ? 'right' : 'left'};
                 font-size:12px;color:#bbb;font-style:italic;padding:2px 14px;`;
             del.textContent = isMe ? '삭제된 메시지입니다' : '삭제된 메시지';
-            frag.appendChild(del);
+            container.appendChild(del);
             continue;
         }
 
@@ -811,10 +760,10 @@ function cu_renderMessages(msgs, myUid, roomId, friendMainUid) {
         msgEl.style.cssText = `display:flex;flex-direction:column;
             align-items:${isMe ? 'flex-end' : 'flex-start'};margin:2px 0;`;
 
-        // ── 발신자 이름 (상대방, 연속 첫 메시지에만)
-        if (!isMe && msg.senderName && firstInSeq.has(msgId)) {
+        // ── 발신자 이름 (상대방, 그룹이거나 첫 메시지)
+        if (!isMe && msg.senderName) {
             const nameEl = document.createElement('div');
-            nameEl.style.cssText = 'font-size:11px;color:#888;margin-left:44px;margin-bottom:2px;font-weight:600;';
+            nameEl.style.cssText = 'font-size:11px;color:#888;margin-left:12px;margin-bottom:2px;font-weight:600;';
             nameEl.textContent = msg.senderName;
             msgEl.appendChild(nameEl);
         }
@@ -830,75 +779,40 @@ function cu_renderMessages(msgs, myUid, roomId, friendMainUid) {
         bubble.dataset.msgid = msgId;
         bubble.style.position = 'relative';
 
-        // ✅ [최적화 + 기능] imageUrl(imgBB URL) / imageUrls(다중) / imageBase64 통합 처리
-        const _imgSrc = msg.imageUrl || msg.imageBase64;
-
-        if (_imgSrc || msg.imageUrls?.length > 0) {
-            // ── 단일 이미지
-            if (_imgSrc) {
-                bubble.classList.add('img-only');
-                bubble.dataset.chatImgId = msgId;
-                // ✅ URL이면 loading="lazy", 모두 decoding="async"
-                const isUrl = !!msg.imageUrl;
-                bubble.innerHTML = `
-                    <div style="position:relative;display:inline-block;line-height:0;">
-                        <img src="${_imgSrc}"
-                            ${isUrl ? 'loading="lazy"' : ''} decoding="async"
-                            style="max-width:220px;max-height:260px;border-radius:14px;
-                                   display:block;cursor:zoom-in;vertical-align:bottom;"
-                            onclick="event.stopPropagation();cu_openImgModal('${msgId}')">
-                        <!-- 다운로드 버튼 -->
-                        <button onclick="event.stopPropagation();cu_downloadImg('${msgId}')"
-                            title="다운로드"
-                            style="position:absolute;bottom:8px;right:8px;width:32px;height:32px;
-                                   border-radius:50%;border:none;cursor:pointer;
-                                   background:rgba(0,0,0,0.5);color:white;
-                                   display:flex;align-items:center;justify-content:center;">
-                            <i class="fas fa-download" style="font-size:13px;pointer-events:none;"></i>
-                        </button>
-                        <!-- ✅ [기능] 관리자도 상대방 이미지에 점3개 메뉴 표시 -->
-                        ${(isMe || _isAdmin) ? `<button onclick="event.stopPropagation();cu_showMsgMenu('${msgId}','${roomId}',this.closest('.cu-msg-bubble'),${isMe})"
-                            title="${isMe ? '메뉴' : '🛡️ 관리자 메뉴'}"
-                            style="position:absolute;top:8px;right:8px;width:28px;height:28px;
-                                   border-radius:50%;border:none;cursor:pointer;
-                                   background:rgba(0,0,0,0.45);color:white;
-                                   display:flex;align-items:center;justify-content:center;">
-                            <i class="fas fa-ellipsis-h" style="font-size:11px;pointer-events:none;"></i>
-                        </button>` : ''}
-                    </div>`;
-                if (msg.text) {
-                    bubble.classList.remove('img-only');
-                    bubble.style.padding = '6px';
-                    bubble.innerHTML += `<div style="padding:6px 8px 2px;font-size:14px;">${cu_escapeHTML(msg.text)}</div>`;
-                }
-            }
-            // ── 다중 이미지 (imageUrls 배열)
-            else if (msg.imageUrls?.length > 0) {
-                bubble.classList.add('img-only');
-                bubble.dataset.chatImgId = msgId;
-                const cols = msg.imageUrls.length === 1 ? 1 : msg.imageUrls.length <= 4 ? 2 : 3;
-                bubble.innerHTML = `
-                    <div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:3px;border-radius:14px;overflow:hidden;line-height:0;">
-                        ${msg.imageUrls.map((url, i) => `
-                            <img src="${url}" loading="lazy" decoding="async"
-                                onclick="event.stopPropagation();cu_openImgModal('${msgId}',${i})"
-                                style="width:100%;aspect-ratio:1;object-fit:cover;cursor:zoom-in;display:block;">`
-                        ).join('')}
-                    </div>
-                    <!-- ✅ [기능] 관리자도 상대방 다중이미지에 점3개 메뉴 표시 -->
-                    ${(isMe || _isAdmin) ? `<button onclick="event.stopPropagation();cu_showMsgMenu('${msgId}','${roomId}',this.closest('.cu-msg-bubble'),${isMe})"
-                        title="${isMe ? '메뉴' : '🛡️ 관리자 메뉴'}"
+        // ✅ 이미지 버블 (확대 + 다운로드 버튼)
+        if (msg.imageBase64) {
+            bubble.classList.add('img-only');
+            // ✅ _lastMsgs[msgId]에서 직접 읽기 위해 msgId만 data 속성에 저장
+            bubble.dataset.chatImgId = msgId;
+            bubble.innerHTML = `
+                <div style="position:relative;display:inline-block;line-height:0;">
+                    <img src="${msg.imageBase64}"
+                        style="max-width:220px;max-height:260px;border-radius:14px;
+                               display:block;cursor:zoom-in;vertical-align:bottom;"
+                        onclick="event.stopPropagation();cu_openImgModal('${msgId}')">
+                    <!-- ✅ 다운로드 버튼 -->
+                    <button onclick="event.stopPropagation();cu_downloadImg('${msgId}')"
+                        title="다운로드"
+                        style="position:absolute;bottom:8px;right:8px;width:32px;height:32px;
+                               border-radius:50%;border:none;cursor:pointer;
+                               background:rgba(0,0,0,0.5);color:white;
+                               display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-download" style="font-size:13px;pointer-events:none;"></i>
+                    </button>
+                    <!-- ✅ 메뉴 버튼 (내 사진에만) - 삭제/답장 접근 -->
+                    ${isMe ? `<button onclick="event.stopPropagation();cu_showMsgMenu('${msgId}','${roomId}',this.closest('.cu-msg-bubble'),true)"
+                        title="메뉴"
                         style="position:absolute;top:8px;right:8px;width:28px;height:28px;
                                border-radius:50%;border:none;cursor:pointer;
                                background:rgba(0,0,0,0.45);color:white;
                                display:flex;align-items:center;justify-content:center;">
                         <i class="fas fa-ellipsis-h" style="font-size:11px;pointer-events:none;"></i>
-                    </button>` : ''}`;
-                if (msg.text) {
-                    bubble.classList.remove('img-only');
-                    bubble.style.padding = '6px';
-                    bubble.innerHTML += `<div style="padding:6px 8px 2px;font-size:14px;">${cu_escapeHTML(msg.text)}</div>`;
-                }
+                    </button>` : ''}
+                </div>`;
+            if (msg.text) {
+                bubble.classList.remove('img-only');
+                bubble.style.padding = '6px';
+                bubble.innerHTML += `<div style="padding:6px 8px 2px;font-size:14px;">${cu_escapeHTML(msg.text)}</div>`;
             }
         } else if (msg.fileName) {
             const icon = window.getChatFileIcon ? window.getChatFileIcon(msg.fileType || '') : '📎';
@@ -967,15 +881,18 @@ function cu_renderMessages(msgs, myUid, roomId, friendMainUid) {
         // ── 이벤트: 클릭 / 더블탭
         let tapTimer = null, tapCount = 0;
         bubble.addEventListener('click', (e) => {
+            // IMG/BUTTON 클릭은 각자 inline onclick이 처리 (stopPropagation)
             if (e.target.tagName === 'A' || e.target.tagName === 'IMG' ||
                 e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
 
             if (isMe) {
+                // 내 메시지: 클릭 → 수정/삭제 메뉴
                 cu_showMsgMenu(msgId, roomId, bubble, isMe);
                 return;
             }
 
-            // 상대방 메시지: 단순 클릭 → 공감/답장/복사 메뉴
+            // ✅ 상대방 메시지: 단순 클릭 → 공감/답장/복사 메뉴 (수정/삭제 제외)
+            // 더블탭(300ms 내 2번 클릭) → ❤️ 바로 반응
             tapCount++;
             if (tapCount === 1) {
                 tapTimer = setTimeout(() => {
@@ -988,7 +905,7 @@ function cu_renderMessages(msgs, myUid, roomId, friendMainUid) {
             }
         });
 
-        // ── 이벤트: 길게 누르기
+        // ── 이벤트: 길게 누르기 = 메시지 메뉴 (내/상대 공통)
         let pressTimer = null;
         bubble.addEventListener('pointerdown', (e) => {
             pressTimer = setTimeout(() => { cu_showMsgMenu(msgId, roomId, bubble, isMe); }, 500);
@@ -1003,39 +920,9 @@ function cu_renderMessages(msgs, myUid, roomId, friendMainUid) {
 
         bubbleRow.appendChild(bubble);
         bubbleRow.appendChild(timeEl);
+        msgEl.appendChild(bubbleRow);
 
-        if (!isMe) {
-            // 아바타 슬롯 (32px 고정, 하단 정렬)
-            const avatarSlot = document.createElement('div');
-            avatarSlot.style.cssText = 'width:32px;height:32px;min-width:32px;flex-shrink:0;align-self:flex-end;';
-
-            if (lastInSeq.has(msgId)) {
-                const photo = window._chatAvatarCache?.[msg.senderId];
-                if (photo) {
-                    // ✅ [최적화] decoding="async" 추가
-                    avatarSlot.innerHTML = `<img src="${photo}" decoding="async"
-                        style="width:32px;height:32px;border-radius:50%;object-fit:cover;
-                               border:1.5px solid #efefef;display:block;">`;
-                } else {
-                    const initial = (msg.senderName || '?')[0].toUpperCase();
-                    const palette = ['#f56040','#fcaf45','#bc2a8d','#405de6','#5851db','#e1306c'];
-                    const bg = palette[initial.charCodeAt(0) % palette.length];
-                    avatarSlot.style.cssText += `background:${bg};border-radius:50%;
-                        display:flex;align-items:center;justify-content:center;`;
-                    avatarSlot.innerHTML = `<span style="color:white;font-size:13px;font-weight:700;">
-                        ${cu_escapeHTML(initial)}</span>`;
-                }
-            }
-            const outerRow = document.createElement('div');
-            outerRow.style.cssText = 'display:flex;align-items:flex-end;gap:8px;max-width:85%;';
-            outerRow.appendChild(avatarSlot);
-            outerRow.appendChild(bubbleRow);
-            msgEl.appendChild(outerRow);
-        } else {
-            msgEl.appendChild(bubbleRow);
-        }
-
-        // ── readSlot (내 메시지 전용)
+        // ── readSlot은 msgEl 직접 자식으로 (bubbleRow 밖 → 가로 넘침 방지)
         if (isMe) {
             const avatarSlot = document.createElement('div');
             avatarSlot.id = `readSlot-${msgId}`;
@@ -1043,12 +930,12 @@ function cu_renderMessages(msgs, myUid, roomId, friendMainUid) {
             msgEl.appendChild(avatarSlot);
         }
 
-        frag.appendChild(msgEl); // ✅ Fragment에 추가 (DOM 미삽입)
+        container.appendChild(msgEl);
     }
 
-    container.appendChild(frag); // ✅ 단 1회 DOM 삽입 → 1번만 reflow
-
-    // ✅ 스크롤 타이밍
+    // ✅ 스크롤 타이밍 수정
+    // prevCount===0(첫 로드): chatSection이 방금 display:flex가 되어 레이아웃이 아직 미완료
+    // → setTimeout으로 브라우저 레이아웃 완료 후 스크롤
     if (prevCount === 0) {
         setTimeout(() => {
             container.scrollTop = container.scrollHeight;
@@ -1068,6 +955,7 @@ window.cu_updateSendBtn = function () {
 
 // ===== 메시지 전송 (sendChatMessage 위임) =====
 window.cu_sendMsg = function (roomId) {
+    // 답장 ID 첨부
     const replyId = window._cuReplyMsgId || null;
     if (replyId) {
         window._cuPendingReplyId = replyId;
@@ -1079,6 +967,7 @@ window.cu_sendMsg = function (roomId) {
 // sendChatMessage 패치: replyTo 필드 포함
 const _origSendChatMessage = window.sendChatMessage;
 window.sendChatMessage = async function (roomId) {
+    // _cuPendingReplyId가 있으면 메시지에 첨부
     if (window._cuPendingReplyId) {
         window._tempReplyTo = window._cuPendingReplyId;
         delete window._cuPendingReplyId;
@@ -1087,7 +976,10 @@ window.sendChatMessage = async function (roomId) {
     delete window._tempReplyTo;
 };
 
-const _origPush = window.getChatDb ? null : null;
+// messagesRef.push 패치는 어렵지만 replyTo 전달을 위해
+// sendChatMessage 내에서 msgData에 replyTo 포함시키도록 monkeypatch
+const _origPush = window.getChatDb ? null : null; // 핵: sendChatMessage 실행 중에 replyTo 주입
+// → 대신 cu_sendMsg에서 직접 처리
 window.cu_sendMsgWithReply = async function(roomId) {
     const input   = document.getElementById('chatInput');
     const text    = input?.value.trim();
@@ -1145,9 +1037,10 @@ window.cu_toggleReaction = async function(msgId, roomId, emoji, e) {
     const ref   = window._chat.getChatDb().ref(`chats/${roomId}/messages/${msgId}/reactions/${myUid}`);
     const snap  = await ref.once('value');
     if (snap.val() === emoji) {
-        await ref.remove();
+        await ref.remove(); // 같은 이모지면 취소
     } else {
         await ref.set(emoji);
+        // 하트 떠오르는 애니메이션
         if (e) {
             const floater = document.createElement('div');
             floater.className = 'cu-float-heart';
@@ -1189,17 +1082,13 @@ window.cu_showMsgMenu = function(msgId, roomId, el, isMe) {
 
     const actions = [
         { icon:'fas fa-reply', label:'답장', color:'#1565c0', fn: () => cu_setReply(msgId) },
-        ...(msg?.imageBase64 || msg?.imageUrl ? [{ icon:'fas fa-download', label:'다운로드', color:'#1565c0',
+        ...(msg?.imageBase64 ? [{ icon:'fas fa-download', label:'다운로드', color:'#1565c0',
             fn: () => cu_downloadImg(msgId) }] : []),
         ...(msg?.text ? [{ icon:'fas fa-copy', label:'복사', color:'#555',
             fn: () => { navigator.clipboard?.writeText(msg.text).then(() => cu_showToast('복사됐어요!')); }}] : []),
-        // 수정: 내 메시지 또는 관리자(텍스트 메시지만)
-        ...((isMe || window._chatIsAdmin === true) && msg?.text ? [{ icon:'fas fa-pencil-alt',
-            label: isMe ? '수정' : '🛡️ 수정', color:'#405de6',
+        ...(isMe && msg?.text ? [{ icon:'fas fa-pencil-alt', label:'수정', color:'#405de6',
             fn: () => editChatMessage(msgId, roomId) }] : []),
-        // 삭제: 내 메시지 또는 관리자(텍스트·이미지 모두)
-        ...((isMe || window._chatIsAdmin === true) ? [{ icon:'fas fa-trash-alt',
-            label: isMe ? '삭제 🗑️' : '🛡️ 삭제', color:'#e53935',
+        ...(isMe ? [{ icon:'fas fa-trash-alt', label:'삭제 🗑️', color:'#e53935',
             fn: () => { if (confirm('이 메시지를 삭제하시겠습니까?')) deleteChatMessage(msgId, roomId); }}] : []),
     ];
 
@@ -1226,15 +1115,8 @@ window.showChatProfileSheet = async function(mainUid) {
 
     let userData = {};
     try {
-        // ✅ [최적화] 캐시 우선 사용
-        if (window._chatUserCache?.[mainUid]) {
-            userData = window._chatUserCache[mainUid];
-        } else {
-            const snap = await db.ref(`users/${mainUid}`).once('value');
-            userData = snap.val() || {};
-            if (!window._chatUserCache) window._chatUserCache = {};
-            window._chatUserCache[mainUid] = userData;
-        }
+        const snap = await db.ref(`users/${mainUid}`).once('value');
+        userData = snap.val() || {};
     } catch(e) {}
 
     const name    = window._chat.resolveNickname(userData) || '알 수 없음';
@@ -1382,17 +1264,16 @@ window.cu_confirmNameChange = async function() {
         const uid = auth.currentUser?.uid;
         if (!uid) throw new Error('로그인이 필요합니다');
 
+        // Firebase Auth 표시 이름 변경
         await auth.currentUser.updateProfile({ displayName: newName });
-        await db.ref(`users/${uid}/newNickname`).set(newName);
 
-        // ✅ [최적화] 유저 캐시 갱신
-        if (window._chatUserCache?.[uid]) {
-            window._chatUserCache[uid].newNickname = newName;
-        }
+        // 메인 DB 닉네임 저장
+        await db.ref(`users/${uid}/newNickname`).set(newName);
 
         document.getElementById('_cuNameChangeModal')?.remove();
         cu_showToast('✅ 이름이 변경됐어요!');
 
+        // 목록 새로고침 (이름 반영)
         if (document.getElementById('chatRoomList')) await cu_loadChatRoomList();
 
     } catch(e) {
@@ -1444,10 +1325,6 @@ window.cu_saveBio = async function(mainUid) {
     const bio = document.getElementById('_cuBioInput')?.value.trim() || '';
     try {
         await db.ref(`users/${mainUid}/bio`).set(bio || null);
-        // ✅ [최적화] 유저 캐시 갱신
-        if (window._chatUserCache?.[mainUid]) {
-            window._chatUserCache[mainUid].bio = bio || null;
-        }
         document.getElementById('_cuBioModal')?.remove();
         cu_showToast('✅ 소개가 저장됐어요!');
     } catch(e) { cu_showToast('❌ 저장 실패: ' + e.message); }
@@ -1498,11 +1375,8 @@ window._chat.updateReadAvatars = async function(msgs, myUid, roomId) {
         const mainUid = mainUids[chatUid];
         if (!mainUid) { photoCache[chatUid] = null; nameCache[chatUid] = ''; continue; }
         try {
-            // ✅ [최적화] _chatUserCache 먼저 확인
-            const cached = window._chatUserCache?.[mainUid];
-            const u = cached || (await db.ref(`users/${mainUid}`).once('value')).val() || {};
-            if (!cached && u && !window._chatUserCache) window._chatUserCache = {};
-            if (!cached && u) window._chatUserCache[mainUid] = u;
+            const snap = await db.ref(`users/${mainUid}`).once('value');
+            const u    = snap.val() || {};
             photoCache[chatUid] = u.profilePhoto || null;
             nameCache[chatUid]  = window._chat.resolveNickname(u) || '';
         } catch {
@@ -1524,13 +1398,13 @@ window._chat.updateReadAvatars = async function(msgs, myUid, roomId) {
         const avatarRow = document.createElement('div');
         avatarRow.style.cssText = 'display:flex;gap:2px;align-items:center;justify-content:flex-end;';
 
-        const MAX_SHOW = 3;
+        const MAX_SHOW = 3; // 아바타 최대 표시 수
         uids.slice(0, MAX_SHOW).forEach(chatUid => {
             const photo = photoCache[chatUid];
             const av    = document.createElement('div');
             av.title    = nameCache[chatUid] || '읽음';
             if (photo) {
-                av.innerHTML = `<img src="${photo}" decoding="async"
+                av.innerHTML = `<img src="${photo}"
                     style="width:16px;height:16px;border-radius:50%;object-fit:cover;
                     border:1.5px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.18);display:block;">`;
             } else {
@@ -1543,6 +1417,7 @@ window._chat.updateReadAvatars = async function(msgs, myUid, roomId) {
             avatarRow.appendChild(av);
         });
 
+        // 초과 아바타 수 표시
         if (uids.length > MAX_SHOW) {
             const more = document.createElement('div');
             more.style.cssText = `width:16px;height:16px;border-radius:50%;background:#bdbdbd;
@@ -1562,8 +1437,10 @@ window._chat.updateReadAvatars = async function(msgs, myUid, roomId) {
 
         let labelText = '';
         if (!isGroup) {
+            // 1:1 채팅: 이름만
             labelText = (names[0] || '') + ' 읽음';
         } else {
+            // 그룹 채팅
             if (names.length <= 2) {
                 labelText = names.join(', ') + ' 읽음';
             } else {
@@ -1572,12 +1449,13 @@ window._chat.updateReadAvatars = async function(msgs, myUid, roomId) {
         }
 
         nameEl.textContent  = labelText;
-        nameEl.title        = names.join(', ') + ' 읽음';
+        nameEl.title        = names.join(', ') + ' 읽음'; // 전체 이름 툴팁
         slot.appendChild(nameEl);
     }
 };
 
 // window.updateReadAvatars를 _chat 네임스페이스의 새 함수로 동기화
+// (위 1281줄에서 window._chat.updateReadAvatars는 이미 새 함수로 교체됨)
 window.updateReadAvatars = function(msgs, myUid, roomId) {
     return window._chat.updateReadAvatars(msgs, myUid, roomId);
 };
@@ -1585,14 +1463,12 @@ window.updateReadAvatars = function(msgs, myUid, roomId) {
 // ===== ✅ 이미지 전체화면 모달 =====
 // chat.js의 openChatImageModal은 dataset.img(대용량 base64)를 attribute에서 읽는데
 // 브라우저가 큰 attribute를 잘라내면 src가 깨짐 → _lastMsgs에서 직접 읽도록 재정의
-// ✅ index 인자 추가 (다중 이미지 지원)
-window.openChatImageModal = function(msgId, index) { cu_openImgModal(msgId, index); };
+window.openChatImageModal = function(msgId) { cu_openImgModal(msgId); };
 
-window.cu_openImgModal = function(msgId, index) {
+window.cu_openImgModal = function(msgId) {
     document.getElementById('_chatImgModal')?.remove();
     const msg = (window._lastMsgs || {})[msgId];
-    // ✅ 다중 이미지 배열 우선, 단일 이미지 폴백
-    const src = msg?.imageUrls?.[index ?? 0] || msg?.imageUrl || msg?.imageBase64;
+    const src = msg?.imageBase64;
     if (!src) { cu_showToast('이미지를 불러올 수 없습니다.'); return; }
     const ext = src.startsWith('data:image/png')  ? 'png'
               : src.startsWith('data:image/gif')  ? 'gif'
@@ -1602,7 +1478,7 @@ window.cu_openImgModal = function(msgId, index) {
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:999999;' +
         'display:flex;flex-direction:column;align-items:center;justify-content:center;';
     modal.innerHTML = `
-        <img src="${src}" decoding="async"
+        <img src="${src}"
             style="max-width:95vw;max-height:82vh;border-radius:10px;object-fit:contain;
                    cursor:zoom-out;-webkit-tap-highlight-color:transparent;"
             onclick="document.getElementById('_chatImgModal').remove()">
@@ -1625,29 +1501,20 @@ window.cu_openImgModal = function(msgId, index) {
     document.body.appendChild(modal);
 };
 
-window.cu_downloadImg = async function(msgId) {
+window.cu_downloadImg = function(msgId) {
     const msg = (window._lastMsgs || {})[msgId];
-    const src = msg?.imageUrl || msg?.imageBase64;
+    const src = msg?.imageBase64;
     if (!src) { cu_showToast('이미지를 찾을 수 없습니다.'); return; }
     const ext = src.startsWith('data:image/png')  ? 'png'
               : src.startsWith('data:image/gif')  ? 'gif'
               : src.startsWith('data:image/webp') ? 'webp' : 'jpg';
-    try {
-        // ✅ imgBB URL은 크로스오리진이라 a.download 무시됨 → fetch로 blob 변환 후 다운로드
-        const res = await fetch(src);
-        const blob = await res.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = `chat_image_${msgId}.${ext}`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-        cu_showToast('✅ 다운로드 시작!');
-    } catch (e) {
-        cu_showToast('❌ 다운로드 실패');
-    }
+    const a = document.createElement('a');
+    a.href = src;
+    a.download = `chat_image_${msgId}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    cu_showToast('✅ 다운로드 시작!');
 };
 
 console.log('✅ chat-upgrade.js 업그레이드 적용 완료');
