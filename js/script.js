@@ -699,6 +699,19 @@ const USER_TITLES = {
         description: '포커 마스터를 달성한 자에게 주어지는 영예로운 칭호',
         rarity: '전설',
         rarityColor: '#FF8C00'
+    },
+    // ── 🐶 가나디 찾기 달인 ──────────────────────────────────────────
+    ganadi_master: {
+        id: 'ganadi_master',
+        name: '가나디 찾기 달인!',
+        emoji: '🐾',
+        gradient: 'linear-gradient(135deg,#FFB6C1,#ff85a1,#FFD6E7)',
+        glowColor: 'rgba(255,182,193,0.65)',
+        textColor: '#7a2050',
+        requirement: '가나디 이스터에그를 발견하라',
+        description: '숨겨진 가나디를 찾아낸 진정한 탐험가에게 주어지는 칭호',
+        rarity: '희귀',
+        rarityColor: '#e91e8c'
     }
 };
 
@@ -817,6 +830,105 @@ async function onPokerMasterAchieved() {
     await db.ref(`users/${uid}/unlockedTitles/${titleId}`).set(true);
     // 축하 모달 표시
     showTitleUnlockModal(titleId);
+}
+
+// ── 🐶 가나디 이스터에그 달성 시 칭호 해금 처리 ─────────────────────
+window.onGanadiMasterAchieved = async function () {
+    if (!isLoggedIn()) return;
+    const uid = getUserId();
+    const titleId = 'ganadi_master';
+    try {
+        const snap = await db.ref(`users/${uid}/unlockedTitles/${titleId}`).once('value');
+        if (snap.val()) return; // 이미 해금됨
+        await db.ref(`users/${uid}/unlockedTitles/${titleId}`).set(true);
+        showGanadiTitleUnlockModal(titleId);
+    } catch (e) { console.warn('[가나디] 칭호 해금 실패:', e); }
+};
+
+// 🐶 가나디 칭호 해금 축하 모달 (강아지 테마)
+function showGanadiTitleUnlockModal(titleId) {
+    const t = USER_TITLES[titleId];
+    if (!t) return;
+    const existing = document.getElementById('_ganadiTitleUnlockModal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = '_ganadiTitleUnlockModal';
+    modal.style.cssText = `
+        position:fixed;top:0;left:0;width:100%;height:100%;
+        background:rgba(0,0,0,0.6);z-index:999999;
+        display:flex;align-items:center;justify-content:center;
+        animation:_gtuFadeIn 0.3s ease;
+        padding:20px;box-sizing:border-box;
+    `;
+    modal.innerHTML = `
+        <style>
+        @keyframes _gtuFadeIn { from{opacity:0;} to{opacity:1;} }
+        @keyframes _gtuPopIn  { from{opacity:0;transform:scale(0.85) translateY(30px);} to{opacity:1;transform:scale(1) translateY(0);} }
+        @keyframes _gtuPink   { 0%,100%{background-position:0% 50%;} 50%{background-position:100% 50%;} }
+        @keyframes _gtuPaw    { 0%{opacity:0;transform:scale(0) rotate(0deg);}50%{opacity:1;transform:scale(1.2) rotate(20deg);}100%{opacity:0;transform:scale(0) rotate(40deg);} }
+        ._gtu-paw { position:absolute; animation:_gtuPaw 1.8s ease-in-out infinite; }
+        </style>
+        <div style="
+            background:linear-gradient(145deg,#fff0f5,#ffe4ef,#fff0f5);
+            border:2px solid #FFB6C1;
+            border-radius:24px;
+            padding:36px 28px;
+            max-width:380px;width:100%;
+            text-align:center;
+            box-shadow:0 0 50px rgba(255,182,193,0.5), 0 20px 60px rgba(0,0,0,0.25);
+            animation:_gtuPopIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+            position:relative;overflow:hidden;
+        ">
+            <span class="_gtu-paw" style="top:8%;left:6%;font-size:18px;animation-delay:0s;">🐾</span>
+            <span class="_gtu-paw" style="top:12%;right:8%;font-size:14px;animation-delay:0.6s;">🐾</span>
+            <span class="_gtu-paw" style="bottom:18%;left:10%;font-size:12px;animation-delay:1.2s;">🐾</span>
+            <span class="_gtu-paw" style="bottom:14%;right:6%;font-size:16px;animation-delay:0.3s;">🐾</span>
+            <div style="font-size:60px;margin-bottom:12px;filter:drop-shadow(0 0 10px rgba(255,182,193,0.8));">🐶</div>
+            <div style="font-size:13px;font-weight:800;letter-spacing:2px;color:#e91e8c;margin-bottom:8px;text-transform:uppercase;">
+                🎉 새 칭호 해금!
+            </div>
+            <div style="
+                font-size:22px;font-weight:900;
+                background:linear-gradient(135deg,#FFB6C1,#e91e8c,#FFB6C1);
+                background-size:200% 200%;
+                animation:_gtuPink 2s ease infinite;
+                -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+                background-clip:text;
+                margin-bottom:16px;line-height:1.3;
+            ">🐾 가나디 찾기 달인!</div>
+            <div style="
+                background:rgba(255,182,193,0.18);
+                border:1px solid rgba(255,182,193,0.5);
+                border-radius:12px;
+                padding:12px 16px;
+                margin-bottom:20px;
+                font-size:13px;color:#8b3a62;line-height:1.7;
+            ">🐶 숨겨진 가나디를 발견하여<br><strong style="color:#c2185b;">가나디 찾기 달인!</strong> 칭호를 얻었습니다!<br><small style="color:#c48a9e;font-size:11px;">더보기 → 칭호에서 장착할 수 있어요</small></div>
+            <div style="display:flex;gap:10px;justify-content:center;">
+                <button onclick="window.applyTitle('ganadi_master');document.getElementById('_ganadiTitleUnlockModal').remove();" style="
+                    padding:12px 24px;border:none;border-radius:12px;cursor:pointer;
+                    background:linear-gradient(135deg,#FFB6C1,#e91e8c);
+                    color:white;font-weight:900;font-size:14px;
+                    box-shadow:0 4px 16px rgba(233,30,140,0.35);
+                    transition:transform 0.2s;
+                " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    🐾 바로 적용
+                </button>
+                <button onclick="document.getElementById('_ganadiTitleUnlockModal').remove();" style="
+                    padding:12px 24px;border:1.5px solid rgba(255,182,193,0.6);
+                    border-radius:12px;cursor:pointer;
+                    background:rgba(255,255,255,0.7);
+                    color:#c2185b;font-weight:700;font-size:14px;
+                    transition:transform 0.2s;
+                " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    나중에
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 }
 
 // 칭호 해금 축하 모달
@@ -952,13 +1064,18 @@ window.injectTitleBadges = async function(scopeEl) {
         const _showCardDecor   = _opts.cardDecor    !== false;
         const _showDetailDecor = _opts.detailDecor  !== false;
 
-        // ♛ 테이블의 황제 — 고정 아닌 기사 카드 내 이름이면 카드 테두리 장식 (뱃지 생략)
+        // ♛ 테이블의 황제 / 🐶 가나디 찾기 달인 — 고정 아닌 기사 카드 내 이름이면 카드 테두리 장식 (뱃지 생략)
         const card = el.closest('.article-card');
         const isPinned = card && card.getAttribute('data-card-pinned') === '1';
+        const _isDecorTitle = titleId === 'table_emperor' || titleId === 'ganadi_master';
 
-        if (card && !isPinned && titleId === 'table_emperor') {
+        // 가나디 칭호: 어떤 테마에서든 항상 장식 적용
+        // (ganadi-card-decor 전용 클래스 + JS 직접 스타일 주입 → 테마 CSS 충돌 없음)
+        const _applyDecor = titleId === 'table_emperor' || titleId === 'ganadi_master';
+
+        if (card && !isPinned && _applyDecor) {
             if (_showCardDecor) {
-                _applyEmperorCardDecor(card);
+                _applyEmperorCardDecor(card, titleId);
             } else if (_showBadge) {
                 // 카드 장식 끄고 뱃지만 선택한 경우
                 el.insertAdjacentHTML('beforeend', getTitleBadgeHTML(titleId));
@@ -967,25 +1084,30 @@ window.injectTitleBadges = async function(scopeEl) {
             // 일반: 이름 옆 뱃지 삽입
             if (_showBadge) el.insertAdjacentHTML('beforeend', getTitleBadgeHTML(titleId));
 
-            // 기사 상세 페이지에서 테이블의 황제라면 내용 영역도 장식
-            if (titleId === 'table_emperor') {
+            // 기사 상세 페이지에서 칭호 테마 장식
+            if (_applyDecor) {
                 // ♛ 댓글/답글 작성자인지 여부 판별
                 const isCommentOrReplyAuthor = el.classList.contains('comment-author') || el.classList.contains('reply-author');
                 const detailRoot = el.closest('#articleDetail');
 
                 if (detailRoot && !isCommentOrReplyAuthor) {
-                    if (_showDetailDecor) _applyEmperorDetailDecor(detailRoot);
+                    if (_showDetailDecor) _applyEmperorDetailDecor(detailRoot, titleId);
                 } else {
-                    // ♛ 댓글 섹션 장식
+                    // 댓글 섹션 장식 (CSS 클래스 부착 — 인라인 색상은 황제 전용)
                     const commentSection = el.closest('.comments-section');
-                    if (commentSection && !commentSection.classList.contains('emperor-comments-section')) {
-                        commentSection.classList.add('emperor-comments-section');
-                        const commentH3 = commentSection.querySelector('h3');
-                        if (commentH3) commentH3.style.color = '#FFD700';
-                        const sortSel = commentSection.querySelector('#commentSortSelect');
-                        if (sortSel) { sortSel.style.background = 'rgba(255,200,0,0.08)'; sortSel.style.color = '#c8a855'; sortSel.style.borderColor = 'rgba(139,105,20,0.5)'; }
-                        const commentInput = commentSection.querySelector('.comment-input');
-                        if (commentInput) { commentInput.style.background = 'rgba(255,200,0,0.06)'; commentInput.style.color = '#e8d5a0'; commentInput.style.borderColor = 'rgba(139,105,20,0.5)'; }
+                    const _csClass2 = titleId === 'ganadi_master' ? 'ganadi-comments-section' : 'emperor-comments-section';
+                    if (commentSection && !commentSection.classList.contains(_csClass2)) {
+                        if (titleId === 'ganadi_master') _injectGanadiStyles();
+                        commentSection.classList.add(_csClass2);
+                        if (titleId !== 'ganadi_master') {
+                            // ♛ 황제 전용 금색 인라인 색상
+                            const commentH3 = commentSection.querySelector('h3');
+                            if (commentH3) commentH3.style.color = '#FFD700';
+                            const sortSel = commentSection.querySelector('#commentSortSelect');
+                            if (sortSel) { sortSel.style.background = 'rgba(255,200,0,0.08)'; sortSel.style.color = '#c8a855'; sortSel.style.borderColor = 'rgba(139,105,20,0.5)'; }
+                            const commentInput = commentSection.querySelector('.comment-input');
+                            if (commentInput) { commentInput.style.background = 'rgba(255,200,0,0.06)'; commentInput.style.color = '#e8d5a0'; commentInput.style.borderColor = 'rgba(139,105,20,0.5)'; }
+                        }
                     }
                 }
             }
@@ -993,16 +1115,313 @@ window.injectTitleBadges = async function(scopeEl) {
     });
 };
 
-// ♛ 테이블의 황제 — 기사 카드 테두리/배경/텍스트 장식
-function _applyEmperorCardDecor(card) {
+// 🐶 가나디 칭호 전용 CSS 주입 — 어떤 테마에서든 동일하게 동작
+function _injectGanadiStyles() {
+    if (document.getElementById('_ganadi-title-styles')) return;
+    const style = document.createElement('style');
+    style.id = '_ganadi-title-styles';
+    style.textContent = `
+        @keyframes _ganadiPawFloat {
+            0%, 100% { transform: translateY(0) rotate(-15deg); opacity: 0.45; }
+            50%       { transform: translateY(-6px) rotate(-8deg); opacity: 0.70; }
+        }
+        @keyframes _ganadiDogWalk {
+            0%   { transform: translateX(0) scaleX(1); }
+            48%  { transform: translateX(18px) scaleX(1); }
+            50%  { transform: translateX(18px) scaleX(-1); }
+            98%  { transform: translateX(0) scaleX(-1); }
+            100% { transform: translateX(0) scaleX(1); }
+        }
+        @keyframes _ganadiPetal {
+            0%   { transform: translateY(0) rotate(0deg); opacity: 0; }
+            10%  { opacity: 0.7; }
+            90%  { opacity: 0.5; }
+            100% { transform: translateY(-12px) rotate(20deg); opacity: 0; }
+        }
+
+        /* ══════════════════════════════
+           🐾 기사 카드
+        ══════════════════════════════ */
+        .ganadi-card-decor {
+            background:
+                /* 잔디 줄무늬 */
+                repeating-linear-gradient(
+                    180deg,
+                    transparent 0px, transparent 22px,
+                    rgba(120,200,100,0.06) 22px, rgba(120,200,100,0.06) 24px
+                ),
+                /* 대각 햇살 결 */
+                repeating-linear-gradient(
+                    110deg,
+                    transparent, transparent 18px,
+                    rgba(255,220,80,0.05) 18px, rgba(255,220,80,0.05) 19px
+                ),
+                /* 봄빛 코너 광채 */
+                radial-gradient(ellipse 80px 60px at 4% 10%, rgba(255,200,60,0.22) 0%, transparent 70%),
+                radial-gradient(ellipse 60px 50px at 96% 8%, rgba(255,160,100,0.18) 0%, transparent 70%),
+                radial-gradient(ellipse 50px 60px at 8% 88%, rgba(120,210,110,0.16) 0%, transparent 70%),
+                radial-gradient(ellipse 70px 50px at 92% 85%, rgba(255,180,120,0.14) 0%, transparent 70%),
+                /* 베이스: 따뜻한 봄 크림 */
+                linear-gradient(160deg, #FEFAE8 0%, #FFF0C8 35%, #FEF8E0 65%, #FFF5D0 100%) !important;
+            border: 2px solid rgba(180,130,60,0.45) !important;
+            border-left: 4px solid #B87830 !important;
+            border-bottom: 3px solid rgba(100,180,80,0.45) !important;
+            box-shadow:
+                0 0 0 1px rgba(180,140,60,0.18),
+                0 3px 18px rgba(120,80,30,0.22),
+                0 0 28px rgba(255,200,60,0.12),
+                inset 0 0 30px rgba(255,240,180,0.55) !important;
+            animation: none !important;
+            position: relative !important;
+            overflow: hidden !important;
+            border-radius: 14px !important;
+        }
+        /* 상단 무지개 봄빛 바 */
+        .ganadi-card-decor::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 5px;
+            border-radius: 14px 14px 0 0;
+            background: linear-gradient(90deg,
+                #a8e063 0%, #56ab2f 12%,
+                #f7971e 28%, #ffd200 42%,
+                #ff6b6b 58%, #ffd200 72%,
+                #f7971e 84%, #a8e063 100%);
+            box-shadow: 0 0 10px rgba(255,200,60,0.6), 0 0 22px rgba(100,200,80,0.3);
+            pointer-events: none; z-index: 10;
+        }
+        /* 우상단 발바닥 */
+        .ganadi-card-decor::after {
+            content: '🐾';
+            position: absolute;
+            top: 10px; right: 13px;
+            font-size: 16px; opacity: 0.55;
+            pointer-events: none; z-index: 10;
+            animation: _ganadiPawFloat 3.5s ease-in-out infinite !important;
+        }
+        /* 텍스트 */
+        .ganadi-card-decor .article-title,
+        .ganadi-card-decor .card-title,
+        .ganadi-card-decor h3,
+        .ganadi-card-decor .article-card-title { color: #2C1800 !important; text-shadow: none !important; font-weight: 700 !important; }
+        .ganadi-card-decor .article-summary,
+        .ganadi-card-decor p { color: #5A3010 !important; }
+        .ganadi-card-decor .article-meta,
+        .ganadi-card-decor .article-author,
+        .ganadi-card-decor .card-meta { color: #7A5428 !important; }
+        .ganadi-card-decor .article-meta span:not(.hsj-title-badge):not(.category-badge),
+        .ganadi-card-decor .article-meta > div > span { color: #6A4420 !important; }
+        .ganadi-card-decor .stat-item { color: #7A5428 !important; }
+        .ganadi-card-decor .category-badge {
+            background: linear-gradient(90deg, #6aaa3a 0%, #4e8f25 50%, #6aaa3a 100%) !important;
+            color: #FFFDF0 !important; font-weight: 700 !important;
+            border: 1px solid rgba(80,140,40,0.6) !important;
+            text-shadow: 0 1px 2px rgba(20,60,0,0.4) !important; border-radius: 12px !important;
+        }
+
+        /* 봄 산책 스트립 (카드 하단) */
+        .ganadi-spring-strip {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 28px;
+            display: flex; align-items: flex-end; justify-content: space-around;
+            padding: 0 12px 3px;
+            background: linear-gradient(180deg, transparent 0%, rgba(120,200,80,0.14) 100%);
+            pointer-events: none; z-index: 5;
+            border-top: 1.5px solid rgba(100,180,60,0.22);
+            overflow: hidden;
+        }
+        .ganadi-spring-strip span {
+            font-size: 16px; line-height: 1;
+            opacity: 0.75;
+            display: inline-block;
+        }
+        .ganadi-spring-strip .gs-dog {
+            font-size: 18px; opacity: 0.85;
+            animation: _ganadiDogWalk 4s ease-in-out infinite !important;
+        }
+        .ganadi-spring-strip .gs-f1,
+        .ganadi-spring-strip .gs-f2 {
+            animation: _ganadiPetal 3s ease-in-out infinite alternate !important;
+        }
+        .ganadi-spring-strip .gs-f2 { animation-delay: 1.2s !important; }
+
+        /* ══════════════════════════════
+           🏡 기사 상세 래퍼
+        ══════════════════════════════ */
+        .ganadi-article-wrapper {
+            background:
+                repeating-linear-gradient(
+                    180deg,
+                    transparent 0px, transparent 32px,
+                    rgba(120,200,100,0.05) 32px, rgba(120,200,100,0.05) 34px
+                ),
+                radial-gradient(ellipse 120px 90px at 2% 5%, rgba(255,200,60,0.18) 0%, transparent 65%),
+                radial-gradient(ellipse 90px 80px at 98% 4%, rgba(255,160,100,0.14) 0%, transparent 65%),
+                radial-gradient(ellipse 80px 100px at 2% 50%, rgba(120,210,110,0.12) 0%, transparent 65%),
+                linear-gradient(165deg, #FEFAE8 0%, #FFF0C8 30%, #FEF8E0 65%, #FFF2C0 100%) !important;
+            border-radius: 18px !important;
+            border: 2px solid rgba(180,130,60,0.40) !important;
+            border-top: 5px solid transparent !important;
+            border-image: linear-gradient(90deg, #a8e063, #f7971e, #ffd200, #ff6b6b, #ffd200, #f7971e, #a8e063) 1 !important;
+            border-top-left-radius: 18px !important;
+            border-top-right-radius: 18px !important;
+            box-shadow:
+                0 0 0 1px rgba(180,140,60,0.12),
+                0 6px 32px rgba(120,80,30,0.22),
+                0 0 30px rgba(255,200,60,0.10) !important;
+            padding: 20px !important;
+            position: relative !important;
+        }
+        .ganadi-article-wrapper::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; bottom: 0; width: 5px;
+            background: linear-gradient(180deg,
+                #a8e063 0%, #56ab2f 18%,
+                #f7971e 38%, #ffd200 55%,
+                #ff6b6b 72%, #a8e063 100%);
+            box-shadow: 0 0 10px rgba(255,200,60,0.4);
+            pointer-events: none; border-radius: 18px 0 0 18px;
+        }
+        .ganadi-article-wrapper h1 { color: #2C1800 !important; text-shadow: none !important; }
+        .ganadi-article-wrapper .category-badge {
+            background: linear-gradient(90deg, #6aaa3a 0%, #4e8f25 100%) !important;
+            color: #FFFDF0 !important; font-weight: 700 !important;
+            border: 1px solid rgba(80,140,40,0.6) !important;
+            text-shadow: 0 1px 2px rgba(20,60,0,0.4) !important; border-radius: 12px !important;
+        }
+        .ganadi-article-wrapper .vote-btn {
+            background: rgba(100,180,60,0.12) !important;
+            color: #4A7A20 !important;
+            border: 1.5px solid rgba(100,180,60,0.45) !important;
+            border-radius: 10px !important; transition: all 0.2s !important;
+        }
+        .ganadi-article-wrapper .vote-btn:hover {
+            background: rgba(100,180,60,0.25) !important;
+            border-color: rgba(100,180,60,0.75) !important;
+        }
+
+        /* ══════════════════════════════
+           🌼 메타 구분선
+        ══════════════════════════════ */
+        .ganadi-detail-meta {
+            border-bottom-color: transparent !important;
+            position: relative !important; padding-bottom: 14px !important;
+        }
+        .ganadi-detail-meta::after {
+            content: '' !important;
+            position: absolute !important;
+            bottom: 0 !important; left: 0 !important; right: 0 !important;
+            height: 2px !important;
+            background: linear-gradient(90deg,
+                transparent 0%, rgba(100,180,60,0.4) 8%,
+                rgba(255,200,60,0.9) 28%, rgba(255,130,80,0.95) 50%,
+                rgba(255,200,60,0.9) 72%, rgba(100,180,60,0.4) 92%,
+                transparent 100%) !important;
+            pointer-events: none !important; border-radius: 999px !important;
+            box-shadow: 0 0 6px rgba(255,200,60,0.5) !important;
+        }
+        .ganadi-detail-meta [style*="color:#202124"],
+        .ganadi-detail-meta [style*="color: #202124"] { color: #2C1800 !important; }
+        .ganadi-detail-meta [style*="color:#5f6368"],
+        .ganadi-detail-meta [style*="color: #5f6368"] { color: #6A4420 !important; }
+        .ganadi-detail-meta [data-title-uid] { color: #3A2000 !important; font-weight: 700 !important; }
+
+        /* ══════════════════════════════
+           🌸 기사 본문
+        ══════════════════════════════ */
+        .ganadi-detail-content {
+            background:
+                repeating-linear-gradient(
+                    180deg,
+                    transparent 0px, transparent 28px,
+                    rgba(120,200,100,0.05) 28px, rgba(120,200,100,0.05) 29px
+                ),
+                linear-gradient(175deg, #FEFAE8 0%, #FFF0C8 35%, #FEF8E0 65%, #FFF2C0 100%) !important;
+            border: 2px solid rgba(180,130,60,0.38) !important;
+            border-left: 5px solid rgba(100,180,60,0.65) !important;
+            border-radius: 14px !important; padding: 24px 20px !important;
+            position: relative !important; overflow: hidden !important;
+            box-shadow:
+                0 0 0 1px rgba(180,140,60,0.10),
+                0 4px 22px rgba(120,80,30,0.18),
+                inset 0 0 40px rgba(255,240,180,0.40) !important;
+            animation: none !important; color: #2C1800 !important;
+        }
+        .ganadi-detail-content::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 5px;
+            border-radius: 14px 14px 0 0;
+            background: linear-gradient(90deg,
+                #a8e063 0%, #56ab2f 14%,
+                #f7971e 30%, #ffd200 45%,
+                #ff6b6b 60%, #ffd200 75%,
+                #f7971e 88%, #a8e063 100%);
+            box-shadow: 0 0 10px rgba(255,200,60,0.5);
+            pointer-events: none; z-index: 5;
+        }
+        .ganadi-detail-content p,
+        .ganadi-detail-content li,
+        .ganadi-detail-content td,
+        .ganadi-detail-content blockquote,
+        .ganadi-detail-content > div { color: #4A2C10 !important; line-height: 1.85 !important; }
+        .ganadi-detail-content h1, .ganadi-detail-content h2,
+        .ganadi-detail-content h3, .ganadi-detail-content h4 {
+            color: #3A1E00 !important; text-shadow: none !important;
+            border-bottom: 2px solid rgba(100,180,60,0.35) !important; padding-bottom: 6px !important;
+        }
+        .ganadi-detail-content strong,
+        .ganadi-detail-content b { color: #5A3C10 !important; font-weight: 800 !important; }
+        .ganadi-detail-content a { color: #1565C0 !important; text-decoration: underline !important; }
+        .ganadi-detail-content [style*="color:#333"],
+        .ganadi-detail-content [style*="color: #333"] { color: #4A2C10 !important; }
+
+        /* ══════════════════════════════
+           💬 댓글 섹션
+        ══════════════════════════════ */
+        .ganadi-comments-section {
+            background:
+                repeating-linear-gradient(
+                    180deg,
+                    transparent 0px, transparent 28px,
+                    rgba(120,200,100,0.045) 28px, rgba(120,200,100,0.045) 29px
+                ),
+                linear-gradient(178deg, #FEFAE8 0%, #FFF0C8 50%, #FEF8E0 100%) !important;
+            border-top: 2px solid rgba(100,180,60,0.40) !important;
+            border-radius: 0 0 16px 16px !important;
+            padding: 16px !important;
+        }
+    `
+    document.head.appendChild(style);
+}
+
+// ♛ 테이블의 황제 / 🐶 가나디 찾기 달인 — 기사 카드 테두리/배경/텍스트 장식
+function _applyEmperorCardDecor(card, titleId) {
     if (card.getAttribute('data-emperor-done')) return;
     card.setAttribute('data-emperor-done', '1');
-    card.classList.add('emperor-card-decor');
-    // hot/pinned border-left 충돌 제거
-    card.style.borderLeft = 'none';
     card.style.cursor = 'pointer';
 
-    // ♛ 카드 내 텍스트 색상 직접 변경 (인라인 스타일 우선순위 확보)
+    // 🐶 가나디 칭호: 테마 충돌 없는 전용 클래스 + JS 직접 스타일 주입
+    if (titleId === 'ganadi_master') {
+        _injectGanadiStyles();
+        card.classList.add('ganadi-card-decor');
+        // 🌸 봄 산책 장식 스트립 DOM 주입
+        if (!card.querySelector('.ganadi-spring-strip')) {
+            const strip = document.createElement('div');
+            strip.className = 'ganadi-spring-strip';
+            strip.innerHTML = '<span class="gs-t1">\uD83C\uDF33</span><span class="gs-f1">\uD83C\uDF38</span><span class="gs-dog">\uD83D\uDC15</span><span class="gs-f2">\uD83C\uDF3C</span><span class="gs-t2">\uD83C\uDF32</span>';
+            card.appendChild(strip);
+        }
+        return;
+    }
+
+    // ♛ 황제 전용
+    card.classList.add('emperor-card-decor');
+
+    // ♛ 황제 전용 — hot/pinned border-left 충돌 제거
+    card.style.borderLeft = 'none';
+    // 카드 내 텍스트 색상 직접 변경 (인라인 스타일 우선순위 확보)
     // 제목
     const titleEl = card.querySelector('.article-title, h3');
     if (titleEl) { titleEl.style.color = '#f0d98a'; titleEl.style.textShadow = '0 1px 4px rgba(0,0,0,0.6)'; }
@@ -1019,24 +1438,30 @@ function _applyEmperorCardDecor(card) {
     if (metaEl) metaEl.style.color = '#8a7040';
 }
 
-// ♛ 테이블의 황제 — 기사 상세 전체 꾸미기
-function _applyEmperorDetailDecor(detailRoot) {
+// ♛ 테이블의 황제 / 🐶 가나디 찾기 달인 — 기사 상세 전체 꾸미기
+function _applyEmperorDetailDecor(detailRoot, titleId) {
     if (detailRoot.getAttribute('data-emperor-detail-done')) return;
     detailRoot.setAttribute('data-emperor-detail-done', '1');
 
-    // ── 1. 기사 전체 래퍼 (흰 박스) 어둡게 ─────────────────
+    const isGanadi = titleId === 'ganadi_master';
+
+    // ── 1. 기사 전체 래퍼 ──────────────────────────────────
     const wrapper = detailRoot.querySelector('div');
     if (wrapper) {
-        wrapper.style.background = 'linear-gradient(160deg, #1a1100 0%, #0f0900 28%, #1c1200 55%, #120c00 100%)';
-        wrapper.style.borderRadius = '14px';
-        wrapper.style.border = '2px solid #8B6914';
-        wrapper.style.boxShadow = '0 0 0 1px rgba(255,210,0,0.22), 0 4px 28px rgba(0,0,0,0.65), inset 0 0 50px rgba(0,0,0,0.45)';
-        wrapper.classList.add('emperor-article-wrapper');
+        // 🐶 가나디: ganadi-article-wrapper, ♛ 황제: emperor-article-wrapper
+        wrapper.classList.add(isGanadi ? 'ganadi-article-wrapper' : 'emperor-article-wrapper');
+        // 황제 전용 인라인 스타일 (가나디는 _injectGanadiStyles()가 처리)
+        if (!isGanadi) {
+            wrapper.style.background = 'linear-gradient(160deg, #1a1100 0%, #0f0900 28%, #1c1200 55%, #120c00 100%)';
+            wrapper.style.borderRadius = '14px';
+            wrapper.style.border = '2px solid #8B6914';
+            wrapper.style.boxShadow = '0 0 0 1px rgba(255,210,0,0.22), 0 4px 28px rgba(0,0,0,0.65), inset 0 0 50px rgba(0,0,0,0.45)';
+        }
     }
 
     // ── 2. 제목 ─────────────────────────────────────────────
     const titleEl = wrapper && wrapper.querySelector('h1');
-    if (titleEl) {
+    if (titleEl && !isGanadi) {
         titleEl.style.color = '#FFE066';
         titleEl.style.textShadow = '0 0 12px rgba(255,200,0,0.35)';
     }
@@ -1044,35 +1469,37 @@ function _applyEmperorDetailDecor(detailRoot) {
     // ── 3. 메타 (닉네임, 날짜, 조회수) ─────────────────────
     const metaEl = detailRoot.querySelector('.article-meta');
     if (metaEl) {
-        metaEl.classList.add('emperor-detail-meta');
+        metaEl.classList.add(isGanadi ? 'ganadi-detail-meta' : 'emperor-detail-meta');
         metaEl.style.borderBottomColor = 'transparent';
-        // 닉네임 div
-        const authorDiv = metaEl.querySelector('div[style]');
-        if (authorDiv) {
-            const nameDiv = authorDiv.querySelector('div:first-child, [data-title-uid]');
-            if (nameDiv) { nameDiv.style.color = '#FFD700'; nameDiv.style.fontWeight = '700'; }
-            const dateDiv = authorDiv.querySelector('div:last-child');
-            if (dateDiv && dateDiv !== nameDiv) dateDiv.style.color = '#c8a855';
+        if (!isGanadi) {
+            // 황제 전용 금색 인라인 색상 (가나디는 2style.css가 처리)
+            const authorDiv = metaEl.querySelector('div[style]');
+            if (authorDiv) {
+                const nameDiv = authorDiv.querySelector('div:first-child, [data-title-uid]');
+                if (nameDiv) { nameDiv.style.color = '#FFD700'; nameDiv.style.fontWeight = '700'; }
+                const dateDiv = authorDiv.querySelector('div:last-child');
+                if (dateDiv && dateDiv !== nameDiv) dateDiv.style.color = '#c8a855';
+            }
+            const viewSpan = metaEl.querySelector('#viewCountDisplay, span');
+            if (viewSpan) viewSpan.style.color = '#c8a855';
+            metaEl.querySelectorAll('[style*="color:#202124"], [style*="color: #202124"]').forEach(el => el.style.color = '#FFD700');
+            metaEl.querySelectorAll('[style*="color:#5f6368"], [style*="color: #5f6368"]').forEach(el => el.style.color = '#c8a855');
         }
-        // 조회수 span
-        const viewSpan = metaEl.querySelector('#viewCountDisplay, span');
-        if (viewSpan) viewSpan.style.color = '#c8a855';
-        // 내부 모든 직접 색상 인라인 제거
-        metaEl.querySelectorAll('[style*="color:#202124"], [style*="color: #202124"]').forEach(el => el.style.color = '#FFD700');
-        metaEl.querySelectorAll('[style*="color:#5f6368"], [style*="color: #5f6368"]').forEach(el => el.style.color = '#c8a855');
     }
 
     // ── 4. 기사 본문 ─────────────────────────────────────────
     const contentEl = detailRoot.querySelector('[data-detail-article-content]');
     if (contentEl) {
-        contentEl.classList.add('emperor-detail-content');
-        contentEl.style.color = '#e8d5a0';
-        // 인라인 color:#333 강제 교체
-        contentEl.querySelectorAll('[style*="color:#333"], [style*="color: #333"]').forEach(el => el.style.color = '#e8d5a0');
+        contentEl.classList.add(isGanadi ? 'ganadi-detail-content' : 'emperor-detail-content');
+        if (!isGanadi) {
+            // 황제 전용 금색 인라인 색상
+            contentEl.style.color = '#e8d5a0';
+            contentEl.querySelectorAll('[style*="color:#333"], [style*="color: #333"]').forEach(el => el.style.color = '#e8d5a0');
+        }
     }
 
     // ── 5. 추천/비추천 구분선 + 버튼 ────────────────────────
-    if (wrapper) {
+    if (wrapper && !isGanadi) {
         const voteArea = wrapper.querySelector('[style*="border-top:1px solid #eee"], [style*="border-top: 1px solid #eee"]');
         if (voteArea) voteArea.style.borderTopColor = 'rgba(255,200,0,0.25)';
         wrapper.querySelectorAll('.vote-btn').forEach(btn => {
@@ -1082,19 +1509,19 @@ function _applyEmperorDetailDecor(detailRoot) {
         });
     }
 
-    // ── 6. 댓글 섹션 황제 테마 적용 ─────────────────────────
+    // ── 6. 댓글 섹션 테마 적용 ─────────────────────────────
     const commentsSection = document.querySelector('.comments-section');
     if (commentsSection) {
-        commentsSection.classList.add('emperor-comments-section');
-        // 댓글 헤더 직접 변경
-        const commentH3 = commentsSection.querySelector('h3');
-        if (commentH3) { commentH3.style.color = '#FFD700'; }
-        // 정렬 셀렉트
-        const sortSel = commentsSection.querySelector('#commentSortSelect');
-        if (sortSel) { sortSel.style.background = 'rgba(255,200,0,0.08)'; sortSel.style.color = '#c8a855'; sortSel.style.borderColor = 'rgba(139,105,20,0.5)'; }
-        // 댓글 입력창
-        const commentInput = commentsSection.querySelector('.comment-input');
-        if (commentInput) { commentInput.style.background = 'rgba(255,200,0,0.06)'; commentInput.style.color = '#e8d5a0'; commentInput.style.borderColor = 'rgba(139,105,20,0.5)'; }
+        commentsSection.classList.add(isGanadi ? 'ganadi-comments-section' : 'emperor-comments-section');
+        if (!isGanadi) {
+            // 황제 전용 금색 인라인 색상
+            const commentH3 = commentsSection.querySelector('h3');
+            if (commentH3) { commentH3.style.color = '#FFD700'; }
+            const sortSel = commentsSection.querySelector('#commentSortSelect');
+            if (sortSel) { sortSel.style.background = 'rgba(255,200,0,0.08)'; sortSel.style.color = '#c8a855'; sortSel.style.borderColor = 'rgba(139,105,20,0.5)'; }
+            const commentInput = commentsSection.querySelector('.comment-input');
+            if (commentInput) { commentInput.style.background = 'rgba(255,200,0,0.06)'; commentInput.style.color = '#e8d5a0'; commentInput.style.borderColor = 'rgba(139,105,20,0.5)'; }
+        }
     }
 }
 
@@ -3598,6 +4025,41 @@ async function showTitlesPage() {
             activeBadgeEl.innerHTML = window._myActiveTitle ? getTitleBadgeHTML(window._myActiveTitle) : '';
         }
         window._renderTitlePageList();
+
+        // ✅ 칭호 변경 후 새로고침 안내 배너 표시
+        const existingHint = document.getElementById('_titleRefreshHint');
+        if (existingHint) existingHint.remove();
+        const hint = document.createElement('div');
+        hint.id = '_titleRefreshHint';
+        hint.innerHTML = `
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-size:18px;">🔄</span>
+                <div style="flex:1;">
+                    <div style="font-size:13px; font-weight:800; color:#7a4500;">칭호를 변경했어요!</div>
+                    <div style="font-size:12px; color:#b8860b; margin-top:2px;">변경 사항을 반영하려면 새로고침을 해주세요.</div>
+                </div>
+                <button onclick="location.reload()"
+                    style="padding:8px 14px; background:linear-gradient(135deg,#e65100,#ef6c00);
+                    color:white; border:none; border-radius:10px; font-size:12px; font-weight:800;
+                    cursor:pointer; white-space:nowrap; box-shadow:0 2px 8px rgba(230,81,0,0.35);
+                    -webkit-tap-highlight-color:transparent; flex-shrink:0;">
+                    새로고침
+                </button>
+            </div>`;
+        hint.style.cssText = `
+            background: linear-gradient(145deg,#fffbf0,#fff8e1);
+            border: 1.5px solid rgba(255,160,0,0.5);
+            border-radius: 14px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 12px rgba(255,160,0,0.15);
+            animation: fadeInDown 0.3s ease;
+        `;
+        // 검색바 앞에 삽입
+        const searchBar = document.querySelector('#_titleSearchInput')?.parentElement;
+        if (searchBar) {
+            searchBar.parentElement.insertBefore(hint, searchBar);
+        }
     };
 
     // ── 장식 표시 설정 카드 렌더 ──
@@ -4496,7 +4958,7 @@ async function showArticleDetail(id) {
     root.removeAttribute('data-emperor-detail-done');
     // 댓글 섹션 황제 클래스도 초기화 (다른 기사로 이동 시 오염 방지)
     const _cs = document.querySelector('.comments-section');
-    if (_cs) _cs.classList.remove('emperor-comments-section');
+    if (_cs) { _cs.classList.remove('emperor-comments-section'); _cs.classList.remove('ganadi-comments-section'); }
     root.innerHTML = `
         <div style="padding:60px 20px; text-align:center;">
             <div style="width:40px; height:40px; border:4px solid #f3f3f3; border-top:4px solid #c62828; border-radius:50%; animation:spin 1s linear infinite; margin:0 auto 20px;"></div>
@@ -5977,7 +6439,20 @@ ${comment.imageBase64 ? `
         // ♛ 황제 댓글 섹션 재적용 (타이밍 안전망: 기사 작성자가 황제인 경우)
         // _applyEmperorDetailDecor가 댓글 렌더보다 먼저 실행됐더라도 class 보장
         if (document.getElementById('articleDetail')?.getAttribute('data-emperor-detail-done')) {
-            document.querySelector('.comments-section')?.classList.add('emperor-comments-section');
+            // 황제/가나디 칭호 모두 커버: 활성 칭호 ID로 판별
+            (function() {
+                const _uid6 = typeof auth !== 'undefined' && auth.currentUser ? auth.currentUser.uid : null;
+                const _titleId6 = _uid6 && window._titleDisplayCache && window._titleDisplayCache[_uid6] ? window._titleDisplayCache[_uid6].titleId || null : null;
+                const _csSection6 = document.querySelector('.comments-section');
+                if (_csSection6) {
+                    if (_titleId6 === 'ganadi_master') {
+                        _injectGanadiStyles();
+                        _csSection6.classList.add('ganadi-comments-section');
+                    } else {
+                        _csSection6.classList.add('emperor-comments-section');
+                    }
+                }
+            })();
         }
 
         // 🏅 댓글/답글 칭호 뱃지 주입
@@ -9057,6 +9532,10 @@ function applyTheme(themeName) {
         // 🐶 가나디 테마
         let style3 = document.querySelector('link[href*="style3.css"]');
         
+        // ✨ 가나디 테마 클래스 즉시 추가 (style3.css onload 여부와 무관하게)
+        document.body.classList.add('ganadi-theme');
+        currentAppliedTheme = themeName;
+
         if (!style3) {
             themeStylesheet = document.createElement('link');
             themeStylesheet.rel = 'stylesheet';
@@ -9067,18 +9546,19 @@ function applyTheme(themeName) {
             
             themeStylesheet.onload = function() {
                 console.log('✅ 가나디 테마 로드 완료!');
-                currentAppliedTheme = themeName;
-                document.body.classList.add('ganadi-theme'); // ✨ 가나디 테마 클래스 추가!
+                document.body.classList.add('ganadi-theme'); // 혹시 제거됐을 경우 재추가
                 if (!localStorage.getItem('ganadiGreetingDismissed')) {
                     setTimeout(showGanadiGreeting, 500);
                 }
+            };
+            themeStylesheet.onerror = function() {
+                console.warn('⚠️ style3.css 없음 — 2style.css 기반 ganadi 스타일 유지');
+                document.body.classList.add('ganadi-theme'); // CSS 없어도 클래스는 유지
             };
         } else {
             style3.disabled = false;
             themeStylesheet = style3;
             console.log('♻️ 기존 가나디 테마 활성화');
-            currentAppliedTheme = themeName;
-            document.body.classList.add('ganadi-theme'); // ✨ 가나디 테마 클래스 추가!
             if (!localStorage.getItem('ganadiGreetingDismissed')) {
                 setTimeout(showGanadiGreeting, 500);
             }
@@ -9188,6 +9668,10 @@ function applyInitialTheme() {
             setTimeout(() => initSnowfall(), 100);
         }
     } else if (savedTheme === 'ganadi') {
+        // ✨ 가나디 테마 클래스 즉시 추가 (onload 대기 없이)
+        document.body.classList.add('ganadi-theme');
+        currentAppliedTheme = 'ganadi';
+
         let style3 = document.querySelector('link[href*="style3.css"]');
         if (!style3) {
             const newLink = document.createElement('link');
@@ -9198,16 +9682,15 @@ function applyInitialTheme() {
             themeStylesheet = newLink;
             newLink.onload = () => {
                 console.log('✅ 가나디 테마 초기 로드 완료');
-                currentAppliedTheme = 'ganadi';
-                // ✨ 가나디 테마 클래스 추가!
+                document.body.classList.add('ganadi-theme'); // 재확인
+            };
+            newLink.onerror = () => {
+                console.warn('⚠️ style3.css 없음 — 2style.css 기반 ganadi 스타일 유지');
                 document.body.classList.add('ganadi-theme');
             };
         } else {
             style3.disabled = false;
             themeStylesheet = style3;
-            currentAppliedTheme = 'ganadi';
-            // ✨ 가나디 테마 클래스 추가!
-            document.body.classList.add('ganadi-theme');
         }
     } else if (savedTheme === 'dark') {
         let style4 = document.querySelector('link[href*="style4.css"]');
