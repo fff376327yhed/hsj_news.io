@@ -2,7 +2,6 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-
     <!-- preconnect -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,6 +30,7 @@
       window.addEventListener('beforeinstallprompt', function(e) {
         e.preventDefault();
         window.__pwaEarlyPrompt = e;
+        console.log('🎯 [Early] beforeinstallprompt 캡처 완료 (Pwa.js 로드 전)');
       });
     </script>
 
@@ -53,9 +53,6 @@
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="./css/style.css">
-
-    <!-- Google Identity Services (YouTube OAuth) -->
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <script>
 // ===== Service Worker 등록 (GitHub Pages 완벽 호환 버전) =====
@@ -140,7 +137,255 @@ if ('serviceWorker' in navigator) {
 </script>
 
 <style>
-/* ========== Quill 에디터 스타일 ========== */
+/* ========== 🏅 칭호 뱃지 애니메이션 ========== */
+@keyframes hsjTitleShimmer {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+@keyframes hsjTitleFloat {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-2px); }
+}
+@keyframes hsjTitleGlow {
+    0%, 100% { box-shadow: 0 2px 10px rgba(255,180,0,0.45), 0 0 0 1px rgba(255,200,0,0.25); }
+    50% { box-shadow: 0 2px 18px rgba(255,180,0,0.75), 0 0 0 1.5px rgba(255,200,0,0.5); }
+}
+.hsj-title-badge {
+    background-size: 200% 200% !important;
+    animation: hsjTitleShimmer 2.5s ease infinite, hsjTitleFloat 3s ease-in-out infinite, hsjTitleGlow 2.5s ease-in-out infinite !important;
+    display: inline-flex !important;
+    align-items: center;
+}
+
+/* ========== ♛ 테이블의 황제 카드/상세 장식 — 뒷골목 동전 테마 ========== */
+
+/* 카드 테두리 장식 — 뒷골목 어두운 배경 + 동전 산포 (애니메이션 없음) */
+.emperor-card-decor {
+    border-left: none !important;
+    border-top: 2px solid #8B6914 !important;
+    border-right: 2px solid #8B6914 !important;
+    border-bottom: 2px solid #8B6914 !important;
+    outline: 1.5px solid rgba(255,215,0,0.3) !important;
+    outline-offset: 2px !important;
+    border-radius: 12px !important;
+    animation: none !important;
+    position: relative !important;
+    overflow: hidden !important;
+
+    /* 동전 산포 + 뒷골목 바닥 배경 */
+    background:
+        radial-gradient(circle 9px  at 5%   18%, rgba(255,215,0,0.22) 0%, rgba(255,180,0,0.10) 55%, transparent 75%),
+        radial-gradient(circle 7px  at 92%  12%, rgba(255,210,0,0.18) 0%, rgba(255,160,0,0.08) 55%, transparent 75%),
+        radial-gradient(circle 11px at 78%  75%, rgba(255,220,0,0.20) 0%, rgba(255,170,0,0.09) 50%, transparent 70%),
+        radial-gradient(circle 6px  at 22%  82%, rgba(255,200,0,0.16) 0%, rgba(255,150,0,0.07) 55%, transparent 75%),
+        radial-gradient(circle 8px  at 55%  10%, rgba(255,215,0,0.15) 0%, rgba(255,180,0,0.07) 50%, transparent 70%),
+        radial-gradient(circle 5px  at 38%  55%, rgba(255,210,0,0.13) 0%, transparent 65%),
+        radial-gradient(circle 10px at 88%  45%, rgba(255,205,0,0.17) 0%, rgba(255,160,0,0.06) 50%, transparent 70%),
+        radial-gradient(circle 6px  at 12%  48%, rgba(255,200,0,0.12) 0%, transparent 65%),
+        radial-gradient(circle 8px  at 65%  88%, rgba(255,215,0,0.16) 0%, rgba(255,175,0,0.07) 50%, transparent 70%),
+        repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px),
+        repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(255,200,0,0.015) 20px, rgba(255,200,0,0.015) 21px),
+        linear-gradient(160deg, #1a1100 0%, #0f0900 25%, #1a1100 50%, #120c00 75%, #1e1400 100%)
+        !important;
+
+    box-shadow:
+        0 0 0 1px rgba(255,210,0,0.22),
+        0 2px 16px rgba(0,0,0,0.55),
+        0 0 24px rgba(255,185,0,0.10),
+        inset 0 0 40px rgba(0,0,0,0.38),
+        inset 0 1px 0 rgba(255,215,0,0.10) !important;
+}
+
+/* 카드 상단 — 정적 황금 바 (뒷골목 간판) */
+.emperor-card-decor::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important; left: 0 !important; right: 0 !important;
+    height: 3px !important;
+    border-radius: 12px 12px 0 0 !important;
+    font-size: unset !important;
+    color: transparent !important;
+    animation: none !important;
+    text-shadow: none !important;
+    background: linear-gradient(
+        90deg,
+        #3d2800 0%, #8B6914 8%, #FFD700 20%,
+        #FFA500 35%, #FFD700 50%, #FFA500 65%,
+        #FFD700 80%, #8B6914 92%, #3d2800 100%
+    ) !important;
+    background-size: unset !important;
+    box-shadow: 0 0 8px rgba(255,200,0,0.5), 0 0 16px rgba(255,160,0,0.22) !important;
+    pointer-events: none !important;
+    z-index: 10 !important;
+}
+
+/* 카드 우상단 — 동전 아이콘 */
+.emperor-card-decor::after {
+    content: '🪙' !important;
+    position: absolute !important;
+    top: 6px !important; right: 10px !important;
+    left: unset !important; bottom: unset !important;
+    height: unset !important;
+    width: unset !important;
+    font-size: 15px !important;
+    color: rgba(255,215,0,1) !important;
+    opacity: 0.75 !important;
+    background: none !important;
+    filter: drop-shadow(0 0 4px rgba(255,215,0,0.85)) drop-shadow(0 0 10px rgba(255,180,0,0.5)) !important;
+    border-radius: 0 !important;
+    animation: none !important;
+    pointer-events: none !important;
+    z-index: 10 !important;
+    line-height: 1 !important;
+}
+
+/* 기사 상세 내용 영역 장식 — 뒷골목 동전 테마 */
+.emperor-detail-content {
+    border: 2px solid #8B6914 !important;
+    border-radius: 12px !important;
+    padding: 24px 20px !important;
+    position: relative !important;
+    overflow: hidden !important;
+    animation: none !important;
+
+    background:
+        radial-gradient(circle 12px at 3%   8%,  rgba(255,215,0,0.20) 0%, rgba(255,180,0,0.08) 50%, transparent 72%),
+        radial-gradient(circle 8px  at 96%  6%,  rgba(255,210,0,0.17) 0%, rgba(255,160,0,0.07) 55%, transparent 75%),
+        radial-gradient(circle 10px at 8%   38%, rgba(255,205,0,0.15) 0%, rgba(255,170,0,0.06) 52%, transparent 72%),
+        radial-gradient(circle 14px at 91%  28%, rgba(255,220,0,0.19) 0%, rgba(255,175,0,0.08) 50%, transparent 70%),
+        radial-gradient(circle 7px  at 18%  70%, rgba(255,215,0,0.14) 0%, rgba(255,165,0,0.06) 55%, transparent 75%),
+        radial-gradient(circle 9px  at 82%  72%, rgba(255,210,0,0.16) 0%, rgba(255,160,0,0.07) 52%, transparent 72%),
+        radial-gradient(circle 6px  at 45%  5%,  rgba(255,200,0,0.13) 0%, transparent 65%),
+        radial-gradient(circle 11px at 55%  88%, rgba(255,215,0,0.18) 0%, rgba(255,175,0,0.07) 50%, transparent 70%),
+        radial-gradient(circle 5px  at 30%  52%, rgba(255,205,0,0.12) 0%, transparent 65%),
+        radial-gradient(circle 8px  at 70%  48%, rgba(255,210,0,0.14) 0%, rgba(255,165,0,0.05) 55%, transparent 75%),
+        radial-gradient(circle 13px at 25%  92%, rgba(255,215,0,0.17) 0%, rgba(255,175,0,0.07) 50%, transparent 70%),
+        radial-gradient(circle 7px  at 75%  15%, rgba(255,200,0,0.15) 0%, transparent 65%),
+        repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.055) 3px, rgba(0,0,0,0.055) 6px),
+        repeating-linear-gradient(90deg, transparent, transparent 28px, rgba(255,200,0,0.018) 28px, rgba(255,200,0,0.018) 29px),
+        linear-gradient(175deg, #1a1100 0%, #0d0800 30%, #160f00 60%, #0f0900 100%)
+        !important;
+
+    box-shadow:
+        0 0 0 1px rgba(255,210,0,0.18),
+        0 4px 24px rgba(0,0,0,0.6),
+        0 0 32px rgba(255,185,0,0.08),
+        inset 0 0 60px rgba(0,0,0,0.45),
+        inset 0 1px 0 rgba(255,215,0,0.08) !important;
+}
+
+/* 상세 상단 — 정적 황금 바 */
+.emperor-detail-content::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important; left: 0 !important; right: 0 !important;
+    height: 3px !important;
+    border-radius: 12px 12px 0 0 !important;
+    animation: none !important;
+    background: linear-gradient(
+        90deg,
+        #2d1c00 0%, #8B6914 10%, #FFD700 22%,
+        #FFA500 38%, #FFE066 50%, #FFA500 62%,
+        #FFD700 78%, #8B6914 90%, #2d1c00 100%
+    ) !important;
+    background-size: unset !important;
+    box-shadow: 0 0 8px rgba(255,200,0,0.42), 0 0 18px rgba(255,160,0,0.20) !important;
+    pointer-events: none !important;
+    z-index: 5 !important;
+}
+
+/* 상세 우하단 — 동전 무더기 워터마크 */
+.emperor-detail-content::after {
+    content: '🪙🪙🪙' !important;
+    position: absolute !important;
+    bottom: 12px !important; right: 14px !important;
+    top: unset !important; left: unset !important;
+    font-size: 20px !important;
+    color: rgba(255,215,0,1) !important;
+    opacity: 0.18 !important;
+    letter-spacing: -4px !important;
+    background: none !important;
+    filter: brightness(1.2) saturate(1.3) !important;
+    pointer-events: none !important;
+    animation: none !important;
+    line-height: 1 !important;
+    transform: rotate(-8deg) !important;
+}
+
+/* 기사 상세 메타(작성자) 영역 하단 구분선 장식 */
+.emperor-detail-meta {
+    border-bottom-color: transparent !important;
+    position: relative !important;
+}
+.emperor-detail-meta::after {
+    content: '' !important;
+    position: absolute !important;
+    bottom: 0 !important; left: -3% !important; right: -3% !important;
+    height: 1.5px !important;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(139,105,20,0.4) 8%,
+        rgba(255,215,0,0.7) 25%,
+        rgba(255,180,0,0.5) 38%,
+        rgba(255,215,0,0.8) 50%,
+        rgba(255,180,0,0.5) 62%,
+        rgba(255,215,0,0.7) 75%,
+        rgba(139,105,20,0.4) 92%,
+        transparent 100%
+    ) !important;
+    background-size: unset !important;
+    box-shadow: 0 0 5px rgba(255,200,0,0.28) !important;
+    border-radius: 2px !important;
+    animation: none !important;
+}
+
+/* 기사 상세 메타 영역 텍스트 색상 강제 오버라이드 */
+.emperor-detail-meta div[style],
+.emperor-detail-meta span[style] {
+    color: inherit !important;
+}
+.emperor-article-wrapper h1[style] {
+    color: #FFE066 !important;
+}
+/* 닉네임 (font-weight:600 div) */
+.emperor-detail-meta .article-meta > div > div:first-child,
+.emperor-detail-meta [data-title-uid] {
+    color: #FFD700 !important;
+}
+/* 날짜 */
+.emperor-detail-meta .article-meta > div > div:not(:first-child) {
+    color: #c8a855 !important;
+}
+/* 조회수 */
+.emperor-detail-meta #viewCountDisplay,
+.emperor-detail-meta span:not(.hsj-title-badge) {
+    color: #c8a855 !important;
+}
+/* 기사 본문 인라인 color 무력화 */
+.emperor-detail-content [style*="color:#333"],
+.emperor-detail-content [style*="color: #333"] {
+    color: #e8d5a0 !important;
+}
+/* AI 요약 박스 내부 */
+.emperor-article-wrapper #_aiSummaryBtn {
+    background: rgba(255,200,0,0.06) !important;
+    color: #c8a855 !important;
+    border-color: rgba(139,105,20,0.5) !important;
+}
+.emperor-article-wrapper #_aiSummaryResult {
+    background: rgba(255,200,0,0.05) !important;
+    border-color: rgba(139,105,20,0.4) !important;
+    color: #e8d5a0 !important;
+}
+
+/* 기사 제목 (인라인 color 없음이라 직접 지정) */
+.emperor-article-wrapper > h1 {
+    color: #FFE066 !important;
+}
+
+
 #quillEditor {
     background: white;
     min-height: 300px;
@@ -322,46 +567,6 @@ if ('serviceWorker' in navigator) {
     flex-wrap: wrap;
 }
 
-/* ===== 🆕 새 기사 카드 (마지막 방문 이후 새로 올라온 기사) ===== */
-.article-card--new {
-    border-left: 4px solid #1565c0 !important;
-    background: linear-gradient(105deg, #e8f0fe 0%, #ffffff 55%) !important;
-    position: relative;
-}
-.article-card--new::after {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, #1565c0, #42a5f5, #1565c0);
-    background-size: 200% 100%;
-    animation: newShimmer 2.4s linear infinite;
-    border-radius: 0 2px 0 0;
-}
-@keyframes newShimmer {
-    0%   { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-}
-.new-article-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    background: #1565c0;
-    color: #fff;
-    font-size: 10px;
-    font-weight: 800;
-    padding: 2px 8px;
-    border-radius: 20px;
-    letter-spacing: 0.6px;
-    margin-right: 4px;
-    vertical-align: middle;
-    animation: newBadgePop 0.35s cubic-bezier(.22,.68,0,1.4) both;
-}
-@keyframes newBadgePop {
-    from { transform: scale(0.6); opacity: 0; }
-    to   { transform: scale(1);   opacity: 1; }
-}
-
 /* ===== PWA 애니메이션 ===== */
 #pwaInstallBanner[style*="flex"] {
     animation: _pwaBannerUp 0.35s cubic-bezier(.22,.68,0,1.2) both;
@@ -509,26 +714,11 @@ if ('serviceWorker' in navigator) {
                 </div>
                 <div onclick="selectCategory('마크')" data-cat="마크" class="_catItem"
                     style="display:flex; align-items:center; justify-content:space-between;
-                    padding:11px 16px; font-size:14px; cursor:pointer; border-bottom:1px solid #f5f5f5;">
+                    padding:11px 16px; font-size:14px; cursor:pointer;">
                     마크
                     <span class="_catDot" style="display:none; width:8px; height:8px;
                         background:#dc3545; border-radius:50%; flex-shrink:0;
                         box-shadow:0 0 4px rgba(220,53,69,0.5);"></span>
-                </div>
-                <div onclick="selectCategory('과제방')" data-cat="과제방" class="_catItem"
-                    style="display:flex; align-items:center; justify-content:space-between;
-                    padding:11px 16px; font-size:14px; cursor:pointer; border-bottom:1px solid #f5f5f5;">
-                    과제방
-                    <span class="_catDot" style="display:none; width:8px; height:8px;
-                        background:#dc3545; border-radius:50%; flex-shrink:0;
-                        box-shadow:0 0 4px rgba(220,53,69,0.5);"></span>
-                </div>
-                <div onclick="showCategoryRequestModal()" data-cat="_request_"
-                    style="display:flex; align-items:center; gap:8px;
-                    padding:10px 16px; font-size:13px; cursor:pointer;
-                    color:#6c757d; background:#fafafa; border-top:2px solid #f0f0f0;">
-                    <i class="fas fa-plus-circle" style="color:#c62828;"></i>
-                    카테고리 추가 요청
                 </div>
             </div>
         </div>
@@ -699,40 +889,21 @@ if ('serviceWorker' in navigator) {
             <div style="padding:8px;font-size:12px;color:#aaa;text-align:center;">로딩 중...</div>
         </div>
     </div>
-
-    <!-- ✅ 미디어 미리보기 (이미지 + 동영상 공용) -->
     <div id="commentImagePreview" style="display:none; position:relative; margin-bottom:4px;">
-        <img id="commentImagePreviewImg" style="max-height:120px; max-width:100%; border-radius:10px; object-fit:contain; border:1px solid #dee2e6; display:none;">
-        <video id="commentVideoPreviewEl" controls style="max-height:120px; max-width:100%; border-radius:10px; display:none;"></video>
+        <img id="commentImagePreviewImg" style="max-height:120px; max-width:100%; border-radius:10px; object-fit:contain; border:1px solid #dee2e6;">
         <button onclick="clearCommentImage()" style="position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.55); color:white; border:none; border-radius:50%; width:22px; height:22px; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center;"><i class="fas fa-times"></i></button>
     </div>
-
-    <!-- ✅ 업로드 진행률 바 -->
-    <div id="commentVideoUploadProgress" style="display:none; margin-bottom:4px;">
-        <div style="font-size:12px; color:#c62828; margin-bottom:4px; font-weight:600;">🎬 YouTube 업로드 중...</div>
-        <div style="background:#f0f0f0; border-radius:8px; height:8px; overflow:hidden;">
-            <div id="commentVideoProgressBar" style="background:linear-gradient(90deg,#c62828,#e53935); height:100%; width:0%; border-radius:8px; transition:width 0.3s;"></div>
-        </div>
-        <div id="commentVideoProgressText" style="font-size:11px; color:#999; margin-top:3px; text-align:right;">0%</div>
-    </div>
-
     <div style="display:flex; gap:6px; align-items:flex-end;">
         <textarea id="commentInput" placeholder="댓글을 입력하세요" class="comment-input" rows="1"
             style="flex:1; resize:none; overflow:hidden; min-height:42px; max-height:140px;
             line-height:1.4; padding:10px 14px; border-radius:20px; width:0;"
             onkeydown="handleCommentKey(event)"
             oninput="autoResizeTextarea(this)"></textarea>
-
-        <!-- 이미지/동영상 파일 입력 (둘 다 허용) -->
-        <input type="file" id="commentImageInput" accept="image/*,video/*" style="display:none;" onchange="previewCommentImage(this)">
-
-        <!-- 이미지 버튼 -->
+        <input type="file" id="commentImageInput" accept="image/*" style="display:none;" onchange="previewCommentImage(this)">
         <button onclick="document.getElementById('commentImageInput').click()" class="comment-submit-btn"
-            style="flex-shrink:0; width:38px; height:38px; background:#f0f4f8; color:#495057; padding:0;"
-            title="이미지 / 동영상 업로드">
+            style="flex-shrink:0; width:38px; height:38px; background:#f0f4f8; color:#495057; padding:0;">
             <i class="fas fa-camera"></i>
         </button>
-
         <button onclick="submitCommentFromDetail()" class="comment-submit-btn"
             style="flex-shrink:0; width:38px; height:38px; padding:0;">
             <i class="fas fa-paper-plane"></i>
@@ -1009,8 +1180,6 @@ if ('serviceWorker' in navigator) {
         </div>
     </div>
 
-    <div class="settings-divider"></div>
-    
     <h3 class="section-title">🛡️ 관리</h3>
     <button onclick="openAdminAuthModal()" class="btn-info btn-block">
         <i class="fas fa-user-shield"></i> 관리자 로그인
@@ -1019,6 +1188,11 @@ if ('serviceWorker' in navigator) {
 
 <!-- 더보기 섹션 -->
 <section class="page-section" id="moreMenuSection">
+    <!-- JavaScript로 동적 생성됨 -->
+</section>
+
+<!-- 칭호 페이지 -->
+<section class="page-section" id="titlesSection">
     <!-- JavaScript로 동적 생성됨 -->
 </section>
 
@@ -1086,6 +1260,10 @@ if ('serviceWorker' in navigator) {
 <!-- 🌳 나무아래키 섹션 -->
 <section class="page-section" id="wikiSection">
     <!-- JavaScript로 동적 생성됨 -->
+</section>
+
+<!-- 🏆 도전과제 섹션 -->
+<section class="page-section" id="_achievementsTitleSection" style="display:none;">
 </section>
 
 </main>
@@ -1234,45 +1412,60 @@ if ('serviceWorker' in navigator) {
 <!-- Quill 에디터 JS -->
 <script src="https://cdn.quilljs.com/1.3.7/quill.js"></script>
 
-<!-- 스크립트 로드 — .js 직접 로드 (모든 유저 동일) -->
-<script>
-(async function () {
-    // ── JS 파일 목록 ──
-    var _files = [
-        'script.js',
-        'script2.js',
-        'ganadi-helper.js',
-        'category-tutorial.js',
-        'chat.js',
-        'vote.js',
-        'console-toggle.js',
-        'chat-upgrade.js',
-        'chat-nickname-dot.js',
-        'device-detect.js',
-        'ai.js',
-        'wiki.js',
-        'pwa.js',
-        'ai-toggle.js',
-        'category-manager.js'
-    ];
+<!-- 스크립트 로드 -->
+<script src="./js/script.js"></script>
+<script src="./js/script2.js"></script>
+<script src="./js/ganadi-helper.js"></script>
+<script src="./js/category-tutorial.js"></script>
+<script src="./js/chat.js"></script>
+<script src="./js/vote.js"></script>
+<script src="./js/Console-toggle.js"></script>
+<script src="./js/Chat-upgrade.js"></script>
+<script src="./js/Device-detect.js"></script>
+<script src="./js/Ai.js"></script>
 
-    // ── 모든 유저: .js 직접 로드 ──
-    for (var i = 0; i < _files.length; i++) {
-        try {
-            await new Promise(function (ok) {
-                var s = document.createElement('script');
-                s.src = './js/' + _files[i];
-                s.onload  = function () { ok(); };
-                s.onerror = function () { ok(); };
-                document.head.appendChild(s);
-            });
-        } catch (e) { /* silent */ }
+<!-- 🌳 나무아래키 위키 시스템 -->
+<script src="./js/wiki.js"></script>
+
+<!-- 📱 PWA 설치 관리 -->
+<script src="./js/Pwa.js"></script>
+
+<!-- 🤖 AI 기능 ON/OFF 토글 -->
+<script src="./js/ai-toggle.js"></script>
+
+<!-- 🃏 포커 게임 도전과제 연동 -->
+<script src="./js/poker-achievement.js"></script>
+
+<!-- 🔧 점검모드 버튼 표시 스크립트 -->
+<script>
+// 관리자 로그인 시 점검모드 버튼 표시
+// isAdmin()이 Firebase 데이터 로드 후에 정확한 값을 반환하도록 딜레이 적용
+auth.onAuthStateChanged(async function(user) {
+    const maintenanceBtn = document.getElementById('maintenanceModeBtn');
+    if (!maintenanceBtn) return;
+
+    if (!user) {
+        // 로그아웃 상태면 즉시 숨김
+        maintenanceBtn.style.display = 'none';
+        return;
     }
 
-    // ── 로드 완료 이벤트 재발생 ──
-    document.dispatchEvent(new Event('DOMContentLoaded', { bubbles: true }));
-    window.dispatchEvent(new Event('load', { bubbles: false }));
-})();
+    // Firebase에서 관리자 정보 로드 대기 (1초)
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    try {
+        // isAdmin이 async 함수인 경우와 sync인 경우 모두 대응
+        const adminResult = isAdmin();
+        const isAdminUser = (adminResult instanceof Promise)
+            ? await adminResult
+            : adminResult;
+
+        maintenanceBtn.style.display = isAdminUser ? 'block' : 'none';
+    } catch(e) {
+        console.warn('관리자 확인 오류:', e);
+        maintenanceBtn.style.display = 'none';
+    }
+});
 </script>
 
 <!-- ================================================================ -->
@@ -1395,6 +1588,20 @@ if ('serviceWorker' in navigator) {
         </button>
     </div>
 </div>
+
+<!-- 🏅 칭호 시스템 패치 — poker-achievement.js 내부에서 직접 렌더하므로 여기선 중복 방지만 처리 -->
+<script>
+window.addEventListener('load', function() {
+    // updateURL이 achievements로 설정될 때 URL 유지
+    const _origPushState = window.history.pushState.bind(window.history);
+    window.history.pushState = function(state, title, url) {
+        if (url && url.includes('achievements')) {
+            sessionStorage.setItem('_lastAchPage', url);
+        }
+        return _origPushState(state, title, url);
+    };
+});
+</script>
 
 </body>
 </html>
