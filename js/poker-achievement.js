@@ -7,7 +7,7 @@
     const POKER_GOAL      = 10000;
     const ACH_UNLOCKED_KEY = 'poker_master_unlocked';
     const GANADI_ACH_KEY   = 'ganadi_found';           // 🐶 가나디 도전과제
-    const SCRIPT_URL      = 'https://script.google.com/macros/s/AKfycbyj3UNS1tKXnLgflfqtUeAiod-Ah8yC34UwSC2yEMgZO9kd2nAgGWVrnmer2xnkpOYN/exec';
+    const SCRIPT_URL      = 'https://script.google.com/macros/s/AKfycbyJBmnDIYTLmvOd3Y2CsTXKXpbgiWE8kWHmwVejQETU9YAjdkS4Gl-5ZVNAsC7g91Q/exec';
 
     // ── 관리자 매핑 ──────────────────────────────────────────────────
     // 뉴스 관리자(1@gmail.com)로 로그인 시
