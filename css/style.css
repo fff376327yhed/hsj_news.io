@@ -2409,3 +2409,226 @@ input:checked + .slider:before {
     border-radius: 8px;
     margin-top: 10px;
 }
+
+/* ============================================================ */
+/* ✨ SPARKLE & DYNAMIC EFFECTS — 해정뉴스 생동감 업그레이드    */
+/* ============================================================ */
+
+/* ── 공통 키프레임 ── */
+@keyframes sparkleShimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position:  200% center; }
+}
+@keyframes sparklePulseGlow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,215,0,0); }
+    50%       { box-shadow: 0 0 12px 3px rgba(255,215,0,0.35); }
+}
+@keyframes sparkleFloat {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-3px); }
+}
+@keyframes sparkleFlamePulse {
+    0%, 100% { box-shadow: 0 0 6px 1px rgba(255,87,34,0.4), 0 2px 8px rgba(255,152,0,0.3); transform: scale(1); }
+    50%       { box-shadow: 0 0 14px 4px rgba(255,87,34,0.65), 0 2px 16px rgba(255,152,0,0.5); transform: scale(1.04); }
+}
+@keyframes sparkleNavActive {
+    0%   { transform: scale(1); }
+    30%  { transform: scale(1.18); }
+    60%  { transform: scale(0.95); }
+    100% { transform: scale(1); }
+}
+@keyframes sparkleSlideIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes sparkleRipple {
+    0%   { transform: scale(0.85); opacity: 0.7; }
+    100% { transform: scale(2.2);  opacity: 0; }
+}
+@keyframes sparkleLogoGlow {
+    0%, 100% { text-shadow: none; }
+    50%       { text-shadow: 0 0 18px rgba(255,255,255,0.55), 0 0 30px rgba(255,255,255,0.25); }
+}
+@keyframes sparkleCoinSpin {
+    0%   { filter: brightness(1); }
+    40%  { filter: brightness(1.4) drop-shadow(0 0 4px #ffd700); }
+    100% { filter: brightness(1); }
+}
+@keyframes sparkleGoldSweep {
+    0%   { background-position: -100% 0; }
+    100% { background-position:  200% 0; }
+}
+
+/* ── 1. 로고 — 주기적인 빛 스쳐가기 ── */
+.logo {
+    position: relative;
+    display: inline-block;
+    animation: sparkleLogoGlow 4s ease-in-out infinite;
+}
+
+/* ── 2. 🔥 핫 뱃지 — 불꽃 맥동 ── */
+/* script.js 인라인 스타일이라 클래스 추가 없이 부모로 처리 */
+.article-card [style*="background:linear-gradient(90deg,#ff5722"] {
+    animation: sparkleFlamePulse 1.8s ease-in-out infinite !important;
+    position: relative;
+    overflow: hidden;
+}
+.article-card [style*="background:linear-gradient(90deg,#ff5722"]::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -60%;
+    width: 40%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+    animation: sparkleShimmer 2.2s ease-in-out infinite;
+    pointer-events: none;
+}
+
+/* ── 3. 📌 고정 뱃지 — 골드 광택 스윕 ── */
+.pinned-badge {
+    position: relative;
+    overflow: hidden;
+    animation: sparklePulseGlow 2.5s ease-in-out infinite;
+}
+.pinned-badge::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -75%;
+    width: 50%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
+    animation: sparkleShimmer 2.8s ease-in-out infinite;
+    pointer-events: none;
+}
+
+/* ── 4. 카테고리 뱃지 — 호버 리프트 ── */
+.category-badge {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.category-badge:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+}
+
+/* ── 5. 기사 카드 — 진입 애니메이션 + 호버 광택 ── */
+.article-card {
+    animation: sparkleSlideIn 0.35s ease both;
+    position: relative;
+    overflow: hidden;
+}
+.article-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -80%;
+    width: 60%; height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255,255,255,0.08) 50%,
+        transparent 100%
+    );
+    transition: left 0.5s ease;
+    pointer-events: none;
+    z-index: 1;
+}
+.article-card:hover::before,
+.article-card:active::before {
+    left: 120%;
+}
+
+/* ── 6. 하단 네비 활성 버튼 — 바운스 + 글로우 ── */
+.nav-btn.active i {
+    animation: sparkleNavActive 0.4s ease;
+    display: inline-block;
+    filter: drop-shadow(0 0 4px rgba(0,55,107,0.4));
+}
+.nav-btn {
+    position: relative;
+}
+.nav-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    left: 50%; transform: translateX(-50%);
+    width: 4px; height: 4px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    box-shadow: 0 0 6px 2px rgba(0,55,107,0.35);
+}
+
+/* ── 7. 알림 뱃지 — 더 생동감 있는 펄스 ── */
+.notification-badge {
+    animation: sparkleNavActive 0.4s ease, sparkleFlamePulse 1.6s ease-in-out infinite 0.4s !important;
+}
+
+/* ── 8. 코인/머니 표시 — 금화 반짝 ── */
+.money-display i {
+    animation: sparkleCoinSpin 3s ease-in-out infinite;
+    display: inline-block;
+}
+.money-display:hover i {
+    animation: sparkleCoinSpin 0.6s ease-in-out;
+}
+
+/* ── 9. 댓글 카드 — 순차 페이드인 ── */
+.comment-card {
+    animation: sparkleSlideIn 0.3s ease both;
+}
+.comment-card:nth-child(1)  { animation-delay: 0.03s; }
+.comment-card:nth-child(2)  { animation-delay: 0.07s; }
+.comment-card:nth-child(3)  { animation-delay: 0.11s; }
+.comment-card:nth-child(4)  { animation-delay: 0.15s; }
+.comment-card:nth-child(5)  { animation-delay: 0.19s; }
+.comment-card:nth-child(n+6){ animation-delay: 0.22s; }
+
+/* ── 10. 버튼 전역 — 클릭 파문 효과 ── */
+.btn-primary, .btn-secondary {
+    position: relative;
+    overflow: hidden;
+}
+.btn-primary::after, .btn-secondary::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 10px; height: 10px;
+    background: rgba(255,255,255,0.4);
+    border-radius: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+    pointer-events: none;
+    transition: none;
+}
+.btn-primary:active::after, .btn-secondary:active::after {
+    animation: sparkleRipple 0.45s ease-out forwards;
+}
+
+/* ── 11. 페이지 섹션 전환 — 더 부드럽게 ── */
+.page-section.active {
+    animation: sparkleSlideIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── 12. 칭호 뱃지(hsj-title-badge) — 더 강한 반짝 ── */
+.hsj-title-badge {
+    position: relative;
+    overflow: hidden;
+}
+.hsj-title-badge::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -70%;
+    width: 40%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+    animation: sparkleShimmer 2s linear infinite;
+    pointer-events: none;
+}
+
+/* ── 모션 감소 설정 존중 ── */
+@media (prefers-reduced-motion: reduce) {
+    .logo,
+    .pinned-badge,
+    .money-display i,
+    .notification-badge,
+    .hsj-title-badge,
+    .article-card { animation: none !important; }
+    .article-card::before,
+    .pinned-badge::after,
+    .hsj-title-badge::before { display: none; }
+}
