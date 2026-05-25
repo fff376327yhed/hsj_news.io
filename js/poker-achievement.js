@@ -6,6 +6,7 @@
 
     const POKER_GOAL      = 10000;
     const ACH_UNLOCKED_KEY = 'poker_master_unlocked';
+    const GANADI_ACH_KEY   = 'ganadi_found';           // 🐶 가나디 도전과제
     const SCRIPT_URL      = 'https://script.google.com/macros/s/AKfycbyj3UNS1tKXnLgflfqtUeAiod-Ah8yC34UwSC2yEMgZO9kd2nAgGWVrnmer2xnkpOYN/exec';
 
     // ── 관리자 매핑 ──────────────────────────────────────────────────
@@ -173,8 +174,12 @@
                     <span style="margin-left:6px;">에서 10000 코인을 모아보세요!</span>
                 </div>`}
             </div>
-            <div id="_achTitleCategorySlot"></div>
+            <div id="_achGanadiSlot"></div>
+        <div id="_achTitleCategorySlot"></div>
         `;
+
+        // ── 🐶 가나디 도전과제 렌더링 ──────────────────────────────────
+        renderGanadiAchievementCard();
 
         // ── 🏅 칭호 카테고리 렌더링 ──────────────────────────────────
         // _renderTitleCategory가 로드됐으면 바로 호출, 아니면 폴링으로 대기
@@ -186,6 +191,92 @@
             }
         }
         _tryRenderTitles();
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // 4-2. 🐶 가나디 도전과제 카드 렌더링
+    // ─────────────────────────────────────────────────────────────────
+    function renderGanadiAchievementCard() {
+        const slot = document.getElementById('_achGanadiSlot');
+        if (!slot) return;
+
+        // sessionStorage 또는 localStorage 에서 가나디 이스터에그 활성화 여부 확인
+        const unlocked =
+            sessionStorage.getItem('ganadi_easter_egg') === 'true' ||
+            localStorage.getItem(GANADI_ACH_KEY) === '1';
+
+        if (unlocked) {
+            // 달성 시 localStorage 영구 저장
+            localStorage.setItem(GANADI_ACH_KEY, '1');
+        }
+
+        slot.innerHTML = `
+            <div style="
+                background: ${unlocked ? 'linear-gradient(135deg,#fff0f5,#ffe4ef)' : 'white'};
+                border: 2px solid ${unlocked ? '#FFB6C1' : '#e0e0e0'};
+                border-radius: 16px;
+                padding: 20px;
+                margin-bottom: 16px;
+                box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+                position: relative;
+                overflow: hidden;
+            ">
+                <!-- 발자국 장식 -->
+                <span style="position:absolute;top:8px;left:12px;font-size:13px;opacity:0.13;transform:rotate(-20deg);pointer-events:none;">🐾</span>
+                <span style="position:absolute;bottom:10px;right:16px;font-size:11px;opacity:0.11;transform:rotate(30deg);pointer-events:none;">🐾</span>
+
+                <!-- 헤더 -->
+                <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+                    <div style="
+                        font-size:40px;width:56px;height:56px;
+                        display:flex;align-items:center;justify-content:center;
+                        background:${unlocked ? 'linear-gradient(135deg,#FFB6C1,#ff85a1)' : '#f5f5f5'};
+                        border-radius:14px;
+                        filter:${unlocked ? 'none' : 'grayscale(0.4)'};
+                        box-shadow:${unlocked ? '0 3px 12px rgba(255,182,193,0.5)' : 'none'};
+                        flex-shrink:0;
+                    ">${unlocked ? '🐶' : '🐾'}</div>
+                    <div style="flex:1;">
+                        <div style="font-size:17px;font-weight:800;color:${unlocked ? '#7a2050' : '#212121'};display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            가나디 발견
+                            ${unlocked
+                                ? '<span style="font-size:12px;background:#e91e8c;color:white;border-radius:20px;padding:2px 8px;font-weight:800;">달성!</span>'
+                                : '<span style="font-size:12px;color:#9e9e9e;">🔒 미달성</span>'}
+                        </div>
+                        <div style="font-size:13px;color:#757575;margin-top:3px;">
+                            가나디를 찾으세요!
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 진행도 -->
+                <div style="font-size:13px;color:#555;margin-bottom:8px;display:flex;justify-content:space-between;">
+                    <span>진행도</span>
+                    <span style="font-weight:700;color:${unlocked ? '#7a2050' : '#424242'};">
+                        ${unlocked ? '발견 완료 🐾' : '?'}
+                    </span>
+                </div>
+                <div style="background:#e0e0e0;border-radius:999px;height:10px;overflow:hidden;margin-bottom:6px;">
+                    <div style="
+                        width:${unlocked ? '100' : '0'}%;height:100%;
+                        background:${unlocked ? 'linear-gradient(90deg,#e91e8c,#FFB6C1)' : 'linear-gradient(90deg,#bdbdbd,#e0e0e0)'};
+                        border-radius:999px;
+                        transition:width .6s cubic-bezier(.4,0,.2,1);
+                    "></div>
+                </div>
+                <div style="font-size:12px;color:#9e9e9e;text-align:right;">${unlocked ? '100%' : '0%'} 달성</div>
+
+                <!-- 하단 -->
+                ${unlocked ? `
+                <div style="margin-top:14px;background:linear-gradient(135deg,#e91e8c,#f06292);color:white;
+                    border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;text-align:center;">
+                    🎉 축하합니다! 가나디 발견 달성 완료!
+                </div>` : `
+                <div style="margin-top:14px;background:#f5f5f5;border-radius:10px;padding:10px 14px;font-size:12px;color:#757575;text-align:center;">
+                    🐾 가나디를 테마에서 찾아보세요
+                </div>`}
+            </div>
+        `;
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -214,7 +305,7 @@
             list.innerHTML = `
                 <div style="text-align:center; padding:60px 0; color:#9e9e9e;">
                     <i class="fas fa-spinner fa-spin" style="font-size:28px; margin-bottom:12px; display:block;"></i>
-                    코인 정보 불러오는 중...
+                    도전과제 로딩중..
                 </div>
             `;
         }
