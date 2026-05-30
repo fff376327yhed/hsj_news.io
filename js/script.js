@@ -712,6 +712,32 @@ const USER_TITLES = {
         description: '숨겨진 가나디를 찾아낸 진정한 탐험가에게 주어지는 칭호',
         rarity: '희귀',
         rarityColor: '#e91e8c'
+    },
+    // ── 🏹 화살표 장인 ──────────────────────────────────────────────
+    arrow_master: {
+        id: 'arrow_master',
+        name: '화살표를 정복한 자',
+        emoji: '🏹',
+        gradient: 'linear-gradient(135deg,#1a237e,#283593,#3949ab,#5c6bc0,#3949ab,#283593,#1a237e)',
+        glowColor: 'rgba(92,107,192,0.65)',
+        textColor: '#0d1540',
+        requirement: '화살표 게임에서 50000점 달성',
+        description: '화살표 게임에서 50000점을 달성한 진정한 화살표의 정복자',
+        rarity: '희귀',
+        rarityColor: '#3949ab'
+    },
+    // ── 🎖️ 게넥도 멤버 ──────────────────────────────────────────────
+    gaenekdo_member: {
+        id: 'gaenekdo_member',
+        name: '게넥도 멤버',
+        emoji: '🎤',
+        gradient: 'linear-gradient(135deg,#1a0533,#6a0dad,#c084fc,#f0abfc,#c084fc,#6a0dad,#1a0533)',
+        glowColor: 'rgba(192,132,252,0.7)',
+        textColor: '#3b0764',
+        requirement: '게넥도가 되고싶은 자, 여기로 오라',
+        description: '게넥도 멤버가 되신걸 환영합니다!',
+        rarity: '전설',
+        rarityColor: '#a855f7'
     }
 };
 
@@ -724,6 +750,26 @@ window._titleCache = {};
 // 칭호 장식 옵션 캐시 (uid → { badge, cardDecor, detailDecor })
 window._titleDisplayCache = {};
 
+// 🏹 화살표 장인 칭호 전용 CSS 동적 로드/제거
+function _applyArrowMasterStyle(enable) {
+    const ARROW_CSS_ID = 'arrow-master-title-style';
+    if (enable) {
+        if (document.getElementById(ARROW_CSS_ID)) return;
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'css/4style.css';
+        link.id = ARROW_CSS_ID;
+        document.head.appendChild(link);
+        document.body.classList.add('arrow-master-title');
+        console.log('🏹 화살표 장인 칭호 CSS 로드');
+        link.onload = () => console.log('✅ 4style.css 로드 완료');
+    } else {
+        const existing = document.getElementById(ARROW_CSS_ID);
+        if (existing) existing.remove();
+        document.body.classList.remove('arrow-master-title');
+    }
+}
+
 // 내 칭호 로드
 async function loadMyTitle(uid) {
     try {
@@ -733,6 +779,8 @@ async function loadMyTitle(uid) {
         ]);
         window._myActiveTitle = titleSnap.val() || null;
         window._myTitleDisplayOptions = optsSnap.val() || {};
+        // 🏹 화살표 장인이 활성 칭호면 즉시 CSS 적용
+        _applyArrowMasterStyle(window._myActiveTitle === 'arrow_master');
     } catch(e) { console.warn('칭호 로드 실패:', e); }
 }
 
@@ -742,6 +790,8 @@ window.applyTitle = async function(titleId) {
     const uid = getUserId();
     const prev = window._myActiveTitle;
     window._myActiveTitle = titleId || null;
+    // 🏹 화살표 장인 CSS 즉시 토글
+    _applyArrowMasterStyle(titleId === 'arrow_master');
     try {
         if (titleId) {
             await db.ref(`users/${uid}/activeTitle`).set(titleId);
@@ -844,6 +894,202 @@ window.onGanadiMasterAchieved = async function () {
         showGanadiTitleUnlockModal(titleId);
     } catch (e) { console.warn('[가나디] 칭호 해금 실패:', e); }
 };
+
+// ── 🎤 게넥도 멤버 달성 시 칭호 해금 처리 ──────────────────────────
+window.onGaenekdoMemberAchieved = async function () {
+    if (!isLoggedIn()) return;
+    const uid = getUserId();
+    const titleId = 'gaenekdo_member';
+    try {
+        const snap = await db.ref(`users/${uid}/unlockedTitles/${titleId}`).once('value');
+        if (snap.val()) return; // 이미 해금됨
+        await db.ref(`users/${uid}/unlockedTitles/${titleId}`).set(true);
+        showGaenekdoMemberUnlockModal(titleId);
+    } catch (e) { console.warn('[게넥도] 칭호 해금 실패:', e); }
+};
+
+// ── 🏹 화살표 장인 달성 시 칭호 해금 처리 ──────────────────────────
+window.onArrowMasterAchieved = async function () {
+    if (!isLoggedIn()) return;
+    const uid = getUserId();
+    const titleId = 'arrow_master';
+    try {
+        const snap = await db.ref(`users/${uid}/unlockedTitles/${titleId}`).once('value');
+        if (snap.val()) return; // 이미 해금됨
+        await db.ref(`users/${uid}/unlockedTitles/${titleId}`).set(true);
+        showArrowMasterUnlockModal(titleId);
+    } catch (e) { console.warn('[화살표 장인] 칭호 해금 실패:', e); }
+};
+
+// 🏹 화살표 장인 칭호 해금 축하 모달
+function showArrowMasterUnlockModal(titleId) {
+    const t = USER_TITLES[titleId];
+    if (!t) return;
+    const existing = document.getElementById('_arrowMasterTitleUnlockModal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = '_arrowMasterTitleUnlockModal';
+    modal.style.cssText = `
+        position:fixed;top:0;left:0;width:100%;height:100%;
+        background:rgba(10,15,50,0.78);z-index:999999;
+        display:flex;align-items:center;justify-content:center;
+        padding:20px;box-sizing:border-box;
+        animation:_arwFadeIn 0.3s ease;
+    `;
+    modal.innerHTML = `
+        <style>
+        @keyframes _arwFadeIn  { from{opacity:0;} to{opacity:1;} }
+        @keyframes _arwPopIn   { from{opacity:0;transform:scale(0.8) translateY(40px);} to{opacity:1;transform:scale(1) translateY(0);} }
+        @keyframes _arwShimmer { 0%,100%{background-position:0% 50%;} 50%{background-position:100% 50%;} }
+        @keyframes _arwFloat   { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-8px);} }
+        </style>
+        <div style="
+            background:linear-gradient(145deg,#0a0f32,#1a237e,#0a0f32);
+            border:2px solid rgba(92,107,192,0.6);
+            border-radius:24px;padding:30px 24px;
+            max-width:340px;width:100%;text-align:center;
+            box-shadow:0 8px 40px rgba(57,73,171,0.5),0 0 0 1px rgba(92,107,192,0.2);
+            animation:_arwPopIn 0.4s cubic-bezier(.34,1.56,.64,1) both;
+            position:relative;overflow:hidden;
+        ">
+            <div style="font-size:48px;margin-bottom:8px;animation:_arwFloat 3s ease-in-out infinite;">🏹</div>
+            <div style="font-size:12px;font-weight:800;letter-spacing:2px;color:#7986cb;margin-bottom:8px;text-transform:uppercase;">✨ 새 칭호 해금!</div>
+            <div style="
+                font-size:22px;font-weight:900;
+                background:${t.gradient};
+                background-size:200% 200%;
+                animation:_arwShimmer 3s ease infinite;
+                -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+                background-clip:text;
+                margin-bottom:6px;
+            ">${t.emoji} ${t.name}</div>
+            <div style="font-size:11px;padding:3px 12px;background:rgba(57,73,171,0.25);color:#9fa8da;border-radius:20px;display:inline-block;margin-bottom:14px;font-weight:700;">${t.rarity}</div>
+            <div style="font-size:14px;color:#c5cae9;line-height:1.7;margin-bottom:18px;">
+                🏹 화살표 게임에서 50000점을 달성하여<br>
+                <strong style="color:#7986cb;">화살표를 정복한 자</strong> 칭호를 얻었습니다!<br>
+                <small style="color:#5c6bc0;font-size:11px;">더보기 → 칭호에서 장착할 수 있어요</small>
+            </div>
+            <div style="display:flex;gap:10px;">
+                <button onclick="window.applyTitle('arrow_master');document.getElementById('_arrowMasterTitleUnlockModal').remove();"
+                    style="flex:1;padding:12px;background:linear-gradient(135deg,#1a237e,#3949ab);color:white;border:none;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 3px 12px rgba(57,73,171,0.4);">
+                    🏹 지금 장착!
+                </button>
+                <button onclick="document.getElementById('_arrowMasterTitleUnlockModal').remove();"
+                    style="flex:1;padding:12px;background:rgba(255,255,255,0.08);color:#9fa8da;border:1px solid rgba(92,107,192,0.3);border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;">
+                    나중에
+                </button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => {
+        if (e.target === modal) modal.remove();
+    });
+}
+
+// 🎤 게넥도 멤버 칭호 해금 축하 모달 (아이돌 테마)
+function showGaenekdoMemberUnlockModal(titleId) {
+    const t = USER_TITLES[titleId];
+    if (!t) return;
+    const existing = document.getElementById('_gaenekdoTitleUnlockModal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = '_gaenekdoTitleUnlockModal';
+    modal.style.cssText = `
+        position:fixed;top:0;left:0;width:100%;height:100%;
+        background:rgba(10,0,25,0.75);z-index:999999;
+        display:flex;align-items:center;justify-content:center;
+        padding:20px;box-sizing:border-box;
+        animation:_gndFadeIn 0.3s ease;
+    `;
+    modal.innerHTML = `
+        <style>
+        @keyframes _gndFadeIn  { from{opacity:0;} to{opacity:1;} }
+        @keyframes _gndPopIn   { from{opacity:0;transform:scale(0.8) translateY(40px);} to{opacity:1;transform:scale(1) translateY(0);} }
+        @keyframes _gndShimmer { 0%,100%{background-position:0% 50%;} 50%{background-position:100% 50%;} }
+        @keyframes _gndStar    { 0%{opacity:0;transform:scale(0) rotate(0deg);}40%{opacity:1;transform:scale(1.3) rotate(20deg);}100%{opacity:0;transform:scale(0) rotate(45deg);} }
+        @keyframes _gndFloat   { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-8px);} }
+        ._gnd-star { position:absolute; animation:_gndStar 2.2s ease-in-out infinite; }
+        </style>
+        <div style="
+            background:linear-gradient(145deg,#0d0020,#1a0033,#0d0020);
+            border:2px solid #7c3aed;
+            border-radius:28px;
+            padding:40px 30px;
+            max-width:390px;width:100%;
+            text-align:center;
+            box-shadow:
+                0 0 0 1px rgba(168,85,247,0.3),
+                0 0 60px rgba(168,85,247,0.4),
+                0 0 120px rgba(124,58,237,0.25),
+                0 20px 60px rgba(0,0,0,0.5);
+            animation:_gndPopIn 0.45s cubic-bezier(0.34,1.56,0.64,1);
+            position:relative;overflow:hidden;
+        ">
+            <span class="_gnd-star" style="top:7%;left:8%;font-size:16px;animation-delay:0s;">&#10024;</span>
+            <span class="_gnd-star" style="top:10%;right:9%;font-size:12px;animation-delay:0.7s;">&#11088;</span>
+            <span class="_gnd-star" style="bottom:20%;left:11%;font-size:14px;animation-delay:1.4s;">&#10022;</span>
+            <span class="_gnd-star" style="bottom:16%;right:7%;font-size:10px;animation-delay:0.35s;">&#10024;</span>
+            <div style="
+                position:absolute;inset:0;border-radius:28px;overflow:hidden;pointer-events:none;
+                background:
+                    radial-gradient(ellipse 60% 30% at 20% 0%, rgba(168,85,247,0.18) 0%, transparent 70%),
+                    radial-gradient(ellipse 60% 30% at 80% 0%, rgba(236,72,153,0.14) 0%, transparent 70%),
+                    radial-gradient(ellipse 40% 20% at 50% 100%, rgba(124,58,237,0.12) 0%, transparent 70%);
+            "></div>
+            <div style="
+                font-size:64px;margin-bottom:14px;
+                animation:_gndFloat 3s ease-in-out infinite;
+                filter:drop-shadow(0 0 18px rgba(192,132,252,0.9));
+            ">&#127908;</div>
+            <div style="
+                font-size:11px;font-weight:900;letter-spacing:3px;
+                color:#a78bfa;margin-bottom:10px;text-transform:uppercase;
+            ">&#10024; 새 칭호 해금!</div>
+            <div style="
+                font-size:26px;font-weight:900;
+                background:linear-gradient(135deg,#e9d5ff,#c084fc,#a855f7,#c084fc,#e9d5ff);
+                background-size:200% 200%;
+                animation:_gndShimmer 2.5s ease infinite;
+                -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+                background-clip:text;
+                margin-bottom:18px;line-height:1.3;
+            ">&#127908; 게넥도 멤버</div>
+            <div style="
+                background:rgba(124,58,237,0.15);
+                border:1px solid rgba(168,85,247,0.35);
+                border-radius:14px;
+                padding:14px 18px;
+                margin-bottom:24px;
+                font-size:13px;color:#ddd6fe;line-height:1.8;
+            ">&#127881; 게넥도 멤버가 되신걸 환영합니다!<br>
+            <small style="color:#a78bfa;font-size:11px;margin-top:4px;display:block;">더보기 &rarr; 칭호에서 장착할 수 있어요</small></div>
+            <div style="display:flex;gap:10px;justify-content:center;">
+                <button onclick="window.applyTitle('gaenekdo_member');document.getElementById('_gaenekdoTitleUnlockModal').remove();" style="
+                    padding:13px 26px;border:none;border-radius:14px;cursor:pointer;
+                    background:linear-gradient(135deg,#7c3aed,#a855f7,#c084fc);
+                    color:white;font-weight:900;font-size:14px;letter-spacing:0.5px;
+                    box-shadow:0 4px 18px rgba(124,58,237,0.5);
+                    transition:transform 0.2s,box-shadow 0.2s;
+                " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    &#127908; 바로 적용
+                </button>
+                <button onclick="document.getElementById('_gaenekdoTitleUnlockModal').remove();" style="
+                    padding:13px 26px;border:1.5px solid rgba(168,85,247,0.4);
+                    border-radius:14px;cursor:pointer;
+                    background:rgba(255,255,255,0.06);
+                    color:#c4b5fd;font-weight:700;font-size:14px;
+                    transition:transform 0.2s;
+                " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    나중에
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+}
 
 // 🐶 가나디 칭호 해금 축하 모달 (강아지 테마)
 function showGanadiTitleUnlockModal(titleId) {
@@ -1054,59 +1300,79 @@ window.injectTitleBadges = async function(scopeEl) {
     // 뱃지 삽입 (처리 완료 표시 → 중복 삽입 방지)
     els.forEach(el => {
         el.setAttribute('data-title-done', '1');
-        const uid = el.getAttribute('data-title-uid');
+        const uid     = el.getAttribute('data-title-uid');
         const titleId = window._titleCache[uid];
         if (!titleId || typeof getTitleBadgeHTML !== 'function') return;
 
         // 장식 옵션 읽기 (기본값: 모두 true)
-        const _opts = window._titleDisplayCache[uid] || {};
-        const _showBadge       = _opts.badge       !== false;
-        const _showCardDecor   = _opts.cardDecor    !== false;
-        const _showDetailDecor = _opts.detailDecor  !== false;
+        const _opts          = window._titleDisplayCache[uid] || {};
+        const _showBadge     = _opts.badge      !== false;
+        const _showCardDecor = _opts.cardDecor  !== false;
+        const _showDetailDec = _opts.detailDecor !== false;
 
-        // ♛ 테이블의 황제 / 🐶 가나디 찾기 달인 — 고정 아닌 기사 카드 내 이름이면 카드 테두리 장식 (뱃지 생략)
-        const card = el.closest('.article-card');
+        // ══════════════════════════════════════════════════════════
+        // 🏷️  DECOR_TITLES — 장식이 있는 칭호 목록
+        //
+        // 새 칭호 추가 시 여기에 한 줄만 추가하면 됩니다:
+        //   'titleId': { cssPrefix: 'css클래스접두어', badgeAlso: true/false }
+        //
+        // cssPrefix  → 카드:    '{prefix}-card-decor'
+        //             상세:    '{prefix}-article-wrapper' 등
+        //             댓글:    '{prefix}-comments-section'
+        //             (이 클래스들은 각 CSS 파일에 정의되어 있어야 합니다)
+        //
+        // badgeAlso  → true:  카드 장식 + 뱃지 둘 다 표시
+        //              false: 카드 장식만 (뱃지 생략) — 황제/가나디 방식
+        //
+        // ⚠️  새 칭호 CSS가 담긴 파일은 반드시 index.html에도 <link> 추가!
+        // ══════════════════════════════════════════════════════════
+        const DECOR_TITLES = {
+            'table_emperor'  : { cssPrefix: 'emperor',  badgeAlso: false },
+            'ganadi_master'  : { cssPrefix: 'ganadi',   badgeAlso: false },
+            'gaenekdo_member': { cssPrefix: 'gaenekdo', badgeAlso: true  },
+            'arrow_master'   : { cssPrefix: 'arrow',    badgeAlso: true  },
+        };
+        const _decorInfo  = DECOR_TITLES[titleId];
+        const _applyDecor = !!_decorInfo;
+
+        const card     = el.closest('.article-card');
         const isPinned = card && card.getAttribute('data-card-pinned') === '1';
-        const _isDecorTitle = titleId === 'table_emperor' || titleId === 'ganadi_master';
-
-        // 가나디 칭호: 어떤 테마에서든 항상 장식 적용
-        // (ganadi-card-decor 전용 클래스 + JS 직접 스타일 주입 → 테마 CSS 충돌 없음)
-        const _applyDecor = titleId === 'table_emperor' || titleId === 'ganadi_master';
 
         if (card && !isPinned && _applyDecor) {
-            if (_showCardDecor) {
-                _applyEmperorCardDecor(card, titleId);
-            } else if (_showBadge) {
-                // 카드 장식 끄고 뱃지만 선택한 경우
+            // 카드 장식
+            if (_showCardDecor) _applyEmperorCardDecor(card, titleId);
+            // 뱃지: badgeAlso:true 이거나 카드 장식 꺼진 경우
+            if (_showBadge && (_decorInfo.badgeAlso || !_showCardDecor)) {
                 el.insertAdjacentHTML('beforeend', getTitleBadgeHTML(titleId));
             }
         } else {
-            // 일반: 이름 옆 뱃지 삽입
+            // 카드 밖 (목록 최상단/댓글 등): 뱃지 삽입
             if (_showBadge) el.insertAdjacentHTML('beforeend', getTitleBadgeHTML(titleId));
 
-            // 기사 상세 페이지에서 칭호 테마 장식
             if (_applyDecor) {
-                // ♛ 댓글/답글 작성자인지 여부 판별
-                const isCommentOrReplyAuthor = el.classList.contains('comment-author') || el.classList.contains('reply-author');
-                const detailRoot = el.closest('#articleDetail');
+                const isCommentOrReply = el.classList.contains('comment-author') || el.classList.contains('reply-author');
+                const detailRoot       = el.closest('#articleDetail');
 
-                if (detailRoot && !isCommentOrReplyAuthor) {
-                    if (_showDetailDecor) _applyEmperorDetailDecor(detailRoot, titleId);
+                if (detailRoot && !isCommentOrReply) {
+                    // 기사 상세 전체 장식
+                    if (_showDetailDec) _applyEmperorDetailDecor(detailRoot, titleId);
                 } else {
-                    // 댓글 섹션 장식 (CSS 클래스 부착 — 인라인 색상은 황제 전용)
+                    // 댓글 섹션 장식: cssPrefix로 클래스 자동 생성
                     const commentSection = el.closest('.comments-section');
-                    const _csClass2 = titleId === 'ganadi_master' ? 'ganadi-comments-section' : 'emperor-comments-section';
-                    if (commentSection && !commentSection.classList.contains(_csClass2)) {
-                        if (titleId === 'ganadi_master') _injectGanadiStyles();
-                        commentSection.classList.add(_csClass2);
-                        if (titleId !== 'ganadi_master') {
-                            // ♛ 황제 전용 금색 인라인 색상
-                            const commentH3 = commentSection.querySelector('h3');
-                            if (commentH3) commentH3.style.color = '#FFD700';
-                            const sortSel = commentSection.querySelector('#commentSortSelect');
-                            if (sortSel) { sortSel.style.background = 'rgba(255,200,0,0.08)'; sortSel.style.color = '#c8a855'; sortSel.style.borderColor = 'rgba(139,105,20,0.5)'; }
-                            const commentInput = commentSection.querySelector('.comment-input');
-                            if (commentInput) { commentInput.style.background = 'rgba(255,200,0,0.06)'; commentInput.style.color = '#e8d5a0'; commentInput.style.borderColor = 'rgba(139,105,20,0.5)'; }
+                    if (commentSection) {
+                        const csClass = `${_decorInfo.cssPrefix}-comments-section`;
+                        if (!commentSection.classList.contains(csClass)) {
+                            if (titleId === 'ganadi_master') _injectGanadiStyles();
+                            commentSection.classList.add(csClass);
+                            // 황제 전용 인라인 색상 (다른 칭호는 CSS 클래스만으로 처리)
+                            if (titleId === 'table_emperor') {
+                                const h3 = commentSection.querySelector('h3');
+                                if (h3) h3.style.color = '#FFD700';
+                                const sel = commentSection.querySelector('#commentSortSelect');
+                                if (sel) { sel.style.background = 'rgba(255,200,0,0.08)'; sel.style.color = '#c8a855'; sel.style.borderColor = 'rgba(139,105,20,0.5)'; }
+                                const inp = commentSection.querySelector('.comment-input');
+                                if (inp) { inp.style.background = 'rgba(255,200,0,0.06)'; inp.style.color = '#e8d5a0'; inp.style.borderColor = 'rgba(139,105,20,0.5)'; }
+                            }
                         }
                     }
                 }
@@ -1402,6 +1668,19 @@ function _applyEmperorCardDecor(card, titleId) {
     card.setAttribute('data-emperor-done', '1');
     card.style.cursor = 'pointer';
 
+    // 🎤 게넥도 칭호
+    if (titleId === 'gaenekdo_member') {
+        card.classList.add('gaenekdo-card-decor');
+        card.style.borderLeft = 'none';
+        return;
+    }
+
+    // 🏹 화살표 장인 칭호
+    if (titleId === 'arrow_master') {
+        card.classList.add('arrow-card-decor');
+        return;
+    }
+
     // 🐶 가나디 칭호: 테마 충돌 없는 전용 클래스 + JS 직접 스타일 주입
     if (titleId === 'ganadi_master') {
         _injectGanadiStyles();
@@ -1442,6 +1721,28 @@ function _applyEmperorCardDecor(card, titleId) {
 function _applyEmperorDetailDecor(detailRoot, titleId) {
     if (detailRoot.getAttribute('data-emperor-detail-done')) return;
     detailRoot.setAttribute('data-emperor-detail-done', '1');
+
+    // 🎤 게넥도 칭호
+    if (titleId === 'gaenekdo_member') {
+        const w = detailRoot.querySelector('div');
+        if (w) w.classList.add('gaenekdo-article-wrapper');
+        const meta = detailRoot.querySelector('.article-meta');
+        if (meta) meta.classList.add('gaenekdo-detail-meta');
+        const content = detailRoot.querySelector('[data-detail-article-content]');
+        if (content) content.classList.add('gaenekdo-detail-content');
+        const comments = document.querySelector('.comments-section');
+        if (comments) comments.classList.add('gaenekdo-comments-section');
+        return;
+    }
+
+    // 🏹 화살표 장인 칭호
+    if (titleId === 'arrow_master') {
+        const w = detailRoot.querySelector('div');
+        if (w) w.classList.add('arrow-article-wrapper');
+        const comments = document.querySelector('.comments-section');
+        if (comments) comments.classList.add('arrow-comments-section');
+        return;
+    }
 
     const isGanadi = titleId === 'ganadi_master';
 
@@ -4958,7 +5259,7 @@ async function showArticleDetail(id) {
     root.removeAttribute('data-emperor-detail-done');
     // 댓글 섹션 황제 클래스도 초기화 (다른 기사로 이동 시 오염 방지)
     const _cs = document.querySelector('.comments-section');
-    if (_cs) { _cs.classList.remove('emperor-comments-section'); _cs.classList.remove('ganadi-comments-section'); }
+    if (_cs) { _cs.classList.remove('emperor-comments-section'); _cs.classList.remove('ganadi-comments-section'); _cs.classList.remove('gaenekdo-comments-section'); }
     root.innerHTML = `
         <div style="padding:60px 20px; text-align:center;">
             <div style="width:40px; height:40px; border:4px solid #f3f3f3; border-top:4px solid #c62828; border-radius:50%; animation:spin 1s linear infinite; margin:0 auto 20px;"></div>
@@ -5083,7 +5384,9 @@ async function showArticleDetail(id) {
                 </div>
             </div>` : '';
 
-        root.innerHTML = `<div style="background:#fff;padding:20px;border-radius:8px;">
+        const _isMyArticle = !A.anonymous && A.authorUid && A.authorUid === getUserId();
+        const _detailGCls = (_isMyArticle && window._myActiveTitle === 'gaenekdo_member') ? ' gaenekdo-article-card' : '';
+        root.innerHTML = `<div class="${_detailGCls}" style="background:#fff;padding:20px;border-radius:8px;">
             <span class="category-badge">${A.category}</span>
             <h1 style="font-size:22px;font-weight:700;margin:15px 0;line-height:1.4;">
                 ${escapeHTML(A.title)}
@@ -6436,18 +6739,22 @@ ${comment.imageBase64 ? `
 
         root.innerHTML = commentsHTML;
 
-        // ♛ 황제 댓글 섹션 재적용 (타이밍 안전망: 기사 작성자가 황제인 경우)
-        // _applyEmperorDetailDecor가 댓글 렌더보다 먼저 실행됐더라도 class 보장
+        // 칭호 댓글 섹션 클래스 재적용 안전망
+        // (injectTitleBadges가 댓글 렌더보다 먼저 실행됐을 때, 댓글에 칭호 장식 CSS 클래스가 없을 시 채워줌)
         if (document.getElementById('articleDetail')?.getAttribute('data-emperor-detail-done')) {
             // 황제/가나디 칭호 모두 커버: 활성 칭호 ID로 판별
             (function() {
                 const _uid6 = typeof auth !== 'undefined' && auth.currentUser ? auth.currentUser.uid : null;
-                const _titleId6 = _uid6 && window._titleDisplayCache && window._titleDisplayCache[_uid6] ? window._titleDisplayCache[_uid6].titleId || null : null;
+                const _titleId6 = (_uid6 && window._titleDisplayCache && window._titleDisplayCache[_uid6] && window._titleDisplayCache[_uid6].titleId)
+                    ? window._titleDisplayCache[_uid6].titleId
+                    : (_uid6 && window._titleCache && window._titleCache[_uid6]) ? window._titleCache[_uid6] : null;
                 const _csSection6 = document.querySelector('.comments-section');
                 if (_csSection6) {
                     if (_titleId6 === 'ganadi_master') {
                         _injectGanadiStyles();
                         _csSection6.classList.add('ganadi-comments-section');
+                    } else if (_titleId6 === 'gaenekdo_member') {
+                        _csSection6.classList.add('gaenekdo-comments-section');
                     } else {
                         _csSection6.classList.add('emperor-comments-section');
                     }
