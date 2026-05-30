@@ -1,0 +1,603 @@
+/* ============================================================
+   🏹 4style.css — ARROW MASTER EDITION
+   화살표를 정복한 자 — 인디고 × 창공 × 바람의 궤적
+   cssPrefix: 'arrow'
+   의존: style.css 이후 로드
+   ============================================================ */
+
+/* ──────────────────────────────────────────────────────────
+   CSS 변수
+────────────────────────────────────────────────────────── */
+:root {
+    /* 화살 팔레트 */
+    --arrow-indigo-hot:   #818CF8;
+    --arrow-indigo-mid:   #4F46E5;
+    --arrow-indigo-deep:  #3730A3;
+    --arrow-indigo-dark:  #1E1B4B;
+    --arrow-sky-hot:      #7DD3FC;
+    --arrow-sky-mid:      #38BDF8;
+    --arrow-sky-dim:      #0284C7;
+    --arrow-gold-tip:     #FCD34D;
+    --arrow-gold-dim:     #B45309;
+    /* 배경 */
+    --arrow-bg-deep:      #0A0C1A;
+    --arrow-bg-1:         #0D0F22;
+    --arrow-bg-2:         #101430;
+    --arrow-bg-3:         #151840;
+    /* 텍스트 */
+    --arrow-text:         #C7D2FE;
+    --arrow-text-mid:     #818CF8;
+    --arrow-text-dim:     #4F46E5;
+    /* 글로우 */
+    --arrow-glow-indigo:  rgba(99, 102, 241, 0.65);
+    --arrow-glow-sky:     rgba(56, 189, 248, 0.5);
+    --arrow-glow-gold:    rgba(252, 211, 77, 0.45);
+}
+
+/* ──────────────────────────────────────────────────────────
+   🎬 화살 키프레임
+────────────────────────────────────────────────────────── */
+
+/* 궤적 빛 흐름 */
+@keyframes arrowFlow {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* 화살 글로우 펄스 */
+@keyframes arrowPulse {
+    0%, 100% {
+        box-shadow:
+            0 0 0 1px rgba(99,102,241,0.5),
+            0 0 8px  rgba(79,70,229,0.4),
+            0 0 20px rgba(99,102,241,0.2),
+            0 2px 8px rgba(0,0,0,0.5);
+    }
+    50% {
+        box-shadow:
+            0 0 0 1.5px rgba(129,140,248,0.85),
+            0 0 18px rgba(99,102,241,0.7),
+            0 0 36px rgba(79,70,229,0.35),
+            0 4px 14px rgba(0,0,0,0.6);
+    }
+}
+
+/* 화살 발사 — 수평 슉 */
+@keyframes arrowShoot {
+    0%, 80%, 100% { transform: translateX(0) scaleX(1); filter: none; }
+    85%  { transform: translateX(-3px) scaleX(0.97); filter: brightness(1.3); }
+    90%  { transform: translateX(4px)  scaleX(1.04); filter: brightness(1.6) hue-rotate(20deg); }
+    95%  { transform: translateX(-1px) scaleX(1);    filter: brightness(1.1); }
+}
+
+/* 궤적 잔상 sweep */
+@keyframes arrowSweep {
+    0%   { left: -80%; opacity: 0; }
+    20%  { opacity: 1; }
+    80%  { opacity: 0.6; }
+    100% { left: 110%; opacity: 0; }
+}
+
+/* 바람 흐름 (배경 사선) */
+@keyframes arrowWind {
+    0%   { background-position: 0 0; }
+    100% { background-position: 60px 30px; }
+}
+
+/* 팝인 */
+@keyframes arrowPopIn {
+    0%   { opacity: 0; transform: scale(0.75) translateX(-30px); }
+    65%  { transform: scale(1.03) translateX(3px); }
+    100% { opacity: 1; transform: scale(1) translateX(0); }
+}
+
+/* 바 흐름 */
+@keyframes arrowBarFlow {
+    0%   { background-position: 0% center; }
+    100% { background-position: 300% center; }
+}
+
+/* ──────────────────────────────────────────────────────────
+   🏹 1. hsj-title-badge — 화살표 장인 칭호 뱃지
+   (arrow_master 칭호 활성화 시 .hsj-title-badge 에 적용)
+────────────────────────────────────────────────────────── */
+.arrow-badge-active .hsj-title-badge,
+[data-title-id="arrow_master"] .hsj-title-badge,
+.hsj-title-badge[data-title="arrow_master"] {
+    /* 기본 레이아웃 */
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
+    cursor: default;
+    user-select: none;
+
+    padding: 3px 10px 3px 8px !important;
+    margin-left: 6px !important;
+    border-radius: 3px !important;
+
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.8px !important;
+    line-height: 1.7 !important;
+
+    /* 인디고 → 창공 그라디언트 흐름 */
+    background: linear-gradient(
+        110deg,
+        #1E1B4B 0%,
+        #3730A3 20%,
+        #4F46E5 40%,
+        #818CF8 50%,
+        #38BDF8 65%,
+        #4F46E5 80%,
+        #1E1B4B 100%
+    ) !important;
+    background-size: 200% 100% !important;
+    animation: arrowShoot 7s ease-in-out infinite, arrowFlow 4s ease infinite !important;
+
+    color: #E0E7FF !important;
+    border: 1px solid rgba(99,102,241,0.6) !important;
+    border-top: 1px solid rgba(129,140,248,0.85) !important;
+    border-right: 1px solid rgba(56,189,248,0.5) !important;
+
+    box-shadow:
+        0 0 6px rgba(99,102,241,0.45),
+        0 0 12px rgba(79,70,229,0.2),
+        inset 0 1px 0 rgba(129,140,248,0.25) !important;
+
+    position: relative !important;
+    overflow: hidden !important;
+    text-shadow: 0 0 6px rgba(129,140,248,0.75) !important;
+}
+
+/* 궤적 잔상 sweeper */
+.arrow-badge-active .hsj-title-badge::before,
+[data-title-id="arrow_master"] .hsj-title-badge::before,
+.hsj-title-badge[data-title="arrow_master"]::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -80%;
+    width: 45%; height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(129,140,248,0.3) 40%,
+        rgba(56,189,248,0.4) 60%,
+        transparent 100%
+    );
+    animation: arrowSweep 2.8s ease-in-out infinite;
+    pointer-events: none;
+}
+
+/* 스캔라인 오버레이 */
+.arrow-badge-active .hsj-title-badge::after,
+[data-title-id="arrow_master"] .hsj-title-badge::after,
+.hsj-title-badge[data-title="arrow_master"]::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(99,102,241,0.04) 2px,
+        rgba(99,102,241,0.04) 4px
+    );
+    pointer-events: none;
+}
+
+/* ──────────────────────────────────────────────────────────
+   🃏 2. arrow-card-decor — 카드 장식
+────────────────────────────────────────────────────────── */
+.arrow-card-decor {
+    background:
+        /* 바람 사선 궤적 */
+        repeating-linear-gradient(
+            118deg,
+            transparent,
+            transparent 3px,
+            rgba(99,102,241,0.025) 3px,
+            rgba(99,102,241,0.025) 4px,
+            transparent 4px,
+            transparent 18px
+        ),
+        /* 가로 스캔라인 */
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 3px,
+            rgba(0,0,0,0.07) 3px,
+            rgba(0,0,0,0.07) 4px
+        ),
+        /* 광점 — 화살촉 궤적 */
+        radial-gradient(circle 12px at 5%  10%, rgba(56,189,248,0.18) 0%, transparent 70%),
+        radial-gradient(circle  8px at 92%  8%, rgba(99,102,241,0.15) 0%, transparent 70%),
+        radial-gradient(circle 10px at 80% 85%, rgba(129,140,248,0.14) 0%, transparent 70%),
+        radial-gradient(circle  7px at 15% 80%, rgba(56,189,248,0.12) 0%, transparent 70%),
+        radial-gradient(circle  9px at 50%  3%, rgba(252,211,77,0.08) 0%, transparent 70%),
+        /* 베이스 */
+        linear-gradient(
+            160deg,
+            #0D0F22 0%,
+            #0A0C1A 30%,
+            #101430 60%,
+            #0C0E20 100%
+        ) !important;
+
+    border: 1px solid rgba(79,70,229,0.28) !important;
+    border-left: 3px solid #4F46E5 !important;
+    outline: none !important;
+
+    box-shadow:
+        0 0 0 1px rgba(99,102,241,0.1),
+        0 2px 16px rgba(0,0,0,0.7),
+        0 0 22px rgba(79,70,229,0.07),
+        inset 0 0 30px rgba(0,0,0,0.45) !important;
+
+    animation: none !important;
+    position: relative !important;
+    overflow: hidden !important;
+    border-radius: 6px !important;
+}
+
+/* 카드 상단 — 인디고 × 스카이 궤적 바 */
+.arrow-card-decor::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    border-radius: 6px 6px 0 0;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        #1E1B4B 5%,
+        #4F46E5 25%,
+        #818CF8 45%,
+        #38BDF8 55%,
+        #4F46E5 75%,
+        #1E1B4B 95%,
+        transparent 100%
+    );
+    animation: arrowBarFlow 3.5s linear infinite;
+    background-size: 300% 100%;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* 카드 하단 — 희미한 금빛 화살촉 잔광 */
+.arrow-card-decor::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(99,102,241,0.12) 20%,
+        rgba(252,211,77,0.18) 50%,
+        rgba(99,102,241,0.12) 80%,
+        transparent 100%
+    );
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* ──────────────────────────────────────────────────────────
+   📰 3. arrow-article-wrapper — 기사 상세 장식
+────────────────────────────────────────────────────────── */
+.arrow-article-wrapper {
+    background:
+        repeating-linear-gradient(
+            115deg,
+            transparent,
+            transparent 4px,
+            rgba(99,102,241,0.018) 4px,
+            rgba(99,102,241,0.018) 5px,
+            transparent 5px,
+            transparent 22px
+        ),
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 4px,
+            rgba(0,0,0,0.06) 4px,
+            rgba(0,0,0,0.06) 5px
+        ),
+        linear-gradient(170deg, #0D0F22 0%, #0A0C1A 50%, #0E1028 100%) !important;
+
+    border: 1px solid rgba(79,70,229,0.22) !important;
+    border-radius: 8px !important;
+    box-shadow:
+        0 0 0 1px rgba(99,102,241,0.08),
+        0 4px 24px rgba(0,0,0,0.6),
+        0 0 40px rgba(79,70,229,0.06),
+        inset 0 0 50px rgba(0,0,0,0.3) !important;
+
+    animation: arrowPopIn 0.5s cubic-bezier(.22,1,.36,1) both !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+/* 상세 좌측 — 인디고 에지 라인 */
+.arrow-article-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 2px;
+    background: linear-gradient(
+        180deg,
+        transparent 0%,
+        #4F46E5 15%,
+        #818CF8 40%,
+        #38BDF8 60%,
+        #4F46E5 85%,
+        transparent 100%
+    );
+    box-shadow: 0 0 8px rgba(99,102,241,0.5);
+    pointer-events: none;
+    border-radius: 8px 0 0 8px;
+}
+
+/* 상단 바 */
+.arrow-article-wrapper::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        #4F46E5 10%,
+        #818CF8 35%,
+        #38BDF8 50%,
+        #818CF8 65%,
+        #4F46E5 90%,
+        transparent 100%
+    );
+    animation: arrowBarFlow 4s linear infinite;
+    background-size: 300% 100%;
+    pointer-events: none;
+}
+
+.arrow-article-wrapper h1 {
+    color: #C7D2FE !important;
+    text-shadow: 0 0 10px rgba(99,102,241,0.3) !important;
+}
+
+.arrow-article-wrapper .category-badge {
+    background: linear-gradient(90deg, #1E1B4B 0%, #3730A3 100%) !important;
+    color: #818CF8 !important;
+    font-weight: 700 !important;
+    border: 1px solid rgba(99,102,241,0.4) !important;
+    text-shadow: 0 0 4px rgba(99,102,241,0.5) !important;
+}
+
+.arrow-article-wrapper .edited-badge {
+    background: rgba(99,102,241,0.07) !important;
+    color: #6366F1 !important;
+    border: 1px solid rgba(79,70,229,0.3) !important;
+}
+
+/* 추천/비추천 버튼 */
+.arrow-article-wrapper .vote-btn {
+    background: rgba(79,70,229,0.06) !important;
+    color: #818CF8 !important;
+    border: 1.5px solid rgba(79,70,229,0.3) !important;
+    transition: all 0.2s !important;
+}
+.arrow-article-wrapper .vote-btn:hover {
+    background: rgba(99,102,241,0.15) !important;
+    border-color: rgba(129,140,248,0.6) !important;
+    box-shadow: 0 0 10px rgba(99,102,241,0.2) !important;
+}
+.arrow-article-wrapper .vote-btn.active {
+    background: linear-gradient(135deg, #1E1B4B, #3730A3) !important;
+    color: #C7D2FE !important;
+    border-color: #4F46E5 !important;
+    font-weight: 700 !important;
+    text-shadow: 0 0 5px rgba(129,140,248,0.5) !important;
+    box-shadow: 0 0 8px rgba(99,102,241,0.3) !important;
+}
+.arrow-article-wrapper [style*="border-top:1px solid #eee"],
+.arrow-article-wrapper [style*="border-top: 1px solid #eee"] {
+    border-top-color: rgba(79,70,229,0.15) !important;
+}
+
+/* ══════════════════════════════════════════════════════════
+   💬 4. arrow-comments-section — 댓글 섹션 장식
+══════════════════════════════════════════════════════════ */
+.arrow-comments-section {
+    background:
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 4px,
+            rgba(0,0,0,0.08) 4px,
+            rgba(0,0,0,0.08) 5px
+        ),
+        linear-gradient(175deg, #0C0E20 0%, #0A0C1A 50%, #0D0F22 100%) !important;
+    border-top: 1px solid rgba(79,70,229,0.2) !important;
+    border-radius: 0 0 8px 8px !important;
+    padding: 16px !important;
+    box-shadow:
+        0 0 0 1px rgba(79,70,229,0.06),
+        inset 0 0 40px rgba(0,0,0,0.3) !important;
+}
+
+.arrow-comments-section h3 {
+    color: #C7D2FE !important;
+    text-shadow: none !important;
+}
+
+.arrow-comments-section #commentSortSelect {
+    background: rgba(79,70,229,0.07) !important;
+    color: #818CF8 !important;
+    border-color: rgba(79,70,229,0.3) !important;
+}
+.arrow-comments-section #commentSortSelect option {
+    background: #0D0F22 !important;
+    color: #A5B4FC !important;
+}
+
+.arrow-comments-section .comment-input {
+    background: rgba(79,70,229,0.05) !important;
+    color: #C7D2FE !important;
+    border-color: rgba(79,70,229,0.3) !important;
+}
+.arrow-comments-section .comment-input::placeholder {
+    color: rgba(99,102,241,0.45) !important;
+}
+
+.arrow-comments-section .comment-submit-btn {
+    background: rgba(79,70,229,0.08) !important;
+    color: #818CF8 !important;
+    border-color: rgba(79,70,229,0.3) !important;
+}
+.arrow-comments-section .comment-submit-btn:hover {
+    background: rgba(99,102,241,0.18) !important;
+    color: #C7D2FE !important;
+    box-shadow: 0 0 6px rgba(99,102,241,0.2) !important;
+}
+
+.arrow-comments-section .comment-card {
+    background: rgba(79,70,229,0.04) !important;
+    border: 1px solid rgba(79,70,229,0.18) !important;
+    border-left: 2px solid rgba(99,102,241,0.38) !important;
+    border-radius: 4px !important;
+    padding: 12px 14px !important;
+    margin-bottom: 10px !important;
+    transition: border-color 0.2s, background 0.2s !important;
+}
+.arrow-comments-section .comment-card:hover {
+    border-left-color: #4F46E5 !important;
+    background: rgba(79,70,229,0.09) !important;
+    box-shadow: 0 0 8px rgba(79,70,229,0.1) !important;
+}
+
+.arrow-comments-section .comment-author {
+    color: #C7D2FE !important;
+    font-weight: 700 !important;
+}
+
+.arrow-comments-section .comment-time {
+    color: rgba(99,102,241,0.55) !important;
+    font-size: 12px !important;
+}
+
+.arrow-comments-section .comment-body {
+    color: #A5B4FC !important;
+    line-height: 1.65 !important;
+    margin: 8px 0 !important;
+}
+
+.arrow-comments-section .edited-badge {
+    background: rgba(79,70,229,0.08) !important;
+    color: #6366F1 !important;
+    border: 1px solid rgba(79,70,229,0.25) !important;
+}
+
+/* 좋아요/싫어요 버튼 */
+.arrow-comments-section button[id^="clike-"],
+.arrow-comments-section button[id^="cdislike-"] {
+    background: rgba(79,70,229,0.05) !important;
+    color: #5B5EC7 !important;
+    border-color: rgba(79,70,229,0.25) !important;
+}
+.arrow-comments-section button[id^="clike-"]:hover,
+.arrow-comments-section button[id^="cdislike-"]:hover {
+    background: rgba(99,102,241,0.14) !important;
+    border-color: rgba(129,140,248,0.5) !important;
+    color: #818CF8 !important;
+}
+
+.arrow-comments-section .btn-text {
+    color: #3730A3 !important;
+}
+.arrow-comments-section .btn-text:hover {
+    color: #818CF8 !important;
+    background: rgba(79,70,229,0.08) !important;
+}
+.arrow-comments-section .btn-text.text-danger {
+    color: rgba(244,114,182,0.6) !important;
+}
+.arrow-comments-section .btn-text.text-danger:hover {
+    color: #F472B6 !important;
+    text-shadow: 0 0 4px rgba(244,114,182,0.4) !important;
+}
+
+/* 답글 영역 */
+.arrow-comments-section .replies-container {
+    border-left: 2px solid rgba(79,70,229,0.2) !important;
+    margin-left: 12px !important;
+    padding-left: 10px !important;
+}
+.arrow-comments-section .replies-container .comment-card {
+    background: rgba(79,70,229,0.02) !important;
+    border-left-color: rgba(79,70,229,0.2) !important;
+}
+
+.arrow-comments-section .reply-input {
+    background: rgba(79,70,229,0.05) !important;
+    color: #C7D2FE !important;
+    border-color: rgba(79,70,229,0.3) !important;
+}
+.arrow-comments-section .reply-input::placeholder {
+    color: rgba(99,102,241,0.4) !important;
+}
+.arrow-comments-section .btn-reply-submit {
+    background: rgba(79,70,229,0.07) !important;
+    color: #818CF8 !important;
+    border-color: rgba(79,70,229,0.3) !important;
+}
+.arrow-comments-section .btn-reply-submit:hover {
+    background: rgba(99,102,241,0.16) !important;
+    color: #C7D2FE !important;
+}
+
+.arrow-comments-section .comment-edit-form {
+    background: rgba(79,70,229,0.05) !important;
+    border: 1px solid rgba(79,70,229,0.25) !important;
+    border-radius: 4px !important;
+}
+.arrow-comments-section .comment-edit-textarea {
+    background: rgba(79,70,229,0.04) !important;
+    color: #C7D2FE !important;
+    border-color: rgba(79,70,229,0.3) !important;
+}
+
+.arrow-comments-section #adminCommentImpersonateBox {
+    background: rgba(79,70,229,0.05) !important;
+    border-color: rgba(79,70,229,0.3) !important;
+}
+
+/* ──────────────────────────────────────────────────────────
+   📱 반응형
+────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+    .arrow-comments-section {
+        padding: 12px !important;
+    }
+    .arrow-comments-section .comment-card {
+        padding: 10px 12px !important;
+    }
+}
+
+/* ──────────────────────────────────────────────────────────
+   ⚙️ 모션 감소 설정 존중
+────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .arrow-card-decor::before,
+    .arrow-article-wrapper::after { animation: none !important; }
+    .arrow-badge-active .hsj-title-badge,
+    [data-title-id="arrow_master"] .hsj-title-badge,
+    .hsj-title-badge[data-title="arrow_master"] {
+        animation: none !important;
+    }
+    .arrow-badge-active .hsj-title-badge::before,
+    [data-title-id="arrow_master"] .hsj-title-badge::before,
+    .hsj-title-badge[data-title="arrow_master"]::before {
+        display: none;
+    }
+}
