@@ -11,7 +11,7 @@
 
     // ⬇️ 게넥도 도전과제를 클리어할 기사 ID (레거시 — 현재는 Firebase linkedAchievement 방식 사용)
     window.GAENEKDO_TARGET_ARTICLE_ID = null;
-    const SCRIPT_URL      = 'https://script.google.com/macros/s/AKfycbwGpysSOOaTWSXDUV9vqrueWnn42hByh5EHTANCZWTf5yDIa7BAUMnliJhLFlvHAcDs/exec';
+    const SCRIPT_URL      = 'https://script.google.com/macros/s/AKfycbwLzQ3zEV_Xqc_wnpmzayY_qxLeLgqR-4umN2gjfq_oA0U-GiRpoSbVPQdYlL8z-tAp/exec';
 
     // ── 관리자 매핑 ──────────────────────────────────────────────────
     const ADMIN_MAP = {
@@ -72,7 +72,7 @@
     // 3. _pokerAchData 갱신 및 뱃지 동기화
     // ─────────────────────────────────────────────────────────────────
     function syncAchievementData(coins) {
-        const unlocked = coins >= POKER_GOAL;
+        const unlocked = coins >= POKER_GOAL || localStorage.getItem(ACH_UNLOCKED_KEY) === '1';
         window._pokerAchData = {
             coins,
             goal   : POKER_GOAL,
@@ -194,7 +194,18 @@
             sessionStorage.getItem('ganadi_easter_egg') === 'true' ||
             localStorage.getItem(GANADI_ACH_KEY) === '1';
 
-        if (unlocked) localStorage.setItem(GANADI_ACH_KEY, '1');
+        if (unlocked) {
+            localStorage.setItem(GANADI_ACH_KEY, '1');
+            if (typeof window.onGanadiMasterAchieved === 'function') {
+                window.onGanadiMasterAchieved();
+            } else {
+                setTimeout(() => {
+                    if (typeof window.onGanadiMasterAchieved === 'function') {
+                        window.onGanadiMasterAchieved();
+                    }
+                }, 1500);
+            }
+        }
 
         slot.innerHTML = `
             <div style="
@@ -267,6 +278,18 @@
         if (!slot) return;
 
         const unlocked = localStorage.getItem('gaenekdo_member_unlocked') === '1';
+
+        if (unlocked) {
+            if (typeof window.onGaenekdoMemberAchieved === 'function') {
+                window.onGaenekdoMemberAchieved();
+            } else {
+                setTimeout(() => {
+                    if (typeof window.onGaenekdoMemberAchieved === 'function') {
+                        window.onGaenekdoMemberAchieved();
+                    }
+                }, 1500);
+            }
+        }
 
         slot.innerHTML = `
             <div style="
@@ -453,8 +476,16 @@
         `;
 
         // 달성 시 칭호 해금 콜백
-        if (unlocked && typeof window.onArrowMasterAchieved === 'function') {
-            window.onArrowMasterAchieved();
+        if (unlocked) {
+            if (typeof window.onArrowMasterAchieved === 'function') {
+                window.onArrowMasterAchieved();
+            } else {
+                setTimeout(() => {
+                    if (typeof window.onArrowMasterAchieved === 'function') {
+                        window.onArrowMasterAchieved();
+                    }
+                }, 1500);
+            }
         }
     }
 
