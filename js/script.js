@@ -137,188 +137,131 @@ const SITE_LOADING_TIPS = [
     "소나무가 삐지면? 칫솔",
     "우유가 아프면? 앙팡",
     "우유가 아프면?", "앙팡",
-"세상에서 가장 게으른 식물은? 늘푸른나무",
-"치킨이 도망가면? 닭튀김",
-"돼지가 열 받으면? 빡돈",
-"세상에서 가장 바쁜 떡은? 바쁘떡",
-"문어가 시험 보면? 찍지",
-"감이 경찰서 가면? 홍시",
-"세상에서 가장 빠른 용은? 신용",
-"세상에서 가장 느린 새는? 굼벵이",
-"양이 많은 곳은? 양평",
-"개가 사람을 만나면? 개인",
-"세상에서 가장 가벼운 숫자는? 오(5)",
-"세상에서 가장 무서운 닭은? 후라이드치킨",
-"자동차를 톡 치면? 카톡",
-"포도가 자기소개하면? 포도당",
-"세상에서 가장 조용한 음식은? 쉿빵",
-"곰돌이가 공부하면? 베어학자",
-"바나나가 넘어지면? 바나나킥",
-"눈이 녹으면? 눈물",
-"세상에서 가장 비싼 새는? 백조",
-"사람이 태어나서 제일 먼저 하는 일은? 숨쉬기",
-"오징어가 춤추면? 오징어게임",
-"달이 술 마시면? 만취",
-"세상에서 가장 뜨거운 전화번호는? 119",
-"개미가 모이면? 개미팅",
-"새우가 웃으면? 새우깡",
-"세상에서 가장 무서운 과자는? 죽음의 쿠키",
-"딸기가 회사 가면? 스트로베리 직원",
-"돼지가 책 읽으면? 돈독",
-"세상에서 가장 긴 잠은? 주무시고",
-"말이 화나면? 마상",
-"고래가 학교 가면? 고래서",
-"뱀이 용돈 달라고 하면? 뱀머니",
-"세상에서 가장 뜨거운 국은? 천국",
-"새가 아프면? 앓이타",
-"소금이 죽으면? 염",
-"세상에서 가장 착한 물은? 약수",
-"원숭이가 음악 하면? 몽키밴드",
-"햄버거가 길 가면? 버거킹",
-"세상에서 가장 차가운 개그는? 썰렁개그",
-"벌이 화나면? 쏘임","소가 노래하면? 우송대",
-"돼지가 한 마리도 없으면? 돈없다",
-"오리가 넘어지면? 꽥",
-"세상에서 가장 무서운 비행기는? 윙크",
-"병아리가 잘 먹는 약은? 삐약",
-"개가 돈을 벌면? 개이득",
-"사과가 회사 가면? 애플",
-"고양이가 장난치면? 냥아치",
-"세상에서 가장 뜨거운 나무는? 불타는무",
-"토마토가 웃으면? 케첩",
-"말이 많으면? 말복",
-"펭귄이 화나면? 얼음",
-"세상에서 가장 시끄러운 닭은? 악다구니",
-"아기가 전쟁터 가면? 애기병",
-"개미가 집을 이사하면? 개미사",
-"소가 계단에서 구르면? 소오름",
-"세상에서 가장 슬픈 새는? 우는새",
-"라면이 길 가다가 넘어지면? 라면쿵야",
-"곰이 겨울에 자는 이유는? 귀찮아서",
-"세상에서 가장 바쁜 사람은? 바쁜",
-"커피가 싸우면? 카페인",
-"돼지가 축구하면? 돈골",
-"포도가 화나면? 포도대장",
-"세상에서 가장 큰 닭은? 킹치킨",
-"오징어가 화나면? 버럭징어",
-"가위가 바위를 이기면? 운좋은날",
-"세상에서 가장 작은 개는? 조그만개",
-"새가 피곤하면? 조류독감",
-"감자가 울면? 감자칩",
-"세상에서 가장 웃긴 대학은? 웃대",
-"말이 넘어지면? 말아톤",
-"닭이 은행 가면? 치킨계좌",
-"바다가 공부하면? 해박",
-"세상에서 가장 용감한 나무는? 겁없는나무",
-"사자가 공부하면? 백수",
-"오리가 시험 보면? 찍찍",
-"개가 학교 가면? 개학",
-"세상에서 가장 무서운 중학교는? 중간고사",
-"햄버거가 아프면? 버거워",
-"두부가 화나면? 순두부",
-"소가 우주 가면? 우주소",
-"개가 등산하면? 개인산",
-"참새가 화나면? 짹짹",
-"바나나가 미끄러지면? 바나나킥",
-"문이 스스로 닫히면? 자동문",
-"펭귄이 더우면? 땀귄",
-"개미가 술 마시면? 취개미",
-"물이 화나면? 끓는다",
-"사과가 삐지면? 새콤달콤",
-"돼지가 달리기하면? 돈런",
-"고양이가 공부하면? 냥구",
-"말이 밥 먹으면? 맘마",
-"비가 많이 오면? 비상",
-"눈이 화나면? 눈총",
-"개가 웃으면? 개인웃음",
-"양이 넘어지면? 양말",
-"달팽이가 빠르면? 번개",
-"자동차가 춤추면? 카댄스",
-"닭이 운동하면? 닭근육",
-"햄스터가 돈 벌면? 햄부자",
-"토끼가 화나면? 깡총",
-"새우가 달리면? 새우깡총",
-"커피가 울면? 카푸치노",
-"아이스크림이 화나면? 차가워진다",
-"바다가 웃으면? 파하하",
-"곰이 노래하면? 곰성",
-"포도가 잠자면? 포도송이",
-"소금이 웃으면? 소금기",
-"김밥이 싸우면? 김밥말이",
-"라면이 화나면? 불닭",
-"비행기가 졸리면? 꾸벅꾸벅",
-"개가 책 읽으면? 독개",
-"문어가 노래하면? 문어의꿈",
-"딸기가 웃으면? 딸기잼",
-"감자가 화나면? 감자튀김",
-"돼지가 울면? 꿀꿀",
-"자동차가 피곤하면? 카쉼",
-"뱀이 공부하면? 뱀수",
-"수박이 화나면? 수박수박",
-"고래가 노래하면? 고래오션",
-"양말이 도망가면? 양말실종",
-"개구리가 노래하면? 개굴개굴",
-"바람이 화나면? 태풍",
-"호랑이가 공부하면? 범생이",
-"사자가 배고프면? 어흥",
-"치킨이 슬프면? 우울닭",
-"포도가 운동하면? 포도당",
-"물고기가 웃으면? 피식",
-"곰이 넘어지면? 곰탕",
-"햄버거가 춤추면? 버거댄스",
-"토끼가 학교 가면? 토끼반",
-"돼지가 웃으면? 돈웃음",
-"새가 놀라면? 깜짝",
-"라면이 졸리면? 컵라면",
-"개가 배고프면? 멍먹자",
-"소가 화나면? 음메",
-"바나나가 공부하면? 바나나학",
-"문어가 피곤하면? 축처진다",
-"감자가 공부하면? 감자박사",
-"고양이가 졸리면? 냥잠",
-"비가 춤추면? 레인댄스",
-"달이 화나면? 반달눈",
-"곰이 피곤하면? 겨울잠",
-"사과가 달리면? 애플런",
-"햄스터가 운동하면? 햄스트롱",
-"포도가 웃으면? 포도송송",
-"눈사람이 화나면? 눈덩이",
-"자동차가 넘어지면? 카꿍",
-"양이 웃으면? 메에롱",
-"닭이 춤추면? 치킨댄스",
-"돼지가 게임하면? 돈플레이",
-"바다가 졸리면? 잔잔",
-"소가 공부하면? 우등생",
-"개가 노래하면? 멍스타",
-"토끼가 피곤하면? 토끼잠",
-"새우가 화나면? 버럭새우",
-"김밥이 달리면? 김밥천국",
-"라면이 운동하면? 탄탄면",
-"문어가 넘어지면? 문어발",
-"감자가 달리면? 감자칩",
-"사자가 춤추면? 라이언킹",
-"곰이 운동하면? 헬스곰",
-"고양이가 화나면? 하악질",
-"비행기가 화나면? 붕붕",
-"바람이 웃으면? 싱글벙글",
-"햄버거가 공부하면? 버거박사",
-"포도가 울면? 포도즙",
-"양이 화나면? 메에에",
-"개구리가 화나면? 개굴분노",
-"눈이 웃으면? 눈웃음",
-"자동차가 배고프면? 기름달라",
-"사과가 피곤하면? 사과문",
-"토끼가 웃으면? 깡총웃음",
-"닭이 화나면? 꼬꼬분노",
-"소가 춤추면? 우댄스",
-"돼지가 공부하면? 돈지식",
-"곰이 화나면? 버럭곰",
-"새가 춤추면? 버드댄스",
-"문어가 웃으면? 문어체",
-"감자가 울면? 감동",
-"고양이가 달리면? 냥스피드",
-"바다가 화나면? 쓰나미",
-"햄스터가 웃으면? 햄복",
+"아버지가 두 명이면? 두부",
+    "인천 앞바다의 반대말은? 인천 엄마다",
+    "사람의 몸무게가 가장 많이 나갈 때는? 철들 때",
+    "세상에서 가장 큰 코는? 멕시코",
+    "가수 비가 자신을 소개할 때 하는 말은? 나비야",
+    "비가 LA에 가면? LA갈비",
+    "창문이 피를 흘리면? 윈도우창",
+    "돌이 떨어지면? 차돌박이",
+    "고양이가 지옥에 가면? 헬로키티",
+    "쥐가 네 마리 모이면? 쥐포",
+    "개가 사람을 가르치면? 개인지도",
+    "새가 불에 타면? 타조",
+    "불이 4곳에 나면? 사파이어",
+    "뼈가 있는 방은? 골룸",
+    "무가 눈물을 흘리면? 무뚝뚝",
+    "참기름이 법원에 가면? 고소해",
+    "깨가 죽으면? 주근깨",
+    "식용유가 안 오면? 카놀라유",
+    "세상에서 가장 야한 채소는? 버섯",
+    "펭귄이 다니는 중학교는? 냉중",
+    "펭귄이 다니는 고등학교는? 냉고",
+    "아이스크림이 죽으면? 다이하드",
+    "노루가 다니는 길은? 노르웨이",
+    "다리미가 좋아하는 음식은? 피자",
+    "형과 아우가 싸우면? 형편없는 세상",
+    "수학책을 난로에 넣으면? 수학 익힘책",
+    "국사책을 불태우면? 불국사",
+    "물고기의 반대말은? 불고기",
+    "곰이 목욕을 하면? 곰탕",
+    "새우가 주인공인 드라마는? 대하드라마",
+    "김밥이 죽으면 가는 곳은? 김밥천국",
+    "세상에서 가장 비싼 새는? 백조",
+    "침대를 밀고 돌리면? 배드민턴",
+    "빵이 시골로 가면? 소보로",
+    "신데렐라가 못 자면? 모짜렐라",
+    "사과가 웃으면? 풋사과",
+    "나무가 4그루 있으면? 포트리",
+    "세종대왕이 만든 우유는? 아야어여오요우유",
+    "서울이 추우면? 서울시립대",
+    "피자가 웃으면? 피자헛",
+    "맥주가 죽기 전에 남긴 말은? 유언비어",
+    "송해 할아버지가 씻고 나오면? 뽀송해",
+    "호주에서 쓰는 돈은? 호주머니",
+    "자동차를 톡하고 치면? 카톡",
+    "덜 뚱뚱한 사람들이 모여 사는 동네는? 반포동",
+    "해가 울면? 해운대",
+    "콩 한 알이 영어로? 원빈",
+    "비가 한 시간 동안 내리면? 추적60분",
+    "닭이 스키니진을 입으면? 꼬끼오",
+    "소가 웃으면? 우하하",
+    "소가 한 마리 있으면? 소원",
+    "소가 네 마리 있으면? 소포",
+    "개가 땀을 흘리면? 핫도그",
+    "뱀이 불에 타면? 뱀파이어",
+    "모자가 뭉치면? 밀짚모자",
+    "공이 웃으면? 풋볼",
+    "흑인이 우울하면? 까마귀",
+    "산토끼의 반대말은? 판토끼",
+    "글씨를 쓰는 펜이 죽으면? 펜다",
+    "어부들이 가장 싫어하는 가수는? 배철수",
+    "가수 설운도가 옷을 벗는 순서는? 상하의",
+    "문을 두드리는 여자는? 똑순이",
+    "할머니가 좋아하는 폭포는? 나이아가라 폭포",
+    "치과의사가 좋아하는 아파트는? 이편한세상",
+    "세상에서 가장 추운 바다는? 썰렁해",
+    "세상에서 가장 착한 사자는? 자원봉사자",
+    "세상에서 가장 아름다운 개는? 무지개",
+    "세상에서 가장 빨리 자는 사람은? 이미자",
+    "세상에서 가장 긍정적인 동물은? 돼지",
+    "스님이 길을 가다 멈추면? 스탑",
+    "모래가 우는 소리는? 흙흙",
+    "구명보트에는 9명, 그럼 십장생은? 10명",
+    "중학생과 고등학생이 타는 차는? 중고차",
+    "할아버지 발이 크면? 노발대발",
+    "아침에 절대 먹을 수 없는 것은? 점심과 저녁",
+    "사과가 파이면? 파인애플",
+    "미소가 예쁜 여자는? 미소녀",
+    "병아리가 먹는 약은? 삐약",
+    "쥐가 쥐를 잡으면? 쥐라기",
+    "거미가 화를 내면? 거미줄",
+    "코알라가 칭찬하면? 코알라잇",
+    "독수리가 칭찬하면? 독수리오형제",
+    "세상에서 가장 긴 음식은? 참기름",
+    "세상에서 가장 무서운 전화기는? 무선전화기",
+    "세상에서 가장 무서운 상사는? 불상사",
+    "세상에서 가장 야한 닭은? 홀딱",
+    "세상에서 가장 아름다운 돌은? 샤론스톤",
+    "경찰서의 반대말은? 경찰앉아",
+    "전주비빔밥의 반대말은? 이번주비빔밥",
+    "발이 두 개 달린 소는? 이발소",
+    "책이 책을 읽으면? 북북",
+    "파란색 천을 뭐라고 할까? 블루투스",
+    "매일 미안하다고 하는 동물은? 오소리",
+    "화장실에서 사는 두 마리의 용은? 신사용, 숙녀용",
+    "세상에서 가장 빠른 닭은? 후다닥",
+    "산타할아버지가 싫어하는 차는? 산타페",
+    "세 사람만 탈 수 있는 차는? 인삼차",
+    "세상에서 가장 큰 컵은? 월드컵",
+    "신이 길을 걷다가 돌부리에 걸려 넘어지면? 신발",
+    "신이 아이를 낳으면? 신생아",
+    "화장실에서 방금 나온 사람은? 일본사람",
+    "꽃이 제일 좋아하는 벌은? 재벌",
+    "아이 추워의 반대말은? 어른 더워",
+    "하늘에 콩이 2개 있으면? 스카이콩콩",
+    "신부가 방에 들어가면? 신부대기실",
+    "사자가 항상 국을 먹을 때 하는 말은? 동물의 왕국",
+    "지진 날 때 부르는 노래는? 동요",
+    "세상에서 가장 장사를 잘 하는 동물은? 판다",
+    "새가 피곤하면? 새근새근",
+    "돈을 낭비하는 동물은? 사자",
+    "아버지가 4명이면? 포빠",
+    "모든 사람을 일어나게 하는 숫자는? 다섯",
+    "세상에서 제일 뜨거운 전화는? 화상전화",
+    "세상에서 제일 이쁜 식물은? 뷰티풀",
+    "호박이 굴러가면? 펌프킨",
+    "새 옷만 입는 동물은? 신사",
+    "식인종이 밥투정 할 때 하는 말은? 에이 살맛 안 나",
+    "딸기가 회사에서 잘리면? 딸기시럽",
+    "달에서 쓰는 돈은? 달러",
+    "총을 대충 쏘면? 탕수육",
+    "바다와 육지 사이에 있는 것은? 와",
+    "나무가 욕을 하면? 식빵",
+    "인도가 4시면? 인도네시아",
+    "세상에서 제일 쉬운 숫자는? 190000",
+    "오리가 한 마리면? 오리원",
     "🕵️ 은밀한 뒷골목으로 오시겠습니까?"
 ];
 
@@ -440,6 +383,52 @@ function hidePageLoadingScreen() {
         return;
     }
     window._doHideLoadingScreen();
+}
+
+// ✅ 비로그인 전용 로그인 강제 화면
+function showGuestLoginScreen() {
+    // ✅ [BUG FIX] 차단된 유저는 로그인 화면 표시 금지
+    if (_isBannedUser) return;
+
+    hideAll();
+
+    const header = document.querySelector('header');
+    if (header) header.style.display = 'none';
+
+    const existing = document.getElementById('_guestLoginScreen');
+    if (existing) return;
+
+    const screen = document.createElement('div');
+    screen.id = '_guestLoginScreen';
+    screen.style.cssText = [
+        'position:fixed','top:0','left:0','width:100%','height:100%',
+        'background:#fff','z-index:99999',
+        'display:flex','flex-direction:column',
+        'align-items:center','justify-content:center',
+        'padding:32px','box-sizing:border-box'
+    ].join(';');
+
+    screen.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;gap:20px;max-width:360px;width:100%;text-align:center;">
+            <img src="favicon.ico" onerror="this.style.display='none'"
+                style="width:64px;height:64px;border-radius:16px;object-fit:cover;box-shadow:0 2px 16px rgba(0,0,0,0.14);">
+            <div style="font-size:22px;font-weight:900;color:#212121;letter-spacing:-0.5px;">해정뉴스</div>
+            <div style="font-size:14px;color:#888;line-height:1.6;">
+                기사를 읽으려면 로그인이 필요합니다.<br>Google 계정으로 간편하게 시작하세요.
+            </div>
+            <button onclick="googleLogin()" style="
+                width:100%;padding:14px;
+                background:linear-gradient(135deg,#c62828,#e53935);
+                color:white;border:none;border-radius:14px;
+                font-size:16px;font-weight:800;cursor:pointer;
+                box-shadow:0 4px 14px rgba(198,40,40,0.35);
+                letter-spacing:-0.2px;">
+                <i class="fab fa-google" style="margin-right:8px;"></i>Google 로그인
+            </button>
+        </div>
+    `;
+
+    document.body.appendChild(screen);
 }
 
 // ===== Part 1: 기본 설정 및 Firebase 초기화 =====
@@ -869,18 +858,204 @@ async function getUnlockedTitles(uid) {
     } catch(e) { return {}; }
 }
 
+// ══════════════════════════════════════════════════════════════════
+// 🏅 칭호/도전과제 순위 시스템
+// Firebase 경로:
+//   titleRankCounters/{titleId}  → 전체 달성자 수 (원자적 카운터)
+//   titleRankLogs/{titleId}/{uid} → { rankNum, unlockedAt, displayName }
+//   users/{uid}/unlockedTitles/{titleId} → { unlockedAt, rankNum } (기존 true → 객체)
+// ══════════════════════════════════════════════════════════════════
+
+/**
+ * 칭호 해금 + 순위 기록 통합 함수
+ * @param {string} uid - 현재 유저 UID
+ * @param {string} titleId - 칭호 ID
+ * @returns {number} - 내 달성 순번 (1부터 시작)
+ */
+async function unlockTitleWithRank(uid, titleId) {
+    const now = Date.now();
+
+    // 1) 글로벌 카운터를 원자적으로 증가시켜 내 순번 확보
+    const counterRef = db.ref(`titleRankCounters/${titleId}`);
+    let rankNum = 1;
+    await counterRef.transaction(current => {
+        rankNum = (current || 0) + 1;
+        return rankNum;
+    });
+
+    // 현재 유저 displayName 가져오기
+    let displayName = '익명';
+    try {
+        const user = (typeof auth !== 'undefined') ? auth.currentUser : null;
+        if (user) {
+            const nameSnap = await db.ref(`users/${uid}/displayName`).once('value');
+            displayName = nameSnap.val() || user.displayName || user.email?.split('@')[0] || '익명';
+        }
+    } catch(e) {}
+
+    // 2) users/{uid}/unlockedTitles/{titleId} 에 상세 기록
+    await db.ref(`users/${uid}/unlockedTitles/${titleId}`).set({
+        unlockedAt: now,
+        rankNum: rankNum
+    });
+
+    // 3) 공개 리더보드 로그에 기록
+    await db.ref(`titleRankLogs/${titleId}/${uid}`).set({
+        rankNum: rankNum,
+        unlockedAt: now,
+        displayName: displayName
+    });
+
+    console.log(`[칭호🏅] "${titleId}" — ${rankNum}번째 달성! (uid=${uid})`);
+    return rankNum;
+}
+
+/**
+ * 내 칭호 순위 조회 (이미 해금된 경우)
+ * @param {string} uid
+ * @param {string} titleId
+ * @returns {number|null}
+ */
+async function getMyTitleRank(uid, titleId) {
+    try {
+        const snap = await db.ref(`users/${uid}/unlockedTitles/${titleId}`).once('value');
+        const val = snap.val();
+        if (!val) return null;
+        // 구 버전(true) 호환
+        if (val === true) return null;
+        return val.rankNum || null;
+    } catch(e) { return null; }
+}
+
+/**
+ * 특정 칭호의 전체 달성자 리더보드 조회
+ * @param {string} titleId
+ * @returns {Array} - [{ uid, displayName, rankNum, unlockedAt }, ...]  순번 순 정렬
+ */
+window.getTitleLeaderboard = async function(titleId) {
+    try {
+        const snap = await db.ref(`titleRankLogs/${titleId}`).orderByChild('rankNum').once('value');
+        const result = [];
+        snap.forEach(child => {
+            result.push({ uid: child.key, ...child.val() });
+        });
+        return result.sort((a, b) => a.rankNum - b.rankNum);
+    } catch(e) { console.warn('[리더보드] 조회 실패:', e); return []; }
+};
+
+/**
+ * 칭호 리더보드 모달 표시
+ * @param {string} titleId
+ */
+window.showTitleLeaderboard = async function(titleId) {
+    const t = USER_TITLES[titleId];
+    if (!t) return;
+
+    // 기존 모달 제거
+    const existing = document.getElementById('_titleLeaderboardModal');
+    if (existing) existing.remove();
+
+    // 모달 생성 (로딩 상태)
+    const modal = document.createElement('div');
+    modal.id = '_titleLeaderboardModal';
+    modal.style.cssText = `
+        position:fixed; inset:0; z-index:99999;
+        background:rgba(0,0,0,0.65); display:flex;
+        align-items:flex-end; justify-content:center;
+        backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
+    `;
+    modal.innerHTML = `
+        <div style="
+            background:white; border-radius:28px 28px 0 0;
+            padding:24px 20px 40px; width:100%; max-width:520px;
+            box-shadow:0 -8px 40px rgba(0,0,0,0.2);
+            max-height:80vh; overflow-y:auto;
+        ">
+            <div style="width:40px;height:4px;background:#e0e0e0;border-radius:4px;margin:0 auto 20px;"></div>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+                <div style="width:46px;height:46px;border-radius:12px;
+                    background:${t.gradient};background-size:200% 200%;
+                    animation:hsjTitleShimmer 3s ease infinite;
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:22px;flex-shrink:0;
+                    box-shadow:0 2px 10px ${t.glowColor};">${t.emoji}</div>
+                <div style="flex:1;">
+                    <div style="font-size:16px;font-weight:900;color:#3d2800;">${t.name}</div>
+                    <div style="font-size:12px;color:#a07030;margin-top:2px;">달성자 순위</div>
+                </div>
+                <button onclick="document.getElementById('_titleLeaderboardModal').remove()"
+                    style="width:36px;height:36px;border-radius:50%;border:none;background:#f5f5f5;
+                    font-size:16px;cursor:pointer;color:#757575;flex-shrink:0;">✕</button>
+            </div>
+            <div id="_leaderboardBody" style="text-align:center;padding:40px 0;color:#aaa;">
+                <i class="fas fa-spinner fa-spin" style="font-size:24px;margin-bottom:12px;display:block;"></i>
+                <div style="font-size:13px;">순위 불러오는 중...</div>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+
+    // 데이터 로드
+    const board = await window.getTitleLeaderboard(titleId);
+    const myUid = isLoggedIn() ? getUserId() : null;
+    const body = document.getElementById('_leaderboardBody');
+    if (!body) return;
+
+    if (board.length === 0) {
+        body.innerHTML = `<div style="padding:40px 0;color:#bbb;font-size:14px;">아직 달성자가 없습니다</div>`;
+        return;
+    }
+
+    const rankIcons = ['🥇','🥈','🥉'];
+    body.innerHTML = `
+        <div style="font-size:12px;color:#aaa;margin-bottom:14px;text-align:right;">
+            전체 ${board.length}명 달성
+        </div>
+        ${board.map((entry, i) => {
+            const isMe = entry.uid === myUid;
+            const dateStr = entry.unlockedAt
+                ? new Date(entry.unlockedAt).toLocaleDateString('ko-KR', { year:'2-digit', month:'2-digit', day:'2-digit' })
+                : '';
+            const icon = rankIcons[i] || `<span style="font-size:13px;font-weight:900;color:${isMe?'#e65100':'#888'};">${entry.rankNum}</span>`;
+            return `
+            <div style="
+                display:flex;align-items:center;gap:12px;
+                padding:12px 14px;border-radius:12px;margin-bottom:8px;
+                background:${isMe ? 'linear-gradient(135deg,#fff8f0,#fff3e0)' : '#fafafa'};
+                border:1.5px solid ${isMe ? 'rgba(230,81,0,0.4)' : '#ebebeb'};
+                box-shadow:${isMe ? '0 2px 8px rgba(230,81,0,0.12)' : 'none'};
+            ">
+                <div style="width:32px;text-align:center;font-size:${i<3?'22px':'14px'};flex-shrink:0;">${icon}</div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:14px;font-weight:${isMe?'900':'700'};
+                        color:${isMe?'#e65100':'#333'};
+                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                        ${entry.displayName}${isMe ? ' <span style="font-size:10px;background:#e65100;color:white;padding:1px 6px;border-radius:8px;font-weight:800;">나</span>' : ''}
+                    </div>
+                    <div style="font-size:11px;color:#aaa;margin-top:2px;">${dateStr}</div>
+                </div>
+                <div style="font-size:12px;font-weight:800;color:${isMe?'#e65100':'#999'};flex-shrink:0;text-align:right;">
+                    ${entry.rankNum}번째
+                </div>
+            </div>`;
+        }).join('')}
+    `;
+};
+
 // 포커 마스터 달성 시 칭호 해금 처리
-async function onPokerMasterAchieved() {
+window.onPokerMasterAchieved = async function () {
     if (!isLoggedIn()) return;
     const uid = getUserId();
     const titleId = 'table_emperor';
-    const snap = await db.ref(`users/${uid}/unlockedTitles/${titleId}`).once('value');
-    if (snap.val()) return; // 이미 해금됨
-    // 칭호 해금
-    await db.ref(`users/${uid}/unlockedTitles/${titleId}`).set(true);
-    // 축하 모달 표시
-    showTitleUnlockModal(titleId);
-}
+    try {
+        const snap = await db.ref(`users/${uid}/unlockedTitles/${titleId}`).once('value');
+        if (snap.val()) return; // 이미 해금됨
+        // 칭호 해금 + 순위 기록
+        const rankNum = await unlockTitleWithRank(uid, titleId);
+        // 축하 모달 표시
+        showTitleUnlockModal(titleId, rankNum);
+    } catch (e) { console.warn('[포커 마스터] 칭호 해금 실패:', e); }
+};
 
 // ── 🐶 가나디 이스터에그 달성 시 칭호 해금 처리 ─────────────────────
 window.onGanadiMasterAchieved = async function () {
@@ -890,8 +1065,10 @@ window.onGanadiMasterAchieved = async function () {
     try {
         const snap = await db.ref(`users/${uid}/unlockedTitles/${titleId}`).once('value');
         if (snap.val()) return; // 이미 해금됨
-        await db.ref(`users/${uid}/unlockedTitles/${titleId}`).set(true);
-        showGanadiTitleUnlockModal(titleId);
+        // 도전과제 달성 기록 저장
+        localStorage.setItem('ganadi_found', '1');
+        const rankNum = await unlockTitleWithRank(uid, titleId);
+        showGanadiTitleUnlockModal(titleId, rankNum);
     } catch (e) { console.warn('[가나디] 칭호 해금 실패:', e); }
 };
 
@@ -903,8 +1080,10 @@ window.onGaenekdoMemberAchieved = async function () {
     try {
         const snap = await db.ref(`users/${uid}/unlockedTitles/${titleId}`).once('value');
         if (snap.val()) return; // 이미 해금됨
-        await db.ref(`users/${uid}/unlockedTitles/${titleId}`).set(true);
-        showGaenekdoMemberUnlockModal(titleId);
+        // 도전과제 달성 기록 저장
+        localStorage.setItem('gaenekdo_member_unlocked', '1');
+        const rankNum = await unlockTitleWithRank(uid, titleId);
+        showGaenekdoMemberUnlockModal(titleId, rankNum);
     } catch (e) { console.warn('[게넥도] 칭호 해금 실패:', e); }
 };
 
@@ -916,8 +1095,8 @@ window.onArrowMasterAchieved = async function () {
     try {
         const snap = await db.ref(`users/${uid}/unlockedTitles/${titleId}`).once('value');
         if (snap.val()) return; // 이미 해금됨
-        await db.ref(`users/${uid}/unlockedTitles/${titleId}`).set(true);
-        showArrowMasterUnlockModal(titleId);
+        const rankNum = await unlockTitleWithRank(uid, titleId);
+        showArrowMasterUnlockModal(titleId, rankNum);
     } catch (e) { console.warn('[화살표 장인] 칭호 해금 실패:', e); }
 };
 
@@ -2012,6 +2191,12 @@ function updateURL(page, articleId = null, section = null) {
 
 // 라우팅 함수
 function routeToPage(page, articleId = null, section = null) {
+    // ✅ 비로그인 시 모든 페이지 라우팅 차단
+    if (!isLoggedIn()) {
+        showGuestLoginScreen();
+        return;
+    }
+
     const adminPages = ['users', 'adminSettings', 'eventManager', 'management', 'errorlogs'];
     
     if (adminPages.includes(page) && !isAdmin()) {
@@ -2082,6 +2267,12 @@ function routeToPage(page, articleId = null, section = null) {
 
 // 초기 라우팅
 function initialRoute() {
+    // ✅ 비로그인 시 라우팅 차단 — onAuthStateChanged에서 로그인 확인 후 호출됨
+    if (!isLoggedIn()) {
+        showGuestLoginScreen();
+        return;
+    }
+
     const params = getURLParams();
     
     if (params.page) {
@@ -3105,11 +3296,11 @@ console.log("✅ Part 4 알림 시스템 완료");
 
   auth.onAuthStateChanged(async user => {
     console.log("🔐 인증 상태:", user ? user.email : "로그아웃");
-    _authReadyResolve(); // ✅ 인증 초기화 완료 신호
-    
+    _authReadyResolve();
+
     _cachedAdminStatus = null;
     _adminCacheTime = 0;
-    
+
     if (user) {
         // ✅ 로그인 시 프로필 사진 캐시 초기화 (인증 전 null 캐시 제거)
         if (window.profilePhotoCache) window.profilePhotoCache.clear();
@@ -3122,50 +3313,76 @@ console.log("✅ Part 4 알림 시스템 완료");
         const userRef = db.ref("users/" + user.uid);
         const snap = await userRef.once("value");
         let data = snap.val() || {};
-        
+
         if (!data.email) {
             await userRef.update({
                 email: user.email,
                 createdAt: Date.now()
             });
         }
-        
+
         if (data.isBanned) {
-            // ✅ [BUG FIX] await signOut + 재로그인 방지 플래그
-            // 기존: auth.signOut() 비동기 무시 → onAuthStateChanged(null) 즉시 발동
-            //       → "로그인이 필요합니다" UI 표시 → 유저가 반복 로그인 시도 → 루프
             _isBannedUser = true;
             hideLoadingIndicator();
-            await auth.signOut();
-            // 차단 화면 렌더링 (설정 섹션을 직접 덮어씀)
-            const el = document.getElementById("profileNickname");
-            if (el) {
-                el.innerHTML = `<div style="background:#fff3f3;border:2px solid #c62828;border-radius:12px;padding:24px;text-align:center;">
-                    <div style="font-size:48px;margin-bottom:12px;">🚫</div>
-                    <div style="font-size:18px;font-weight:800;color:#c62828;margin-bottom:8px;">계정이 차단되었습니다</div>
-                    <div style="font-size:14px;color:#666;line-height:1.6;">관리자에게 문의하세요.<br><small style="color:#aaa;">이 계정으로는 로그인할 수 없습니다.</small></div>
-                </div>`;
+
+            // ✅ [BUG FIX] signOut 전에 차단 화면을 먼저 렌더링
+            // signOut() 이후 onAuthStateChanged(null)이 재발동되어
+            // showGuestLoginScreen()이 뜨는 것을 막기 위해
+            // 차단 화면을 body에 직접 fullscreen으로 삽입한다.
+            const existingBan = document.getElementById('_bannedScreen');
+            if (!existingBan) {
+                const banScreen = document.createElement('div');
+                banScreen.id = '_bannedScreen';
+                banScreen.style.cssText = [
+                    'position:fixed', 'top:0', 'left:0',
+                    'width:100%', 'height:100%',
+                    'background:#fff', 'z-index:999999',
+                    'display:flex', 'flex-direction:column',
+                    'align-items:center', 'justify-content:center',
+                    'padding:32px', 'box-sizing:border-box'
+                ].join(';');
+                banScreen.innerHTML = `
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:16px;max-width:360px;width:100%;text-align:center;">
+                        <div style="font-size:64px;">🚫</div>
+                        <div style="font-size:22px;font-weight:900;color:#c62828;letter-spacing:-0.5px;">
+                            계정이 차단되었습니다
+                        </div>
+                        <div style="font-size:14px;color:#888;line-height:1.7;">
+                            누적 경고 3회로 인해 이 계정은 사이트 이용이 영구 차단되었습니다.<br>
+                            <small style="color:#aaa;">관리자에게 문의하세요.</small>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(banScreen);
             }
-            alert("🚫 차단된 계정입니다. 관리자에게 문의하세요.");
+
+            // ✅ [BUG FIX] signOut 후 onAuthStateChanged(null) 재발동 시
+            // showGuestLoginScreen() 대신 차단 화면 유지를 위해
+            // _isBannedUser 플래그를 먼저 세운 뒤 signOut 실행
+            await auth.signOut();
             return;
         }
 
-        setupNotificationListener(user.uid);
-        _fcmRegistered = false; // 로그인마다 재등록 허용
-        registerFCMToken(); // ✅ 로그인마다 FCM 토큰 갱신
+        // ✅ [BUG FIX] 로그인 성공 시 게스트 로그인 화면 제거
+        const guestScreen = document.getElementById('_guestLoginScreen');
+        if (guestScreen) guestScreen.remove();
 
-        // 🏅 칭호 로드
+        // ✅ 로그인 성공 시 헤더 복원
+        const header = document.querySelector('header');
+        if (header) header.style.display = '';
+
+        setupNotificationListener(user.uid);
+        _fcmRegistered = false;
+        registerFCMToken();
+
         loadMyTitle(user.uid);
 
-        // 🏆 포커 마스터 달성 → 테이블의 황제 칭호 감지
         db.ref(`users/${user.uid}/achievements/poker_master`).on('value', async snap => {
             if (snap.val() === true) {
                 await onPokerMasterAchieved();
             }
         });
 
-        // ✅ 타이밍 문제로 첫 등록 실패한 경우 탭 포커스 시 재시도
-        // ✅ [BUG FIX] onAuthStateChanged가 여러 번 호출될 때 리스너 중복 등록 방지
         if (!window._fcmVisibilityListenerAdded) {
             window._fcmVisibilityListenerAdded = true;
             document.addEventListener('visibilitychange', function _fcmRetryOnVisible() {
@@ -3178,24 +3395,40 @@ console.log("✅ Part 4 알림 시스템 완료");
 
         updateHeaderProfileButton(user);
         updateLastSeen();
-        
+
         hideLoadingIndicator();
-        
+
         if (!sessionStorage.getItem('login_shown')) {
             showToastNotification("✅ 로그인 완료", `환영합니다, ${getNickname()}님!`, null);
             sessionStorage.setItem('login_shown', 'true');
         }
+
+        // ✅ 로그인 완료 후 초기 라우팅 실행
+        initialRoute();
     } else {
-        // ✅ 로그아웃 처리 (기존코드는 if(user) 안에 중첩돼 절대 실행 안 됐음)
+        // ✅ 비로그인: 모든 섹션 숨기고 로그인 전용 화면 표시
         notificationListenerActive = false;
+        hidePageLoadingScreen();
+        hideAll();
+
+        const header = document.querySelector('header');
+        if (header) header.style.display = 'none';
+
         const headerBtn = document.getElementById("headerProfileBtn");
         if (headerBtn) {
             headerBtn.innerHTML = `<i class="fas fa-user-circle"></i>`;
         }
+
+        // ✅ [BUG FIX] 차단된 유저는 로그인 화면 대신 차단 화면 유지
+        // _isBannedUser 플래그가 true이면 showGuestLoginScreen() 호출 금지
+        if (_isBannedUser) return;
+
+        showGuestLoginScreen();
+        return;
     }
 
     updateSettings();
-    
+
     if (document.getElementById("articlesSection")?.classList.contains("active")) {
         searchArticles(false);
     }
@@ -3768,6 +4001,12 @@ function hideAll() {
 }
 
 function showArticles() {
+    // ✅ 비로그인 시 메인화면 접근 차단
+    if (!isLoggedIn()) {
+        showGuestLoginScreen();
+        return;
+    }
+
     hideAll();
     
     document.getElementById("articlesSection").classList.add("active");
@@ -4257,6 +4496,14 @@ async function showTitlesPage() {
             const unlocked = !!ul[id];
             const isActive = cur === id;
 
+            // rankNum, unlockedAt 추출 (구버전 true 호환)
+            const unlockedData = ul[id];
+            const rankNum = (unlockedData && typeof unlockedData === 'object') ? unlockedData.rankNum : null;
+            const unlockedAt = (unlockedData && typeof unlockedData === 'object') ? unlockedData.unlockedAt : null;
+            const dateStr = unlockedAt
+                ? new Date(unlockedAt).toLocaleDateString('ko-KR', { year:'2-digit', month:'2-digit', day:'2-digit' })
+                : '';
+
             if (!unlocked) {
                 return `
                 <div style="display:flex; align-items:center; gap:14px; padding:14px 16px;
@@ -4272,44 +4519,77 @@ async function showTitlesPage() {
                         </div>
                         <div style="font-size:11px; color:#ccc; line-height:1.5;">달성 조건: ${t.requirement}</div>
                     </div>
+                    <button onclick="window.showTitleLeaderboard('${id}')" style="
+                        padding:6px 10px; border:1.5px solid #e0e0e0; border-radius:8px;
+                        background:white; color:#aaa; font-size:11px; font-weight:700;
+                        cursor:pointer; flex-shrink:0; white-space:nowrap;">
+                        👑 순위
+                    </button>
                 </div>`;
             }
 
+            // 내 순위 뱃지 HTML
+            const rankBadge = rankNum
+                ? `<span style="
+                    display:inline-flex; align-items:center; gap:3px;
+                    font-size:10px; padding:2px 7px; border-radius:8px; margin-left:4px;
+                    background:linear-gradient(135deg,#fff3e0,#ffe0b2);
+                    color:#e65100; font-weight:900; border:1px solid rgba(230,81,0,0.25);">
+                    🏅 ${rankNum}번째
+                  </span>`
+                : '';
+
             return `
-            <div id="_titleCard_${id}" style="display:flex; align-items:center; gap:14px; padding:14px 16px;
-                background:${isActive ? 'linear-gradient(145deg,#fffbf0,#fff3d6)' : 'white'};
+            <div id="_titleCard_${id}" style="
                 border-radius:14px;
                 border:1.5px solid ${isActive ? 'rgba(255,140,0,0.6)' : 'rgba(255,180,0,0.3)'};
                 box-shadow:${isActive ? '0 3px 14px rgba(255,180,0,0.2)' : '0 1px 5px rgba(0,0,0,0.06)'};
-                transition:all 0.2s;">
-                <div style="width:48px; height:48px; border-radius:12px;
-                    background:${t.gradient}; background-size:200% 200%;
-                    animation:hsjTitleShimmer 3.5s ease infinite;
-                    display:flex; align-items:center; justify-content:center;
-                    font-size:24px; flex-shrink:0;
-                    box-shadow:0 2px 10px ${t.glowColor};">
-                    ${t.emoji}
-                </div>
-                <div style="flex:1; min-width:0;">
-                    <div style="font-size:14px; font-weight:800; color:#5a2d00; margin-bottom:2px;">
-                        ${t.name}
-                        <span style="font-size:10px; padding:1px 6px; border-radius:8px; margin-left:5px; font-weight:700;
-                            background:rgba(255,180,0,0.15); color:${t.rarityColor};">${t.rarity}</span>
-                        ${isActive ? '<span style="font-size:10px; padding:1px 7px; border-radius:8px; margin-left:3px; font-weight:800; background:rgba(230,81,0,0.12); color:#e65100;">장착중</span>' : ''}
+                background:${isActive ? 'linear-gradient(145deg,#fffbf0,#fff3d6)' : 'white'};
+                overflow:hidden; transition:all 0.2s;">
+
+                <!-- 메인 행 -->
+                <div style="display:flex; align-items:center; gap:14px; padding:14px 16px;">
+                    <div style="width:48px; height:48px; border-radius:12px;
+                        background:${t.gradient}; background-size:200% 200%;
+                        animation:hsjTitleShimmer 3.5s ease infinite;
+                        display:flex; align-items:center; justify-content:center;
+                        font-size:24px; flex-shrink:0;
+                        box-shadow:0 2px 10px ${t.glowColor};">
+                        ${t.emoji}
                     </div>
-                    <div style="font-size:11px; color:#a07030; line-height:1.5; margin-bottom:2px;">${t.description}</div>
-                    <div style="font-size:11px; color:#c9a227;">✅ ${t.requirement}</div>
+                    <div style="flex:1; min-width:0;">
+                        <div style="font-size:14px; font-weight:800; color:#5a2d00; margin-bottom:2px; display:flex; align-items:center; flex-wrap:wrap; gap:3px;">
+                            ${t.name}
+                            <span style="font-size:10px; padding:1px 6px; border-radius:8px; font-weight:700;
+                                background:rgba(255,180,0,0.15); color:${t.rarityColor};">${t.rarity}</span>
+                            ${isActive ? '<span style="font-size:10px; padding:1px 7px; border-radius:8px; font-weight:800; background:rgba(230,81,0,0.12); color:#e65100;">장착중</span>' : ''}
+                            ${rankBadge}
+                        </div>
+                        <div style="font-size:11px; color:#a07030; line-height:1.5; margin-bottom:2px;">${t.description}</div>
+                        <div style="font-size:11px; color:#c9a227;">✅ ${t.requirement}</div>
+                        ${dateStr ? `<div style="font-size:10px; color:#bbb; margin-top:2px;">달성일: ${dateStr}</div>` : ''}
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:6px; flex-shrink:0; align-items:flex-end;">
+                        <button id="_titleBtn_${id}" onclick="window._toggleTitle('${id}')" style="
+                            padding:8px 14px; border:none; border-radius:10px; cursor:pointer;
+                            font-size:12px; font-weight:800; transition:all 0.2s;
+                            background:${isActive ? 'linear-gradient(135deg,#c62828,#e53935)' : 'linear-gradient(135deg,#e65100,#ef6c00)'};
+                            color:white; box-shadow:${isActive ? '0 2px 8px rgba(198,40,40,0.35)' : '0 2px 8px rgba(230,81,0,0.35)'};
+                            white-space:nowrap; min-width:52px;"
+                            onmouseover="this.style.transform='scale(1.06)'"
+                            onmouseout="this.style.transform='scale(1)'">
+                            ${isActive ? '해제' : '장착'}
+                        </button>
+                        <button onclick="window.showTitleLeaderboard('${id}')" style="
+                            padding:5px 10px; border:1.5px solid rgba(255,180,0,0.4); border-radius:8px;
+                            background:#fffbf0; color:#a07030; font-size:10px; font-weight:800;
+                            cursor:pointer; white-space:nowrap; transition:all 0.15s;"
+                            onmouseover="this.style.background='#fff3d6'"
+                            onmouseout="this.style.background='#fffbf0'">
+                            👑 순위 보기
+                        </button>
+                    </div>
                 </div>
-                <button id="_titleBtn_${id}" onclick="window._toggleTitle('${id}')" style="
-                    padding:8px 14px; border:none; border-radius:10px; cursor:pointer; flex-shrink:0;
-                    font-size:12px; font-weight:800; transition:all 0.2s;
-                    background:${isActive ? 'linear-gradient(135deg,#c62828,#e53935)' : 'linear-gradient(135deg,#e65100,#ef6c00)'};
-                    color:white; box-shadow:${isActive ? '0 2px 8px rgba(198,40,40,0.35)' : '0 2px 8px rgba(230,81,0,0.35)'};
-                    white-space:nowrap; min-width:52px;"
-                    onmouseover="this.style.transform='scale(1.06)'"
-                    onmouseout="this.style.transform='scale(1)'">
-                    ${isActive ? '해제' : '장착'}
-                </button>
             </div>`;
         }).join('');
     };
