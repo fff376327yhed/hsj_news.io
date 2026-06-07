@@ -58,7 +58,7 @@
         if (!googleUid) { console.warn('[뉴스⚠️] Google UID 없음 — coins=0'); return 0; }
         console.log('[뉴스🔍] Apps Script 조회 중... googleUid=', googleUid);
         try {
-            const res  = await fetch(`${SCRIPT_URL}?uid=${encodeURIComponent(googleUid)}`, { redirect: 'follow' });
+            const res  = await fetch(`${SCRIPT_URL}?uid=${encodeURIComponent(googleUid)}&game=poker`, { redirect: 'follow' });
             const json = await res.json();
             console.log('[뉴스✅] Apps Script 응답:', json);
             return parseInt(json.coins) || 0;
