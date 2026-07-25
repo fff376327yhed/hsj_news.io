@@ -7374,9 +7374,9 @@ window.submitReply = async function(articleId, commentId) {
         };
         if (imageBase64) reply.imageBase64 = imageBase64;
 
-        await db.ref(`comments/${articleId}/${commentId}/replies/${replyId}`).remove();
-        // ✅ [최적화] 댓글 수 -1
-        await db.ref(`articles/${articleId}/commentCount`).transaction(n => Math.max((n || 0) - 1, 0));
+        await db.ref(`comments/${articleId}/${commentId}/replies`).push(reply);
+        // ✅ [최적화] 댓글 수 +1
+        await db.ref(`articles/${articleId}/commentCount`).transaction(n => (n || 0) + 1);
 
         // ✅ 댓글 작성자에게 답글 알림 전송
         try {
@@ -7756,7 +7756,7 @@ window.showUserManagement = async function(){
         Object.entries(usersData).forEach(([uid, userData]) => {
             const email = userData.email;
             if(!email) return;
-            const nickname = userData.newNickname || emailToNick[email] || userData.googleDisplayName || email.split('@')[0] || "이름 없음";
+            const nickname = userData.newNickname || emailToNick[email] || userData.googleDisplayName || userData.authDisplayName || email.split('@')[0] || "이름 없음";
             usersMap.set(email, {
                 uid,
                 nickname,

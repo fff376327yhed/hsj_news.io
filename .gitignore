@@ -5,3 +5,7 @@ Bot/
 hsj-news-notifications/
 보관/
 Ai.js
+backfill-nicknames.js
+serviceAccountKey.json
+js/package.json
+js/package-lock.json
