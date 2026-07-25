@@ -32,9 +32,13 @@ function applyConsoleFabVisibility() {
 }
 
 // ── FAB가 동적으로 생성될 때도 감지 (MutationObserver) ──
+// _mcFab은 script.js의 injectConsoleUI()에서 존재 시 재생성을 막는 가드가 있어
+// 최초 1회만 생성됨 → 찾은 뒤에는 disconnect하여 불필요한 감시를 종료
 const observer = new MutationObserver(() => {
-    if (document.getElementById('_mcFab')) {
+    const fab = document.getElementById('_mcFab');
+    if (fab) {
         applyConsoleFabVisibility();
+        observer.disconnect();
     }
 });
 observer.observe(document.body, { childList: true, subtree: false });
@@ -54,8 +58,14 @@ window.showMoreMenu = function () {
     if (!section || document.getElementById('_consoleToggleRow')) return;
 
     // 관리자 섹션 grid 찾기
-    const adminSection = [...section.querySelectorAll('.menu-section')]
-        .find(s => s.querySelector('h3')?.textContent?.includes('관리자'));
+    let adminSection = null;
+    const menuSections = section.querySelectorAll('.menu-section');
+    for (let i = 0; i < menuSections.length; i++) {
+        if (menuSections[i].querySelector('h3')?.textContent?.includes('관리자')) {
+            adminSection = menuSections[i];
+            break;
+        }
+    }
     if (!adminSection) return;
 
     const grid = adminSection.querySelector('div[style*="display:grid"]');

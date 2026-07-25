@@ -113,9 +113,16 @@
                         var win2 = document.getElementById('_aiChatWin');
                         if (win2) win2.classList.remove('open');
                     }
+                    // 최초 1회 목적 달성 — 이후엔 위쪽 early-return 경로로 처리되므로 감시 중단
+                    window._aiChatObserver.disconnect();
+                    window._aiChatObserver = null;
                 } else {
                     var b = findAiChatBtn();
-                    if (b) b.style.display = getVal(KEY_CHAT) ? '' : 'none';
+                    if (b) {
+                        b.style.display = getVal(KEY_CHAT) ? '' : 'none';
+                        window._aiChatObserver.disconnect();
+                        window._aiChatObserver = null;
+                    }
                 }
             });
             window._aiChatObserver.observe(document.body, {
