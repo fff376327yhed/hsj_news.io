@@ -1,0 +1,487 @@
+/* ===================================================
+   🌙 다크 테마 (style4.css)
+   body.dark-theme 클래스 기반으로 전체 오버라이드
+   =================================================== */
+
+body.dark-theme {
+    /* ── CSS 변수 재정의 ── */
+    --primary-color:   #5b9bd5;
+    --primary-dark:    #3a7abf;
+    --secondary-color: #9aa0a6;
+    --success-color:   #4caf50;
+    --warning-color:   #ffb74d;
+    --danger-color:    #ef5350;
+    --dark-color:      #e0e0e0;
+    --light-gray:      #1e1e1e;
+    --border-color:    #3a3a3a;
+    --text-primary:    #e8e8e8;
+    --text-secondary:  #9aa0a6;
+    --shadow:          0 1px 3px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4);
+    --shadow-hover:    0 3px 6px rgba(0,0,0,0.6), 0 3px 6px rgba(0,0,0,0.5);
+
+    background: #121212;
+    color: #e8e8e8;
+}
+
+/* ── 헤더 ── */
+body.dark-theme header {
+    background: #1e1e1e;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+body.dark-theme .header-content {
+    background: #1e1e1e;
+}
+
+/* ── 프로필 드롭다운 ── */
+body.dark-theme .profile-dropdown {
+    background: #1e1e1e;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+}
+
+body.dark-theme #profileDropdownContent {
+    background: #1e1e1e;
+}
+
+body.dark-theme .profile-info {
+    background: #2c2c2c;
+}
+
+body.dark-theme .profile-details h4 {
+    color: #e8e8e8 !important;
+}
+
+body.dark-theme .profile-details p,
+body.dark-theme .profile-details span {
+    color: #9aa0a6;
+}
+
+body.dark-theme .profile-dropdown a,
+body.dark-theme .profile-dropdown button {
+    color: #e8e8e8;
+}
+
+body.dark-theme .profile-dropdown a:hover,
+body.dark-theme .profile-dropdown button:hover {
+    background: #2c2c2c;
+}
+
+/* ── 바텀 네비게이션 ── */
+body.dark-theme .bottom-nav {
+    background: #1e1e1e;
+    border-top: 1px solid #3a3a3a;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.5);
+}
+
+body.dark-theme .nav-btn {
+    color: #9aa0a6;
+    background: transparent;
+}
+
+body.dark-theme .nav-btn.active {
+    color: #5b9bd5;
+}
+
+body.dark-theme .nav-btn:hover {
+    background: #2c2c2c;
+}
+
+/* ── 페이지 섹션 (main) ── */
+body.dark-theme .page-section {
+    background: #121212;
+}
+
+/* ── 검색바 ── */
+body.dark-theme .search-bar {
+    background: #1e1e1e;
+    box-shadow: var(--shadow);
+}
+
+body.dark-theme .search-input,
+body.dark-theme .search-select {
+    background: #2c2c2c;
+    color: #e8e8e8;
+    border-color: #3a3a3a;
+}
+
+body.dark-theme .search-input::placeholder {
+    color: #6b6b6b;
+}
+
+body.dark-theme .search-input:focus,
+body.dark-theme .search-select:focus {
+    border-color: #5b9bd5;
+    box-shadow: 0 0 0 3px rgba(91,155,213,0.2);
+    outline: none;
+}
+
+/* ── 정렬 칩 ── */
+body.dark-theme .chip {
+    background: #2c2c2c;
+    color: #e8e8e8;
+    border-color: #3a3a3a;
+}
+
+body.dark-theme .chip.active {
+    background: #5b9bd5;
+    border-color: #5b9bd5;
+    color: white;
+}
+
+/* ── 기사 카드 ── */
+body.dark-theme .article-card {
+    background: #1e1e1e;
+    box-shadow: var(--shadow);
+}
+
+body.dark-theme .article-title {
+    color: #e8e8e8;
+}
+
+body.dark-theme .article-summary {
+    color: #9aa0a6;
+}
+
+body.dark-theme .article-meta,
+body.dark-theme .article-meta span {
+    color: #9aa0a6;
+}
+
+body.dark-theme .article-stats .stat-item {
+    color: #9aa0a6;
+}
+
+body.dark-theme .category-badge {
+    background: #2c2c2c;
+    color: #5b9bd5;
+    border: 1px solid #3a3a3a;
+}
+
+body.dark-theme .pinned-badge {
+    background: #3a3000;
+    color: #ffd700;
+}
+
+/* ── 핫 기사 카드 ── */
+body.dark-theme .hot-article-card {
+    background: #1e1e1e !important;
+    border-color: #ff5722 !important;
+}
+
+/* ── 댓글 섹션 ── */
+body.dark-theme .comments-section {
+    background: #1e1e1e;
+}
+
+body.dark-theme .comment-card {
+    background: #2c2c2c;
+    border-left-color: #5b9bd5;
+}
+
+body.dark-theme .comment-author {
+    color: #5b9bd5;
+}
+
+body.dark-theme .comment-card p,
+body.dark-theme .comment-card span {
+    color: #e0e0e0;
+}
+
+body.dark-theme .comment-input,
+body.dark-theme .reply-input,
+body.dark-theme textarea,
+body.dark-theme .form-control {
+    background: #2c2c2c;
+    color: #e8e8e8;
+    border-color: #3a3a3a;
+}
+
+body.dark-theme .comment-input::placeholder,
+body.dark-theme .reply-input::placeholder,
+body.dark-theme textarea::placeholder {
+    color: #6b6b6b;
+}
+
+body.dark-theme .comment-input:focus,
+body.dark-theme .reply-input:focus,
+body.dark-theme textarea:focus,
+body.dark-theme .form-control:focus {
+    border-color: #5b9bd5;
+    box-shadow: 0 0 0 3px rgba(91,155,213,0.2);
+    outline: none;
+}
+
+/* ── 투표 버튼 ── */
+body.dark-theme .vote-btn {
+    background: #2c2c2c;
+    border-color: #3a3a3a;
+    color: #e8e8e8;
+}
+
+body.dark-theme .vote-btn.active {
+    background: #5b9bd5;
+    border-color: #5b9bd5;
+    color: white;
+}
+
+body.dark-theme .vote-btn.dislike.active {
+    background: #555;
+    border-color: #555;
+    color: white;
+}
+
+/* ── 버튼 ── */
+body.dark-theme .btn-block {
+    background: #2c2c2c;
+    color: #e8e8e8;
+    border: 1px solid #3a3a3a;
+}
+
+body.dark-theme .btn-block:hover {
+    background: #333;
+}
+
+body.dark-theme .btn-back {
+    background: #2c2c2c;
+    color: #e8e8e8;
+}
+
+body.dark-theme .btn-back:active {
+    background: #3a3a3a;
+}
+
+/* ── 모달 / 팝업 ── */
+body.dark-theme .modal-content,
+body.dark-theme .main-popup {
+    background: #1e1e1e;
+    color: #e8e8e8;
+}
+
+body.dark-theme .modal-header {
+    background: #2c2c2c;
+    border-bottom: 1px solid #3a3a3a;
+    color: #e8e8e8;
+}
+
+body.dark-theme .modal-body {
+    background: #1e1e1e;
+    color: #e8e8e8;
+}
+
+body.dark-theme .popup-btn {
+    color: #9aa0a6;
+    border-right-color: #3a3a3a;
+}
+
+body.dark-theme .popup-btn.close {
+    color: #5b9bd5;
+}
+
+/* ── 바텀 시트 ── */
+body.dark-theme .bottom-sheet,
+body.dark-theme .bottom-sheet-content,
+body.dark-theme [class*="bottom-sheet"] {
+    background: #1e1e1e !important;
+    color: #e8e8e8 !important;
+}
+
+body.dark-theme .sheet-handle {
+    background: #3a3a3a;
+}
+
+/* ── 설정 섹션 ── */
+body.dark-theme #settingsSection {
+    background: #121212;
+}
+
+body.dark-theme #settingsSection .btn-block {
+    background: #1e1e1e;
+    color: #e8e8e8;
+    border-color: #3a3a3a;
+}
+
+body.dark-theme #settingsSection .btn-block:active {
+    background: #2c2c2c;
+}
+
+body.dark-theme .settings-divider {
+    background: #3a3a3a;
+}
+
+body.dark-theme .section-title {
+    color: #e8e8e8;
+}
+
+/* ── 프로필 카드 ── */
+body.dark-theme .profile-card {
+    background: #1e1e1e;
+    color: #e8e8e8;
+}
+
+body.dark-theme .profile-card h4 {
+    color: #5b9bd5;
+}
+
+/* ── 토글 라벨 ── */
+body.dark-theme .toggle-label {
+    background: #2c2c2c;
+    color: #e8e8e8;
+}
+
+body.dark-theme .toggle-text small {
+    color: #9aa0a6;
+}
+
+/* ── QnA 카드 ── */
+body.dark-theme .qna-card {
+    background: #1e1e1e;
+}
+
+body.dark-theme .qna-body {
+    color: #e8e8e8;
+}
+
+body.dark-theme .a-part {
+    background: #2c2c2c;
+    color: #e8e8e8;
+    border-left-color: #9aa0a6;
+}
+
+/* ── 정보 텍스트 ── */
+body.dark-theme .info-text {
+    background: #2c2c2c;
+    color: #9aa0a6;
+}
+
+/* ── 탭 버튼 ── */
+body.dark-theme .tab-btn {
+    background: #2c2c2c;
+    color: #e8e8e8;
+    border-color: #3a3a3a;
+}
+
+body.dark-theme .tab-btn.active {
+    background: #5b9bd5;
+    color: white;
+    border-color: #5b9bd5;
+}
+
+/* ── 스크롤바 ── */
+body.dark-theme ::-webkit-scrollbar-track {
+    background: #1e1e1e;
+}
+
+body.dark-theme ::-webkit-scrollbar-thumb {
+    background: #3a3a3a;
+}
+
+body.dark-theme ::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* ── 인라인 white 배경 강제 오버라이드 ── */
+body.dark-theme [style*="background: white"],
+body.dark-theme [style*="background:white"],
+body.dark-theme [style*="background:#fff"],
+body.dark-theme [style*="background: #fff"],
+body.dark-theme [style*="background-color: white"],
+body.dark-theme [style*="background-color:white"],
+body.dark-theme [style*="background-color:#fff"],
+body.dark-theme [style*="background-color: #fff"] {
+    background: #1e1e1e !important;
+}
+
+body.dark-theme [style*="color: #202124"],
+body.dark-theme [style*="color:#202124"],
+body.dark-theme [style*="color: black"],
+body.dark-theme [style*="color:black"],
+body.dark-theme [style*="color: #333"],
+body.dark-theme [style*="color:#333"] {
+    color: #e8e8e8 !important;
+}
+
+body.dark-theme [style*="color: #5f6368"],
+body.dark-theme [style*="color:#5f6368"],
+body.dark-theme [style*="color: #495057"],
+body.dark-theme [style*="color:#495057"] {
+    color: #9aa0a6 !important;
+}
+
+body.dark-theme [style*="border: 1px solid #ddd"],
+body.dark-theme [style*="border:1px solid #ddd"],
+body.dark-theme [style*="border: 1px solid #dee2e6"],
+body.dark-theme [style*="border:1px solid #dee2e6"],
+body.dark-theme [style*="border: 1px solid #dadce0"],
+body.dark-theme [style*="border:1px solid #dadce0"] {
+    border-color: #3a3a3a !important;
+}
+
+/* ── 테마 선택 라디오 라벨 ── */
+body.dark-theme .theme-option {
+    border-color: #3a3a3a !important;
+    color: #e8e8e8 !important;
+}
+
+body.dark-theme .theme-option:has(input:checked) {
+    border-color: #5b9bd5 !important;
+    background: #162033 !important;
+}
+
+/* ── 더보기 메뉴 버튼 ── */
+body.dark-theme .more-menu-btn {
+    background: #2c2c2c !important;
+    border-color: #3a3a3a !important;
+    color: #e8e8e8 !important;
+}
+
+body.dark-theme .more-menu-btn:hover {
+    background: #333 !important;
+}
+
+/* ── 메뉴 섹션 카드 ── */
+body.dark-theme .menu-section {
+    background: #1e1e1e !important;
+}
+
+body.dark-theme .menu-section h3 {
+    color: #9aa0a6 !important;
+}
+
+/* ── 기사 상세 ── */
+body.dark-theme #articleDetail {
+    background: #121212;
+}
+
+body.dark-theme .article-detail-card,
+body.dark-theme .article-content-body {
+    background: #1e1e1e;
+    color: #e8e8e8;
+}
+
+/* ── input, select ── */
+body.dark-theme input[type="text"],
+body.dark-theme input[type="email"],
+body.dark-theme input[type="password"],
+body.dark-theme input[type="search"],
+body.dark-theme select {
+    background: #2c2c2c;
+    color: #e8e8e8;
+    border-color: #3a3a3a;
+}
+
+body.dark-theme input::placeholder {
+    color: #6b6b6b;
+}
+
+/* ── 채팅 ── */
+body.dark-theme .chat-list-item,
+body.dark-theme .chat-room-header,
+body.dark-theme .chat-input-area {
+    background: #1e1e1e !important;
+    color: #e8e8e8 !important;
+    border-color: #3a3a3a !important;
+}
+
+body.dark-theme .msg-bubble {
+    filter: brightness(0.85);
+}

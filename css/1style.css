@@ -1,0 +1,884 @@
+/* ============================================================
+   🌆 1style.css — CYBERPUNK ALLEY EDITION
+   네온 시안 × 다크 네이비 × 뒷골목 분위기
+   ============================================================ */
+
+/* ──────────────────────────────────────────────────────────
+   CSS 변수
+────────────────────────────────────────────────────────── */
+:root {
+    /* 네온 색상 */
+    --cyber-cyan-hot:   #00FFFF;
+    --cyber-cyan-mid:   #00C8E0;
+    --cyber-cyan-dim:   #0088A8;
+    --cyber-blue-neon:  #1A7FFF;
+    --cyber-blue-dim:   #0044AA;
+    --cyber-pink:       #FF2D78;
+    --cyber-pink-dim:   #AA1050;
+    /* 배경 */
+    --cyber-bg-deep:    #020810;
+    --cyber-bg-1:       #050e1a;
+    --cyber-bg-2:       #071220;
+    --cyber-bg-3:       #0a1828;
+    /* 텍스트 */
+    --cyber-text:       #b0e8f8;
+    --cyber-text-dim:   #4a8098;
+    --cyber-text-mute:  #2a5068;
+    /* 글로우 */
+    --cyber-glow-cyan:  rgba(0, 229, 255, 0.6);
+    --cyber-glow-blue:  rgba(26, 127, 255, 0.5);
+    --cyber-glow-pink:  rgba(255, 45, 120, 0.4);
+}
+
+/* ──────────────────────────────────────────────────────────
+   🎬 사이버펑크 키프레임
+────────────────────────────────────────────────────────── */
+
+/* 네온 흐름 */
+@keyframes cyberFlow {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* 네온 펄스 글로우 */
+@keyframes cyberPulse {
+    0%, 100% {
+        box-shadow:
+            0 0 0 1px rgba(0,229,255,0.5),
+            0 0 8px  rgba(0,200,224,0.5),
+            0 0 18px rgba(0,150,200,0.25),
+            0 2px 6px rgba(0,0,0,0.4);
+    }
+    50% {
+        box-shadow:
+            0 0 0 1.5px rgba(0,255,255,0.9),
+            0 0 16px rgba(0,229,255,0.8),
+            0 0 32px rgba(0,150,200,0.4),
+            0 4px 12px rgba(0,0,0,0.5);
+    }
+}
+
+/* 네온 사인 깜빡임 */
+@keyframes cyberFlicker {
+    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
+    20%, 24%, 55%                            { opacity: 0.4; }
+}
+
+/* 스캔라인 이동 */
+@keyframes cyberScan {
+    0%   { transform: translateY(-100%); }
+    100% { transform: translateY(100vh); }
+}
+
+/* 뱃지 글리치 */
+@keyframes cyberGlitch {
+    0%, 90%, 100% { transform: translateX(0) skewX(0); filter: none; }
+    91%  { transform: translateX(-2px) skewX(-1deg); filter: hue-rotate(90deg); }
+    93%  { transform: translateX(2px)  skewX(1deg);  filter: hue-rotate(-90deg); }
+    95%  { transform: translateX(-1px) skewX(0);     filter: brightness(1.5); }
+}
+
+/* 바 흐름 */
+@keyframes cyberBarFlow {
+    0%   { background-position: 0% center; }
+    100% { background-position: 300% center; }
+}
+
+/* 팝인 */
+@keyframes cyberPopIn {
+    0%   { opacity: 0; transform: scale(0.75) translateY(40px); }
+    65%  { transform: scale(1.04) translateY(-4px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* 빗줄기 흐름 */
+@keyframes cyberRain {
+    0%   { background-position: 0 0; }
+    100% { background-position: -20px 80px; }
+}
+
+/* ──────────────────────────────────────────────────────────
+   👾 1. hsj-title-badge — 사이버펑크 칭호 뱃지
+────────────────────────────────────────────────────────── */
+.hsj-title-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
+    cursor: default;
+    user-select: none;
+
+    padding: 3px 10px 3px 8px !important;
+    margin-left: 6px !important;
+    border-radius: 3px !important;
+
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    letter-spacing: 1px !important;
+    line-height: 1.7 !important;
+    text-transform: uppercase !important;
+
+    background: linear-gradient(
+        110deg,
+        #003344 0%, #005566 30%, #00CCEE 50%, #005566 70%, #003344 100%
+    ) !important;
+    background-size: 200% 100% !important;
+
+    color: #00FFFF !important;
+    border: 1px solid rgba(0, 229, 255, 0.6) !important;
+    border-top: 1px solid rgba(0, 255, 255, 0.9) !important;
+
+    box-shadow:
+        0 0 6px rgba(0,229,255,0.4),
+        0 0 12px rgba(0,150,200,0.2),
+        inset 0 1px 0 rgba(0,255,255,0.2) !important;
+
+    animation: cyberGlitch 8s ease-in-out infinite !important;
+
+    position: relative !important;
+    overflow: hidden !important;
+    text-shadow: 0 0 6px rgba(0,255,255,0.8) !important;
+}
+
+.hsj-title-badge::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -80%;
+    width: 50%; height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(0,255,255,0.25) 50%,
+        transparent 100%
+    );
+    animation: cyberFlow 3s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.hsj-title-badge::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,255,255,0.04) 2px,
+        rgba(0,255,255,0.04) 4px
+    );
+    pointer-events: none;
+}
+
+.hsj-title-badge:hover {
+    transform: translateY(-1px) !important;
+    box-shadow:
+        0 0 10px rgba(0,229,255,0.7),
+        0 0 20px rgba(0,150,200,0.4),
+        inset 0 1px 0 rgba(0,255,255,0.3) !important;
+    color: #00FFFF !important;
+    border-color: rgba(0,255,255,0.9) !important;
+    transition: all 0.2s !important;
+}
+
+/* ──────────────────────────────────────────────────────────
+   🌃 2. emperor-card-decor — 뒷골목 카드 (사이버펑크)
+────────────────────────────────────────────────────────── */
+.emperor-card-decor {
+    background:
+        /* 빗줄기 패턴 */
+        repeating-linear-gradient(
+            100deg,
+            transparent,
+            transparent 2px,
+            rgba(0,200,255,0.025) 2px,
+            rgba(0,200,255,0.025) 3px,
+            transparent 3px,
+            transparent 14px
+        ),
+        /* 가로 스캔라인 */
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 3px,
+            rgba(0,0,0,0.08) 3px,
+            rgba(0,0,0,0.08) 4px
+        ),
+        /* 네온 광점 */
+        radial-gradient(circle 10px at 8%  15%, rgba(0,200,255,0.18) 0%, transparent 70%),
+        radial-gradient(circle  7px at 90% 10%, rgba(0,180,255,0.14) 0%, transparent 70%),
+        radial-gradient(circle  9px at 75% 80%, rgba(0,200,255,0.15) 0%, transparent 70%),
+        radial-gradient(circle  6px at 20% 75%, rgba(26,127,255,0.12) 0%, transparent 70%),
+        radial-gradient(circle  8px at 50%  5%, rgba(0,200,255,0.12) 0%, transparent 70%),
+        /* 바닥 배경 */
+        linear-gradient(
+            160deg,
+            #050e1a 0%,
+            #020810 30%,
+            #071220 60%,
+            #040c18 100%
+        ) !important;
+
+    border: 1px solid rgba(0,180,255,0.3) !important;
+    border-left: 3px solid #00CCEE !important;
+    outline: none !important;
+
+    box-shadow:
+        0 0 0 1px rgba(0,200,255,0.1),
+        0 2px 16px rgba(0,0,0,0.7),
+        0 0 20px rgba(0,150,200,0.08),
+        inset 0 0 30px rgba(0,0,0,0.5) !important;
+
+    animation: none !important;
+    position: relative !important;
+    overflow: hidden !important;
+    border-radius: 6px !important;
+}
+
+/* 카드 상단 — 네온 바 */
+.emperor-card-decor::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    border-radius: 6px 6px 0 0;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        #003344 5%,
+        #00CCEE 25%,
+        #00FFFF 50%,
+        #00CCEE 75%,
+        #003344 95%,
+        transparent 100%
+    );
+    box-shadow: 0 0 8px rgba(0,229,255,0.7), 0 0 16px rgba(0,150,200,0.3);
+    pointer-events: none;
+    z-index: 10;
+    animation: none !important;
+}
+
+/* 우상단 장식 */
+.emperor-card-decor::after {
+    content: '◈';
+    position: absolute;
+    top: 6px; right: 10px;
+    font-size: 14px;
+    color: rgba(0,200,255,0.5);
+    text-shadow: 0 0 6px rgba(0,229,255,0.8);
+    pointer-events: none;
+    z-index: 10;
+    animation: none !important;
+}
+
+/* 카드 텍스트 */
+.emperor-card-decor .article-title,
+.emperor-card-decor .card-title,
+.emperor-card-decor h3,
+.emperor-card-decor .article-card-title {
+    color: #b0e8f8 !important;
+    text-shadow: 0 0 4px rgba(0,200,255,0.3) !important;
+}
+
+.emperor-card-decor .article-summary,
+.emperor-card-decor p {
+    color: #4a8098 !important;
+}
+
+.emperor-card-decor .article-meta,
+.emperor-card-decor .article-author,
+.emperor-card-decor .card-meta {
+    color: #2a5068 !important;
+}
+
+.emperor-card-decor .article-meta span:not(.hsj-title-badge):not(.category-badge),
+.emperor-card-decor .article-meta > div > span {
+    color: #3a7090 !important;
+}
+
+.emperor-card-decor .stat-item {
+    color: #2a5068 !important;
+}
+
+.emperor-card-decor .category-badge {
+    background: linear-gradient(90deg, #003355 0%, #005577 50%, #003355 100%) !important;
+    color: #00CCEE !important;
+    font-weight: 700 !important;
+    border: 1px solid rgba(0,200,255,0.4) !important;
+    text-shadow: 0 0 4px rgba(0,229,255,0.5) !important;
+}
+
+/* ──────────────────────────────────────────────────────────
+   🌧 3. emperor-detail-content — 기사 상세 (사이버펑크 뒷골목)
+────────────────────────────────────────────────────────── */
+.emperor-detail-content {
+    background:
+        /* 스캔라인 */
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 3px,
+            rgba(0,0,0,0.12) 3px,
+            rgba(0,0,0,0.12) 4px
+        ),
+        /* 빗줄기 */
+        repeating-linear-gradient(
+            105deg,
+            transparent,
+            transparent 3px,
+            rgba(0,180,255,0.03) 3px,
+            rgba(0,180,255,0.03) 4px,
+            transparent 4px,
+            transparent 20px
+        ),
+        /* 네온 광점 */
+        radial-gradient(circle 14px at 4%   6%,  rgba(0,200,255,0.15) 0%, transparent 70%),
+        radial-gradient(circle 10px at 95%  8%,  rgba(0,180,255,0.12) 0%, transparent 70%),
+        radial-gradient(circle 12px at 7%   40%, rgba(0,200,255,0.10) 0%, transparent 70%),
+        radial-gradient(circle 16px at 92%  35%, rgba(26,127,255,0.12) 0%, transparent 70%),
+        radial-gradient(circle  8px at 20%  72%, rgba(0,200,255,0.09) 0%, transparent 70%),
+        radial-gradient(circle 10px at 80%  78%, rgba(0,180,255,0.11) 0%, transparent 70%),
+        radial-gradient(circle  6px at 50%   4%, rgba(0,200,255,0.08) 0%, transparent 70%),
+        /* 바닥 그라데이션 */
+        linear-gradient(
+            175deg,
+            #071220 0%,
+            #020810 35%,
+            #050e1a 65%,
+            #030a14 100%
+        ) !important;
+
+    border: 1px solid rgba(0,180,255,0.25) !important;
+    border-left: 3px solid rgba(0,200,255,0.5) !important;
+    border-radius: 6px !important;
+    padding: 24px 20px !important;
+    position: relative !important;
+    overflow: hidden !important;
+
+    box-shadow:
+        0 0 0 1px rgba(0,180,255,0.08),
+        0 4px 24px rgba(0,0,0,0.7),
+        0 0 24px rgba(0,150,200,0.06),
+        inset 0 0 50px rgba(0,0,0,0.4) !important;
+
+    animation: none !important;
+    color: #b0e8f8 !important;
+}
+
+/* 상단 네온 바 */
+.emperor-detail-content::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    border-radius: 6px 6px 0 0;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        #003344 8%,
+        #00CCEE 22%,
+        #00FFFF 50%,
+        #00CCEE 78%,
+        #003344 92%,
+        transparent 100%
+    );
+    box-shadow: 0 0 10px rgba(0,229,255,0.6), 0 0 20px rgba(0,150,200,0.25);
+    pointer-events: none;
+    z-index: 5;
+    animation: none !important;
+}
+
+/* 장식 제거 */
+.emperor-detail-content::after {
+    display: none !important;
+}
+
+/* 본문 텍스트 */
+.emperor-detail-content p,
+.emperor-detail-content li,
+.emperor-detail-content td,
+.emperor-detail-content blockquote,
+.emperor-detail-content > div {
+    color: #88c8e0 !important;
+}
+.emperor-detail-content span {
+    color: inherit !important;
+}
+.emperor-detail-content h1,
+.emperor-detail-content h2,
+.emperor-detail-content h3,
+.emperor-detail-content h4 {
+    color: #00FFFF !important;
+    text-shadow: 0 0 8px rgba(0,200,255,0.4) !important;
+}
+.emperor-detail-content strong,
+.emperor-detail-content b {
+    color: #00E5FF !important;
+}
+.emperor-detail-content em,
+.emperor-detail-content i {
+    color: #80c8e0 !important;
+}
+.emperor-detail-content a {
+    color: #1A7FFF !important;
+    text-decoration: underline !important;
+    text-shadow: 0 0 4px rgba(26,127,255,0.4) !important;
+}
+.emperor-detail-content code,
+.emperor-detail-content pre {
+    background: rgba(0,200,255,0.07) !important;
+    color: #00FFFF !important;
+    border: 1px solid rgba(0,200,255,0.2) !important;
+    border-radius: 3px !important;
+}
+
+/* ──────────────────────────────────────────────────────────
+   🌃 4. emperor-detail-meta — 메타 구분선
+────────────────────────────────────────────────────────── */
+.emperor-detail-meta {
+    border-bottom-color: transparent !important;
+    position: relative !important;
+    padding-bottom: 14px !important;
+}
+
+.emperor-detail-meta::after {
+    content: '' !important;
+    position: absolute !important;
+    bottom: 0 !important; left: 0 !important; right: 0 !important;
+    height: 1px !important;
+    background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(0,150,200,0.3) 10%,
+        rgba(0,229,255,0.7) 30%,
+        rgba(0,255,255,0.9) 50%,
+        rgba(0,229,255,0.7) 70%,
+        rgba(0,150,200,0.3) 90%,
+        transparent 100%) !important;
+    box-shadow: 0 0 4px rgba(0,229,255,0.3) !important;
+    pointer-events: none !important;
+    animation: none !important;
+}
+
+/* 메타 텍스트 */
+.emperor-detail-meta [style*="color:#202124"],
+.emperor-detail-meta [style*="color: #202124"] {
+    color: #b0e8f8 !important;
+}
+.emperor-detail-meta [style*="color:#5f6368"],
+.emperor-detail-meta [style*="color: #5f6368"] {
+    color: #4a8098 !important;
+}
+.emperor-detail-meta [data-title-uid] {
+    color: #b0e8f8 !important;
+    font-weight: 700 !important;
+}
+
+/* ──────────────────────────────────────────────────────────
+   🪙 5. 칭호 페이지 — 보유 카드
+────────────────────────────────────────────────────────── */
+#_titleCard_table_emperor {
+    background: linear-gradient(
+        145deg,
+        #071220 0%,
+        #050e1a 50%,
+        #071220 100%
+    ) !important;
+    border: 1px solid rgba(0,180,255,0.4) !important;
+    border-radius: 10px !important;
+    box-shadow:
+        0 0 0 1px rgba(0,200,255,0.15),
+        0 6px 28px rgba(0,0,0,0.6),
+        0 0 20px rgba(0,150,200,0.1),
+        inset 0 0 30px rgba(0,0,0,0.3) !important;
+    position: relative !important;
+    overflow: hidden !important;
+    animation: cyberPulse 3s ease-in-out infinite !important;
+}
+
+#_titleCard_table_emperor::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 10px 10px 0 0;
+    background: linear-gradient(
+        90deg,
+        #003344, #00CCEE, #00FFFF, #1A7FFF, #00CCEE, #003344
+    );
+    background-size: 300% 100%;
+    animation: cyberBarFlow 2.5s linear infinite;
+    pointer-events: none;
+    z-index: 5;
+    box-shadow: 0 0 8px rgba(0,229,255,0.6);
+}
+
+#_titleCard_table_emperor::after {
+    content: '◈';
+    position: absolute;
+    right: 55px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 56px;
+    color: rgba(0,180,255,0.07);
+    pointer-events: none;
+    text-shadow: 0 0 20px rgba(0,200,255,0.2);
+    z-index: 0;
+    animation: cyberFlicker 6s ease-in-out infinite;
+}
+
+#_titleBtn_table_emperor {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(90deg, #003355, #005577) !important;
+    color: #00FFFF !important;
+    border: 1px solid rgba(0,200,255,0.5) !important;
+    text-shadow: 0 0 6px rgba(0,255,255,0.5) !important;
+    box-shadow: 0 0 8px rgba(0,180,255,0.2) !important;
+}
+#_titleBtn_table_emperor::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 60%; height: 100%;
+    background: linear-gradient(105deg, transparent, rgba(0,255,255,0.2), transparent);
+    animation: cyberFlow 2.5s ease-in-out infinite;
+}
+
+/* ──────────────────────────────────────────────────────────
+   🎉 6. 칭호 해금 모달
+────────────────────────────────────────────────────────── */
+#_titleUnlockModal {
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+}
+
+#_titleUnlockModal > div {
+    background: linear-gradient(
+        145deg,
+        #030912 0%,
+        #071525 40%,
+        #040c18 70%,
+        #020810 100%
+    ) !important;
+    border: 1px solid rgba(0,200,255,0.4) !important;
+    border-radius: 16px !important;
+    box-shadow:
+        0 0 0 1px rgba(0,229,255,0.5),
+        0 0 0 3px rgba(0,180,255,0.15),
+        0 0 50px rgba(0,180,255,0.35),
+        0 20px 80px rgba(0,0,0,0.8),
+        inset 0 1px 0 rgba(0,229,255,0.15) !important;
+    animation: cyberPopIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+#_titleUnlockModal div[style*="font-size:56px"] {
+    font-size: 64px !important;
+    filter: drop-shadow(0 0 16px rgba(0,229,255,0.9)) drop-shadow(0 0 32px rgba(0,150,200,0.5)) !important;
+    animation: cyberFlicker 3s ease-in-out infinite !important;
+    display: block !important;
+    margin-bottom: 16px !important;
+}
+
+/* ──────────────────────────────────────────────────────────
+   ✨ 7. 칭호 페이지 전체 배경
+────────────────────────────────────────────────────────── */
+#titlesSection {
+    background: linear-gradient(
+        180deg,
+        #030912 0%,
+        #050e1a 50%,
+        #040c18 100%
+    );
+}
+
+/* ──────────────────────────────────────────────────────────
+   🏙 8. 기사 상세 전체 래퍼
+────────────────────────────────────────────────────────── */
+.emperor-article-wrapper {
+    background:
+        /* 빗줄기 */
+        repeating-linear-gradient(
+            100deg,
+            transparent,
+            transparent 3px,
+            rgba(0,180,255,0.025) 3px,
+            rgba(0,180,255,0.025) 4px,
+            transparent 4px,
+            transparent 18px
+        ),
+        /* 스캔라인 */
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 4px,
+            rgba(0,0,0,0.1) 4px,
+            rgba(0,0,0,0.1) 5px
+        ),
+        linear-gradient(160deg, #071220 0%, #040c18 30%, #071525 60%, #030a14 100%) !important;
+
+    border-radius: 8px !important;
+    border: 1px solid rgba(0,180,255,0.2) !important;
+    border-top: 2px solid rgba(0,229,255,0.6) !important;
+    box-shadow:
+        0 0 0 1px rgba(0,150,200,0.08),
+        0 4px 28px rgba(0,0,0,0.7),
+        0 0 20px rgba(0,150,200,0.06) !important;
+    padding: 20px !important;
+    position: relative !important;
+}
+
+/* 래퍼 좌측 — 네온 엣지 라인 */
+.emperor-article-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 2px;
+    background: linear-gradient(
+        180deg,
+        transparent 0%,
+        #00CCEE 15%,
+        #00FFFF 50%,
+        #00CCEE 85%,
+        transparent 100%
+    );
+    box-shadow: 0 0 8px rgba(0,229,255,0.5);
+    pointer-events: none;
+    border-radius: 8px 0 0 8px;
+}
+
+.emperor-article-wrapper h1 {
+    color: #b0e8f8 !important;
+    text-shadow: 0 0 8px rgba(0,180,255,0.3) !important;
+}
+
+.emperor-article-wrapper .category-badge {
+    background: linear-gradient(90deg, #003355 0%, #005577 100%) !important;
+    color: #00CCEE !important;
+    font-weight: 700 !important;
+    border: 1px solid rgba(0,200,255,0.4) !important;
+    text-shadow: 0 0 4px rgba(0,229,255,0.5) !important;
+}
+
+.emperor-article-wrapper .edited-badge {
+    background: rgba(0,180,255,0.08) !important;
+    color: #4a8098 !important;
+    border: 1px solid rgba(0,150,200,0.3) !important;
+}
+
+/* ── 추천/비추천 버튼 ── */
+.emperor-article-wrapper .vote-btn {
+    background: rgba(0,180,255,0.06) !important;
+    color: #00CCEE !important;
+    border: 1.5px solid rgba(0,180,255,0.3) !important;
+    transition: all 0.2s !important;
+}
+.emperor-article-wrapper .vote-btn:hover {
+    background: rgba(0,180,255,0.15) !important;
+    border-color: rgba(0,229,255,0.6) !important;
+    box-shadow: 0 0 10px rgba(0,200,255,0.2) !important;
+}
+.emperor-article-wrapper .vote-btn.active {
+    background: linear-gradient(135deg, #003355, #005577) !important;
+    color: #00FFFF !important;
+    border-color: #00CCEE !important;
+    font-weight: 700 !important;
+    text-shadow: 0 0 5px rgba(0,255,255,0.5) !important;
+    box-shadow: 0 0 8px rgba(0,200,255,0.3) !important;
+}
+.emperor-article-wrapper [style*="border-top:1px solid #eee"],
+.emperor-article-wrapper [style*="border-top: 1px solid #eee"] {
+    border-top-color: rgba(0,180,255,0.15) !important;
+}
+
+/* ══════════════════════════════════════════════════════════
+   💬 댓글 섹션
+══════════════════════════════════════════════════════════ */
+.emperor-comments-section {
+    background:
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 4px,
+            rgba(0,0,0,0.1) 4px,
+            rgba(0,0,0,0.1) 5px
+        ),
+        linear-gradient(175deg, #040c18 0%, #030910 50%, #050d1a 100%) !important;
+    border-top: 1px solid rgba(0,200,255,0.2) !important;
+    border-radius: 0 0 8px 8px !important;
+    padding: 16px !important;
+    box-shadow:
+        0 0 0 1px rgba(0,180,255,0.06),
+        inset 0 0 40px rgba(0,0,0,0.3) !important;
+}
+
+.emperor-comments-section h3 {
+    color: #b0e8f8 !important;
+    text-shadow: none !important;
+}
+
+.emperor-comments-section #commentSortSelect {
+    background: rgba(0,180,255,0.07) !important;
+    color: #4a8098 !important;
+    border-color: rgba(0,150,200,0.3) !important;
+}
+.emperor-comments-section #commentSortSelect option {
+    background: #050e1a !important;
+    color: #88c8e0 !important;
+}
+
+.emperor-comments-section .comment-input {
+    background: rgba(0,180,255,0.05) !important;
+    color: #b0e8f8 !important;
+    border-color: rgba(0,150,200,0.3) !important;
+}
+.emperor-comments-section .comment-input::placeholder {
+    color: rgba(74,128,152,0.5) !important;
+}
+
+.emperor-comments-section .comment-submit-btn {
+    background: rgba(0,180,255,0.08) !important;
+    color: #00CCEE !important;
+    border-color: rgba(0,150,200,0.3) !important;
+}
+.emperor-comments-section .comment-submit-btn:hover {
+    background: rgba(0,180,255,0.18) !important;
+    color: #00FFFF !important;
+    box-shadow: 0 0 6px rgba(0,200,255,0.2) !important;
+}
+
+.emperor-comments-section .comment-card {
+    background: rgba(0,180,255,0.04) !important;
+    border: 1px solid rgba(0,150,200,0.18) !important;
+    border-left: 2px solid rgba(0,200,255,0.35) !important;
+    border-radius: 4px !important;
+    padding: 12px 14px !important;
+    margin-bottom: 10px !important;
+    transition: border-color 0.2s, background 0.2s !important;
+}
+.emperor-comments-section .comment-card:hover {
+    border-left-color: #00CCEE !important;
+    background: rgba(0,180,255,0.08) !important;
+    box-shadow: 0 0 8px rgba(0,150,200,0.1) !important;
+}
+
+.emperor-comments-section .comment-author {
+    color: #b0e8f8 !important;
+    font-weight: 700 !important;
+}
+
+.emperor-comments-section .comment-time {
+    color: rgba(74,128,152,0.6) !important;
+    font-size: 12px !important;
+}
+
+.emperor-comments-section .comment-body {
+    color: #88c8e0 !important;
+    line-height: 1.65 !important;
+    margin: 8px 0 !important;
+}
+
+.emperor-comments-section .edited-badge {
+    background: rgba(0,180,255,0.08) !important;
+    color: #4a8098 !important;
+    border: 1px solid rgba(0,150,200,0.25) !important;
+}
+
+.emperor-comments-section button[id^="clike-"],
+.emperor-comments-section button[id^="cdislike-"] {
+    background: rgba(0,180,255,0.05) !important;
+    color: #3a7090 !important;
+    border-color: rgba(0,150,200,0.25) !important;
+}
+.emperor-comments-section button[id^="clike-"]:hover,
+.emperor-comments-section button[id^="cdislike-"]:hover {
+    background: rgba(0,180,255,0.14) !important;
+    border-color: rgba(0,200,255,0.5) !important;
+    color: #00CCEE !important;
+}
+
+.emperor-comments-section .btn-text {
+    color: #2a5068 !important;
+}
+.emperor-comments-section .btn-text:hover {
+    color: #00CCEE !important;
+    background: rgba(0,180,255,0.08) !important;
+}
+.emperor-comments-section .btn-text.text-danger {
+    color: rgba(255,45,120,0.6) !important;
+}
+.emperor-comments-section .btn-text.text-danger:hover {
+    color: #FF2D78 !important;
+    text-shadow: 0 0 4px rgba(255,45,120,0.4) !important;
+}
+
+.emperor-comments-section .replies-container {
+    border-left: 2px solid rgba(0,180,255,0.2) !important;
+    margin-left: 12px !important;
+    padding-left: 10px !important;
+}
+.emperor-comments-section .replies-container .comment-card {
+    background: rgba(0,180,255,0.02) !important;
+    border-left-color: rgba(0,180,255,0.2) !important;
+}
+
+.emperor-comments-section .reply-input {
+    background: rgba(0,180,255,0.05) !important;
+    color: #b0e8f8 !important;
+    border-color: rgba(0,150,200,0.3) !important;
+}
+.emperor-comments-section .reply-input::placeholder {
+    color: rgba(74,128,152,0.4) !important;
+}
+.emperor-comments-section .btn-reply-submit {
+    background: rgba(0,180,255,0.07) !important;
+    color: #00CCEE !important;
+    border-color: rgba(0,150,200,0.3) !important;
+}
+.emperor-comments-section .btn-reply-submit:hover {
+    background: rgba(0,180,255,0.16) !important;
+    color: #00FFFF !important;
+}
+
+.emperor-comments-section .comment-edit-form {
+    background: rgba(0,180,255,0.05) !important;
+    border: 1px solid rgba(0,150,200,0.25) !important;
+    border-radius: 4px !important;
+}
+.emperor-comments-section .comment-edit-textarea {
+    background: rgba(0,180,255,0.04) !important;
+    color: #b0e8f8 !important;
+    border-color: rgba(0,150,200,0.3) !important;
+}
+
+.emperor-comments-section #adminCommentImpersonateBox {
+    background: rgba(0,180,255,0.05) !important;
+    border-color: rgba(0,150,200,0.3) !important;
+}
+
+/* ──────────────────────────────────────────────────────────
+   📱 반응형
+────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+    .hsj-title-badge {
+        font-size: 10px !important;
+        padding: 2px 8px 2px 6px !important;
+        letter-spacing: 0.5px !important;
+    }
+    .emperor-comments-section {
+        padding: 12px !important;
+    }
+    .emperor-comments-section .comment-card {
+        padding: 10px 12px !important;
+    }
+}
+
+/* ──────────────────────────────────────────────────────────
+   ⚙️ 모션 감소 설정 존중
+────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .hsj-title-badge,
+    #_titleCard_table_emperor,
+    #_titleUnlockModal > div { animation: none !important; }
+    .hsj-title-badge::before,
+    #_titleBtn_table_emperor::before { display: none; }
+}

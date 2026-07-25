@@ -1,0 +1,7 @@
+node_modules/
+.env
+md/
+Bot/
+hsj-news-notifications/
+보관/
+Ai.js

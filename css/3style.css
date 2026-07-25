@@ -1,0 +1,477 @@
+/* ============================================================
+   🎤 3style.css — GAENEKDO STAGE EDITION
+   아이돌 무대 × 스포트라이트 × 팬덤 광장
+   보라 × 딥 블루 퍼플 × 핑크 × 골드 조명
+   의존: style.css 이후 로드
+   ============================================================ */
+
+/* ──────────────────────────────────────────────────────────
+   CSS 변수
+   ────────────────────────────────────────────────────────── */
+:root {
+    --stage-purple-hot:   #C084FC;
+    --stage-purple-mid:   #9333EA;
+    --stage-purple-deep:  #6D28D9;
+    --stage-purple-dark:  #3B0764;
+    --stage-pink-hot:     #F472B6;
+    --stage-pink-mid:     #EC4899;
+    --stage-pink-dim:     #BE185D;
+    --stage-gold-hot:     #FDE047;
+    --stage-gold-mid:     #FACC15;
+    --stage-gold-dim:     #CA8A04;
+    --stage-bg-deep:      #0D0A1A;
+    --stage-bg-1:         #120D22;
+    --stage-bg-2:         #1A1030;
+    --stage-bg-3:         #221440;
+    --stage-text:         #EDE9FE;
+    --stage-text-mid:     #A78BFA;
+    --stage-text-dim:     #6D52A8;
+    --stage-glow-purple:  rgba(192, 132, 252, 0.65);
+    --stage-glow-pink:    rgba(244, 114, 182, 0.55);
+    --stage-glow-gold:    rgba(253, 224, 71, 0.5);
+}
+
+/* ──────────────────────────────────────────────────────────
+   키프레임
+   ────────────────────────────────────────────────────────── */
+@keyframes stageSpotlight {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes stagePulse {
+    0%, 100% {
+        box-shadow: 0 0 0 1px rgba(192,132,252,0.45), 0 0 10px rgba(192,132,252,0.35), 0 0 22px rgba(147,51,234,0.2), 0 2px 8px rgba(0,0,0,0.5);
+    }
+    50% {
+        box-shadow: 0 0 0 2px rgba(216,180,254,0.8), 0 0 20px rgba(192,132,252,0.65), 0 0 40px rgba(147,51,234,0.35), 0 4px 14px rgba(0,0,0,0.6);
+    }
+}
+
+@keyframes stageShimmer {
+    0%, 80%, 100% { transform: translateX(0) skewX(0); filter: none; }
+    82%  { transform: translateX(-1px) skewX(-0.5deg); filter: brightness(1.3) hue-rotate(10deg); }
+    85%  { transform: translateX(1px)  skewX(0.5deg);  filter: brightness(1.5) hue-rotate(-10deg); }
+    88%  { transform: translateX(0)    skewX(0);        filter: brightness(1.8); }
+}
+
+@keyframes stageBarFlow {
+    0%   { background-position: 0% center; }
+    100% { background-position: 300% center; }
+}
+
+@keyframes stagePopIn {
+    0%   { opacity: 0; transform: scale(0.72) translateY(44px); }
+    65%  { transform: scale(1.05) translateY(-5px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes stageWave {
+    0%, 70%, 100% { transform: rotate(0deg); }
+    74%  { transform: rotate(-6deg) scale(1.05); }
+    78%  { transform: rotate(6deg)  scale(1.05); }
+    82%  { transform: rotate(-3deg); }
+    86%  { transform: rotate(3deg); }
+    90%  { transform: rotate(0deg); }
+}
+
+@keyframes stageSparkFloat {
+    0%, 100% { transform: translateY(0)  rotate(-12deg); opacity: 0.12; }
+    50%       { transform: translateY(-6px) rotate(-8deg);  opacity: 0.22; }
+}
+
+@keyframes stageSlideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ──────────────────────────────────────────────────────────
+   1. hsj-title-badge — 게넥도 칭호 뱃지
+   ────────────────────────────────────────────────────────── */
+.gaenekdo-article-card .hsj-title-badge,
+.hsj-title-badge[style*="gaenekdo"] {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
+    cursor: default;
+    user-select: none;
+    padding: 3px 10px 3px 8px !important;
+    margin-left: 6px !important;
+    border-radius: 20px !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.8px !important;
+    line-height: 1.7 !important;
+    background: linear-gradient(110deg, #1a0533 0%, #6a0dad 25%, #C084FC 45%, #F472B6 55%, #C084FC 70%, #6a0dad 85%, #1a0533 100%) !important;
+    background-size: 200% 100% !important;
+    color: #FDE047 !important;
+    border: 1px solid rgba(192, 132, 252, 0.55) !important;
+    border-top: 1px solid rgba(253, 224, 71, 0.7) !important;
+    box-shadow: 0 0 8px rgba(192,132,252,0.5), 0 0 18px rgba(147,51,234,0.25), 0 0 3px rgba(253,224,71,0.3), inset 0 1px 0 rgba(253,224,71,0.2) !important;
+    animation: stageWave 9s ease-in-out infinite !important;
+    position: relative !important;
+    overflow: hidden !important;
+    text-shadow: 0 0 6px rgba(253,224,71,0.9), 0 0 12px rgba(192,132,252,0.5) !important;
+}
+
+/* ──────────────────────────────────────────────────────────
+   2. 전체 배경 (gaenekdo-theme body)
+   ────────────────────────────────────────────────────────── */
+/* gaenekdo-article-card 배경은 gaenekdo-article-wrapper가 대신 처리 */
+
+/* ──────────────────────────────────────────────────────────
+   3. 기사 카드
+   ────────────────────────────────────────────────────────── */
+.gaenekdo-card-decor {
+    background:
+        repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.10) 3px, rgba(0,0,0,0.10) 4px),
+        radial-gradient(circle 10px at  8%  15%, rgba(192,132,252,0.18) 0%, transparent 70%),
+        radial-gradient(circle  7px at 90%  10%, rgba(244,114,182,0.14) 0%, transparent 70%),
+        radial-gradient(circle  9px at 75%  80%, rgba(192,132,252,0.15) 0%, transparent 70%),
+        radial-gradient(circle  6px at 20%  75%, rgba(253,224,71,0.10)  0%, transparent 70%),
+        radial-gradient(circle  8px at 50%   5%, rgba(244,114,182,0.11) 0%, transparent 70%),
+        linear-gradient(160deg, #120D22 0%, #0D0A1A 30%, #1A1030 60%, #110B1E 100%) !important;
+    border: 1px solid rgba(147,51,234,0.3) !important;
+    border-left: 3px solid #9333EA !important;
+    outline: none !important;
+    box-shadow: 0 0 0 1px rgba(192,132,252,0.08), 0 2px 16px rgba(0,0,0,0.7), 0 0 18px rgba(147,51,234,0.08), inset 0 0 28px rgba(0,0,0,0.5) !important;
+    animation: none !important;
+    position: relative !important;
+    overflow: hidden !important;
+    border-radius: 12px !important;
+}
+
+.gaenekdo-card-decor::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    border-radius: 12px 12px 0 0;
+    background: linear-gradient(90deg, transparent 0%, #3B0764 5%, #9333EA 25%, #F472B6 45%, #FDE047 50%, #F472B6 55%, #9333EA 75%, #3B0764 95%, transparent 100%);
+    box-shadow: 0 0 8px rgba(192,132,252,0.65), 0 0 3px rgba(253,224,71,0.4);
+    pointer-events: none;
+    z-index: 10;
+}
+
+.gaenekdo-card-decor::after {
+    content: '🎤';
+    position: absolute;
+    top: 6px; right: 10px;
+    font-size: 13px;
+    opacity: 0.28;
+    filter: drop-shadow(0 0 4px rgba(192,132,252,0.7));
+    pointer-events: none;
+    z-index: 10;
+    animation: stageSparkFloat 4.5s ease-in-out infinite !important;
+}
+
+.gaenekdo-card-decor .article-title,
+.gaenekdo-card-decor .card-title,
+.gaenekdo-card-decor h3,
+.gaenekdo-card-decor .article-card-title { color: #EDE9FE !important; text-shadow: 0 0 4px rgba(192,132,252,0.25) !important; }
+.gaenekdo-card-decor .article-summary,
+.gaenekdo-card-decor p                   { color: #7C5CBF !important; }
+.gaenekdo-card-decor .article-meta,
+.gaenekdo-card-decor .article-author,
+.gaenekdo-card-decor .card-meta          { color: #5B3F8A !important; }
+.gaenekdo-card-decor .stat-item          { color: #5B3F8A !important; }
+
+.gaenekdo-card-decor .category-badge {
+    background: linear-gradient(90deg, #3B0764 0%, #6D28D9 50%, #3B0764 100%) !important;
+    color: #F472B6 !important;
+    font-weight: 700 !important;
+    border: 1px solid rgba(192, 132, 252, 0.45) !important;
+    text-shadow: 0 0 5px rgba(244,114,182,0.5) !important;
+    border-radius: 12px !important;
+}
+
+/* ──────────────────────────────────────────────────────────
+   4. 기사 상세 래퍼
+   ────────────────────────────────────────────────────────── */
+.gaenekdo-article-wrapper {
+    background:
+        repeating-linear-gradient(108deg, transparent, transparent 4px, rgba(192,132,252,0.02) 4px, rgba(192,132,252,0.02) 5px, transparent 5px, transparent 22px),
+        repeating-linear-gradient(0deg, transparent, transparent 4px, rgba(0,0,0,0.1) 4px, rgba(0,0,0,0.1) 5px),
+        radial-gradient(ellipse 80% 40% at 50% 0%, rgba(147,51,234,0.18) 0%, transparent 70%),
+        linear-gradient(160deg, #1A1030 0%, #0D0A1A 30%, #1A1035 60%, #100C1E 100%) !important;
+    border-radius: 18px !important;
+    border: 1px solid rgba(147,51,234,0.22) !important;
+    border-top: 3px solid rgba(192,132,252,0.6) !important;
+    box-shadow: 0 0 0 1px rgba(147,51,234,0.08), 0 6px 32px rgba(0,0,0,0.7), 0 0 28px rgba(147,51,234,0.07), 0 -2px 20px rgba(192,132,252,0.08) !important;
+    padding: 20px !important;
+    position: relative !important;
+}
+
+.gaenekdo-article-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, transparent 0%, #9333EA 15%, #F472B6 40%, #FDE047 55%, #F472B6 70%, #9333EA 85%, transparent 100%);
+    box-shadow: 0 0 10px rgba(192,132,252,0.5), 0 0 4px rgba(253,224,71,0.25);
+    pointer-events: none;
+    border-radius: 18px 0 0 18px;
+}
+
+.gaenekdo-article-wrapper h1 { color: #EDE9FE !important; text-shadow: 0 0 8px rgba(192,132,252,0.3) !important; }
+
+.gaenekdo-article-wrapper .category-badge {
+    background: linear-gradient(90deg, #3B0764 0%, #6D28D9 100%) !important;
+    color: #F472B6 !important; font-weight: 700 !important;
+    border: 1px solid rgba(192,132,252,0.4) !important;
+    text-shadow: 0 0 5px rgba(244,114,182,0.5) !important;
+    border-radius: 12px !important;
+}
+
+.gaenekdo-article-wrapper .edited-badge {
+    background: rgba(147,51,234,0.08) !important;
+    color: #7C5CBF !important;
+    border: 1px solid rgba(147,51,234,0.25) !important;
+    border-radius: 8px !important;
+}
+
+.gaenekdo-article-wrapper .vote-btn {
+    background: rgba(147,51,234,0.07) !important;
+    color: #C084FC !important;
+    border: 1.5px solid rgba(147,51,234,0.3) !important;
+    border-radius: 10px !important; transition: all 0.2s !important;
+}
+
+.gaenekdo-article-wrapper .vote-btn:hover {
+    background: rgba(147,51,234,0.18) !important;
+    border-color: rgba(192,132,252,0.65) !important;
+    box-shadow: 0 0 10px rgba(192,132,252,0.22) !important;
+}
+
+.gaenekdo-article-wrapper .vote-btn.active {
+    background: linear-gradient(135deg, #6D28D9, #9333EA) !important;
+    color: #FDE047 !important; border-color: #C084FC !important;
+    font-weight: 700 !important; text-shadow: 0 0 6px rgba(253,224,71,0.5) !important;
+    box-shadow: 0 0 10px rgba(147,51,234,0.4) !important;
+}
+
+/* ──────────────────────────────────────────────────────────
+   5. 기사 본문
+   ────────────────────────────────────────────────────────── */
+.gaenekdo-detail-content {
+    background:
+        repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.14) 3px, rgba(0,0,0,0.14) 4px),
+        repeating-linear-gradient(108deg, transparent, transparent 4px, rgba(192,132,252,0.025) 4px, rgba(192,132,252,0.025) 5px, transparent 5px, transparent 24px),
+        radial-gradient(circle 16px at 5%   6%,  rgba(192,132,252,0.18) 0%, transparent 70%),
+        radial-gradient(circle 12px at 94%  7%,  rgba(244,114,182,0.14) 0%, transparent 70%),
+        radial-gradient(circle 18px at 93%  38%, rgba(192,132,252,0.13) 0%, transparent 70%),
+        radial-gradient(circle 13px at 78%  80%, rgba(192,132,252,0.11) 0%, transparent 70%),
+        radial-gradient(circle  8px at 50%   4%, rgba(253,224,71,0.07)  0%, transparent 70%),
+        linear-gradient(175deg, #1A1030 0%, #0D0A1A 35%, #120D22 65%, #0E0B1C 100%) !important;
+    border: 1px solid rgba(147,51,234,0.25) !important;
+    border-left: 3px solid rgba(192,132,252,0.55) !important;
+    border-radius: 14px !important;
+    padding: 24px 20px !important;
+    position: relative !important;
+    overflow: hidden !important;
+    box-shadow: 0 0 0 1px rgba(147,51,234,0.08), 0 4px 24px rgba(0,0,0,0.7), 0 0 28px rgba(147,51,234,0.07), inset 0 0 50px rgba(0,0,0,0.4) !important;
+    animation: none !important;
+    color: #EDE9FE !important;
+}
+
+.gaenekdo-detail-content::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 14px 14px 0 0;
+    background: linear-gradient(90deg, transparent 0%, #3B0764 8%, #9333EA 22%, #C084FC 35%, #F472B6 45%, #FDE047 50%, #F472B6 55%, #C084FC 65%, #9333EA 78%, #3B0764 92%, transparent 100%);
+    box-shadow: 0 0 10px rgba(192,132,252,0.65), 0 0 4px rgba(253,224,71,0.35);
+    pointer-events: none; z-index: 5;
+}
+
+.gaenekdo-detail-content::after { display: none !important; }
+
+.gaenekdo-detail-content p,
+.gaenekdo-detail-content li,
+.gaenekdo-detail-content td,
+.gaenekdo-detail-content blockquote,
+.gaenekdo-detail-content > div  { color: #A78BFA !important; line-height: 1.8 !important; }
+.gaenekdo-detail-content span   { color: inherit !important; }
+
+.gaenekdo-detail-content h1,
+.gaenekdo-detail-content h2,
+.gaenekdo-detail-content h3,
+.gaenekdo-detail-content h4     { color: #F472B6 !important; text-shadow: 0 0 10px rgba(244,114,182,0.5) !important; border-bottom: 2px solid rgba(192,132,252,0.2) !important; padding-bottom: 6px !important; }
+
+.gaenekdo-detail-content strong,
+.gaenekdo-detail-content b      { color: #FDE047 !important; text-shadow: 0 0 6px rgba(253,224,71,0.4) !important; }
+.gaenekdo-detail-content em,
+.gaenekdo-detail-content i      { color: #F9A8D4 !important; }
+.gaenekdo-detail-content a      { color: #C084FC !important; text-decoration: underline !important; text-shadow: 0 0 4px rgba(192,132,252,0.4) !important; }
+.gaenekdo-detail-content a:hover { color: #F472B6 !important; }
+
+.gaenekdo-detail-content code,
+.gaenekdo-detail-content pre    { background: rgba(147,51,234,0.12) !important; color: #F472B6 !important; border: 1px solid rgba(192,132,252,0.25) !important; border-radius: 6px !important; padding: 2px 6px !important; }
+.gaenekdo-detail-content blockquote { border-left: 4px solid #9333EA !important; background: rgba(147,51,234,0.08) !important; padding: 12px 16px !important; border-radius: 0 10px 10px 0 !important; margin: 12px 0 !important; }
+.gaenekdo-detail-content img    { border-radius: 12px !important; box-shadow: 0 4px 20px rgba(147,51,234,0.35), 0 0 0 1px rgba(192,132,252,0.2) !important; }
+
+/* ──────────────────────────────────────────────────────────
+   6. 메타 구분선
+   ────────────────────────────────────────────────────────── */
+.gaenekdo-detail-meta {
+    border-bottom-color: transparent !important;
+    position: relative !important;
+    padding-bottom: 14px !important;
+}
+
+.gaenekdo-detail-meta::after {
+    content: '' !important;
+    position: absolute !important;
+    bottom: 0 !important; left: 0 !important; right: 0 !important;
+    height: 1px !important;
+    background: linear-gradient(90deg, transparent 0%, rgba(109,40,217,0.3) 8%, rgba(192,132,252,0.75) 28%, rgba(244,114,182,0.9) 50%, rgba(192,132,252,0.75) 72%, rgba(109,40,217,0.3) 92%, transparent 100%) !important;
+    box-shadow: 0 0 6px rgba(192,132,252,0.35) !important;
+    pointer-events: none !important; animation: none !important; border-radius: 999px !important;
+}
+
+.gaenekdo-detail-meta [style*="color:#202124"],
+.gaenekdo-detail-meta [style*="color: #202124"] { color: #EDE9FE !important; }
+.gaenekdo-detail-meta [style*="color:#5f6368"],
+.gaenekdo-detail-meta [style*="color: #5f6368"] { color: #7C5CBF !important; }
+.gaenekdo-detail-meta [data-title-uid]          { color: #F472B6 !important; font-weight: 700 !important; text-shadow: 0 0 5px rgba(244,114,182,0.35) !important; }
+
+/* ──────────────────────────────────────────────────────────
+   7. 댓글 섹션
+   ────────────────────────────────────────────────────────── */
+.gaenekdo-comments-section {
+    background:
+        repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.1) 4px, rgba(0,0,0,0.1) 5px),
+        linear-gradient(176deg, #120D22 0%, #0D0A1A 50%, #13102A 100%) !important;
+    border-top: 1px solid rgba(147,51,234,0.2) !important;
+    border-radius: 0 0 16px 16px !important;
+    padding: 16px !important;
+    box-shadow: 0 0 0 1px rgba(147,51,234,0.06), inset 0 0 40px rgba(0,0,0,0.3) !important;
+}
+
+.gaenekdo-comments-section h3 { color: #EDE9FE !important; }
+
+.gaenekdo-comments-section #commentSortSelect { background: rgba(147,51,234,0.08) !important; color: #7C5CBF !important; border-color: rgba(147,51,234,0.3) !important; border-radius: 8px !important; }
+.gaenekdo-comments-section #commentSortSelect option { background: #120D22 !important; color: #C084FC !important; }
+
+.gaenekdo-comments-section .comment-input { background: rgba(147,51,234,0.06) !important; color: #EDE9FE !important; border-color: rgba(147,51,234,0.3) !important; border-radius: 20px !important; }
+.gaenekdo-comments-section .comment-input::placeholder { color: rgba(109,82,168,0.5) !important; }
+
+.gaenekdo-comments-section .comment-submit-btn { background: rgba(147,51,234,0.10) !important; color: #C084FC !important; border-color: rgba(147,51,234,0.3) !important; border-radius: 12px !important; }
+.gaenekdo-comments-section .comment-submit-btn:hover { background: rgba(147,51,234,0.22) !important; color: #F472B6 !important; }
+
+.gaenekdo-comments-section .comment-card { background: rgba(147,51,234,0.05) !important; border: 1px solid rgba(109,40,217,0.2) !important; border-left: 2px solid rgba(192,132,252,0.4) !important; border-radius: 10px !important; padding: 12px 14px !important; margin-bottom: 10px !important; transition: border-color 0.2s, background 0.2s, box-shadow 0.2s !important; animation: stageSlideIn 0.3s ease both !important; }
+.gaenekdo-comments-section .comment-card:hover { border-left-color: #F472B6 !important; background: rgba(147,51,234,0.10) !important; box-shadow: 0 0 10px rgba(192,132,252,0.12) !important; }
+
+.gaenekdo-comments-section .comment-author { color: #EDE9FE !important; font-weight: 700 !important; }
+.gaenekdo-comments-section .comment-time   { color: rgba(109,82,168,0.65) !important; font-size: 12px !important; }
+.gaenekdo-comments-section .comment-body   { color: #A78BFA !important; line-height: 1.7 !important; margin: 8px 0 !important; }
+.gaenekdo-comments-section .edited-badge   { background: rgba(147,51,234,0.08) !important; color: #7C5CBF !important; border: 1px solid rgba(147,51,234,0.25) !important; border-radius: 6px !important; }
+
+.gaenekdo-comments-section button[id^="clike-"],
+.gaenekdo-comments-section button[id^="cdislike-"] { background: rgba(147,51,234,0.06) !important; color: #7C5CBF !important; border-color: rgba(109,40,217,0.25) !important; border-radius: 8px !important; }
+.gaenekdo-comments-section button[id^="clike-"]:hover,
+.gaenekdo-comments-section button[id^="cdislike-"]:hover { background: rgba(147,51,234,0.16) !important; border-color: rgba(192,132,252,0.5) !important; color: #C084FC !important; }
+
+.gaenekdo-comments-section .btn-text { color: #5B3F8A !important; }
+.gaenekdo-comments-section .btn-text:hover { color: #C084FC !important; background: rgba(147,51,234,0.10) !important; }
+.gaenekdo-comments-section .btn-text.text-danger       { color: rgba(244,114,182,0.6) !important; }
+.gaenekdo-comments-section .btn-text.text-danger:hover { color: #F472B6 !important; text-shadow: 0 0 4px rgba(244,114,182,0.4) !important; }
+
+.gaenekdo-comments-section .replies-container { border-left: 2px solid rgba(147,51,234,0.22) !important; margin-left: 12px !important; padding-left: 10px !important; }
+.gaenekdo-comments-section .replies-container .comment-card { background: rgba(147,51,234,0.03) !important; border-left-color: rgba(147,51,234,0.22) !important; }
+
+.gaenekdo-comments-section .reply-input { background: rgba(147,51,234,0.06) !important; color: #EDE9FE !important; border-color: rgba(147,51,234,0.3) !important; border-radius: 10px !important; }
+.gaenekdo-comments-section .reply-input::placeholder { color: rgba(109,82,168,0.4) !important; }
+
+.gaenekdo-comments-section .btn-reply-submit { background: rgba(147,51,234,0.08) !important; color: #C084FC !important; border-color: rgba(147,51,234,0.3) !important; border-radius: 10px !important; }
+.gaenekdo-comments-section .btn-reply-submit:hover { background: rgba(147,51,234,0.18) !important; color: #F472B6 !important; }
+
+/* ──────────────────────────────────────────────────────────
+   8. 칭호 카드 (gaenekdo_member)
+   ────────────────────────────────────────────────────────── */
+#_titleCard_gaenekdo_member {
+    background: linear-gradient(145deg, #1A1030 0%, #0D0A1A 50%, #1A1030 100%) !important;
+    border: 1px solid rgba(147,51,234,0.45) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 0 0 1px rgba(192,132,252,0.15), 0 6px 28px rgba(0,0,0,0.65), 0 0 24px rgba(147,51,234,0.12), inset 0 0 30px rgba(0,0,0,0.3) !important;
+    position: relative !important;
+    overflow: hidden !important;
+    animation: stagePulse 3s ease-in-out infinite !important;
+}
+
+#_titleCard_gaenekdo_member::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    border-radius: 16px 16px 0 0;
+    background: linear-gradient(90deg, #1a0533, #6a0dad, #C084FC, #F472B6, #FDE047, #F472B6, #C084FC, #6a0dad, #1a0533);
+    background-size: 300% 100%;
+    animation: stageBarFlow 2.8s linear infinite;
+    pointer-events: none;
+    z-index: 5;
+    box-shadow: 0 0 10px rgba(192,132,252,0.7), 0 0 4px rgba(253,224,71,0.3);
+}
+
+#_titleCard_gaenekdo_member::after {
+    content: '🎤';
+    position: absolute;
+    right: 55px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 52px;
+    opacity: 0.07;
+    pointer-events: none;
+    filter: drop-shadow(0 0 18px rgba(192,132,252,0.5));
+    z-index: 0;
+    animation: stageWave 5s ease-in-out infinite;
+}
+
+#_titleBtn_gaenekdo_member {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(90deg, #3B0764, #6D28D9) !important;
+    color: #FDE047 !important;
+    border: 1px solid rgba(192, 132, 252, 0.55) !important;
+    text-shadow: 0 0 8px rgba(253,224,71,0.6) !important;
+    box-shadow: 0 0 10px rgba(147,51,234,0.3) !important;
+    border-radius: 12px !important;
+}
+
+/* ──────────────────────────────────────────────────────────
+   9. 게넥도 해금 모달
+   ────────────────────────────────────────────────────────── */
+#_gaenekdoTitleUnlockModal {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+}
+
+#_gaenekdoTitleUnlockModal > div {
+    background: linear-gradient(145deg, #0D0A1A 0%, #1A0533 35%, #120D22 70%, #0D0A1A 100%) !important;
+    border: 2px solid rgba(192,132,252,0.5) !important;
+    border-radius: 24px !important;
+    box-shadow: 0 0 0 3px rgba(192,132,252,0.2), 0 0 0 6px rgba(244,114,182,0.1), 0 0 60px rgba(147,51,234,0.45), 0 0 20px rgba(253,224,71,0.15), 0 20px 80px rgba(0,0,0,0.8), inset 0 2px 0 rgba(253,224,71,0.15) !important;
+    animation: stagePopIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+/* ──────────────────────────────────────────────────────────
+   반응형
+   ────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+    .gaenekdo-card-decor      { border-radius: 12px !important; }
+    .gaenekdo-article-wrapper  { border-radius: 14px !important; padding: 14px !important; }
+    .gaenekdo-comments-section  { padding: 12px !important; border-radius: 0 0 12px 12px !important; }
+    .gaenekdo-detail-content { padding: 18px 14px !important; border-radius: 12px !important; }
+}
+
+/* ──────────────────────────────────────────────────────────
+   모션 감소 존중
+   ────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .gaenekdo-card-decor::after { animation: none !important; }
+    #_titleCard_gaenekdo_member { animation: none !important; }
+    #_gaenekdoTitleUnlockModal > div { animation: none !important; }
+}

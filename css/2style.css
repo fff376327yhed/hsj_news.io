@@ -1,0 +1,1405 @@
+/* ============================================================
+   🐾 DOG STYLE — 강아지 산뜻 에디션
+   크리미 베이지 × 따뜻한 브라운 × 하늘빛 포인트
+   의존: style.css 이후 로드
+   ============================================================ */
+
+/* ──────────────────────────────────────────────────────────
+   CSS 변수
+────────────────────────────────────────────────────────── */
+:root {
+    /* 🐾 강아지 팔레트 */
+    --dog-cream:       #FFFBF4;
+    --dog-cream-deep:  #FFF3E0;
+    --dog-cream-warm:  #FDE8C8;
+    --dog-brown-light: #C49A6C;
+    --dog-brown-mid:   #8B6347;
+    --dog-brown-deep:  #5C3D1E;
+    --dog-sky:         #87CEEB;
+    --dog-sky-light:   #E1F5FE;
+    --dog-sky-mid:     #64B5F6;
+    --dog-paw:         #FFAB91;
+    --dog-paw-hot:     #FF7043;
+    --dog-gold:        #FFD54F;
+    --dog-gold-deep:   #FFA000;
+    --dog-grass:       #A5D6A7;
+    /* 텍스트 */
+    --dog-text:        #4A3728;
+    --dog-text-mid:    #7D5A4A;
+    --dog-text-dim:    #B09080;
+    /* 그림자 */
+    --dog-shadow:      rgba(139, 99, 71, 0.18);
+    --dog-shadow-warm: rgba(200, 140, 80, 0.22);
+    --dog-glow-paw:    rgba(255, 171, 145, 0.55);
+    --dog-glow-sky:    rgba(135, 206, 235, 0.5);
+    --dog-glow-gold:   rgba(255, 213, 79, 0.45);
+}
+
+/* ──────────────────────────────────────────────────────────
+   🎬 강아지 키프레임
+────────────────────────────────────────────────────────── */
+
+/* 따뜻한 빛 흐름 */
+@keyframes dogFlow {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* 포근한 펄스 */
+@keyframes dogPulse {
+    0%, 100% {
+        box-shadow:
+            0 0 0 1px rgba(196, 154, 108, 0.4),
+            0 0 10px rgba(196, 154, 108, 0.25),
+            0 0 20px rgba(255, 171, 145, 0.12),
+            0 2px 8px var(--dog-shadow);
+    }
+    50% {
+        box-shadow:
+            0 0 0 2px rgba(196, 154, 108, 0.7),
+            0 0 18px rgba(196, 154, 108, 0.45),
+            0 0 36px rgba(255, 171, 145, 0.22),
+            0 4px 14px var(--dog-shadow-warm);
+    }
+}
+
+/* 꼬리 흔들기 (뱃지 흔들) */
+@keyframes dogWag {
+    0%, 80%, 100% { transform: rotate(0deg) translateX(0); }
+    85%            { transform: rotate(-4deg) translateX(-1px); }
+    90%            { transform: rotate(4deg)  translateX(1px); }
+    95%            { transform: rotate(-2deg) translateX(0); }
+}
+
+/* 발바닥 두근두근 */
+@keyframes dogPawBounce {
+    0%, 100% { transform: scale(1); }
+    50%       { transform: scale(1.06); }
+}
+
+/* 햇살 스윕 (shimmer) */
+@keyframes dogSunbeam {
+    0%   { background-position: -200% center; }
+    100% { background-position: 200% center; }
+}
+
+/* 프로그레스 바 흐름 */
+@keyframes dogBarFlow {
+    0%   { background-position: 0% center; }
+    100% { background-position: 300% center; }
+}
+
+/* 팝인 */
+@keyframes dogPopIn {
+    0%   { opacity: 0; transform: scale(0.78) translateY(36px); }
+    65%  { transform: scale(1.03) translateY(-3px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* 발자국 떠오르기 */
+@keyframes dogPawFloat {
+    0%, 100% { transform: translateY(0)  rotate(-15deg); opacity: 0.14; }
+    50%       { transform: translateY(-5px) rotate(-10deg); opacity: 0.22; }
+}
+
+/* 바 자라기 */
+@keyframes dogBarGrow {
+    from { width: 0%; }
+    to   { width: 100%; }
+}
+
+/* 반짝 슬라이드인 */
+@keyframes dogSlideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ──────────────────────────────────────────────────────────
+   🏷 1. hsj-title-badge — 강아지 칭호 뱃지
+────────────────────────────────────────────────────────── */
+.hsj-title-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
+    cursor: default;
+    user-select: none;
+
+    padding: 3px 10px 3px 8px !important;
+    margin-left: 6px !important;
+    border-radius: 20px !important;
+
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.4px !important;
+    line-height: 1.7 !important;
+
+    background: linear-gradient(
+        110deg,
+        #E8C49A 0%, #C49A6C 30%, #FFD598 50%, #C49A6C 70%, #E8C49A 100%
+    ) !important;
+    background-size: 200% 100% !important;
+
+    color: #5C3D1E !important;
+    border: 1px solid rgba(139, 99, 71, 0.55) !important;
+    border-top: 1px solid rgba(255, 220, 160, 0.9) !important;
+
+    box-shadow:
+        0 0 6px rgba(196, 154, 108, 0.4),
+        0 0 14px rgba(255, 171, 145, 0.18),
+        inset 0 1px 0 rgba(255, 240, 200, 0.6) !important;
+
+    animation: dogWag 7s ease-in-out infinite !important;
+
+    position: relative !important;
+    overflow: hidden !important;
+    text-shadow: 0 1px 2px rgba(255, 240, 200, 0.7) !important;
+}
+
+/* 햇살 스윕 레이어 */
+.hsj-title-badge::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -80%;
+    width: 50%; height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.45) 50%,
+        transparent 100%
+    );
+    animation: dogFlow 3s ease-in-out infinite;
+    pointer-events: none;
+}
+
+/* 도트 패턴 레이어 */
+.hsj-title-badge::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle 1px at 30% 50%, rgba(255,255,255,0.3) 0%, transparent 100%),
+                radial-gradient(circle 1px at 70% 50%, rgba(255,255,255,0.2) 0%, transparent 100%);
+    pointer-events: none;
+}
+
+.hsj-title-badge:hover {
+    transform: translateY(-1px) !important;
+    box-shadow:
+        0 0 10px rgba(196, 154, 108, 0.65),
+        0 0 22px rgba(255, 171, 145, 0.32),
+        inset 0 1px 0 rgba(255, 240, 200, 0.7) !important;
+    border-color: rgba(196, 154, 108, 0.85) !important;
+    transition: all 0.2s !important;
+}
+
+/* ──────────────────────────────────────────────────────────
+   🌿 2. emperor-card-decor — 강아지 산책로 카드
+────────────────────────────────────────────────────────── */
+.emperor-card-decor {
+    background:
+        /* 잔디 결 패턴 */
+        repeating-linear-gradient(
+            100deg,
+            transparent,
+            transparent 3px,
+            rgba(165, 214, 167, 0.04) 3px,
+            rgba(165, 214, 167, 0.04) 4px,
+            transparent 4px,
+            transparent 18px
+        ),
+        /* 크리미 도트 */
+        radial-gradient(circle  9px at 8%  15%, rgba(255, 213, 79, 0.12) 0%, transparent 70%),
+        radial-gradient(circle  7px at 90% 10%, rgba(196, 154, 108, 0.10) 0%, transparent 70%),
+        radial-gradient(circle  8px at 75% 80%, rgba(255, 171, 145, 0.09) 0%, transparent 70%),
+        radial-gradient(circle  6px at 20% 75%, rgba(135, 206, 235, 0.10) 0%, transparent 70%),
+        radial-gradient(circle  7px at 50%  5%, rgba(196, 154, 108, 0.08) 0%, transparent 70%),
+        /* 바닥 */
+        linear-gradient(
+            160deg,
+            #FFFBF4 0%,
+            #FFF8EE 30%,
+            #FFFCF5 60%,
+            #FFF9F0 100%
+        ) !important;
+
+    border: 1px solid rgba(196, 154, 108, 0.3) !important;
+    border-left: 3px solid #C49A6C !important;
+    outline: none !important;
+
+    box-shadow:
+        0 0 0 1px rgba(196, 154, 108, 0.08),
+        0 2px 14px var(--dog-shadow),
+        0 0 20px rgba(255, 213, 79, 0.06),
+        inset 0 0 24px rgba(255, 248, 235, 0.6) !important;
+
+    animation: none !important;
+    position: relative !important;
+    overflow: hidden !important;
+    border-radius: 14px !important;
+}
+
+/* 카드 상단 — 따뜻한 바 */
+.emperor-card-decor::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 14px 14px 0 0;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        #E8C49A 8%,
+        #FFD54F 25%,
+        #FFAB91 50%,
+        #FFD54F 75%,
+        #E8C49A 92%,
+        transparent 100%
+    );
+    box-shadow: 0 0 8px rgba(255, 213, 79, 0.5), 0 0 18px rgba(255, 171, 145, 0.2);
+    pointer-events: none;
+    z-index: 10;
+    animation: none !important;
+}
+
+/* 우상단 — 발바닥 장식 */
+.emperor-card-decor::after {
+    content: '🐾';
+    position: absolute;
+    top: 7px; right: 11px;
+    font-size: 13px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 10;
+    animation: dogPawFloat 4s ease-in-out infinite !important;
+}
+
+/* 카드 텍스트 */
+.emperor-card-decor .article-title,
+.emperor-card-decor .card-title,
+.emperor-card-decor h3,
+.emperor-card-decor .article-card-title {
+    color: #4A3728 !important;
+    text-shadow: none !important;
+}
+
+.emperor-card-decor .article-summary,
+.emperor-card-decor p {
+    color: #7D5A4A !important;
+}
+
+.emperor-card-decor .article-meta,
+.emperor-card-decor .article-author,
+.emperor-card-decor .card-meta {
+    color: #B09080 !important;
+}
+
+.emperor-card-decor .article-meta span:not(.hsj-title-badge):not(.category-badge),
+.emperor-card-decor .article-meta > div > span {
+    color: #9A7060 !important;
+}
+
+.emperor-card-decor .stat-item {
+    color: #B09080 !important;
+}
+
+.emperor-card-decor .category-badge {
+    background: linear-gradient(90deg, #C49A6C 0%, #D4B080 50%, #C49A6C 100%) !important;
+    color: #FFF8F0 !important;
+    font-weight: 700 !important;
+    border: 1px solid rgba(196, 154, 108, 0.5) !important;
+    text-shadow: 0 1px 2px rgba(92, 61, 30, 0.3) !important;
+    border-radius: 12px !important;
+}
+
+/* ──────────────────────────────────────────────────────────
+   🌸 3. emperor-detail-content — 기사 상세 내용
+────────────────────────────────────────────────────────── */
+.emperor-detail-content {
+    background:
+        /* 부드러운 잔디결 */
+        repeating-linear-gradient(
+            105deg,
+            transparent,
+            transparent 4px,
+            rgba(165, 214, 167, 0.025) 4px,
+            rgba(165, 214, 167, 0.025) 5px,
+            transparent 5px,
+            transparent 28px
+        ),
+        /* 햇살 광점 */
+        radial-gradient(circle 16px at 4%   6%,  rgba(255, 213, 79, 0.12) 0%, transparent 70%),
+        radial-gradient(circle 12px at 95%  8%,  rgba(196, 154, 108, 0.10) 0%, transparent 70%),
+        radial-gradient(circle 14px at 7%   42%, rgba(255, 171, 145, 0.09) 0%, transparent 70%),
+        radial-gradient(circle 18px at 92%  38%, rgba(135, 206, 235, 0.10) 0%, transparent 70%),
+        radial-gradient(circle  9px at 22%  74%, rgba(255, 213, 79, 0.07) 0%, transparent 70%),
+        radial-gradient(circle 12px at 78%  78%, rgba(196, 154, 108, 0.09) 0%, transparent 70%),
+        radial-gradient(circle  8px at 50%   4%, rgba(255, 171, 145, 0.07) 0%, transparent 70%),
+        /* 바닥 */
+        linear-gradient(
+            175deg,
+            #FFFCF5 0%,
+            #FFF8EE 35%,
+            #FFFBF4 65%,
+            #FFF6E8 100%
+        ) !important;
+
+    border: 1px solid rgba(196, 154, 108, 0.25) !important;
+    border-left: 3px solid rgba(196, 154, 108, 0.55) !important;
+    border-radius: 14px !important;
+    padding: 24px 20px !important;
+    position: relative !important;
+    overflow: hidden !important;
+
+    box-shadow:
+        0 0 0 1px rgba(196, 154, 108, 0.07),
+        0 4px 22px var(--dog-shadow),
+        0 0 28px rgba(255, 213, 79, 0.05),
+        inset 0 0 40px rgba(255, 248, 235, 0.5) !important;
+
+    animation: none !important;
+    color: #4A3728 !important;
+}
+
+/* 상단 황금 바 */
+.emperor-detail-content::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 14px 14px 0 0;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        #E8C49A 8%,
+        #FFD54F 22%,
+        #FFAB91 40%,
+        #87CEEB 60%,
+        #FFD54F 78%,
+        #E8C49A 92%,
+        transparent 100%
+    );
+    box-shadow: 0 0 10px rgba(255, 213, 79, 0.5), 0 0 20px rgba(255, 171, 145, 0.2);
+    pointer-events: none;
+    z-index: 5;
+    animation: none !important;
+}
+
+.emperor-detail-content::after {
+    display: none !important;
+}
+
+/* 본문 텍스트 */
+.emperor-detail-content p,
+.emperor-detail-content li,
+.emperor-detail-content td,
+.emperor-detail-content blockquote,
+.emperor-detail-content > div {
+    color: #6B4E3A !important;
+    line-height: 1.8 !important;
+}
+.emperor-detail-content span {
+    color: inherit !important;
+}
+.emperor-detail-content h1,
+.emperor-detail-content h2,
+.emperor-detail-content h3,
+.emperor-detail-content h4 {
+    color: #5C3D1E !important;
+    text-shadow: none !important;
+    border-bottom: 2px solid rgba(196, 154, 108, 0.25) !important;
+    padding-bottom: 6px !important;
+}
+.emperor-detail-content strong,
+.emperor-detail-content b {
+    color: #8B6347 !important;
+    font-weight: 800 !important;
+}
+.emperor-detail-content em,
+.emperor-detail-content i {
+    color: #A0785A !important;
+}
+.emperor-detail-content a {
+    color: #1E88E5 !important;
+    text-decoration: underline !important;
+    text-shadow: none !important;
+}
+.emperor-detail-content a:hover {
+    color: #0D47A1 !important;
+}
+.emperor-detail-content code,
+.emperor-detail-content pre {
+    background: rgba(196, 154, 108, 0.10) !important;
+    color: #5C3D1E !important;
+    border: 1px solid rgba(196, 154, 108, 0.25) !important;
+    border-radius: 6px !important;
+    padding: 2px 6px !important;
+}
+.emperor-detail-content blockquote {
+    border-left: 4px solid #FFD54F !important;
+    background: rgba(255, 213, 79, 0.08) !important;
+    padding: 12px 16px !important;
+    border-radius: 0 10px 10px 0 !important;
+    margin: 12px 0 !important;
+}
+.emperor-detail-content img {
+    border-radius: 12px !important;
+    box-shadow: 0 4px 16px var(--dog-shadow) !important;
+}
+
+/* ──────────────────────────────────────────────────────────
+   🌼 4. emperor-detail-meta — 메타 구분선
+────────────────────────────────────────────────────────── */
+.emperor-detail-meta {
+    border-bottom-color: transparent !important;
+    position: relative !important;
+    padding-bottom: 14px !important;
+}
+
+.emperor-detail-meta::after {
+    content: '' !important;
+    position: absolute !important;
+    bottom: 0 !important; left: 0 !important; right: 0 !important;
+    height: 1.5px !important;
+    background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(196, 154, 108, 0.2) 8%,
+        rgba(255, 213, 79, 0.6) 28%,
+        rgba(255, 171, 145, 0.8) 50%,
+        rgba(255, 213, 79, 0.6) 72%,
+        rgba(196, 154, 108, 0.2) 92%,
+        transparent 100%) !important;
+    box-shadow: 0 0 4px rgba(255, 213, 79, 0.3) !important;
+    pointer-events: none !important;
+    animation: none !important;
+    border-radius: 999px !important;
+}
+
+/* 메타 텍스트 */
+.emperor-detail-meta [style*="color:#202124"],
+.emperor-detail-meta [style*="color: #202124"] {
+    color: #4A3728 !important;
+}
+.emperor-detail-meta [style*="color:#5f6368"],
+.emperor-detail-meta [style*="color: #5f6368"] {
+    color: #9A7060 !important;
+}
+.emperor-detail-meta [data-title-uid] {
+    color: #5C3D1E !important;
+    font-weight: 700 !important;
+}
+
+/* ──────────────────────────────────────────────────────────
+   🦴 5. 칭호 페이지 — 보유 카드
+────────────────────────────────────────────────────────── */
+#_titleCard_table_emperor {
+    background: linear-gradient(
+        145deg,
+        #FFFBF4 0%,
+        #FFF3E0 50%,
+        #FFFBF4 100%
+    ) !important;
+    border: 1px solid rgba(196, 154, 108, 0.45) !important;
+    border-radius: 16px !important;
+    box-shadow:
+        0 0 0 1px rgba(255, 213, 79, 0.2),
+        0 6px 28px var(--dog-shadow),
+        0 0 22px rgba(255, 171, 145, 0.1),
+        inset 0 0 30px rgba(255, 248, 235, 0.8) !important;
+    position: relative !important;
+    overflow: hidden !important;
+    animation: dogPulse 3.5s ease-in-out infinite !important;
+}
+
+#_titleCard_table_emperor::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    border-radius: 16px 16px 0 0;
+    background: linear-gradient(
+        90deg,
+        #E8C49A, #FFD54F, #FFAB91, #87CEEB, #FFAB91, #FFD54F, #E8C49A
+    );
+    background-size: 300% 100%;
+    animation: dogBarFlow 3s linear infinite;
+    pointer-events: none;
+    z-index: 5;
+    box-shadow: 0 0 10px rgba(255, 213, 79, 0.5);
+}
+
+#_titleCard_table_emperor::after {
+    content: '🐶';
+    position: absolute;
+    right: 55px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 52px;
+    opacity: 0.07;
+    pointer-events: none;
+    z-index: 0;
+    animation: dogPawBounce 3s ease-in-out infinite;
+}
+
+#_titleBtn_table_emperor {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(90deg, #C49A6C, #D4B080) !important;
+    color: #FFF8F0 !important;
+    border: 1px solid rgba(196, 154, 108, 0.6) !important;
+    text-shadow: 0 1px 2px rgba(92, 61, 30, 0.4) !important;
+    box-shadow: 0 2px 10px var(--dog-shadow) !important;
+    border-radius: 12px !important;
+}
+#_titleBtn_table_emperor::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 60%; height: 100%;
+    background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: dogFlow 2.5s ease-in-out infinite;
+}
+
+/* ──────────────────────────────────────────────────────────
+   🎉 6. 칭호 해금 모달
+────────────────────────────────────────────────────────── */
+#_titleUnlockModal {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+}
+
+#_titleUnlockModal > div {
+    background: linear-gradient(
+        145deg,
+        #FFFBF4 0%,
+        #FFF0D8 40%,
+        #FFFBF4 70%,
+        #FFF8EE 100%
+    ) !important;
+    border: 2px solid rgba(196, 154, 108, 0.5) !important;
+    border-radius: 24px !important;
+    box-shadow:
+        0 0 0 3px rgba(255, 213, 79, 0.2),
+        0 0 0 6px rgba(255, 171, 145, 0.1),
+        0 0 50px rgba(196, 154, 108, 0.35),
+        0 20px 80px var(--dog-shadow-warm),
+        inset 0 2px 0 rgba(255, 240, 200, 0.8) !important;
+    animation: dogPopIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+#_titleUnlockModal div[style*="font-size:56px"] {
+    font-size: 64px !important;
+    filter: drop-shadow(0 0 16px rgba(255, 171, 145, 0.8)) drop-shadow(0 0 32px rgba(255, 213, 79, 0.45)) !important;
+    animation: dogPawBounce 1.5s ease-in-out infinite !important;
+    display: block !important;
+    margin-bottom: 16px !important;
+}
+
+/* ──────────────────────────────────────────────────────────
+   🌅 7. 칭호 페이지 전체 배경
+────────────────────────────────────────────────────────── */
+#titlesSection {
+    background: linear-gradient(
+        180deg,
+        #FFFBF4 0%,
+        #FFF5E6 50%,
+        #FFF8EE 100%
+    );
+}
+
+/* ──────────────────────────────────────────────────────────
+   🏡 8. 기사 상세 전체 래퍼 — 외부 디자인
+────────────────────────────────────────────────────────── */
+.emperor-article-wrapper {
+    background:
+        /* 잔디 결 */
+        repeating-linear-gradient(
+            100deg,
+            transparent,
+            transparent 4px,
+            rgba(165, 214, 167, 0.03) 4px,
+            rgba(165, 214, 167, 0.03) 5px,
+            transparent 5px,
+            transparent 22px
+        ),
+        /* 햇살 광점 */
+        radial-gradient(circle 24px at 3%  8%,  rgba(255, 213, 79, 0.10) 0%, transparent 65%),
+        radial-gradient(circle 18px at 97% 6%,  rgba(255, 171, 145, 0.08) 0%, transparent 65%),
+        radial-gradient(circle 20px at 4%  50%, rgba(135, 206, 235, 0.08) 0%, transparent 65%),
+        radial-gradient(circle 22px at 96% 50%, rgba(255, 213, 79, 0.07) 0%, transparent 65%),
+        radial-gradient(circle 18px at 3%  92%, rgba(196, 154, 108, 0.09) 0%, transparent 65%),
+        radial-gradient(circle 16px at 97% 92%, rgba(255, 171, 145, 0.08) 0%, transparent 65%),
+        /* 기본 배경 */
+        linear-gradient(165deg, #FFFCF5 0%, #FFF8EE 30%, #FFFAF2 65%, #FFF5E5 100%) !important;
+
+    border-radius: 18px !important;
+    border: 1px solid rgba(196, 154, 108, 0.22) !important;
+    border-top: 3px solid rgba(255, 213, 79, 0.7) !important;
+    box-shadow:
+        0 0 0 1px rgba(196, 154, 108, 0.06),
+        0 6px 32px var(--dog-shadow),
+        0 0 24px rgba(255, 213, 79, 0.06) !important;
+    padding: 20px !important;
+    position: relative !important;
+}
+
+/* 래퍼 좌측 — 따뜻한 엣지 라인 */
+.emperor-article-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 3px;
+    background: linear-gradient(
+        180deg,
+        transparent 0%,
+        #FFD54F 15%,
+        #FFAB91 40%,
+        #87CEEB 60%,
+        #FFAB91 85%,
+        transparent 100%
+    );
+    box-shadow: 0 0 8px rgba(255, 213, 79, 0.4);
+    pointer-events: none;
+    border-radius: 18px 0 0 18px;
+}
+
+.emperor-article-wrapper h1 {
+    color: #4A3728 !important;
+    text-shadow: none !important;
+}
+
+.emperor-article-wrapper .category-badge {
+    background: linear-gradient(90deg, #C49A6C 0%, #D4B080 100%) !important;
+    color: #FFF8F0 !important;
+    font-weight: 700 !important;
+    border: 1px solid rgba(196, 154, 108, 0.4) !important;
+    text-shadow: 0 1px 2px rgba(92, 61, 30, 0.3) !important;
+    border-radius: 12px !important;
+}
+
+.emperor-article-wrapper .edited-badge {
+    background: rgba(196, 154, 108, 0.08) !important;
+    color: #B09080 !important;
+    border: 1px solid rgba(196, 154, 108, 0.25) !important;
+    border-radius: 8px !important;
+}
+
+/* ── 추천/비추천 버튼 ── */
+.emperor-article-wrapper .vote-btn {
+    background: rgba(196, 154, 108, 0.07) !important;
+    color: #8B6347 !important;
+    border: 1.5px solid rgba(196, 154, 108, 0.3) !important;
+    border-radius: 10px !important;
+    transition: all 0.2s !important;
+}
+.emperor-article-wrapper .vote-btn:hover {
+    background: rgba(196, 154, 108, 0.16) !important;
+    border-color: rgba(196, 154, 108, 0.6) !important;
+    box-shadow: 0 0 10px rgba(196, 154, 108, 0.2) !important;
+}
+.emperor-article-wrapper .vote-btn.active {
+    background: linear-gradient(135deg, #C49A6C, #D4B080) !important;
+    color: #FFF8F0 !important;
+    border-color: #C49A6C !important;
+    font-weight: 700 !important;
+    text-shadow: 0 1px 2px rgba(92, 61, 30, 0.3) !important;
+    box-shadow: 0 0 8px rgba(196, 154, 108, 0.35) !important;
+}
+.emperor-article-wrapper [style*="border-top:1px solid #eee"],
+.emperor-article-wrapper [style*="border-top: 1px solid #eee"] {
+    border-top-color: rgba(196, 154, 108, 0.18) !important;
+}
+
+/* ══════════════════════════════════════════════════════════
+   💬 댓글 섹션
+══════════════════════════════════════════════════════════ */
+.emperor-comments-section {
+    background:
+        repeating-linear-gradient(
+            105deg,
+            transparent,
+            transparent 5px,
+            rgba(165, 214, 167, 0.025) 5px,
+            rgba(165, 214, 167, 0.025) 6px,
+            transparent 6px,
+            transparent 30px
+        ),
+        linear-gradient(178deg, #FFFCF5 0%, #FFF9F0 50%, #FFFBF4 100%) !important;
+    border-top: 1px solid rgba(196, 154, 108, 0.2) !important;
+    border-radius: 0 0 16px 16px !important;
+    padding: 16px !important;
+    box-shadow:
+        0 0 0 1px rgba(196, 154, 108, 0.05),
+        inset 0 0 40px rgba(255, 248, 235, 0.4) !important;
+}
+
+.emperor-comments-section h3 {
+    color: #4A3728 !important;
+    text-shadow: none !important;
+}
+
+.emperor-comments-section #commentSortSelect {
+    background: rgba(196, 154, 108, 0.07) !important;
+    color: #9A7060 !important;
+    border-color: rgba(196, 154, 108, 0.28) !important;
+    border-radius: 8px !important;
+}
+.emperor-comments-section #commentSortSelect option {
+    background: #FFFBF4 !important;
+    color: #5C3D1E !important;
+}
+
+.emperor-comments-section .comment-input {
+    background: rgba(255, 255, 255, 0.85) !important;
+    color: #4A3728 !important;
+    border-color: rgba(196, 154, 108, 0.3) !important;
+    border-radius: 12px !important;
+}
+.emperor-comments-section .comment-input::placeholder {
+    color: rgba(176, 144, 128, 0.6) !important;
+}
+
+.emperor-comments-section .comment-submit-btn {
+    background: rgba(196, 154, 108, 0.10) !important;
+    color: #8B6347 !important;
+    border-color: rgba(196, 154, 108, 0.3) !important;
+    border-radius: 12px !important;
+}
+.emperor-comments-section .comment-submit-btn:hover {
+    background: rgba(196, 154, 108, 0.22) !important;
+    color: #5C3D1E !important;
+    box-shadow: 0 0 8px rgba(196, 154, 108, 0.22) !important;
+}
+
+.emperor-comments-section .comment-card {
+    background: rgba(255, 255, 255, 0.75) !important;
+    border: 1px solid rgba(196, 154, 108, 0.18) !important;
+    border-left: 3px solid rgba(255, 213, 79, 0.6) !important;
+    border-radius: 12px !important;
+    padding: 12px 14px !important;
+    margin-bottom: 10px !important;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s !important;
+    animation: dogSlideIn 0.3s ease both !important;
+}
+.emperor-comments-section .comment-card:hover {
+    border-left-color: #FFD54F !important;
+    background: rgba(255, 253, 244, 0.95) !important;
+    box-shadow: 0 4px 14px var(--dog-shadow) !important;
+}
+
+.emperor-comments-section .comment-author {
+    color: #4A3728 !important;
+    font-weight: 700 !important;
+}
+
+.emperor-comments-section .comment-time {
+    color: rgba(176, 144, 128, 0.75) !important;
+    font-size: 12px !important;
+}
+
+.emperor-comments-section .comment-body {
+    color: #6B4E3A !important;
+    line-height: 1.7 !important;
+    margin: 8px 0 !important;
+}
+
+.emperor-comments-section .edited-badge {
+    background: rgba(196, 154, 108, 0.08) !important;
+    color: #B09080 !important;
+    border: 1px solid rgba(196, 154, 108, 0.22) !important;
+    border-radius: 6px !important;
+}
+
+.emperor-comments-section button[id^="clike-"],
+.emperor-comments-section button[id^="cdislike-"] {
+    background: rgba(196, 154, 108, 0.06) !important;
+    color: #B09080 !important;
+    border-color: rgba(196, 154, 108, 0.22) !important;
+    border-radius: 8px !important;
+}
+.emperor-comments-section button[id^="clike-"]:hover,
+.emperor-comments-section button[id^="cdislike-"]:hover {
+    background: rgba(196, 154, 108, 0.16) !important;
+    border-color: rgba(196, 154, 108, 0.5) !important;
+    color: #8B6347 !important;
+}
+
+.emperor-comments-section .btn-text {
+    color: #B09080 !important;
+}
+.emperor-comments-section .btn-text:hover {
+    color: #5C3D1E !important;
+    background: rgba(196, 154, 108, 0.10) !important;
+}
+.emperor-comments-section .btn-text.text-danger {
+    color: rgba(229, 115, 115, 0.7) !important;
+}
+.emperor-comments-section .btn-text.text-danger:hover {
+    color: #EF5350 !important;
+}
+
+.emperor-comments-section .replies-container {
+    border-left: 2px solid rgba(255, 213, 79, 0.35) !important;
+    margin-left: 12px !important;
+    padding-left: 10px !important;
+}
+.emperor-comments-section .replies-container .comment-card {
+    background: rgba(255, 253, 244, 0.6) !important;
+    border-left-color: rgba(196, 154, 108, 0.3) !important;
+}
+
+.emperor-comments-section .reply-input {
+    background: rgba(255, 255, 255, 0.82) !important;
+    color: #4A3728 !important;
+    border-color: rgba(196, 154, 108, 0.3) !important;
+    border-radius: 10px !important;
+}
+.emperor-comments-section .reply-input::placeholder {
+    color: rgba(176, 144, 128, 0.5) !important;
+}
+.emperor-comments-section .btn-reply-submit {
+    background: rgba(196, 154, 108, 0.09) !important;
+    color: #8B6347 !important;
+    border-color: rgba(196, 154, 108, 0.28) !important;
+    border-radius: 10px !important;
+}
+.emperor-comments-section .btn-reply-submit:hover {
+    background: rgba(196, 154, 108, 0.20) !important;
+    color: #5C3D1E !important;
+}
+
+.emperor-comments-section .comment-edit-form {
+    background: rgba(255, 253, 244, 0.85) !important;
+    border: 1px solid rgba(196, 154, 108, 0.24) !important;
+    border-radius: 10px !important;
+}
+.emperor-comments-section .comment-edit-textarea {
+    background: rgba(255, 255, 255, 0.8) !important;
+    color: #4A3728 !important;
+    border-color: rgba(196, 154, 108, 0.3) !important;
+    border-radius: 8px !important;
+}
+
+.emperor-comments-section #adminCommentImpersonateBox {
+    background: rgba(196, 154, 108, 0.06) !important;
+    border-color: rgba(196, 154, 108, 0.28) !important;
+    border-radius: 10px !important;
+}
+
+/* ──────────────────────────────────────────────────────────
+   📱 반응형
+────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+    .hsj-title-badge {
+        font-size: 10px !important;
+        padding: 2px 8px 2px 6px !important;
+    }
+    .emperor-article-wrapper {
+        border-radius: 14px !important;
+        padding: 14px !important;
+    }
+    .emperor-comments-section {
+        padding: 12px !important;
+        border-radius: 0 0 12px 12px !important;
+    }
+    .emperor-comments-section .comment-card {
+        padding: 10px 12px !important;
+        border-radius: 10px !important;
+    }
+    .emperor-detail-content {
+        padding: 18px 14px !important;
+        border-radius: 12px !important;
+    }
+}
+
+/* ──────────────────────────────────────────────────────────
+   ⚙️ 모션 감소 설정 존중
+────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .hsj-title-badge,
+    #_titleCard_table_emperor,
+    #_titleUnlockModal > div,
+    .emperor-card-decor::after { animation: none !important; }
+    .hsj-title-badge::before { display: none; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   🐶 가나디 테마 전체 적용 블록
+   — emperor-* 칭호 없이도 ganadi-theme 클래스만으로 동일 스타일 적용
+   — 실제 HTML 선택자: .article-card / #articleDetail / .comments-section
+   ══════════════════════════════════════════════════════════ */
+
+/* ── 🌿 기사 카드 (= .emperor-card-decor) ── */
+body.ganadi-theme .article-card {
+    background:
+        repeating-linear-gradient(
+            100deg,
+            transparent,
+            transparent 3px,
+            rgba(165, 214, 167, 0.04) 3px,
+            rgba(165, 214, 167, 0.04) 4px,
+            transparent 4px,
+            transparent 18px
+        ),
+        radial-gradient(circle  9px at 8%  15%, rgba(255, 213, 79, 0.12) 0%, transparent 70%),
+        radial-gradient(circle  7px at 90% 10%, rgba(196, 154, 108, 0.10) 0%, transparent 70%),
+        radial-gradient(circle  8px at 75% 80%, rgba(255, 171, 145, 0.09) 0%, transparent 70%),
+        radial-gradient(circle  6px at 20% 75%, rgba(135, 206, 235, 0.10) 0%, transparent 70%),
+        radial-gradient(circle  7px at 50%  5%, rgba(196, 154, 108, 0.08) 0%, transparent 70%),
+        linear-gradient(
+            160deg,
+            #FFFBF4 0%,
+            #FFF8EE 30%,
+            #FFFCF5 60%,
+            #FFF9F0 100%
+        ) !important;
+    border: 1px solid rgba(196, 154, 108, 0.3) !important;
+    border-left: 3px solid #C49A6C !important;
+    outline: none !important;
+    box-shadow:
+        0 0 0 1px rgba(196, 154, 108, 0.08),
+        0 2px 14px var(--dog-shadow),
+        0 0 20px rgba(255, 213, 79, 0.06),
+        inset 0 0 24px rgba(255, 248, 235, 0.6) !important;
+    animation: none !important;
+    position: relative !important;
+    overflow: hidden !important;
+    border-radius: 14px !important;
+}
+
+body.ganadi-theme .article-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 14px 14px 0 0;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        #E8C49A 8%,
+        #FFD54F 25%,
+        #FFAB91 50%,
+        #FFD54F 75%,
+        #E8C49A 92%,
+        transparent 100%
+    );
+    box-shadow: 0 0 8px rgba(255, 213, 79, 0.5), 0 0 18px rgba(255, 171, 145, 0.2);
+    pointer-events: none;
+    z-index: 10;
+}
+
+body.ganadi-theme .article-card::after {
+    content: '🐾';
+    position: absolute;
+    top: 7px; right: 11px;
+    font-size: 13px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 10;
+    animation: dogPawFloat 4s ease-in-out infinite !important;
+}
+
+body.ganadi-theme .article-card .article-title,
+body.ganadi-theme .article-card .card-title,
+body.ganadi-theme .article-card h3,
+body.ganadi-theme .article-card .article-card-title {
+    color: #4A3728 !important;
+    text-shadow: none !important;
+}
+
+body.ganadi-theme .article-card .article-summary,
+body.ganadi-theme .article-card p {
+    color: #7D5A4A !important;
+}
+
+body.ganadi-theme .article-card .article-meta,
+body.ganadi-theme .article-card .article-author,
+body.ganadi-theme .article-card .card-meta {
+    color: #B09080 !important;
+}
+
+body.ganadi-theme .article-card .article-meta span:not(.hsj-title-badge):not(.category-badge),
+body.ganadi-theme .article-card .article-meta > div > span {
+    color: #9A7060 !important;
+}
+
+body.ganadi-theme .article-card .stat-item {
+    color: #B09080 !important;
+}
+
+body.ganadi-theme .article-card .category-badge {
+    background: linear-gradient(90deg, #C49A6C 0%, #D4B080 50%, #C49A6C 100%) !important;
+    color: #FFF8F0 !important;
+    font-weight: 700 !important;
+    border: 1px solid rgba(196, 154, 108, 0.5) !important;
+    text-shadow: 0 1px 2px rgba(92, 61, 30, 0.3) !important;
+    border-radius: 12px !important;
+}
+
+/* ── 🏡 기사 상세 래퍼 (= .emperor-article-wrapper) ── */
+body.ganadi-theme #articleDetail > div {
+    background:
+        repeating-linear-gradient(
+            100deg,
+            transparent,
+            transparent 4px,
+            rgba(165, 214, 167, 0.03) 4px,
+            rgba(165, 214, 167, 0.03) 5px,
+            transparent 5px,
+            transparent 22px
+        ),
+        radial-gradient(circle 24px at 3%  8%,  rgba(255, 213, 79, 0.10) 0%, transparent 65%),
+        radial-gradient(circle 18px at 97% 6%,  rgba(255, 171, 145, 0.08) 0%, transparent 65%),
+        radial-gradient(circle 20px at 4%  50%, rgba(135, 206, 235, 0.08) 0%, transparent 65%),
+        radial-gradient(circle 22px at 96% 50%, rgba(255, 213, 79, 0.07) 0%, transparent 65%),
+        radial-gradient(circle 18px at 3%  92%, rgba(196, 154, 108, 0.09) 0%, transparent 65%),
+        radial-gradient(circle 16px at 97% 92%, rgba(255, 171, 145, 0.08) 0%, transparent 65%),
+        linear-gradient(165deg, #FFFCF5 0%, #FFF8EE 30%, #FFFAF2 65%, #FFF5E5 100%) !important;
+    border-radius: 18px !important;
+    border: 1px solid rgba(196, 154, 108, 0.22) !important;
+    border-top: 3px solid rgba(255, 213, 79, 0.7) !important;
+    box-shadow:
+        0 0 0 1px rgba(196, 154, 108, 0.06),
+        0 6px 32px var(--dog-shadow),
+        0 0 24px rgba(255, 213, 79, 0.06) !important;
+    padding: 20px !important;
+    position: relative !important;
+}
+
+body.ganadi-theme #articleDetail > div::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 3px;
+    background: linear-gradient(
+        180deg,
+        transparent 0%,
+        #FFD54F 15%,
+        #FFAB91 40%,
+        #87CEEB 60%,
+        #FFAB91 85%,
+        transparent 100%
+    );
+    box-shadow: 0 0 8px rgba(255, 213, 79, 0.4);
+    pointer-events: none;
+    border-radius: 18px 0 0 18px;
+}
+
+body.ganadi-theme #articleDetail > div h1 {
+    color: #4A3728 !important;
+    text-shadow: none !important;
+}
+
+body.ganadi-theme #articleDetail > div .category-badge {
+    background: linear-gradient(90deg, #C49A6C 0%, #D4B080 100%) !important;
+    color: #FFF8F0 !important;
+    font-weight: 700 !important;
+    border: 1px solid rgba(196, 154, 108, 0.4) !important;
+    text-shadow: 0 1px 2px rgba(92, 61, 30, 0.3) !important;
+    border-radius: 12px !important;
+}
+
+body.ganadi-theme #articleDetail > div .edited-badge {
+    background: rgba(196, 154, 108, 0.08) !important;
+    color: #B09080 !important;
+    border: 1px solid rgba(196, 154, 108, 0.22) !important;
+    border-radius: 6px !important;
+}
+
+body.ganadi-theme #articleDetail > div .vote-btn {
+    background: rgba(196, 154, 108, 0.07) !important;
+    color: #8B6347 !important;
+    border: 1.5px solid rgba(196, 154, 108, 0.3) !important;
+    border-radius: 10px !important;
+    transition: all 0.2s !important;
+}
+body.ganadi-theme #articleDetail > div .vote-btn:hover {
+    background: rgba(196, 154, 108, 0.16) !important;
+    border-color: rgba(196, 154, 108, 0.6) !important;
+    box-shadow: 0 0 10px rgba(196, 154, 108, 0.2) !important;
+}
+body.ganadi-theme #articleDetail > div .vote-btn.active {
+    background: linear-gradient(135deg, #C49A6C, #D4B080) !important;
+    color: #FFF8F0 !important;
+    border-color: #C49A6C !important;
+    font-weight: 700 !important;
+    text-shadow: 0 1px 2px rgba(92, 61, 30, 0.3) !important;
+    box-shadow: 0 0 8px rgba(196, 154, 108, 0.35) !important;
+}
+
+/* ── 🌸 기사 본문 (= .emperor-detail-content) ── */
+body.ganadi-theme [data-detail-article-content] {
+    background:
+        repeating-linear-gradient(
+            105deg,
+            transparent,
+            transparent 4px,
+            rgba(165, 214, 167, 0.025) 4px,
+            rgba(165, 214, 167, 0.025) 5px,
+            transparent 5px,
+            transparent 28px
+        ),
+        radial-gradient(circle 16px at 4%   6%,  rgba(255, 213, 79, 0.12) 0%, transparent 70%),
+        radial-gradient(circle 12px at 95%  8%,  rgba(196, 154, 108, 0.10) 0%, transparent 70%),
+        radial-gradient(circle 14px at 7%   42%, rgba(255, 171, 145, 0.09) 0%, transparent 70%),
+        radial-gradient(circle 18px at 92%  38%, rgba(135, 206, 235, 0.10) 0%, transparent 70%),
+        radial-gradient(circle  9px at 22%  74%, rgba(255, 213, 79, 0.07) 0%, transparent 70%),
+        radial-gradient(circle 12px at 78%  78%, rgba(196, 154, 108, 0.09) 0%, transparent 70%),
+        radial-gradient(circle  8px at 50%   4%, rgba(255, 171, 145, 0.07) 0%, transparent 70%),
+        linear-gradient(175deg, #FFFCF5 0%, #FFF8EE 35%, #FFFBF4 65%, #FFF6E8 100%) !important;
+    border: 1px solid rgba(196, 154, 108, 0.25) !important;
+    border-left: 3px solid rgba(196, 154, 108, 0.55) !important;
+    border-radius: 14px !important;
+    padding: 24px 20px !important;
+    position: relative !important;
+    overflow: hidden !important;
+    box-shadow:
+        0 0 0 1px rgba(196, 154, 108, 0.07),
+        0 4px 22px var(--dog-shadow),
+        0 0 28px rgba(255, 213, 79, 0.05),
+        inset 0 0 40px rgba(255, 248, 235, 0.5) !important;
+    animation: none !important;
+    color: #4A3728 !important;
+}
+
+body.ganadi-theme [data-detail-article-content]::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 14px 14px 0 0;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        #E8C49A 8%,
+        #FFD54F 22%,
+        #FFAB91 40%,
+        #87CEEB 60%,
+        #FFD54F 78%,
+        #E8C49A 92%,
+        transparent 100%
+    );
+    box-shadow: 0 0 10px rgba(255, 213, 79, 0.5), 0 0 20px rgba(255, 171, 145, 0.2);
+    pointer-events: none;
+    z-index: 5;
+}
+
+body.ganadi-theme [data-detail-article-content]::after {
+    display: none !important;
+}
+
+body.ganadi-theme [data-detail-article-content] p,
+body.ganadi-theme [data-detail-article-content] li,
+body.ganadi-theme [data-detail-article-content] td,
+body.ganadi-theme [data-detail-article-content] blockquote,
+body.ganadi-theme [data-detail-article-content] > div { color: #6B4E3A !important; line-height: 1.8 !important; }
+body.ganadi-theme [data-detail-article-content] span  { color: inherit !important; }
+body.ganadi-theme [data-detail-article-content] h1,
+body.ganadi-theme [data-detail-article-content] h2,
+body.ganadi-theme [data-detail-article-content] h3,
+body.ganadi-theme [data-detail-article-content] h4    { color: #5C3D1E !important; text-shadow: none !important; border-bottom: 2px solid rgba(196,154,108,0.25) !important; padding-bottom: 6px !important; }
+body.ganadi-theme [data-detail-article-content] strong,
+body.ganadi-theme [data-detail-article-content] b     { color: #8B6347 !important; font-weight: 800 !important; }
+body.ganadi-theme [data-detail-article-content] em,
+body.ganadi-theme [data-detail-article-content] i     { color: #A0785A !important; }
+body.ganadi-theme [data-detail-article-content] a     { color: #1E88E5 !important; text-decoration: underline !important; text-shadow: none !important; }
+body.ganadi-theme [data-detail-article-content] a:hover { color: #0D47A1 !important; }
+body.ganadi-theme [data-detail-article-content] code,
+body.ganadi-theme [data-detail-article-content] pre   { background: rgba(196,154,108,0.10) !important; color: #5C3D1E !important; border: 1px solid rgba(196,154,108,0.25) !important; border-radius: 6px !important; padding: 2px 6px !important; }
+body.ganadi-theme [data-detail-article-content] blockquote { border-left: 4px solid #FFD54F !important; background: rgba(255,213,79,0.08) !important; padding: 12px 16px !important; border-radius: 0 10px 10px 0 !important; margin: 12px 0 !important; }
+body.ganadi-theme [data-detail-article-content] img   { border-radius: 12px !important; box-shadow: 0 4px 16px var(--dog-shadow) !important; }
+
+/* ── 🌼 메타 구분선 (= .emperor-detail-meta) ── */
+body.ganadi-theme #articleDetail .article-meta {
+    border-bottom-color: transparent !important;
+    position: relative !important;
+    padding-bottom: 14px !important;
+}
+
+body.ganadi-theme #articleDetail .article-meta::after {
+    content: '' !important;
+    position: absolute !important;
+    bottom: 0 !important; left: 0 !important; right: 0 !important;
+    height: 1.5px !important;
+    background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(196, 154, 108, 0.2) 8%,
+        rgba(255, 213, 79, 0.6) 28%,
+        rgba(255, 171, 145, 0.8) 50%,
+        rgba(255, 213, 79, 0.6) 72%,
+        rgba(196, 154, 108, 0.2) 92%,
+        transparent 100%) !important;
+    box-shadow: 0 0 4px rgba(255, 213, 79, 0.3) !important;
+    pointer-events: none !important;
+    animation: none !important;
+    border-radius: 999px !important;
+}
+
+body.ganadi-theme #articleDetail .article-meta [style*="color:#202124"],
+body.ganadi-theme #articleDetail .article-meta [style*="color: #202124"] { color: #4A3728 !important; }
+body.ganadi-theme #articleDetail .article-meta [style*="color:#5f6368"],
+body.ganadi-theme #articleDetail .article-meta [style*="color: #5f6368"] { color: #9A7060 !important; }
+body.ganadi-theme #articleDetail .article-meta [data-title-uid] { color: #5C3D1E !important; font-weight: 700 !important; }
+
+/* ── 💬 댓글 섹션 (= .emperor-comments-section) ── */
+body.ganadi-theme .comments-section {
+    background:
+        repeating-linear-gradient(
+            105deg,
+            transparent,
+            transparent 5px,
+            rgba(165, 214, 167, 0.025) 5px,
+            rgba(165, 214, 167, 0.025) 6px,
+            transparent 6px,
+            transparent 30px
+        ),
+        linear-gradient(178deg, #FFFCF5 0%, #FFF9F0 50%, #FFFBF4 100%) !important;
+    border-top: 1px solid rgba(196, 154, 108, 0.2) !important;
+    border-radius: 0 0 16px 16px !important;
+    padding: 16px !important;
+    box-shadow:
+        0 0 0 1px rgba(196, 154, 108, 0.05),
+        inset 0 0 40px rgba(255, 248, 235, 0.4) !important;
+}
+
+body.ganadi-theme .comments-section h3 { color: #4A3728 !important; text-shadow: none !important; }
+
+body.ganadi-theme .comments-section #commentSortSelect {
+    background: rgba(196, 154, 108, 0.07) !important;
+    color: #9A7060 !important;
+    border-color: rgba(196, 154, 108, 0.28) !important;
+    border-radius: 8px !important;
+}
+body.ganadi-theme .comments-section #commentSortSelect option {
+    background: #FFFBF4 !important;
+    color: #5C3D1E !important;
+}
+
+body.ganadi-theme .comments-section .comment-input {
+    background: rgba(255, 255, 255, 0.85) !important;
+    color: #4A3728 !important;
+    border-color: rgba(196, 154, 108, 0.3) !important;
+    border-radius: 12px !important;
+}
+body.ganadi-theme .comments-section .comment-input::placeholder { color: rgba(176, 144, 128, 0.6) !important; }
+
+body.ganadi-theme .comments-section .comment-submit-btn {
+    background: rgba(196, 154, 108, 0.10) !important;
+    color: #8B6347 !important;
+    border-color: rgba(196, 154, 108, 0.3) !important;
+    border-radius: 12px !important;
+}
+body.ganadi-theme .comments-section .comment-submit-btn:hover {
+    background: rgba(196, 154, 108, 0.22) !important;
+    color: #5C3D1E !important;
+    box-shadow: 0 0 8px rgba(196, 154, 108, 0.22) !important;
+}
+
+body.ganadi-theme .comments-section .comment-card {
+    background: rgba(255, 255, 255, 0.75) !important;
+    border: 1px solid rgba(196, 154, 108, 0.18) !important;
+    border-left: 3px solid rgba(255, 213, 79, 0.6) !important;
+    border-radius: 12px !important;
+    padding: 12px 14px !important;
+    margin-bottom: 10px !important;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s !important;
+    animation: dogSlideIn 0.3s ease both !important;
+}
+body.ganadi-theme .comments-section .comment-card:hover {
+    border-left-color: #FFD54F !important;
+    background: rgba(255, 253, 244, 0.95) !important;
+    box-shadow: 0 4px 14px var(--dog-shadow) !important;
+}
+
+body.ganadi-theme .comments-section .comment-author { color: #4A3728 !important; font-weight: 700 !important; }
+body.ganadi-theme .comments-section .comment-time   { color: rgba(176, 144, 128, 0.75) !important; font-size: 12px !important; }
+body.ganadi-theme .comments-section .comment-body   { color: #6B4E3A !important; line-height: 1.7 !important; margin: 8px 0 !important; }
+
+body.ganadi-theme .comments-section .edited-badge {
+    background: rgba(196, 154, 108, 0.08) !important;
+    color: #B09080 !important;
+    border: 1px solid rgba(196, 154, 108, 0.22) !important;
+    border-radius: 6px !important;
+}
+
+body.ganadi-theme .comments-section button[id^="clike-"],
+body.ganadi-theme .comments-section button[id^="cdislike-"] {
+    background: rgba(196, 154, 108, 0.06) !important;
+    color: #B09080 !important;
+    border-color: rgba(196, 154, 108, 0.22) !important;
+    border-radius: 8px !important;
+}
+body.ganadi-theme .comments-section button[id^="clike-"]:hover,
+body.ganadi-theme .comments-section button[id^="cdislike-"]:hover {
+    background: rgba(196, 154, 108, 0.16) !important;
+    border-color: rgba(196, 154, 108, 0.5) !important;
+    color: #8B6347 !important;
+}
+
+body.ganadi-theme .comments-section .btn-text       { color: #B09080 !important; }
+body.ganadi-theme .comments-section .btn-text:hover { color: #5C3D1E !important; background: rgba(196,154,108,0.10) !important; }
+body.ganadi-theme .comments-section .btn-text.text-danger       { color: rgba(229,115,115,0.7) !important; }
+body.ganadi-theme .comments-section .btn-text.text-danger:hover { color: #EF5350 !important; }
+
+body.ganadi-theme .comments-section .replies-container {
+    border-left: 2px solid rgba(255, 213, 79, 0.35) !important;
+    margin-left: 12px !important;
+    padding-left: 10px !important;
+}
+body.ganadi-theme .comments-section .replies-container .comment-card {
+    background: rgba(255, 253, 244, 0.6) !important;
+    border-left-color: rgba(196, 154, 108, 0.3) !important;
+}
+
+body.ganadi-theme .comments-section .reply-input {
+    background: rgba(255, 255, 255, 0.82) !important;
+    color: #4A3728 !important;
+    border-color: rgba(196, 154, 108, 0.3) !important;
+    border-radius: 10px !important;
+}
+body.ganadi-theme .comments-section .reply-input::placeholder { color: rgba(176,144,128,0.5) !important; }
+
+body.ganadi-theme .comments-section .btn-reply-submit {
+    background: rgba(196, 154, 108, 0.09) !important;
+    color: #8B6347 !important;
+    border-color: rgba(196, 154, 108, 0.28) !important;
+    border-radius: 10px !important;
+}
+body.ganadi-theme .comments-section .btn-reply-submit:hover {
+    background: rgba(196, 154, 108, 0.20) !important;
+    color: #5C3D1E !important;
+}
+
+body.ganadi-theme .comments-section .comment-edit-form {
+    background: rgba(255, 253, 244, 0.85) !important;
+    border: 1px solid rgba(196, 154, 108, 0.24) !important;
+    border-radius: 10px !important;
+}
+body.ganadi-theme .comments-section .comment-edit-textarea {
+    background: rgba(255, 255, 255, 0.8) !important;
+    color: #4A3728 !important;
+    border-color: rgba(196, 154, 108, 0.3) !important;
+    border-radius: 8px !important;
+}
+
+body.ganadi-theme .comments-section #adminCommentImpersonateBox {
+    background: rgba(196, 154, 108, 0.06) !important;
+    border-color: rgba(196, 154, 108, 0.28) !important;
+    border-radius: 10px !important;
+}
+
+/* ── 📱 반응형 (가나디 테마) ── */
+@media (max-width: 480px) {
+    body.ganadi-theme .article-card            { border-radius: 14px !important; }
+    body.ganadi-theme #articleDetail > div     { border-radius: 14px !important; padding: 14px !important; }
+    body.ganadi-theme .comments-section        { padding: 12px !important; border-radius: 0 0 12px 12px !important; }
+    body.ganadi-theme .comments-section .comment-card { padding: 10px 12px !important; border-radius: 10px !important; }
+    body.ganadi-theme [data-detail-article-content] { padding: 18px 14px !important; border-radius: 12px !important; }
+}
+
+/* ── ⚙️ 모션 감소 ── */
+@media (prefers-reduced-motion: reduce) {
+    body.ganadi-theme .article-card::after,
+    body.ganadi-theme [data-detail-article-content] { animation: none !important; }
+    body.ganadi-theme .article-card::before { display: none; }
+}
