@@ -2227,6 +2227,7 @@ function routeToPage(page, articleId = null, section = null) {
         'notification-settings': () => typeof showNotificationSettings === 'function' ? showNotificationSettings() : showSettings(),
         'errorlogs': () => showErrorLogs(),
         'titles': () => typeof showTitlesPage === 'function' ? showTitlesPage() : showMoreMenu(),
+        'activity': () => typeof showActivityStatus === 'function' ? showActivityStatus() : showMoreMenu(),
         'achievements': () => {
             if (typeof showAchievementsPage === 'function') {
                 showAchievementsPage();
@@ -3923,6 +3924,10 @@ function hideAll() {
     
     const dropdown = document.getElementById("profileDropdown");
     if(dropdown) dropdown.classList.remove("active");
+
+    // ✅ 기사 상세 화면을 벗어날 때 실시간 리스너 해제 (메모리 누수 방지)
+    if (typeof detachArticleVoteListeners === 'function') detachArticleVoteListeners();
+    if (typeof detachCommentsListener === 'function') detachCommentsListener();
 }
 
 function showArticles() {
@@ -5173,9 +5178,9 @@ function buildArticleCardHTML(a, commentCounts, badge) {
                 </div>
                 <div class="article-stats" style="display:flex;gap:12px;">
                     <span class="stat-item">👁️ ${views}</span>
-                    <span class="stat-item">💬 ${commentCount}</span>
-                    <span class="stat-item">👍 ${votes.likes}</span>
-                    ${votes.dislikes > 0 ? `<span class="stat-item">👎 ${votes.dislikes}</span>` : ''}
+                    <span class="stat-item" id="card-comment-${a.id}">💬 ${commentCount}</span>
+                    <span class="stat-item" id="card-like-${a.id}">👍 ${votes.likes}</span>
+                    <span class="stat-item" id="card-dislike-${a.id}" style="${votes.dislikes > 0 ? '' : 'display:none;'}">👎 ${votes.dislikes}</span>
                 </div>
             </div>
         </div>
@@ -5531,10 +5536,14 @@ async function showArticleDetail(id) {
             hideVotes: A.hideVotes || false
         };
 
+        // ✅ 좋아요/싫어요 실시간 반영 리스너 연결
+        attachArticleVoteListeners(A.id);
+
         // 🏅 기사 상세 작성자 칭호 뱃지 주입
         if (typeof window.injectTitleBadges === 'function') window.injectTitleBadges();
 
         loadCommentsWithProfile(id);
+        attachCommentsListener(id);
 
         if(typeof addImageClickHandlersToArticle === 'function') {
             setTimeout(() => addImageClickHandlersToArticle(), 300);
@@ -6739,6 +6748,50 @@ ${comment.imageBase64 ? `
         console.error("댓글 로드 실패:", error);
         document.getElementById("comments").innerHTML = "<p style='color:#f44336;text-align:center;padding:30px;'>댓글을 불러오는 중 오류가 발생했습니다.</p>";
     }
+}
+
+// ✅ 댓글 실시간 리스너 (다른 사용자의 댓글 작성/삭제/수정을 새로고침 없이 반영)
+let _commentsListenerRef = null;
+let _commentsListenerCb = null;
+let _commentsRealtimeDebounce = null;
+
+function detachCommentsListener() {
+    if (_commentsListenerRef) {
+        _commentsListenerRef.off('value', _commentsListenerCb);
+        _commentsListenerRef = null;
+        _commentsListenerCb = null;
+    }
+    if (_commentsRealtimeDebounce) {
+        clearTimeout(_commentsRealtimeDebounce);
+        _commentsRealtimeDebounce = null;
+    }
+}
+
+function attachCommentsListener(articleId) {
+    detachCommentsListener();
+
+    const ref = db.ref("comments/" + articleId);
+    let isFirstFire = true;
+
+    const cb = () => {
+        // 최초 1회는 loadCommentsWithProfile()이 이미 별도로 렌더링했으므로 건너뜀
+        if (isFirstFire) { isFirstFire = false; return; }
+
+        // 댓글 수정 폼이 열려있으면 입력 내용 보호를 위해 이번 갱신은 보류
+        const editingForms = document.querySelectorAll('#comments .comment-edit-form');
+        for (const f of editingForms) {
+            if (f.style.display === 'block') return;
+        }
+
+        clearTimeout(_commentsRealtimeDebounce);
+        _commentsRealtimeDebounce = setTimeout(() => {
+            if (currentArticleId === articleId) loadComments(articleId);
+        }, 400);
+    };
+
+    ref.on('value', cb);
+    _commentsListenerRef = ref;
+    _commentsListenerCb = cb;
 }
 
 // ✅ 댓글 수정 모드로 전환
@@ -8244,6 +8297,7 @@ console.log("✅ Part 12 금지어 관리 완료");
 
 // ✅ Firebase 실시간 리스너
 let articlesListenerActive = false;
+let _articlesStructureDebounce = null;
 
 // ✅ [최적화] pinnedArticles 60초 캐시
 let _pinnedCache = null;
@@ -8310,7 +8364,8 @@ window.migrateCommentCounts = async function() {
 
 function setupArticlesListener() {
     if(articlesListenerActive) return;
-    
+
+    // ✅ allArticles 배열 동기화 (DOM 조작 없음 → 화면 깜빡임/스크롤 튐 없이 데이터만 최신 유지)
     db.ref("articles").on("value", snapshot => {
         const val = snapshot.val() || {};
         allArticles = Object.entries(val).map(([key, a]) => {
@@ -8319,14 +8374,44 @@ function setupArticlesListener() {
             if (!rest.id) rest.id = key;
             return rest;
         });
-        // ✅ [최적화] 기사 데이터 수신 즉시 로딩화면 숨김 + 렌더링
+        // ✅ [최적화] 기사 데이터 수신 즉시 로딩화면 숨김
         hidePageLoadingScreen();
-        if(document.getElementById("articlesSection")?.classList.contains("active")) {
-            searchArticles(false);
+    });
+
+    // ✅ 좋아요/싫어요/댓글수 등 "숫자만" 바뀐 경우: 카드를 다시 그리지 않고 숫자만 즉시 갱신
+    //    (인스타그램처럼 화면이 그대로 유지된 채로 숫자만 실시간 반영)
+    db.ref("articles").on("child_changed", snapshot => {
+        const id = snapshot.key;
+        const a = snapshot.val() || {};
+
+        const likeEl    = document.getElementById(`card-like-${id}`);
+        const dislikeEl = document.getElementById(`card-dislike-${id}`);
+        const commentEl = document.getElementById(`card-comment-${id}`);
+
+        if (likeEl)    likeEl.textContent = `👍 ${a.likeCount || 0}`;
+        if (commentEl) commentEl.textContent = `💬 ${a.commentCount || 0}`;
+        if (dislikeEl) {
+            const d = a.dislikeCount || 0;
+            dislikeEl.textContent = `👎 ${d}`;
+            dislikeEl.style.display = d > 0 ? '' : 'none';
         }
     });
-    
+
+    // ✅ 기사가 새로 추가/삭제되어 목록 "구성 자체"가 바뀔 때만 전체 재구성
+    //    (짧은 시간 내 여러 건이 몰려도 300ms 내 변경은 묶어서 한 번만 렌더링)
+    db.ref("articles").on("child_added", _scheduleArticlesListRerender);
+    db.ref("articles").on("child_removed", _scheduleArticlesListRerender);
+
     articlesListenerActive = true;
+}
+
+function _scheduleArticlesListRerender() {
+    clearTimeout(_articlesStructureDebounce);
+    _articlesStructureDebounce = setTimeout(() => {
+        if (document.getElementById("articlesSection")?.classList.contains("active")) {
+            searchArticles(false);
+        }
+    }, 300);
 }
 
 // ✅ 기사 저장
@@ -8581,6 +8666,38 @@ function toggleVote(articleId, voteType) {
             }).finally(_unlock);
         }).catch(_unlock);
     }).catch(_unlock);
+}
+
+// ✅ 기사 상세 좋아요/싫어요 실시간 리스너 (다른 사용자가 추천/비추천 시 새로고침 없이 반영)
+let _articleVoteListenerRefs = null;
+
+function detachArticleVoteListeners() {
+    if (_articleVoteListenerRefs) {
+        _articleVoteListenerRefs.likeRef.off('value', _articleVoteListenerRefs.likeCb);
+        _articleVoteListenerRefs.dislikeRef.off('value', _articleVoteListenerRefs.dislikeCb);
+        _articleVoteListenerRefs = null;
+    }
+}
+
+function attachArticleVoteListeners(articleId) {
+    detachArticleVoteListeners();
+
+    const likeRef = db.ref(`articles/${articleId}/likeCount`);
+    const dislikeRef = db.ref(`articles/${articleId}/dislikeCount`);
+
+    const likeCb = (snapshot) => {
+        const likeBtn = document.getElementById(`like-btn-${articleId}`);
+        if (likeBtn) likeBtn.innerHTML = `👍 추천 ${snapshot.val() || 0}`;
+    };
+    const dislikeCb = (snapshot) => {
+        const dislikeBtn = document.getElementById(`dislike-btn-${articleId}`);
+        if (dislikeBtn) dislikeBtn.innerHTML = `👎 비추천 ${snapshot.val() || 0}`;
+    };
+
+    likeRef.on('value', likeCb);
+    dislikeRef.on('value', dislikeCb);
+
+    _articleVoteListenerRefs = { likeRef, dislikeRef, likeCb, dislikeCb };
 }
 
 // ✅ 투표 수
