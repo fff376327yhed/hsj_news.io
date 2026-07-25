@@ -7374,9 +7374,9 @@ window.submitReply = async function(articleId, commentId) {
         };
         if (imageBase64) reply.imageBase64 = imageBase64;
 
-        await db.ref(`comments/${articleId}/${commentId}/replies`).push(reply);
-        // ✅ [최적화] 댓글 수 +1
-        await db.ref(`articles/${articleId}/commentCount`).transaction(n => (n || 0) + 1);
+        await db.ref(`comments/${articleId}/${commentId}/replies/${replyId}`).remove();
+        // ✅ [최적화] 댓글 수 -1
+        await db.ref(`articles/${articleId}/commentCount`).transaction(n => Math.max((n || 0) - 1, 0));
 
         // ✅ 댓글 작성자에게 답글 알림 전송
         try {
@@ -7728,47 +7728,51 @@ window.showUserManagement = async function(){
         const articles = Object.values(articlesData);
         
         const commentsData = commentsSnapshot.val() || {};
-        const usersMap = new Map();
+        const usersData = usersSnapshot.val() || {};
         
-        // 기사 작성자 수집
+        // ✅ [수정] 이메일 → 닉네임/작성글/댓글 매핑 (users 노드 전체를 기준으로 병합하기 위한 준비)
+        const emailToNick = {};
+        const emailToArticles = {};
+        const emailToComments = {};
+        
         articles.forEach(article => {
-            if(article.author && article.author !== "익명" && article.authorEmail) {
-                if(!usersMap.has(article.authorEmail)) {
-                    usersMap.set(article.authorEmail, {
-                        nickname: article.author,
-                        email: article.authorEmail,
-                        articles: [],
-                        comments: [],
-                        lastActivity: article.date
-                    });
-                }
-                usersMap.get(article.authorEmail).articles.push(article);
+            if(article.authorEmail) {
+                if(article.author && article.author !== "익명") emailToNick[article.authorEmail] = article.author;
+                (emailToArticles[article.authorEmail] = emailToArticles[article.authorEmail] || []).push(article);
             }
         });
         
-        // 댓글 작성자 수집
         Object.entries(commentsData).forEach(([articleId, articleComments]) => {
             Object.entries(articleComments).forEach(([commentId, comment]) => {
-                if(comment.author && comment.author !== "익명" && comment.authorEmail) {
-                    if(!usersMap.has(comment.authorEmail)) {
-                        usersMap.set(comment.authorEmail, {
-                            nickname: comment.author,
-                            email: comment.authorEmail,
-                            articles: [],
-                            comments: [],
-                            lastActivity: comment.timestamp
-                        });
-                    }
-                    usersMap.get(comment.authorEmail).comments.push({...comment,articleId,commentId});
-                    usersMap.get(comment.authorEmail).lastActivity = comment.timestamp;
+                if(comment.authorEmail) {
+                    if(comment.author && comment.author !== "익명") emailToNick[comment.authorEmail] = comment.author;
+                    (emailToComments[comment.authorEmail] = emailToComments[comment.authorEmail] || []).push({...comment, articleId, commentId});
                 }
             });
         });
         
+        // ✅ [수정] 글/댓글이 없는 가입자도 포함하도록 users 노드 전체를 기준으로 목록 생성
+        const usersMap = new Map();
+        Object.entries(usersData).forEach(([uid, userData]) => {
+            const email = userData.email;
+            if(!email) return;
+            const nickname = userData.newNickname || emailToNick[email] || userData.googleDisplayName || email.split('@')[0] || "이름 없음";
+            usersMap.set(email, {
+                uid,
+                nickname,
+                email,
+                articles: emailToArticles[email] || [],
+                comments: emailToComments[email] || [],
+                lastActivity: (userData.lastSeen ? formatLastSeen(userData.lastSeen).replace(/<[^>]+>/g, '') : "기록 없음")
+            });
+        });
+        
+        // ✅ 관리자 본인이 아직 users 노드에 없는 경우 보정
         const currentUserEmail = getUserEmail();
         const currentNickname = getNickname();
-        if(currentUserEmail && currentNickname !== "익명" && !usersMap.has(currentUserEmail)) {
+        if(currentUserEmail && !usersMap.has(currentUserEmail)) {
             usersMap.set(currentUserEmail, {
+                uid: null,
                 nickname: currentNickname,
                 email: currentUserEmail,
                 articles: [],
@@ -7776,8 +7780,6 @@ window.showUserManagement = async function(){
                 lastActivity: new Date().toLocaleString()
             });
         }
-        
-        const usersData = usersSnapshot.val() || {};
         
         if(usersMap.size === 0) {
             root.innerHTML = "<p style='text-align:center;color:#868e96;'>등록된 사용자가 없습니다.</p>";
@@ -7787,25 +7789,17 @@ window.showUserManagement = async function(){
         const usersList = Array.from(usersMap.values());
         
         root.innerHTML = usersList.map(u => {
-            let userData = null;
-            let uid = null;
-            for (const [key, val] of Object.entries(usersData)) {
-                if (val.email === u.email) {
-                    userData = val;
-                    uid = key;
-                    break;
-                }
-            }
+            const userData = u.uid ? usersData[u.uid] : null;
             const warningCount = userData ? (userData.warningCount || 0) : 0;
             const isBanned = userData ? (userData.isBanned || false) : false;
-            const safeUid = uid || 'email_' + btoa(u.email).replace(/=/g, '');
+            const safeUid = u.uid || 'email_' + btoa(u.email).replace(/=/g, '');
             
             const isCurrentUser = (u.email === getUserEmail());
 
             return `
             <div class="user-card" style="opacity: ${isBanned ? '0.7' : '1'}; border-left-color: ${isBanned ? '#343a40' : '#c62828'};">
                 <h4 style="color:${isCurrentUser ? '#000000' : (isBanned ? '#343a40' : '#c62828')};">
-                    ${u.nickname}${isCurrentUser ? ' <span style="background:#000;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;">👤 나</span>' : ''}
+                    ${escapeHTML(u.nickname)}${isCurrentUser ? ' <span style="background:#000;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;">👤 나</span>' : ''}
                     ${isBanned ? ' <span style="background:#343a40;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;">🚫 차단됨</span>' : ''}
                 </h4>
                 <div class="user-info">
@@ -8728,7 +8722,7 @@ async function incrementView(id) {
             return; // 확인 실패 시 중복 증가를 막기 위해 조회수 증가를 시도하지 않음
         }
     } else {
-        // 비로그인 사용자는 계정이 없으므로 기존처럼 기기(localStorage) 기준으로 중복 방지
+        // 비로그인 사용자는 계정이 없으므로 기기(localStorage) 기준으로 중복 방지
         if (hasViewedArticle(id)) {
             console.log("ℹ️ 이미 조회한 기사입니다 (기기 기준):", id);
             return;
