@@ -2110,6 +2110,52 @@ async function updateLastSeen() {
 }
 // ✅ [PATCH 1 추가 끝]
 
+// ✅ [PATCH: 신규 접속 알림] "누가 새로 접속했는지" 작은 토스트로 알려주는 기능
+const _presenceLastSeenCache   = {}; // uid -> 마지막으로 확인한 lastSeen 값
+const _presenceNotifyCooldown  = {}; // uid -> 마지막 알림 시각
+const PRESENCE_FRESH_WINDOW_MS = 15 * 1000;      // lastSeen이 15초 이내면 "방금 접속"으로 간주
+const PRESENCE_ACTIVE_WINDOW_MS = 3 * 60 * 1000; // 3분 이내면 "이미 활동중"으로 간주(중복 알림 방지)
+const PRESENCE_COOLDOWN_MS      = 5 * 60 * 1000; // 같은 사람 5분 이내 중복 알림 금지
+
+function handlePresenceUpdate(uid, data) {
+    if (!data || !data.lastSeen) return;
+
+    const myUid = auth.currentUser?.uid;
+    if (!myUid || uid === myUid) return; // 자기 자신은 알림 제외
+
+    const prevLastSeen = _presenceLastSeenCache[uid] || 0;
+    _presenceLastSeenCache[uid] = data.lastSeen;
+
+    if (data.lastSeen === prevLastSeen) return; // lastSeen 변화 없으면 무시(다른 필드 변경)
+
+    const now = Date.now();
+    const isFresh          = (now - data.lastSeen) < PRESENCE_FRESH_WINDOW_MS;
+    const wasAlreadyActive = (now - prevLastSeen) < PRESENCE_ACTIVE_WINDOW_MS;
+    if (!isFresh || wasAlreadyActive) return;
+
+    const lastNotified = _presenceNotifyCooldown[uid] || 0;
+    if (now - lastNotified < PRESENCE_COOLDOWN_MS) return;
+    _presenceNotifyCooldown[uid] = now;
+
+    const nickname = data.newNickname || data.displayName
+        || (data.email ? data.email.split('@')[0] : '누군가');
+    showToastNotification('👋 새로운 접속', `${nickname}님이 접속했어요!`, null);
+}
+
+let _presenceListenerActive = false;
+function setupPresenceNotifications() {
+    if (_presenceListenerActive) return;
+    _presenceListenerActive = true;
+
+    db.ref('users').on('child_changed', snap => {
+        handlePresenceUpdate(snap.key, snap.val());
+    });
+    db.ref('users').on('child_added', snap => {
+        handlePresenceUpdate(snap.key, snap.val());
+    });
+}
+// ✅ [PATCH: 신규 접속 알림 끝]
+
 
 // ===== Part 2: URL 관리 및 라우팅 =====
 
@@ -3218,6 +3264,161 @@ function startNotificationListener(uid) {
 
 console.log("✅ Part 4 알림 시스템 완료");
 
+// ===== Part 4.5: 최초 로그인 강제 온보딩 (앱 설치 + 닉네임 설정) =====
+
+// 최초 로그인 사용자 전용 진입점
+// - 모바일 기기: ① 앱 설치 강제 → ② 닉네임 설정 강제
+// - PC/태블릿 등: ② 닉네임 설정만 강제
+function showForcedOnboarding(user) {
+    return new Promise(resolve => {
+        const isMobileDevice = (window.DeviceDetect && window.DeviceDetect.detected === 'mobile')
+            || /Mobi|Android|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isStandaloneInstalled = window.matchMedia('(display-mode: standalone)').matches
+            || window.navigator.standalone === true;
+
+        if (isMobileDevice && !isStandaloneInstalled) {
+            showForcedInstallStep(function () {
+                showForcedNicknameStep(user, resolve);
+            });
+        } else {
+            showForcedNicknameStep(user, resolve);
+        }
+    });
+}
+
+// ① 앱 설치 강제 화면 (모바일 전용)
+function showForcedInstallStep(onDone) {
+    const existing = document.getElementById('_forcedInstallOverlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = '_forcedInstallOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;'
+        + 'background:#fff;z-index:9999999;display:flex;flex-direction:column;'
+        + 'align-items:center;justify-content:center;padding:32px;box-sizing:border-box;text-align:center;';
+
+    overlay.innerHTML = `
+        <div style="font-size:64px;margin-bottom:16px;">📲</div>
+        <div style="font-size:20px;font-weight:900;color:#212121;margin-bottom:12px;">
+            해정뉴스 앱을 설치해주세요
+        </div>
+        <div style="font-size:14px;color:#888;line-height:1.7;margin-bottom:28px;max-width:340px;">
+            첫 방문 시 한 번만 설치하면, 홈 화면에서 바로 앱처럼 이용하실 수 있어요!
+        </div>
+        <button id="_forcedInstallBtn" style="width:100%;max-width:320px;padding:16px;
+            background:linear-gradient(135deg,#c62828,#e53935);color:#fff;border:none;
+            border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;margin-bottom:14px;">
+            📲 지금 설치하기
+        </button>
+        <button id="_forcedInstallContinueBtn" style="width:100%;max-width:320px;padding:14px;
+            background:transparent;color:#aaa;border:1.5px solid #e0e0e0;border-radius:14px;
+            font-size:14px;font-weight:700;cursor:pointer;display:none;">
+            설치를 완료했어요, 계속하기
+        </button>
+    `;
+
+    document.body.appendChild(overlay);
+
+    function onInstalled() { finish(); }
+    window.addEventListener('appinstalled', onInstalled);
+
+    function finish() {
+        window.removeEventListener('appinstalled', onInstalled);
+        overlay.remove();
+        onDone();
+    }
+
+    document.getElementById('_forcedInstallBtn').addEventListener('click', function () {
+        if (typeof window._pwaShowInstall === 'function') {
+            window._pwaShowInstall();
+        }
+        const continueBtn = document.getElementById('_forcedInstallContinueBtn');
+        if (continueBtn) {
+            setTimeout(function () { continueBtn.style.display = 'block'; }, 2500);
+        }
+    });
+
+    document.getElementById('_forcedInstallContinueBtn').addEventListener('click', finish);
+}
+
+// ② 닉네임 강제 설정 화면 (전체 기기 공통)
+function showForcedNicknameStep(user, onDone) {
+    const existing = document.getElementById('_forcedNicknameOverlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = '_forcedNicknameOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;'
+        + 'background:#fff;z-index:9999999;display:flex;flex-direction:column;'
+        + 'align-items:center;justify-content:center;padding:32px;box-sizing:border-box;text-align:center;';
+
+    overlay.innerHTML = `
+        <div style="font-size:64px;margin-bottom:16px;">✏️</div>
+        <div style="font-size:20px;font-weight:900;color:#212121;margin-bottom:12px;">
+            사용하실 닉네임을 정해주세요
+        </div>
+        <div style="font-size:14px;color:#888;line-height:1.7;margin-bottom:24px;max-width:340px;">
+            해정뉴스에서 사용할 닉네임입니다 (2~20자). 나중에 설정에서 1회 변경할 수 있어요.
+        </div>
+        <input id="_forcedNicknameInput" type="text" maxlength="20" placeholder="닉네임 입력"
+            style="width:100%;max-width:320px;padding:14px 16px;border:1.5px solid #ddd;
+            border-radius:12px;font-size:15px;margin-bottom:10px;box-sizing:border-box;">
+        <div id="_forcedNicknameError" style="color:#c62828;font-size:12px;min-height:16px;margin-bottom:14px;"></div>
+        <button id="_forcedNicknameSubmit" style="width:100%;max-width:320px;padding:16px;
+            background:linear-gradient(135deg,#c62828,#e53935);color:#fff;border:none;
+            border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;">
+            확인
+        </button>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const input = document.getElementById('_forcedNicknameInput');
+    const errorEl = document.getElementById('_forcedNicknameError');
+    input.focus();
+
+    async function submit() {
+        const trimmed = (input.value || '').trim();
+        errorEl.textContent = '';
+
+        if (trimmed.length < 2 || trimmed.length > 20) {
+            errorEl.textContent = '닉네임은 2자 이상 20자 이하여야 합니다.';
+            return;
+        }
+
+        const foundWord = checkBannedWords(trimmed);
+        if (foundWord) {
+            errorEl.textContent = '금지어가 포함된 닉네임은 사용할 수 없습니다.';
+            return;
+        }
+
+        const submitBtn = document.getElementById('_forcedNicknameSubmit');
+        try {
+            submitBtn.disabled = true;
+            submitBtn.textContent = '설정 중...';
+
+            await user.updateProfile({ displayName: trimmed });
+            await db.ref('users/' + user.uid).update({
+                onboardingNicknameSet: true,
+                newNickname: trimmed,
+                nicknameSetAt: Date.now()
+            });
+
+            overlay.remove();
+            onDone();
+        } catch (error) {
+            errorEl.textContent = '닉네임 설정 실패: ' + error.message;
+            submitBtn.disabled = false;
+            submitBtn.textContent = '확인';
+        }
+    }
+
+    document.getElementById('_forcedNicknameSubmit').addEventListener('click', submit);
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') submit();
+    });
+}
+
 // ===== Part 5: 인증 상태 관리 (간소화) =====
 
   auth.onAuthStateChanged(async user => {
@@ -3240,11 +3441,21 @@ console.log("✅ Part 4 알림 시스템 완료");
         const snap = await userRef.once("value");
         let data = snap.val() || {};
 
-        if (!data.email) {
+        const isFirstTimeUser = !data.email;
+        if (isFirstTimeUser) {
             await userRef.update({
                 email: user.email,
                 createdAt: Date.now()
             });
+        }
+
+        // ✅ 관리자 확인용: 구글 로그인 실명은 앱 닉네임과 별개로 항상 최신 상태 유지
+        // (user.displayName은 changeNickname()에서 덮어써지므로 providerData에서 원본 구글 이름을 가져온다)
+        const googleProviderInfo = (user.providerData || []).find(p => p.providerId === 'google.com');
+        const googleRealName = googleProviderInfo && googleProviderInfo.displayName;
+        if (googleRealName && data.googleDisplayName !== googleRealName) {
+            await userRef.update({ googleDisplayName: googleRealName });
+            data.googleDisplayName = googleRealName;
         }
 
         if (data.isBanned) {
@@ -3298,6 +3509,7 @@ console.log("✅ Part 4 알림 시스템 완료");
         if (header) header.style.display = '';
 
         setupNotificationListener(user.uid);
+        setupPresenceNotifications();
         _fcmRegistered = false;
         registerFCMToken();
 
@@ -3327,6 +3539,11 @@ console.log("✅ Part 4 알림 시스템 완료");
         if (!sessionStorage.getItem('login_shown')) {
             showToastNotification("✅ 로그인 완료", `환영합니다, ${getNickname()}님!`, null);
             sessionStorage.setItem('login_shown', 'true');
+        }
+
+        // ✅ 최초 로그인 사용자: 강제 온보딩(모바일은 설치 → 전체 기기 닉네임 설정) 후 진행
+        if (isFirstTimeUser) {
+            await showForcedOnboarding(user);
         }
 
         // ✅ 로그인 완료 후 초기 라우팅 실행
@@ -3928,6 +4145,7 @@ function hideAll() {
     // ✅ 기사 상세 화면을 벗어날 때 실시간 리스너 해제 (메모리 누수 방지)
     if (typeof detachArticleVoteListeners === 'function') detachArticleVoteListeners();
     if (typeof detachCommentsListener === 'function') detachCommentsListener();
+    if (typeof detachActivityStatusListener === 'function') detachActivityStatusListener();
 }
 
 function showArticles() {
@@ -7592,6 +7810,9 @@ window.showUserManagement = async function(){
                 </h4>
                 <div class="user-info">
                     📧 이메일: <strong>${u.email}</strong><br>
+                    ${userData && userData.googleDisplayName
+                        ? `👤 구글 이름: <strong>${escapeHTML(userData.googleDisplayName)}</strong><br>`
+                        : ''}
                     📰 기사: <strong>${u.articles.length}</strong> | 💬 댓글: <strong>${u.comments.length}</strong><br>
                     ⚠️ 누적 경고: <strong>${warningCount}회</strong><br>
                     🕐 마지막 활동: ${u.lastActivity}<br>
@@ -8490,12 +8711,30 @@ function markArticleAsViewed(articleId) {
     }
 }
 
-function incrementView(id) {
-    if (hasViewedArticle(id)) {
-        console.log("ℹ️ 이미 조회한 기사입니다 (영구 기록):", id);
-        return;
+async function incrementView(id) {
+    const uid = getUserId();
+    const isLoggedInUser = !!(uid && uid !== 'anonymous');
+
+    if (isLoggedInUser) {
+        // ✅ 계정 기준 중복 방지: 같은 계정이면 기기(폰/PC/태블릿)가 달라도 조회수를 한 번만 증가시킴
+        try {
+            const readerSnap = await db.ref(`articleReaders/${id}/${uid}`).once('value');
+            if (readerSnap.exists()) {
+                console.log("ℹ️ 이미 이 계정으로 조회한 기사입니다 (계정 기준):", id);
+                return;
+            }
+        } catch (error) {
+            console.error("❌ 조회 기록 확인 실패:", error);
+            return; // 확인 실패 시 중복 증가를 막기 위해 조회수 증가를 시도하지 않음
+        }
+    } else {
+        // 비로그인 사용자는 계정이 없으므로 기존처럼 기기(localStorage) 기준으로 중복 방지
+        if (hasViewedArticle(id)) {
+            console.log("ℹ️ 이미 조회한 기사입니다 (기기 기준):", id);
+            return;
+        }
     }
-    
+
     const viewRef = db.ref(`articles/${id}/views`);
     viewRef.transaction((currentViews) => {
         return (currentViews || 0) + 1;
@@ -8505,9 +8744,8 @@ function incrementView(id) {
         console.log("✅ 조회수 증가 완료:", id, "→", newViewCount);
         updateViewCountOnScreen(newViewCount);
 
-        // ✅ 로그인 유저라면 독자 기록 저장 (관리자 확인용)
-        const uid = getUserId();
-        if (uid) {
+        // ✅ 로그인 유저: 계정 기준 중복 방지 기록 저장 (관리자 확인용 + 조회수 중복 방지 게이트 겸용)
+        if (isLoggedInUser) {
             db.ref(`articleReaders/${id}/${uid}`).set({
                 name: getNickname(),
                 email: getUserEmail(),
@@ -8821,80 +9059,103 @@ window.showActivityStatus = async function() {
 
     updateURL('activity');
 
-    // ===== 수정 후 코드 =====
-    try {
-        const [usersSnapshot, articlesSnapshot] = await Promise.all([
-            db.ref('users').once('value'),
-            db.ref('articles').once('value')
-        ]);
-        const usersData = usersSnapshot.val() || {};
+    // ✅ 실시간화: 탭이 열려있는 동안 users 노드를 계속 구독해서
+    // 다시 열지 않아도 접속 상태가 자동으로 갱신되도록 변경
+    detachActivityStatusListener(); // 혹시 남아있던 이전 리스너 정리
 
-        // articles의 author 필드로 이메일 → 닉네임 맵 구성
-        const emailToNickname = {};
+    try {
+        const articlesSnapshot = await db.ref('articles').once('value');
         const articlesData = articlesSnapshot.val() || {};
+
+        // articles의 author 필드로 이메일 → 닉네임 맵 구성 (기사가 자주 바뀌지 않으므로 once로 충분)
+        const emailToNickname = {};
         Object.values(articlesData).forEach(article => {
             if (article.authorEmail && article.author) {
                 emailToNickname[article.authorEmail] = article.author;
             }
         });
 
-        // ✅ 이메일 기준 중복 제거 (lastSeen이 가장 최신인 항목만 유지)
-        const emailMap = new Map();
-        Object.entries(usersData)
-            .filter(([uid, data]) => data.email)
-            .forEach(([uid, data]) => {
-                const email = data.email;
-                const thisLastSeen = data.lastSeen || 0;
-                const existing = emailMap.get(email);
-                if (!existing || thisLastSeen > (existing.lastSeen || 0)) {
-                    emailMap.set(email, {
-                        uid,
-                        email,
-                        nickname: data.newNickname || data.displayName || emailToNickname[email] || email.split('@')[0],
-                        lastSeen: data.lastSeen || null,
-                        isBanned: data.isBanned || false
-                    });
-                }
-            });
-
-        const users = Array.from(emailMap.values())
-            .sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0));
-
-        if (users.length === 0) {
-            document.getElementById('activityUserList').innerHTML =
-                '<p style="text-align:center;color:#adb5bd;padding:40px;">사용자 정보가 없습니다.</p>';
-            return;
-        }
-
-        document.getElementById('activityUserList').innerHTML = users.map(u => {
-            const lastSeenHTML = formatLastSeen(u.lastSeen);
-            const bannedBadge  = u.isBanned
-                ? '<span style="background:#343a40;color:white;padding:2px 7px;border-radius:10px;font-size:10px;margin-left:6px;">차단</span>'
-                : '';
-            return `
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid #f0f0f0;"
-                     onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">
-                    <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
-                        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#e3f2fd,#bbdefb);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                            <i class="fas fa-user" style="color:#1976d2;font-size:14px;"></i>
-                        </div>
-                        <div style="min-width:0;">
-                            <div style="font-weight:600;color:#212529;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                                ${escapeHTML(u.nickname)}${bannedBadge}
-                            </div>
-                            <div style="font-size:11px;color:#adb5bd;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHTML(u.email)}</div>
-                        </div>
-                    </div>
-                    <div style="font-size:13px;white-space:nowrap;margin-left:12px;">${lastSeenHTML}</div>
-                </div>
-            `;
-        }).join('');
+        window._activityListenerRef = db.ref('users');
+        window._activityListenerCb = window._activityListenerRef.on('value', snapshot => {
+            renderActivityUserList(snapshot.val() || {}, emailToNickname);
+        }, err => {
+            const listEl = document.getElementById('activityUserList');
+            if (listEl) {
+                listEl.innerHTML = `<p style="color:#f44336;text-align:center;padding:30px;">로드 실패: ${err.message}</p>`;
+            }
+        });
 
     } catch(err) {
         document.getElementById('activityUserList').innerHTML =
             `<p style="color:#f44336;text-align:center;padding:30px;">로드 실패: ${err.message}</p>`;
     }
 };
+
+// ✅ 활동중 목록 렌더링 (실시간 리스너에서 값이 갱신될 때마다 재호출됨)
+function renderActivityUserList(usersData, emailToNickname) {
+    const listEl = document.getElementById('activityUserList');
+    if (!listEl) return; // 탭을 이미 벗어난 경우 무시
+
+    // ✅ 이메일 기준 중복 제거 (lastSeen이 가장 최신인 항목만 유지)
+    const emailMap = new Map();
+    Object.entries(usersData)
+        .filter(([uid, data]) => data.email)
+        .forEach(([uid, data]) => {
+            const email = data.email;
+            const thisLastSeen = data.lastSeen || 0;
+            const existing = emailMap.get(email);
+            if (!existing || thisLastSeen > (existing.lastSeen || 0)) {
+                emailMap.set(email, {
+                    uid,
+                    email,
+                    nickname: data.newNickname || data.displayName || emailToNickname[email] || email.split('@')[0],
+                    lastSeen: data.lastSeen || null,
+                    isBanned: data.isBanned || false
+                });
+            }
+        });
+
+    const users = Array.from(emailMap.values())
+        .sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0));
+
+    if (users.length === 0) {
+        listEl.innerHTML = '<p style="text-align:center;color:#adb5bd;padding:40px;">사용자 정보가 없습니다.</p>';
+        return;
+    }
+
+    listEl.innerHTML = users.map(u => {
+        const lastSeenHTML = formatLastSeen(u.lastSeen);
+        const bannedBadge  = u.isBanned
+            ? '<span style="background:#343a40;color:white;padding:2px 7px;border-radius:10px;font-size:10px;margin-left:6px;">차단</span>'
+            : '';
+        return `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid #f0f0f0;"
+                 onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">
+                <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+                    <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#e3f2fd,#bbdefb);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="fas fa-user" style="color:#1976d2;font-size:14px;"></i>
+                    </div>
+                    <div style="min-width:0;">
+                        <div style="font-weight:600;color:#212529;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                            ${escapeHTML(u.nickname)}${bannedBadge}
+                        </div>
+                        <div style="font-size:11px;color:#adb5bd;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHTML(u.email)}</div>
+                    </div>
+                </div>
+                <div style="font-size:13px;white-space:nowrap;margin-left:12px;">${lastSeenHTML}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ✅ 활동중 탭을 벗어날 때 실시간 리스너 해제 (메모리 누수 방지)
+function detachActivityStatusListener() {
+    if (window._activityListenerRef && window._activityListenerCb) {
+        window._activityListenerRef.off('value', window._activityListenerCb);
+    }
+    window._activityListenerRef = null;
+    window._activityListenerCb = null;
+}
 
 console.log("✅ Part 13 Firebase 리스너 완료");
 
