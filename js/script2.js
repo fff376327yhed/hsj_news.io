@@ -193,6 +193,14 @@ console.log("✅ 프로필 사진 변경 기능 로드 완료");
 window.openImageModal = function(imageSrc) {
     const existingModal = document.getElementById('imageViewModal');
     if(existingModal) existingModal.remove();
+
+    // ✅ 최적화: 이전에 등록된 document 레벨 리스너(mousemove/mouseup/keydown)를 정리.
+    // 기존에는 모달을 열 때마다 새 리스너가 계속 누적되어(제거되지 않음)
+    // 이미지를 여러 번 열수록 mousemove마다 실행되는 핸들러 수가 계속 늘어났음.
+    if (typeof window._imgModalCleanup === 'function') {
+        window._imgModalCleanup();
+        window._imgModalCleanup = null;
+    }
     
     const modalHTML = `
         <div id="imageViewModal" class="modal active" style="z-index:10000; background:rgba(0,0,0,0.95);">
@@ -293,7 +301,7 @@ window.openImageModal = function(imageSrc) {
         lastY = translateY;
     });
     
-    document.addEventListener('mousemove', (e) => {
+    const handleMouseMove = (e) => {
         if (!isDragging) return;
         
         translateX = e.clientX - startX;
@@ -301,15 +309,17 @@ window.openImageModal = function(imageSrc) {
         
         wrapper.style.transition = 'none';
         applyTransform();
-    });
+    };
+    document.addEventListener('mousemove', handleMouseMove);
     
-    document.addEventListener('mouseup', () => {
+    const handleMouseUp = () => {
         if (isDragging) {
             isDragging = false;
             container.style.cursor = 'grab';
             wrapper.style.transition = 'transform 0.1s ease-out';
         }
-    });
+    };
+    document.addEventListener('mouseup', handleMouseUp);
     
     // 터치 이벤트 (모바일)
     let initialDistance = 0;
@@ -367,6 +377,13 @@ window.openImageModal = function(imageSrc) {
         }
     };
     document.addEventListener('keydown', handleEsc);
+
+    // ✅ 최적화: 리스너 정리 함수 등록 (다음 open 또는 close 시 호출됨)
+    window._imgModalCleanup = () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener('keydown', handleEsc);
+    };
     
     // 전역 변수에 저장 (버튼에서 사용)
     window.currentImageScale = {
@@ -406,6 +423,12 @@ window.resetZoom = function() {
 window.closeImageModal = function() {
     const modal = document.getElementById('imageViewModal');
     if(modal) modal.remove();
+
+    // ✅ 최적화: 드래그/줌용 document 리스너 정리 (X버튼으로 닫을 때도 누적 방지)
+    if (typeof window._imgModalCleanup === 'function') {
+        window._imgModalCleanup();
+        window._imgModalCleanup = null;
+    }
 };
 
 let currentScale = 1;
@@ -704,6 +727,14 @@ function saveDraft() {
                            draft.content.trim() !== '<p></p>');
         
         if(hasContent) {
+            // ✅ 최적화: 마지막 저장 이후 내용이 바뀌지 않았다면 JSON.stringify와
+            // localStorage 쓰기를 건너뜀 (10초마다 무조건 저장하던 방식 개선)
+            const fingerprint = draft.category + '|' + draft.title + '|' + draft.summary + '|' + draft.content + '|' + draft.thumbnail;
+            if (fingerprint === window._lastDraftFingerprint) {
+                return;
+            }
+            window._lastDraftFingerprint = fingerprint;
+
             localStorage.setItem('draft_article', JSON.stringify(draft));
             console.log("💾 임시저장 완료 (내용 길이:", draft.content.length, ")");
         }

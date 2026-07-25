@@ -21,10 +21,43 @@
     function resolveGoogleUid(user) {
         if (!user) return null;
         if (ADMIN_MAP[user.email]) {
-            console.log(`[뉴스👑] 관리자 매핑 적용: ${user.email} → googleUid ${ADMIN_MAP[user.email]}`);
+            if (DEBUG) console.log(`[뉴스👑] 관리자 매핑 적용: ${user.email} → googleUid ${ADMIN_MAP[user.email]}`);
             return ADMIN_MAP[user.email];
         }
         return user.providerData?.[0]?.uid || null;
+    }
+
+    // ── 성능 최적화 헬퍼 ─────────────────────────────────────────────
+    // 로그 출력용 디버그 플래그 (false면 문자열 보간 자체를 생략해 오버헤드 제거)
+    const DEBUG = false;
+
+    // "함수가 준비돼 있으면 즉시 실행, 아니면 잠깐 뒤 한 번만 재확인" 패턴을 공통화.
+    // 기존에는 이 패턴이 파일 곳곳에 5회 이상 중복 작성되어 있었음.
+    function fireAchievementCallback(name, delay = 1500) {
+        if (typeof window[name] === 'function') {
+            window[name]();
+            return;
+        }
+        setTimeout(() => {
+            if (typeof window[name] === 'function') window[name]();
+        }, delay);
+    }
+
+    // "조건이 참이 될 때까지 폴링 후 실행" 패턴을 공통화.
+    // 재귀 setTimeout 대신 단일 setInterval + 최대 재시도 횟수로 무한 폴링을 방지.
+    function pollUntil(checkFn, onReady, { interval = 300, maxTries = 60 } = {}) {
+        if (checkFn()) { onReady(); return; }
+        let tries = 0;
+        const timer = setInterval(() => {
+            tries++;
+            if (checkFn()) {
+                clearInterval(timer);
+                onReady();
+            } else if (tries >= maxTries) {
+                clearInterval(timer);
+                console.warn('[도전과제⚠️] 대기 시간 초과 — 폴링 중단');
+            }
+        }, interval);
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -56,11 +89,11 @@
         if (!user) { console.warn('[뉴스⚠️] 로그인 필요 — coins=0'); return 0; }
         const googleUid = resolveGoogleUid(user);
         if (!googleUid) { console.warn('[뉴스⚠️] Google UID 없음 — coins=0'); return 0; }
-        console.log('[뉴스🔍] Apps Script 조회 중... googleUid=', googleUid);
+        if (DEBUG) console.log('[뉴스🔍] Apps Script 조회 중... googleUid=', googleUid);
         try {
             const res  = await fetch(`${SCRIPT_URL}?uid=${encodeURIComponent(googleUid)}&game=poker`, { redirect: 'follow' });
             const json = await res.json();
-            console.log('[뉴스✅] Apps Script 응답:', json);
+            if (DEBUG) console.log('[뉴스✅] Apps Script 응답:', json);
             return parseInt(json.coins) || 0;
         } catch (err) {
             console.error('[뉴스❌] Apps Script 조회 실패:', err.message);
@@ -85,15 +118,7 @@
 
         if (unlocked) {
             localStorage.setItem(ACH_UNLOCKED_KEY, '1');
-            if (typeof window.onPokerMasterAchieved === 'function') {
-                window.onPokerMasterAchieved();
-            } else {
-                setTimeout(() => {
-                    if (typeof window.onPokerMasterAchieved === 'function') {
-                        window.onPokerMasterAchieved();
-                    }
-                }, 1500);
-            }
+            fireAchievementCallback('onPokerMasterAchieved');
         }
         return window._pokerAchData;
     }
@@ -173,14 +198,11 @@
         renderGaenekdoAchievementCard();
         renderArrowAchievementCard(); // async — Firebase에서 점수 조회 후 슬롯 업데이트
 
-        function _tryRenderTitles() {
-            if (typeof window._renderTitleCategory === 'function') {
-                window._renderTitleCategory('#_achTitleCategorySlot');
-            } else {
-                setTimeout(_tryRenderTitles, 200);
-            }
-        }
-        _tryRenderTitles();
+        pollUntil(
+            () => typeof window._renderTitleCategory === 'function',
+            () => window._renderTitleCategory('#_achTitleCategorySlot'),
+            { interval: 200 }
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -196,15 +218,7 @@
 
         if (unlocked) {
             localStorage.setItem(GANADI_ACH_KEY, '1');
-            if (typeof window.onGanadiMasterAchieved === 'function') {
-                window.onGanadiMasterAchieved();
-            } else {
-                setTimeout(() => {
-                    if (typeof window.onGanadiMasterAchieved === 'function') {
-                        window.onGanadiMasterAchieved();
-                    }
-                }, 1500);
-            }
+            fireAchievementCallback('onGanadiMasterAchieved');
         }
 
         slot.innerHTML = `
@@ -280,15 +294,7 @@
         const unlocked = localStorage.getItem('gaenekdo_member_unlocked') === '1';
 
         if (unlocked) {
-            if (typeof window.onGaenekdoMemberAchieved === 'function') {
-                window.onGaenekdoMemberAchieved();
-            } else {
-                setTimeout(() => {
-                    if (typeof window.onGaenekdoMemberAchieved === 'function') {
-                        window.onGaenekdoMemberAchieved();
-                    }
-                }, 1500);
-            }
+            fireAchievementCallback('onGaenekdoMemberAchieved');
         }
 
         slot.innerHTML = `
@@ -477,15 +483,7 @@
 
         // 달성 시 칭호 해금 콜백
         if (unlocked) {
-            if (typeof window.onArrowMasterAchieved === 'function') {
-                window.onArrowMasterAchieved();
-            } else {
-                setTimeout(() => {
-                    if (typeof window.onArrowMasterAchieved === 'function') {
-                        window.onArrowMasterAchieved();
-                    }
-                }, 1500);
-            }
+            fireAchievementCallback('onArrowMasterAchieved');
         }
     }
 
@@ -647,16 +645,18 @@
     function injectAdminAchievementUI() {
         // 관리자 여부 확인 (auth 로드 대기)
         function _tryInject() {
-            if (typeof isAdmin !== 'function' || typeof auth === 'undefined') {
-                setTimeout(_tryInject, 500);
-                return;
-            }
-            if (!auth.currentUser) {
-                // 로그인 상태 변경을 감지해서 재시도
-                auth.onAuthStateChanged(user => { if (user) _doInject(); });
-                return;
-            }
-            _doInject();
+            pollUntil(
+                () => typeof isAdmin === 'function' && typeof auth !== 'undefined',
+                () => {
+                    if (!auth.currentUser) {
+                        // 로그인 상태 변경을 감지해서 재시도
+                        auth.onAuthStateChanged(user => { if (user) _doInject(); });
+                        return;
+                    }
+                    _doInject();
+                },
+                { interval: 500 }
+            );
         }
 
         function _doInject() {
@@ -664,12 +664,14 @@
             // 이미 주입됐으면 스킵
             if (document.getElementById('_adminAchLinkBox')) return;
 
-            const settingsBox = document.querySelector('#writeSection #articleForm > div[style*="background:#f8f9fa"]');
-            if (!settingsBox) {
-                // 아직 DOM이 없으면 재시도
-                setTimeout(_doInject, 500);
-                return;
-            }
+            pollUntil(
+                () => !!document.querySelector('#writeSection #articleForm > div[style*="background:#f8f9fa"]'),
+                () => _insertAdminBox(document.querySelector('#writeSection #articleForm > div[style*="background:#f8f9fa"]')),
+                { interval: 500 }
+            );
+        }
+
+        function _insertAdminBox(settingsBox) {
 
             const box = document.createElement('div');
             box.id = '_adminAchLinkBox';
@@ -728,10 +730,10 @@
      */
     (function hookSaveArticle() {
         function _applyHook() {
-            if (typeof window.saveArticle !== 'function') {
-                setTimeout(_applyHook, 400);
-                return;
-            }
+            pollUntil(() => typeof window.saveArticle === 'function', _hook, { interval: 400 });
+        }
+
+        function _hook() {
             if (window.saveArticle._achHooked) return;
 
             const _origSave = window.saveArticle;
@@ -743,7 +745,7 @@
                         const achName = input.value.trim();
                         if (achName) {
                             article.linkedAchievement = achName;
-                            console.log(`[도전과제💾] linkedAchievement 저장: "${achName}"`);
+                            if (DEBUG) console.log(`[도전과제💾] linkedAchievement 저장: "${achName}"`);
                         } else {
                             // 비워두면 기존 연결 제거
                             delete article.linkedAchievement;
@@ -753,7 +755,7 @@
                 return _origSave.call(this, article, callback);
             };
             window.saveArticle._achHooked = true;
-            console.log('[도전과제✅] saveArticle 훅 적용 완료');
+            if (DEBUG) console.log('[도전과제✅] saveArticle 훅 적용 완료');
         }
         _applyHook();
     })();
@@ -779,7 +781,16 @@
                 }
             }
         });
-        observer.observe(document.body, { childList: true, subtree: true });
+
+        // 최적화: document.body 전체 대신 글쓰기 영역(#writeSection)만 관찰해
+        // 채팅/기사목록 등 페이지 전역에서 발생하는 무관한 DOM 변경까지
+        // 매번 콜백을 실행시키는 비용을 없앤다. #writeSection이 아직 없으면
+        // 준비될 때까지 대기 후 그 노드에만 옵저버를 붙인다.
+        pollUntil(
+            () => !!document.getElementById('writeSection'),
+            () => observer.observe(document.getElementById('writeSection'), { childList: true, subtree: true }),
+            { interval: 500, maxTries: 120 }
+        );
 
         async function _fillEditFormAchievement() {
             // 현재 열람 중인 기사 ID 찾기

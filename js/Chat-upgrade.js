@@ -301,6 +301,10 @@ _waitForChat(function() {
     (function() {
         function _cleanChatModal() {
             document.getElementById('_chatImgModal')?.remove();
+            if (typeof window._chatImgModalCleanup === 'function') {
+                window._chatImgModalCleanup();
+                window._chatImgModalCleanup = null;
+            }
         }
         // popstate: URL 변경 시
         window.addEventListener('popstate', _cleanChatModal);
@@ -1366,8 +1370,15 @@ window._chat.updateReadAvatars = async function(msgs, myUid, roomId) {
     const photoCache = window._chatAvatarCache;
     const nameCache  = window._chatNameCache;
 
-    const roomSnap = await window._chat.getChatDb().ref(`chats/${roomId}/mainUids`).once('value');
-    const mainUids = roomSnap.val() || {};
+    // ✅ 최적화: mainUids는 방 멤버십이 바뀔 때만 변하는 값이라 매번 새로 읽을 필요가 없음.
+    // 기존에는 새 메시지가 올 때마다(=이 함수가 호출될 때마다) 매번 Firebase 왕복이 발생했음.
+    if (!window._chatRoomMainUidsCache) window._chatRoomMainUidsCache = {};
+    let mainUids = window._chatRoomMainUidsCache[roomId];
+    if (!mainUids) {
+        const roomSnap = await window._chat.getChatDb().ref(`chats/${roomId}/mainUids`).once('value');
+        mainUids = roomSnap.val() || {};
+        window._chatRoomMainUidsCache[roomId] = mainUids;
+    }
     const isGroup  = roomId.startsWith('group_');
 
     for (const [chatUid] of others) {
@@ -1467,6 +1478,12 @@ window.openChatImageModal = function(msgId) { cu_openImgModal(msgId); };
 
 window.cu_openImgModal = function(msgId) {
     document.getElementById('_chatImgModal')?.remove();
+    // ✅ 최적화: 이전에 등록된 keydown(Esc) 리스너 정리 — 기존에는 Esc가 아닌
+    // 다른 방법(X버튼/배경클릭/다운로드)으로 닫으면 리스너가 계속 누적되었음.
+    if (typeof window._chatImgModalCleanup === 'function') {
+        window._chatImgModalCleanup();
+        window._chatImgModalCleanup = null;
+    }
     const msg = (window._lastMsgs || {})[msgId];
     const src = msg?.imageBase64;
     if (!src) { cu_showToast('이미지를 불러올 수 없습니다.'); return; }
@@ -1481,7 +1498,7 @@ window.cu_openImgModal = function(msgId) {
         <img src="${src}"
             style="max-width:95vw;max-height:82vh;border-radius:10px;object-fit:contain;
                    cursor:zoom-out;-webkit-tap-highlight-color:transparent;"
-            onclick="document.getElementById('_chatImgModal').remove()">
+            onclick="cu_closeImgModal()">
         <div style="display:flex;gap:12px;margin-top:18px;">
             <button onclick="cu_downloadImg('${msgId}')"
                 style="background:rgba(255,255,255,0.18);border:none;color:white;
@@ -1489,16 +1506,25 @@ window.cu_openImgModal = function(msgId) {
                 display:flex;align-items:center;gap:8px;font-weight:700;">
                 <i class="fas fa-download"></i> 다운로드
             </button>
-            <button onclick="document.getElementById('_chatImgModal').remove()"
+            <button onclick="cu_closeImgModal()"
                 style="background:rgba(255,255,255,0.1);border:none;color:white;
                 padding:11px 24px;border-radius:24px;font-size:14px;cursor:pointer;font-weight:600;">
                 닫기
             </button>
         </div>`;
-    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
-    const esc = (e) => { if (e.key === 'Escape') { modal.remove(); document.removeEventListener('keydown', esc); }};
+    modal.addEventListener('click', e => { if (e.target === modal) cu_closeImgModal(); });
+    const esc = (e) => { if (e.key === 'Escape') cu_closeImgModal(); };
     document.addEventListener('keydown', esc);
+    window._chatImgModalCleanup = () => document.removeEventListener('keydown', esc);
     document.body.appendChild(modal);
+};
+
+window.cu_closeImgModal = function() {
+    document.getElementById('_chatImgModal')?.remove();
+    if (typeof window._chatImgModalCleanup === 'function') {
+        window._chatImgModalCleanup();
+        window._chatImgModalCleanup = null;
+    }
 };
 
 window.cu_downloadImg = function(msgId) {

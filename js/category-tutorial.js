@@ -154,6 +154,7 @@ const CHAR_BALL    = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAIA
 
   let currentStep = 0;
   let ring = null;
+  let els = null; // 캐시된 DOM 참조
 
   function buildUI() {
     const overlay = document.createElement('div');
@@ -176,8 +177,20 @@ const CHAR_BALL    = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAIA
         </div>
       </div>`;
     document.body.appendChild(overlay);
-    document.getElementById('ct-skip').addEventListener('click', closeTutorial);
-    document.getElementById('ct-next').addEventListener('click', handleNext);
+    els = {
+      overlay,
+      char:     document.getElementById('ct-char'),
+      charImg:  document.getElementById('ct-char-img'),
+      title:    document.getElementById('ct-title'),
+      desc:     document.getElementById('ct-desc'),
+      hintIcon: document.getElementById('ct-hint-icon'),
+      hintText: document.getElementById('ct-hint-text'),
+      next:     document.getElementById('ct-next'),
+      skip:     document.getElementById('ct-skip'),
+      dots:     overlay.querySelectorAll('.ct-dot')
+    };
+    els.skip.addEventListener('click', closeTutorial);
+    els.next.addEventListener('click', handleNext);
     overlay.addEventListener('click', e => { if (e.target === overlay) closeTutorial(); });
     renderStep(0);
   }
@@ -185,20 +198,19 @@ const CHAR_BALL    = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAIA
   function renderStep(idx) {
     const s = STEPS[idx];
     // 캐릭터 교체 (살짝 스케일 애니메이션)
-    const charEl = document.getElementById('ct-char');
-    charEl.style.transform = 'scale(0.7)';
+    els.char.style.transform = 'scale(0.7)';
     setTimeout(() => {
-      document.getElementById('ct-char-img').src = s.char;
-      charEl.style.transition = 'transform 0.35s cubic-bezier(.22,.68,0,1.3)';
-      charEl.style.transform = 'scale(1)';
+      els.charImg.src = s.char;
+      els.char.style.transition = 'transform 0.35s cubic-bezier(.22,.68,0,1.3)';
+      els.char.style.transform = 'scale(1)';
     }, 150);
 
-    document.getElementById('ct-title').innerHTML = s.title;
-    document.getElementById('ct-desc').innerHTML = s.desc.replace(/\n/g, '<br>');
-    document.getElementById('ct-hint-icon').textContent = s.hint;
-    document.getElementById('ct-hint-text').innerHTML = s.hintText;
-    document.getElementById('ct-next').textContent = s.nextLabel;
-    document.querySelectorAll('.ct-dot').forEach((d,i) => {
+    els.title.innerHTML = s.title;
+    els.desc.innerHTML = s.desc.replace(/\n/g, '<br>');
+    els.hintIcon.textContent = s.hint;
+    els.hintText.innerHTML = s.hintText;
+    els.next.textContent = s.nextLabel;
+    els.dots.forEach((d,i) => {
       d.className = 'ct-dot' + (i<idx?' done':i===idx?' active':'');
     });
     removeRing();
@@ -245,7 +257,7 @@ const CHAR_BALL    = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAIA
 
   function closeTutorial() {
     removeRing();
-    const overlay = document.getElementById('ct-overlay');
+    const overlay = els ? els.overlay : document.getElementById('ct-overlay');
     if (overlay) {
       overlay.style.opacity = '0';
       overlay.style.transition = 'opacity 0.3s';

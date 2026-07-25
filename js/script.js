@@ -5731,7 +5731,14 @@ function saveDraftContent() {
             thumbnail: document.getElementById('thumbnailPreview')?.src || '',
             timestamp: Date.now()
         };
-        
+
+        // ✅ [최적화] 마지막 저장 이후 실제 내용이 바뀌지 않았다면
+        // (timestamp 제외) 저장을 건너뜀 — 3초마다 무조건 저장하던 방식 개선
+        const fingerprint = draftData.category + '|' + draftData.title + '|' +
+            draftData.summary + '|' + draftData.content + '|' + draftData.thumbnail;
+        if (fingerprint === window._lastArticleDraftFingerprint) return;
+        window._lastArticleDraftFingerprint = fingerprint;
+
         localStorage.setItem('articleDraft', JSON.stringify(draftData));
     } catch(error) {
         console.error("임시 저장 실패:", error);
@@ -5752,10 +5759,11 @@ function restoreDraftContent() {
             return;
         }
         
-        // Quill 에디터가 준비될 때까지 대기
+        // Quill 에디터가 준비될 때까지 대기 (✅ 최대 시도 횟수 제한으로 무한 폴링 방지)
+        let _waitAttempts = 0;
         const waitForEditor = () => {
             if (!window.quillEditor || !window.quillEditor.root) {
-                setTimeout(waitForEditor, 100);
+                if (_waitAttempts++ < 100) setTimeout(waitForEditor, 100);
                 return;
             }
             

@@ -365,7 +365,7 @@ function _ddInjectSettingsCard() {
     if (existing) { _ddRenderCardContent(existing); return; }
 
     // soundAccordion 카드 뒤에 삽입
-    const anchor = document.querySelector('[id="soundAccordion"]')?.closest('div[style*="border-radius:12px"]')
+    const anchor = document.getElementById('soundAccordion')?.closest('div[style*="border-radius:12px"]')
                 || document.getElementById('adminModeIndicator')
                 || document.querySelector('.settings-divider');
 

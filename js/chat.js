@@ -2438,12 +2438,21 @@ window.showChatMediaGallery = async function (roomId) {
     document.body.appendChild(modal);
     modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
 
-    // 메시지 전체 로드
+    // ✅ 최적화: 현재 열려있는 방이면 실시간 리스너가 이미 메모리에 들고 있는
+    // window._lastMsgs를 재사용 — 매번 전체 메시지를 다시 Firebase에서 읽지 않음
     try {
-        const snap = await getChatDb().ref(`chats/${roomId}/messages`)
-            .orderByChild('timestamp').once('value');
-        const msgs = [];
-        snap.forEach(child => { msgs.push({ id: child.key, ...child.val() }); });
+        const activeRoomId = (window._chat && window._chat.activeChatRoomId) || window.activeChatRoomId;
+        let msgs;
+        if (activeRoomId === roomId && window._lastMsgs) {
+            msgs = Object.entries(window._lastMsgs)
+                .map(([id, m]) => ({ id, ...m }))
+                .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+        } else {
+            const snap = await getChatDb().ref(`chats/${roomId}/messages`)
+                .orderByChild('timestamp').once('value');
+            msgs = [];
+            snap.forEach(child => { msgs.push({ id: child.key, ...child.val() }); });
+        }
         window._galleryMsgs = msgs;
         window._galleryRoomId = roomId;
         switchGalleryTab('photo');
@@ -2688,18 +2697,33 @@ window.showChatSearch = async function (roomId) {
     document.body.appendChild(modal);
     modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
 
+    // ✅ 최적화: 현재 열려있는 방이면 이미 메모리에 있는 window._lastMsgs 재사용
     try {
-        const snap = await getChatDb().ref(`chats/${roomId}/messages`)
-            .orderByChild('timestamp').once('value');
-        const msgs = [];
-        snap.forEach(child => { msgs.push({ id: child.key, ...child.val() }); });
-        window._searchMsgs = msgs;
+        const activeRoomId = (window._chat && window._chat.activeChatRoomId) || window.activeChatRoomId;
+        if (activeRoomId === roomId && window._lastMsgs) {
+            window._searchMsgs = Object.entries(window._lastMsgs)
+                .map(([id, m]) => ({ id, ...m }))
+                .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+        } else {
+            const snap = await getChatDb().ref(`chats/${roomId}/messages`)
+                .orderByChild('timestamp').once('value');
+            const msgs = [];
+            snap.forEach(child => { msgs.push({ id: child.key, ...child.val() }); });
+            window._searchMsgs = msgs;
+        }
     } catch (e) {}
 
     setTimeout(() => document.getElementById('_chatSearchInput')?.focus(), 100);
 };
 
 window.doChatSearch = function () {
+    // ✅ 최적화: 빠르게 연속 입력할 때마다 매번 전체 결과를 다시 렌더링하지 않도록
+    // 150ms 디바운스 — 마지막 입력이 멈춘 뒤 한 번만 실행
+    clearTimeout(window._chatSearchDebounce);
+    window._chatSearchDebounce = setTimeout(_doChatSearchNow, 150);
+};
+
+function _doChatSearchNow() {
     const kw      = (document.getElementById('_chatSearchInput')?.value || '').trim().toLowerCase();
     const results = document.getElementById('_chatSearchResults');
     const count   = document.getElementById('_chatSearchCount');
