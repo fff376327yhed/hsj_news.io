@@ -280,6 +280,9 @@ DD.showChangePop = function (detectedType, savedType) {
         popup.remove();
         // 저장 설정 유지
         DD.applyBodyClass(savedType);
+        // ✅ 이 조합(저장값+감지기기)으로 '유지'를 선택했다는 걸 기억 → 다음부터 팝업 안 뜸
+        const uid = auth.currentUser?.uid || 'guest';
+        localStorage.setItem(`_ddKeepChoice_${uid}`, `${savedType}|${detectedType}`);
     };
 
     document.getElementById('_ddPopupChange').onclick = async () => {
@@ -324,9 +327,12 @@ DD.init = async function () {
 
     // 저장된 기기와 다를 때만 팝업
     if (saved !== det) {
-        // 사용자가 '다음에 묻지 않기' 선택 여부 확인
-        const skipKey = `_ddSkip_${auth.currentUser?.uid}`;
-        // 저장값과 감지값이 다를 때 항상 팝업 (dismiss 누르면 같아짐)
+        // ✅ 같은 조합(저장값+감지기기)에서 이미 '유지'를 선택했다면 다시 묻지 않음
+        const uid = auth.currentUser?.uid || 'guest';
+        const keepChoice = localStorage.getItem(`_ddKeepChoice_${uid}`);
+        if (keepChoice === `${saved}|${det}`) return;
+
+        // 저장값과 감지값이 다를 때 팝업 (단, 위에서 이미 '유지' 선택한 조합이면 스킵)
         setTimeout(() => DD.showChangePop(det, saved), 1500);
     }
 };

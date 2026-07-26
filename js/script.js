@@ -6031,6 +6031,14 @@ function restoreDraftContent() {
 // 임시 저장 내용 삭제
 function clearDraftContent() {
     localStorage.removeItem('articleDraft');
+    // ✅ 수정: script2.js의 실제 자동저장 키(draft_article)도 함께 삭제
+    //    (이게 안 지워져서 발행 완료된 기사가 다음에 '임시저장 복원'으로 다시 뜨는 버그였음)
+    localStorage.removeItem('draft_article');
+    // ✅ 자동저장 타이머도 같이 꺼서, 초기화 직후 곧바로 재저장되는 걸 방지
+    if (window.autoSaveInterval) {
+        clearInterval(window.autoSaveInterval);
+        window.autoSaveInterval = null;
+    }
 }
 
 
