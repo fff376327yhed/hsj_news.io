@@ -6167,7 +6167,7 @@ try {
         }
     };
     
-    // ✅ 이미지 삽입 시 base64 대신 Storage에 업로드하고 URL만 본문에 삽입
+    // ✅ 이미지 삽입 시 원본 그대로 넣지 않고, 리사이즈+압축한 base64로 삽입 (Storage 미사용, Realtime DB만 사용)
     function quillImageHandler() {
         const quill = this.quill;
         const input = document.createElement('input');
@@ -6180,21 +6180,17 @@ try {
             if (!file) return;
 
             const range = quill.getSelection(true);
-            const placeholder = '이미지 업로드 중...';
+            const placeholder = '이미지 처리 중...';
             quill.insertText(range.index, placeholder, { italic: true });
 
             try {
-                const path = `article-images/${Date.now()}_${Math.random().toString(36).slice(2)}`;
-                const ref = firebase.storage().ref(path);
-                const snap = await ref.put(file);
-                const url = await snap.ref.getDownloadURL();
-
+                const compressed = await compressImageToBase64(file, 1000, 0.75);
                 quill.deleteText(range.index, placeholder.length);
-                quill.insertEmbed(range.index, 'image', url);
+                quill.insertEmbed(range.index, 'image', compressed);
                 quill.setSelection(range.index + 1);
             } catch (err) {
                 quill.deleteText(range.index, placeholder.length);
-                alert("이미지 업로드에 실패했습니다: " + err.message);
+                alert("이미지 처리에 실패했습니다: " + err.message);
             }
         };
     }
