@@ -5417,6 +5417,7 @@ async function renderArticles() {
 
     if(!grid || !featured || !pinnedSection || !loadMore) {
         console.error("필수 요소를 찾을 수 없습니다.");
+        hidePageLoadingScreen(); // ✅ [BUG FIX] 필수 요소 누락 시에도 로딩화면이 안 닫히던 문제 수정
         return;
     }
     
@@ -5455,6 +5456,7 @@ async function renderArticles() {
         grid.innerHTML = "";
         loadMore.innerHTML = "";
         pinnedSection.innerHTML = "";
+        hidePageLoadingScreen(); // ✅ [BUG FIX] 기사가 아직 0개(로딩 타이밍 겹침)일 때 로딩화면이 안 닫히던 문제 수정
         return;
     }
 
