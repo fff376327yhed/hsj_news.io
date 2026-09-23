@@ -6167,20 +6167,57 @@ try {
         }
     };
     
+    // ✅ 이미지 삽입 시 base64 대신 Storage에 업로드하고 URL만 본문에 삽입
+    function quillImageHandler() {
+        const quill = this.quill;
+        const input = document.createElement('input');
+        input.setAttribute('type', 'file');
+        input.setAttribute('accept', 'image/*');
+        input.click();
+
+        input.onchange = async () => {
+            const file = input.files[0];
+            if (!file) return;
+
+            const range = quill.getSelection(true);
+            const placeholder = '이미지 업로드 중...';
+            quill.insertText(range.index, placeholder, { italic: true });
+
+            try {
+                const path = `article-images/${Date.now()}_${Math.random().toString(36).slice(2)}`;
+                const ref = firebase.storage().ref(path);
+                const snap = await ref.put(file);
+                const url = await snap.ref.getDownloadURL();
+
+                quill.deleteText(range.index, placeholder.length);
+                quill.insertEmbed(range.index, 'image', url);
+                quill.setSelection(range.index + 1);
+            } catch (err) {
+                quill.deleteText(range.index, placeholder.length);
+                alert("이미지 업로드에 실패했습니다: " + err.message);
+            }
+        };
+    }
+
     // ✅ Quill 에디터 생성
     window.quillEditor = new Quill('#quillEditor', {
         theme: 'snow',
         modules: {
-            toolbar: [
-                [{ 'header': [1, 2, 3, false] }],
-                ['bold', 'italic', 'underline', 'strike'],
-                [{ 'color': [] }, { 'background': [] }],
-                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                ['blockquote'],
-                [{ 'align': [] }],
-                ['link', 'image', 'video'],
-                ['clean']
-            ],
+            toolbar: {
+                container: [
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'color': [] }, { 'background': [] }],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    ['blockquote'],
+                    [{ 'align': [] }],
+                    ['link', 'image', 'video'],
+                    ['clean']
+                ],
+                handlers: {
+                    image: quillImageHandler
+                }
+            },
             keyboard: {
                 bindings: bindings
             }

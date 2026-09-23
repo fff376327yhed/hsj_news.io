@@ -39,7 +39,6 @@
     <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js" crossorigin="anonymous"></script>
     <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js" crossorigin="anonymous"></script>
     <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js" crossorigin="anonymous"></script>
-    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js" crossorigin="anonymous"></script>
 
     <!-- Quill 에디터 CSS -->
     <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
@@ -813,14 +812,23 @@ body.ganadi-theme .comments-section .comment-body { color: #6B4E3A !important; }
     </div>
 </div>
 
+<!-- 🔀 버전 변경 위젯 (선택 후 상시 노출) -->
+<a id="hsjSwitchBtn" href="javascript:void(0)" style="
+    position:fixed; left:12px; bottom:12px; z-index:99998; display:none;
+    align-items:center; gap:6px; background:rgba(33,33,33,0.78); color:#fff; text-decoration:none;
+    font-size:11px; font-weight:700; letter-spacing:-0.2px; padding:7px 12px; border-radius:20px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.25);">🔀 버전변경</a>
+
 <script>
 (function(){
     var PREF_KEY = 'hsjVersionPref';
     var overlay = document.getElementById('hsjVersionOverlay');
+    var switchBtn = document.getElementById('hsjSwitchBtn');
     var saved = localStorage.getItem(PREF_KEY);
 
     if (saved === 'basic' || saved === 'lite') {
         overlay.style.display = 'none';
+        switchBtn.style.display = 'flex';
     }
     document.getElementById('hsjPickLite').addEventListener('click', function(){
         localStorage.setItem(PREF_KEY, 'lite');
@@ -830,9 +838,13 @@ body.ganadi-theme .comments-section .comment-body { color: #6B4E3A !important; }
         localStorage.setItem(PREF_KEY, 'basic');
         location.reload();
     });
+    switchBtn.addEventListener('click', function(){
+        localStorage.removeItem(PREF_KEY);
+        location.reload();
+    });
 })();
 </script>
-<!-- ============ 버전 선택 오버레이 끝 (버전 변경은 설정 > 버전 설정에서) ============ -->
+<!-- ============ 버전 선택 오버레이 끝 ============ -->
 
 <!-- 🔧 점검모드 화면 -->
 <div id="maintenanceScreen">
@@ -1285,63 +1297,6 @@ body.ganadi-theme .comments-section .comment-body { color: #6B4E3A !important; }
         </div>
     </div>
 </div>
-
-    <!-- ⚡ 사이트 버전 설정 섹션 (아코디언) — 신규 추가 -->
-<div style="background:white; border-radius:12px; margin-bottom:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1); overflow:hidden;">
-    <div onclick="toggleSettingsAccordion('versionAccordion')"
-         style="display:flex; align-items:center; justify-content:space-between; padding:16px; cursor:pointer; user-select:none;"
-         onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background=''">
-        <h3 style="font-size:16px; font-weight:700; margin:0; color:#202124;">
-            <i class="fas fa-bolt"></i> 버전 설정
-        </h3>
-        <button id="versionAccordionBtn"
-            style="padding:5px 14px; font-size:13px; font-weight:700; border:1.5px solid #c62828;
-                   background:white; color:#c62828; border-radius:6px; cursor:pointer; pointer-events:none;">
-            더보기 ▾
-        </button>
-    </div>
-    <div id="versionAccordion" style="display:none; padding:0 16px 16px; border-top:1px solid #f0f0f0;">
-        <div style="display:flex; flex-direction:column; gap:12px; padding-top:14px;">
-            <label class="theme-option" style="display:flex; align-items:center; padding:12px; border:2px solid #dadce0; border-radius:10px; cursor:pointer; transition:all 0.3s;">
-                <input type="radio" name="hsjVersionRadio" value="lite" id="versionRadioLite" style="margin-right:12px; width:20px; height:20px; cursor:pointer;">
-                <div style="flex:1;">
-                    <div style="font-weight:600; color:#202124; margin-bottom:4px;"><i class="fas fa-bolt"></i> 라이트 버전 <span style="background:linear-gradient(135deg,#c62828,#e53935); padding:2px 6px; border-radius:4px; font-size:10px; color:white; margin-left:4px;">추천</span></div>
-                    <div style="font-size:12px; color:#5f6368;">불필요한 기능을 빼고 가볍게 동작</div>
-                </div>
-                <div style="width:40px; height:40px; border-radius:8px; background:linear-gradient(135deg,#c62828 0%,#e53935 100%); border:2px solid #dadce0; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:18px;">⚡</div>
-            </label>
-            <label class="theme-option" style="display:flex; align-items:center; padding:12px; border:2px solid #dadce0; border-radius:10px; cursor:pointer; transition:all 0.3s;">
-                <input type="radio" name="hsjVersionRadio" value="basic" id="versionRadioBasic" style="margin-right:12px; width:20px; height:20px; cursor:pointer;">
-                <div style="flex:1;">
-                    <div style="font-weight:600; color:#202124; margin-bottom:4px;"><i class="fas fa-box"></i> 기본 버전</div>
-                    <div style="font-size:12px; color:#5f6368;">채팅·투표·AI·위키·업적 등 전체 기능 포함</div>
-                </div>
-                <div style="width:40px; height:40px; border-radius:8px; background:linear-gradient(135deg,#455a64 0%,#607d8b 100%); border:2px solid #dadce0; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:18px;">📦</div>
-            </label>
-            <div style="font-size:11.5px; color:#9a9a9a; line-height:1.6; padding:2px 2px 0;">
-                선택하면 즉시 저장되고 페이지가 새로고침되어 적용됩니다.
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-(function(){
-    var PREF_KEY = 'hsjVersionPref';
-    var current = localStorage.getItem(PREF_KEY) || 'basic';
-    var liteRadio = document.getElementById('versionRadioLite');
-    var basicRadio = document.getElementById('versionRadioBasic');
-    if (current === 'lite') { liteRadio.checked = true; } else { basicRadio.checked = true; }
-
-    function applyVersion(v){
-        if (localStorage.getItem(PREF_KEY) === v) return; // 변경 없으면 새로고침 안 함
-        localStorage.setItem(PREF_KEY, v);
-        location.reload();
-    }
-    liteRadio.addEventListener('change', function(){ if(this.checked) applyVersion('lite'); });
-    basicRadio.addEventListener('change', function(){ if(this.checked) applyVersion('basic'); });
-})();
-</script>
 
     <!-- 관리자 전용 섹션 -->
     <div id="adminModeIndicator"></div>
