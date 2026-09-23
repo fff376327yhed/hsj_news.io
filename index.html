@@ -19,11 +19,10 @@
 
     
     <!-- 파비콘 추가 -->
-    <link rel="icon" type="image/x-icon" href="https://raw.githubusercontent.com/fff376327yhed/hsj_news.io/main/favicon/favicon.ico">
-    <link rel="apple-touch-icon" sizes="180x180" href="https://raw.githubusercontent.com/fff376327yhed/hsj_news.io/main/favicon/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="https://raw.githubusercontent.com/fff376327yhed/hsj_news.io/main/favicon/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="https://raw.githubusercontent.com/fff376327yhed/hsj_news.io/main/favicon/favicon-16x16.png">
-    
+    <link rel="icon" type="image/x-icon" href="https://cdn.jsdelivr.net/gh/fff376327yhed/hsj_news.io@main/favicon/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://cdn.jsdelivr.net/gh/fff376327yhed/hsj_news.io@main/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://cdn.jsdelivr.net/gh/fff376327yhed/hsj_news.io@main/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://cdn.jsdelivr.net/gh/fff376327yhed/hsj_news.io@main/favicon/favicon-16x16.png">    
     <!-- ✅ PWA 설치 프롬프트 조기 캡처 (Firebase 등 스크립트 로딩 전 이벤트 소실 방지) -->
     <script>
       window.__pwaEarlyPrompt = null;
@@ -41,8 +40,7 @@
     <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js" crossorigin="anonymous"></script>
     <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js" crossorigin="anonymous"></script>
 
-    <!-- Quill 에디터 CSS -->
-    <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+    
 
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js" crossorigin="anonymous"></script>
     
@@ -52,13 +50,7 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous">
     
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="./css/style.css">
-
-    <!-- 기존 style.css + 1style.css 대신 dog-style.css 로드 -->
-    <link rel="stylesheet" href="./css/2style.css">
-    <link rel="stylesheet" href="./css/3style.css">
-    <!-- 🏹 화살표 장인 칭호 전용 스타일 (장착 시 JS로 활성화) -->
+    <link rel="stylesheet" href="./css/app.css">
     <link rel="stylesheet" href="./css/4style.css" id="arrow-master-style" disabled>
 
 <script>
@@ -889,7 +881,7 @@ body.ganadi-theme .comments-section .comment-body { color: #6B4E3A !important; }
 <!-- 홈 섹션 -->
 <section class="page-section active" id="articlesSection">
    <div class="search-bar">
-        <!-- 커스텀 카테고리 드롭다운 (dot 표시 지원) -->
+        <!-- 커스텀 카테고리 드롭다운 (dot 표시 지원.) -->
         <div id="catDropdownWrapper" style="position:relative; flex-shrink:0;">
             <button id="catDropdownBtn"
                 onclick="toggleCatDropdown()"

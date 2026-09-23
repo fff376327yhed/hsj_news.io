@@ -2989,8 +2989,7 @@ window.toggleSelectionMode = function() {
   modal && (modal.classList.remove("active"), setTimeout(() => modal.remove(), 300));
 }, window.addEventListener("DOMContentLoaded", () => {
   showPageLoadingScreen(), setTimeout(() => hidePageLoadingScreen(), 1e4), setupArticlesListener(), 
-  Promise.all([ loadBannedWords() ]).then(() => {}), setupArticleForm(), window._lastSeenInterval && clearInterval(window._lastSeenInterval), 
-  window._lastSeenInterval = setInterval(updateLastSeen, 18e4), document.addEventListener("visibilitychange", () => {
+  Promise.all([ loadBannedWords() ]).then(() => {}), window._lastSeenInterval && clearInterval(window._lastSeenInterval),  window._lastSeenInterval = setInterval(updateLastSeen, 18e4), document.addEventListener("visibilitychange", () => {
     "visible" === document.visibilityState && updateLastSeen();
   }), window.addEventListener("beforeunload", () => {
     clearInterval(window._lastSeenInterval);

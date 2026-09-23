@@ -6049,6 +6049,15 @@ window.quillEditor = null;
 let editorInitialized = false;
 
 function initQuillEditor() {
+    // ✅ Quill CSS는 실제로 에디터를 쓸 때만 로드 (홈 화면 로딩 차단 방지)
+    if (!document.getElementById('quillSnowCss')) {
+        const link = document.createElement('link');
+        link.id = 'quillSnowCss';
+        link.rel = 'stylesheet';
+        link.href = 'https://cdn.quilljs.com/1.3.7/quill.snow.css';
+        document.head.appendChild(link);
+    }
+
     console.log("Quill 에디터 초기화 시작...");
     
     const container = document.getElementById('quillEditor');
