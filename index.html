@@ -574,22 +574,23 @@ body.ganadi-theme .comments-section .comment-author { color: #4A3728 !important;
 body.ganadi-theme .emperor-comments-section .comment-body,
 body.ganadi-theme .comments-section .comment-body { color: #6B4E3A !important; }
 
-/* 🛡️ Quill CSS 로드 지연/실패 시에도 툴바 아이콘(SVG)이 화면을 덮지 않도록 하는 안전장치 */
-#quillEditor .ql-toolbar button,
-#quillEditor .ql-toolbar .ql-picker {
-    display: inline-block;
-    width: 28px;
-    height: 24px;
+/* 🛡️ Quill 툴바는 #quillEditor 안이 아니라 바로 앞 형제 요소로 생성됨 -> #articleForm 기준으로 선택.
+   CSS 로드 지연/실패/다른 테마 CSS 충돌 시에도 툴바 아이콘(SVG)이 화면을 덮지 않도록 하는 안전장치 */
+#articleForm .ql-toolbar.ql-snow button {
+    display: inline-block !important;
+    width: 28px !important;
+    height: 24px !important;
+    padding: 3px 5px !important;
     overflow: hidden;
     vertical-align: middle;
 }
-#quillEditor .ql-toolbar svg {
+#articleForm .ql-toolbar svg {
     width: 18px !important;
     height: 18px !important;
-    max-width: 18px;
-    max-height: 18px;
+    max-width: 18px !important;
+    max-height: 18px !important;
 }
-#quillEditor .ql-toolbar .ql-formats {
+#articleForm .ql-toolbar .ql-formats {
     display: inline-block;
     margin-right: 15px;
 }
